@@ -22,6 +22,9 @@ final class Plugin {
 	 * each area is added.
 	 */
 	public static function boot(): void {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			Cli\Command::register();
+		}
 	}
 
 	/**

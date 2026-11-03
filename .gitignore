@@ -1,5 +1,8 @@
 # Test output and archives produced while testing.
 /tests/tmp/
+
+# Logins of the local test sites (generated, never committed).
+/tests/local-sites.credentials.json
 *.tar
 *.tar.gz
 

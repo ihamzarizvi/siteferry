@@ -28,17 +28,18 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-defined( 'ABSPATH' ) || exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	// "wp --require=.../siteferry.php" loads this file before WordPress. Load the plugin once
+	// WordPress is up, so the export command works on a site where SiteFerry is not installed.
+	if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( 'WP_CLI' ) ) {
+		WP_CLI::add_hook(
+			'after_wp_load',
+			static function () {
+				require_once __DIR__ . '/includes/bootstrap.php';
+			}
+		);
+	}
+	return;
+}
 
-define( 'SITEFERRY_VERSION', '0.1.0' );
-define( 'SITEFERRY_FILE', __FILE__ );
-define( 'SITEFERRY_DIR', __DIR__ );
-
-require_once SITEFERRY_DIR . '/includes/class-autoloader.php';
-
-\SiteFerry\Autoloader::register();
-
-register_activation_hook( __FILE__, array( '\SiteFerry\Plugin', 'activate' ) );
-register_deactivation_hook( __FILE__, array( '\SiteFerry\Plugin', 'deactivate' ) );
-
-add_action( 'plugins_loaded', array( '\SiteFerry\Plugin', 'boot' ) );
+require_once __DIR__ . '/includes/bootstrap.php';
