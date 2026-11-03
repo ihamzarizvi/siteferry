@@ -1,0 +1,8 @@
+# Test output and archives produced while testing.
+/tests/tmp/
+*.tar
+*.tar.gz
+
+# Tooling that is never shipped.
+/vendor/
+/node_modules/
