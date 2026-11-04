@@ -236,6 +236,12 @@ final class Admin {
 							<a href="#storage" data-goto="storage"><?php esc_html_e( 'Set up storage', 'siteferry' ); ?></a>
 						</p>
 						<p class="sf-download-ready"><label><input type="checkbox" id="siteferry-download-ready"> <?php esc_html_e( 'Also download it to my computer when it is ready', 'siteferry' ); ?></label></p>
+
+						<div class="sf-drawer-actions">
+							<button type="submit" class="button button-primary button-large"><?php esc_html_e( 'Back up now', 'siteferry' ); ?></button>
+							<button type="button" class="button sf-quiet" id="siteferry-options-close"><?php esc_html_e( 'Close options', 'siteferry' ); ?></button>
+							<span class="description"><?php esc_html_e( 'Uses the choices above. The name, note and tags are for this backup only; the other choices stay until you reload the page.', 'siteferry' ); ?></span>
+						</div>
 					</form>
 
 					<div id="siteferry-upload" class="sf-drawer" hidden>
@@ -297,6 +303,7 @@ final class Admin {
 						<span></span>
 						<span><?php esc_html_e( 'Backup', 'siteferry' ); ?></span>
 						<span><?php esc_html_e( 'Stored on', 'siteferry' ); ?></span>
+						<span><?php esc_html_e( 'Format', 'siteferry' ); ?></span>
 						<span class="sf-backup-size"><?php esc_html_e( 'Size', 'siteferry' ); ?></span>
 						<span></span>
 					</div>

@@ -551,8 +551,10 @@
 		options.tags = form.elements.tags.value;
 		const target = destination( options.send_to );
 		const view = progressView( 'siteferry-job-progress', [ 'This site', target ? target.short : 'This server' ] );
-		const now = $( 'siteferry-backup-now' );
-		now.disabled = true;
+		const starters = [ $( 'siteferry-backup-now' ), ...form.querySelectorAll( 'button[type=submit]' ) ];
+		starters.forEach( ( starter ) => ( starter.disabled = true ) );
+		// The choices are made; close Options so the progress shows right under the header.
+		toggleDrawer( 'options', false );
 		view.start( 'Starting the backup...' );
 		try {
 			const started = await api( 'POST', 'exports', { json: options } );
@@ -565,7 +567,7 @@
 		} catch ( error ) {
 			view.finish( false, 'The backup was not made', [ el( 'p', { text: error.message } ) ] );
 		} finally {
-			now.disabled = false;
+			starters.forEach( ( starter ) => ( starter.disabled = false ) );
 		}
 	}
 
@@ -587,9 +589,9 @@
 			actions.push( el( 'a', { class: 'button button-primary', href: downloadUrl( r.name ), text: 'Download to your computer' } ) );
 			destinations
 				.filter( ( d ) => d.ready && ! ( r.sent && r.sent.destination === d.id ) )
-				.forEach( ( d ) => actions.push( button( 'Also send to ' + d.short, () => sendTo( d, r.name ), 'button' ) ) );
+				.forEach( ( d ) => actions.push( button( 'Also send to ' + d.short, () => sendTo( d, r.name ), 'button sf-quiet' ) ) );
 		}
-		actions.push( button( 'Name, note and tags', () => editByName( r.sent && r.deleted_local ? r.sent.name : r.name ), 'button' ) );
+		actions.push( button( 'Name, note and tags', () => editByName( r.sent && r.deleted_local ? r.sent.name : r.name ), 'button sf-quiet' ) );
 		if ( actions.length ) {
 			nodes.push( el( 'p', { class: 'sf-actions' }, actions ) );
 		}
@@ -1130,6 +1132,17 @@
 		renderList();
 	}
 
+	/** The file format from the name: SiteFerry .tar or .tar.gz, or .wpress. */
+	function formatOf( name ) {
+		if ( /\.tar\.gz$/i.test( name ) ) {
+			return { ext: '.tar.gz', note: 'SiteFerry, compressed' };
+		}
+		if ( /\.wpress$/i.test( name ) ) {
+			return { ext: '.wpress', note: 'All-in-One WP Migration' };
+		}
+		return { ext: '.tar', note: 'SiteFerry' };
+	}
+
 	function badge( text, tone ) {
 		return el( 'span', { class: 'sf-badge' + ( tone ? ' ' + tone : '' ), text } );
 	}
@@ -1150,15 +1163,13 @@
 		if ( item.wordpress ) {
 			meta.push( el( 'span', { text: 'WordPress ' + item.wordpress } ) );
 		}
-		// Shown in its own column on wide screens, in the meta line on narrow ones.
-		meta.push( el( 'span', { class: 'sf-narrow-only', text: bytes( item.size ) } ) );
+		// Shown in their own columns on wide screens, in the meta line on narrow ones.
+		const format = formatOf( item.name );
+		meta.push( el( 'span', { class: 'sf-narrow-only', text: format.ext } ), el( 'span', { class: 'sf-narrow-only', text: bytes( item.size ) } ) );
 
 		const flags = [];
 		if ( ! mine ) {
 			flags.push( badge( 'From another site', 'is-warn' ) );
-		}
-		if ( item.format === 'wpress' ) {
-			flags.push( badge( '.wpress', 'is-format' ) );
 		}
 		if ( item.error ) {
 			flags.push( badge( 'Cannot be restored', 'is-bad' ) );
@@ -1197,6 +1208,10 @@
 				item.error ? el( 'p', { class: 'sf-row-error', text: item.error } ) : el( 'span', { class: 'sf-row-name', text: item.name } ),
 			] ),
 			el( 'div', { class: 'sf-backup-where' }, places ),
+			el( 'div', { class: 'sf-backup-format' + ( format.ext === '.wpress' ? ' is-wpress' : '' ) }, [
+				el( 'span', { class: 'sf-format-name', text: format.ext } ),
+				el( 'span', { class: 'sf-format-note', text: format.note } ),
+			] ),
 			el( 'div', { class: 'sf-backup-size', text: bytes( item.size ) } ),
 			el( 'div', { class: 'sf-row-actions' }, actions ),
 		] );
@@ -1911,6 +1926,10 @@
 		);
 		$( 'siteferry-export-form' ).addEventListener( 'submit', startExport );
 		$( 'siteferry-options-toggle' ).addEventListener( 'click', () => toggleDrawer( 'options' ) );
+		$( 'siteferry-options-close' ).addEventListener( 'click', () => {
+			toggleDrawer( 'options', false );
+			$( 'siteferry-options-toggle' ).focus();
+		} );
 		$( 'siteferry-upload-toggle' ).addEventListener( 'click', () => toggleDrawer( 'upload' ) );
 		$( 'siteferry-send-options' ).addEventListener( 'change', syncDeleteAfter );
 		$( 'siteferry-export-form' ).querySelectorAll( 'input[name=format]' ).forEach( ( input ) => input.addEventListener( 'change', syncFormat ) );
@@ -1933,6 +1952,21 @@
 			$( id ).addEventListener( 'change', recheckSoon );
 		} );
 		$( 'siteferry-jobs-refresh' ).addEventListener( 'click', loadJobs );
+
+		// A restore check nobody confirmed would block the next backup: leaving the page cancels it.
+		window.addEventListener( 'pagehide', () => {
+			if ( restore && restore.job && ( restore.phase === 'check' || restore.phase === 'ready' ) ) {
+				try {
+					fetch( url( 'jobs/' + restore.job.id + '/cancel' ), {
+						method: 'POST',
+						keepalive: true,
+						credentials: 'same-origin',
+						headers: { 'X-WP-Nonce': cfg.nonce, 'X-SiteFerry-Job': restore.job.token },
+					} );
+				} catch ( error ) {}
+				store.remove( JOB_KEY );
+			}
+		} );
 
 		// One open "..." menu at a time; a click elsewhere closes it.
 		document.addEventListener( 'toggle', ( event ) => {

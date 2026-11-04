@@ -1,21 +1,25 @@
 /* SiteFerry admin page. SPDX-License-Identifier: GPL-2.0-or-later */
 
 /*
- * Tokens. A harbour palette: deep sea ink for structure, signal orange only for the ferry and the
- * leg it is on, and the navigation-light pair for outcomes (starboard green: done or connected,
- * port red: failed). Type is the admin's own system stack; data (file names, sizes, times,
- * addresses) is set in monospace, like a ship's manifest.
+ * Tokens. Deep sea blue: text in the admin's own near-black, deep navy for the brand (the name,
+ * chips, quiet buttons), a clear sea blue for accents (active tab, icons, the route), signal orange
+ * only for the ferry and the leg it is on, and the navigation-light pair for outcomes (starboard
+ * green: done or connected, port red: failed). The blues sit close to WordPress's own buttons.
+ * Type is the admin's system stack; data (file names, sizes, times, addresses) is set in
+ * monospace, like a ship's manifest.
  */
 .siteferry {
-	--sf-ink: #0e3b43;
-	--sf-ink-soft: #46646b;
+	--sf-text: #1d2327;
+	--sf-ink: #12355b;
+	--sf-accent: #1e5fa8;
+	--sf-ink-soft: #50575e;
 	--sf-deck: #fff;
-	--sf-fog: #ebf1f2;
-	--sf-rope: #c8d5d7;
-	--sf-signal: #e4572e;
-	--sf-signal-wash: #fdeee8;
-	--sf-starboard: #1d7f55;
-	--sf-starboard-wash: #e4f3eb;
+	--sf-fog: #e7f0fa;
+	--sf-rope: #c9d5e3;
+	--sf-signal: #f97316;
+	--sf-signal-wash: #fff1e6;
+	--sf-starboard: #15803d;
+	--sf-starboard-wash: #e6f4ea;
 	--sf-port: #c2352d;
 	--sf-port-wash: #fbe9e7;
 	--sf-amber: #8a5300;
@@ -125,16 +129,16 @@
 }
 
 .siteferry .sf-tabs .nav-tab:hover {
-	color: var(--sf-ink);
+	color: var(--sf-text);
 	background: none;
 	border-bottom-color: var(--sf-rope);
 }
 
 .siteferry .sf-tabs .nav-tab-active,
 .siteferry .sf-tabs .nav-tab-active:hover {
-	color: var(--sf-ink);
+	color: var(--sf-text);
 	font-weight: 600;
-	border-bottom-color: var(--sf-ink);
+	border-bottom-color: var(--sf-accent);
 }
 
 .siteferry .sf-tabs .nav-tab:focus {
@@ -187,7 +191,7 @@
 	padding: 0;
 	font-size: 15px;
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-lead {
@@ -204,7 +208,7 @@
 	margin: 22px 0 8px;
 	font-size: 13px;
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-actions {
@@ -269,7 +273,7 @@
 
 .sf-chip.is-busy {
 	background: var(--sf-signal-wash);
-	color: #a33a16;
+	color: #9a3412;
 }
 
 .sf-chip.is-warn {
@@ -286,7 +290,7 @@
 	margin: 12px 0;
 	padding: 10px 14px;
 	border: 1px solid var(--sf-rope);
-	border-left: 4px solid var(--sf-ink);
+	border-left: 4px solid var(--sf-accent);
 	border-radius: var(--sf-radius);
 	background: var(--sf-deck);
 }
@@ -316,7 +320,7 @@
 }
 
 .sf-notice-close:hover {
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-active {
@@ -326,7 +330,7 @@
 	gap: 8px 16px;
 	margin: 12px 0;
 	padding: 12px 16px;
-	border: 1px solid #f2c4b3;
+	border: 1px solid #fdcfa8;
 	border-left: 4px solid var(--sf-signal);
 	border-radius: var(--sf-radius);
 	background: var(--sf-signal-wash);
@@ -335,7 +339,7 @@
 .sf-active-text {
 	flex: 1 1 320px;
 	margin: 0;
-	color: #3d1a0c;
+	color: #431407;
 }
 
 .sf-active-actions {
@@ -378,7 +382,7 @@
 	margin: 0;
 	font-size: 14px;
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 	overflow-wrap: anywhere;
 }
 
@@ -428,7 +432,7 @@
 
 .sf-leg.is-done .sf-leg-track {
 	border-top-style: solid;
-	border-top-color: var(--sf-ink);
+	border-top-color: var(--sf-accent);
 }
 
 .sf-leg-fill {
@@ -465,8 +469,8 @@
 .sf-leg.is-done::before,
 .sf-leg.is-current::before,
 .sf-route.is-arrived .sf-leg:last-child::after {
-	border-color: var(--sf-ink);
-	background: var(--sf-ink);
+	border-color: var(--sf-accent);
+	background: var(--sf-accent);
 }
 
 .sf-leg-label {
@@ -484,7 +488,7 @@
 }
 
 .sf-leg.is-current .sf-leg-label {
-	color: var(--sf-ink);
+	color: var(--sf-text);
 	font-weight: 600;
 }
 
@@ -629,7 +633,7 @@
 
 .sf-more summary {
 	cursor: pointer;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-more summary:focus-visible,
@@ -704,7 +708,7 @@
 
 .sf-choice-name {
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-choice-note {
@@ -714,9 +718,9 @@
 }
 
 .sf-choice:has(input:checked) {
-	border-color: var(--sf-ink);
-	box-shadow: inset 0 0 0 1px var(--sf-ink);
-	background: #f6fafa;
+	border-color: var(--sf-accent);
+	box-shadow: inset 0 0 0 1px var(--sf-accent);
+	background: #f2f7fd;
 }
 
 .sf-choice:has(input:focus-visible) {
@@ -786,6 +790,28 @@
 	margin: 14px 0 0;
 }
 
+/* The end of Options: start the backup from where the choices were made. */
+.sf-drawer-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 10px;
+	margin: 18px 0 0;
+	padding-top: 16px;
+	border-top: 1px solid var(--sf-fog);
+}
+
+.siteferry .sf-drawer-actions .button {
+	min-height: 36px;
+	padding: 0 16px;
+	line-height: 34px;
+}
+
+.sf-drawer-actions .description {
+	flex: 1 1 220px;
+	margin: 0;
+}
+
 /* Name, note and tags: in Options and in a row's editor. */
 .sf-label-fields {
 	display: grid;
@@ -833,7 +859,7 @@
 	border: 1px solid var(--sf-rope);
 	border-radius: 10px;
 	background: var(--sf-deck);
-	color: var(--sf-ink);
+	color: var(--sf-text);
 	font: inherit;
 	font-size: 11.5px;
 	line-height: 18px;
@@ -856,8 +882,8 @@
 }
 
 .sf-tag.is-on {
-	border-color: var(--sf-ink);
-	background: var(--sf-ink);
+	border-color: var(--sf-accent);
+	background: var(--sf-accent);
 	color: #fff;
 }
 
@@ -875,7 +901,7 @@
 
 .sf-row.is-editing {
 	display: block;
-	background: #f8fbfb;
+	background: #f6f9fd;
 }
 
 /* --------------------------------------------------- the backups table */
@@ -884,7 +910,7 @@
 .sf-columns,
 .sf-list .sf-row.sf-backup {
 	display: grid;
-	grid-template-columns: 36px minmax(0, 1fr) minmax(120px, 190px) 72px 132px;
+	grid-template-columns: 36px minmax(0, 1fr) minmax(104px, 160px) 150px 72px 132px;
 	align-items: center;
 	gap: 0 18px;
 }
@@ -903,7 +929,7 @@
 .sf-columns {
 	padding: 8px 20px;
 	border-bottom: 1px solid var(--sf-rope);
-	background: #f8fbfb;
+	background: #f6f9fd;
 	font-size: 11px;
 	font-weight: 600;
 	letter-spacing: 0.04em;
@@ -924,7 +950,7 @@
 	height: 36px;
 	border-radius: 50%;
 	background: var(--sf-fog);
-	color: var(--sf-ink);
+	color: var(--sf-accent);
 	font-size: 18px;
 }
 
@@ -967,10 +993,38 @@
 	gap: 4px;
 }
 
+.sf-backup-format {
+	display: grid;
+	gap: 1px;
+	min-width: 0;
+}
+
+.sf-format-name {
+	justify-self: start;
+	padding: 0 7px;
+	border-radius: 4px;
+	background: var(--sf-fog);
+	color: var(--sf-ink);
+	font-family: var(--sf-mono);
+	font-size: 11.5px;
+	line-height: 18px;
+}
+
+.sf-backup-format.is-wpress .sf-format-name {
+	background: #efeaf8;
+	color: #4f3a85;
+}
+
+.sf-format-note {
+	font-size: 11.5px;
+	color: var(--sf-ink-soft);
+	overflow-wrap: anywhere;
+}
+
 .sf-backup-size {
 	font-family: var(--sf-mono);
 	font-size: 12px;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 	text-align: right;
 	white-space: nowrap;
 }
@@ -1034,7 +1088,7 @@
 
 .sf-edit-title {
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-edit .sf-row-name {
@@ -1043,7 +1097,7 @@
 
 .sf-edit .sf-field label {
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-edit .sf-field .description {
@@ -1064,7 +1118,7 @@
 .sf-help summary {
 	cursor: pointer;
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-help ol {
@@ -1080,7 +1134,7 @@
 
 .sf-restore {
 	border-color: var(--sf-ink-soft);
-	box-shadow: inset 4px 0 0 var(--sf-ink);
+	box-shadow: inset 4px 0 0 var(--sf-accent);
 }
 
 .sf-restore:focus {
@@ -1146,7 +1200,7 @@
 	padding: 26px 20px;
 	border: 2px dashed var(--sf-rope);
 	border-radius: var(--sf-radius);
-	background: #f8fbfb;
+	background: #f6f9fd;
 	text-align: center;
 	cursor: pointer;
 	transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -1154,7 +1208,7 @@
 
 .sf-drop:hover,
 .sf-drop.is-over {
-	border-color: var(--sf-ink);
+	border-color: var(--sf-accent);
 	background: var(--sf-fog);
 }
 
@@ -1167,13 +1221,13 @@
 	width: 28px;
 	height: 28px;
 	font-size: 28px;
-	color: var(--sf-ink);
+	color: var(--sf-accent);
 }
 
 .sf-drop-main {
 	font-size: 14px;
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-drop-note {
@@ -1222,7 +1276,7 @@
 	padding: 0;
 	background: none;
 	font-size: 13px;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 	overflow-wrap: anywhere;
 }
 
@@ -1276,7 +1330,7 @@
 	gap: 6px 16px;
 	padding: 14px 20px;
 	border-bottom: 1px solid var(--sf-rope);
-	background: #f8fbfb;
+	background: #f6f9fd;
 }
 
 .sf-list-head .sf-card-title {
@@ -1318,14 +1372,14 @@
 }
 
 .sf-row:hover {
-	background: #fafcfc;
+	background: #f9fbfe;
 }
 
 .sf-row-title {
 	display: block;
 	font-size: 14px;
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 	overflow-wrap: anywhere;
 }
 
@@ -1431,7 +1485,7 @@
 .siteferry .button.sf-quiet:hover,
 .siteferry .button.sf-quiet:focus {
 	border-color: var(--sf-ink-soft);
-	background: #f6fafa;
+	background: #f2f7fd;
 	color: var(--sf-ink);
 }
 
@@ -1458,7 +1512,7 @@
 	border: 1px solid var(--sf-rope);
 	border-radius: var(--sf-radius);
 	background: var(--sf-deck);
-	box-shadow: 0 6px 18px rgba(14, 59, 67, 0.12);
+	box-shadow: 0 6px 18px rgba(18, 53, 91, 0.14);
 }
 
 .sf-menu-item {
@@ -1467,7 +1521,7 @@
 	border: 0;
 	border-radius: 4px;
 	background: none;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 	font: inherit;
 	text-align: left;
 	text-decoration: none;
@@ -1477,7 +1531,7 @@
 .sf-menu-item:hover,
 .sf-menu-item:focus {
 	background: var(--sf-fog);
-	color: var(--sf-ink);
+	color: var(--sf-text);
 	outline: none;
 	box-shadow: none;
 }
@@ -1562,7 +1616,7 @@
 .sf-job-type {
 	margin-right: 8px;
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-job-detail {
@@ -1580,8 +1634,8 @@
 	padding: 12px 14px;
 	overflow: auto;
 	border-radius: var(--sf-radius);
-	background: #0b2a30;
-	color: #e8f0f1;
+	background: #0f1f33;
+	color: #e6edf5;
 	font-family: var(--sf-mono);
 	font-size: 12px;
 	line-height: 1.55;
@@ -1653,7 +1707,7 @@ details.sf-dest[open] > .sf-dest-head::after {
 	height: 38px;
 	border-radius: 50%;
 	background: var(--sf-fog);
-	color: var(--sf-ink);
+	color: var(--sf-accent);
 	font-size: 20px;
 }
 
@@ -1665,7 +1719,7 @@ details.sf-dest[open] > .sf-dest-head::after {
 	display: block;
 	font-size: 14px;
 	font-weight: 600;
-	color: var(--sf-ink);
+	color: var(--sf-text);
 }
 
 .sf-dest-state {
@@ -1719,7 +1773,7 @@ details.sf-dest[open] > .sf-dest-head::after {
 .sf-result {
 	margin: 14px 0 0;
 	padding: 10px 14px;
-	border-left: 4px solid var(--sf-ink);
+	border-left: 4px solid var(--sf-accent);
 	border-radius: 0 var(--sf-radius) var(--sf-radius) 0;
 	background: var(--sf-fog);
 }
@@ -1882,7 +1936,8 @@ details.sf-dest[open] > .sf-dest-head::after {
 		grid-column: 2;
 	}
 
-	.sf-backup-size {
+	.sf-backup-size,
+	.sf-backup-format {
 		display: none;
 	}
 
