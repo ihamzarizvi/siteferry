@@ -24,6 +24,7 @@ final class Job {
 
 	const STATUS_PENDING = 'pending';
 	const STATUS_RUNNING = 'running';
+	const STATUS_WAITING = 'waiting';
 	const STATUS_DONE    = 'done';
 	const STATUS_FAILED  = 'failed';
 

@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.1.0
+Stable tag: 0.3.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,12 +14,29 @@ Back up a whole WordPress site into one TAR file and restore or migrate it to an
 SiteFerry exports the database and wp-content into a single standard TAR archive (optionally
 gzip-compressed) and imports it on another site, replacing the site address where needed.
 
-Work in progress. This version exports sites from WP-CLI; importing and the admin screen follow.
+Work in progress. This version exports and imports sites from WP-CLI; the admin screen follows.
 
 = WP-CLI =
 
 * `wp siteferry export [--compress] [--exclude=media,plugins,themes,inactive-plugins,inactive-themes,spam-comments,revisions] [--include-cache] [--exclude-tables=...] [--exclude-paths=...] [--dir=...] [--porcelain]`
+* `wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] [--include-mu-plugins] [--include-drop-ins] [--force] [--yes]`
 * `wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]`
+
+= How an import works =
+
+1. The backup's manifest, WordPress and PHP versions and free disk space are checked, and you confirm.
+2. Files are unpacked into a staging folder and checked against the backup's SHA-256 list.
+3. The database is loaded into temporary tables while the site keeps running. Only the statements a
+   SiteFerry dump contains are accepted. Collations the server lacks are mapped to close equivalents.
+4. The old address and folder paths are replaced (http/https, www, `//`, JSON and URL-encoded forms;
+   serialized data stays valid). GUIDs are not changed.
+5. Under maintenance mode, the tables are swapped with one RENAME TABLE and the files are moved into
+   place. SiteFerry itself, its settings and its storage folder stay as they are. Must-use plugins
+   and server-specific drop-ins (object-cache.php, advanced-cache.php, db.php) are only copied on request.
+6. Caches and rewrite rules are flushed; the old tables and files are removed.
+
+If anything fails after step 5 starts, the previous tables and files are put back. After an import,
+log in with the imported site's users.
 
 Left out of every export: cache folders (unless `--include-cache`), WordPress's upgrade folders,
 other backup plugins' folders, `.git`, `node_modules`, SiteFerry itself, its storage folder and its
@@ -46,6 +63,10 @@ Compressed backups (`.tar.gz`) are a series of independent gzip members of about
 are valid gzip files and an interrupted job can resume at a member boundary.
 
 == Changelog ==
+
+= 0.3.0 =
+* Import: staging with checksum verification, temporary tables, serialization-safe search-replace, atomic table swap, journalled file moves, automatic rollback.
+* WP-CLI: `wp siteferry import`.
 
 = 0.2.0 =
 * Export: resumable wp-content scan with exclusions, batched database dump, archive with manifest and checksums.

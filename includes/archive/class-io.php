@@ -111,4 +111,71 @@ final class Io {
 		$stat = fstat( $handle );
 		return false === $stat ? 0 : (int) $stat['size'];
 	}
+
+	/**
+	 * Whether a path is a symbolic link or a Windows junction (PHP's is_link() misses junctions).
+	 *
+	 * @param string $path Existing path.
+	 */
+	public static function is_link_or_junction( string $path ): bool {
+		if ( is_link( $path ) ) {
+			return true;
+		}
+		if ( '\\' !== DIRECTORY_SEPARATOR || ! is_dir( $path ) ) {
+			return false;
+		}
+		$real   = realpath( $path );
+		$parent = realpath( dirname( $path ) );
+		return false === $real || false === $parent || 0 !== strcasecmp( $real, $parent . DIRECTORY_SEPARATOR . basename( $path ) );
+	}
+
+	/**
+	 * Deletes a folder SiteFerry created, with everything in it.
+	 *
+	 * Links and junctions inside are removed without touching what they point to, so a cleanup can
+	 * never reach outside the folder.
+	 *
+	 * @param string $dir Folder.
+	 * @return bool True if it is gone.
+	 */
+	public static function remove_tree( string $dir ): bool {
+		if ( ! file_exists( $dir ) && ! is_link( $dir ) ) {
+			return true;
+		}
+		if ( self::is_link_or_junction( $dir ) || ! is_dir( $dir ) ) {
+			return self::remove_entry( $dir );
+		}
+		$names = self::quiet(
+			static function () use ( $dir ) {
+				return scandir( $dir );
+			}
+		);
+		foreach ( false === $names ? array() : $names as $name ) {
+			if ( '.' !== $name && '..' !== $name ) {
+				self::remove_tree( $dir . DIRECTORY_SEPARATOR . $name );
+			}
+		}
+		return self::quiet(
+			static function () use ( $dir ) {
+				return rmdir( $dir );
+			}
+		) || ! file_exists( $dir );
+	}
+
+	/**
+	 * Removes a file, link or junction (not following it).
+	 *
+	 * @param string $path Path.
+	 */
+	private static function remove_entry( string $path ): bool {
+		return (bool) self::quiet(
+			static function () use ( $path ) {
+				// Windows removes directory links and junctions with rmdir(), everything else with unlink().
+				if ( '\\' === DIRECTORY_SEPARATOR && is_dir( $path ) ) {
+					return rmdir( $path );
+				}
+				return unlink( $path );
+			}
+		);
+	}
 }

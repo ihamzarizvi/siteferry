@@ -159,7 +159,7 @@ Sf_Test::run(
 );
 
 Sf_Test::run(
-	'a failing step fails the job, records the error and runs every cleanup',
+	'a failing step fails the job, records the error and runs every cleanup in reverse order',
 	static function () use ( $base ) {
 		Sf_Counting_Step::$cleanups = array();
 		list( $job )                = Job::create( $base, 'export', array( 'test.count', 'test.fail' ), array( 'fail' => true ) );
@@ -168,7 +168,7 @@ Sf_Test::run(
 		}
 		Sf_Test::same( Job::STATUS_FAILED, $job->status() );
 		Sf_Test::same( 'Simulated failure', $job->error() );
-		Sf_Test::same( array( 'count' => 1, 'fail' => 1 ), Sf_Counting_Step::$cleanups );
+		Sf_Test::same( array( 'fail' => 1, 'count' => 1 ), Sf_Counting_Step::$cleanups, 'cleanups run last step first:' );
 		Sf_Test::ok( ! file_exists( $job->path( 'count.tmp' ) ), 'temporary file removed' );
 		Sf_Test::ok( false !== strpos( (string) file_get_contents( $job->path( 'job.log' ) ), '[error] Simulated failure' ), 'error logged' );
 		Sf_Test::same( Job::STATUS_FAILED, Job::load( $base, $job->id() )->status(), 'saved:' );

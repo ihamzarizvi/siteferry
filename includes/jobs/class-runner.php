@@ -28,6 +28,14 @@ final class Runner {
 		'export.database' => \SiteFerry\Export\Database_Step::class,
 		'export.pack'     => \SiteFerry\Export\Pack_Step::class,
 		'export.finish'   => \SiteFerry\Export\Finish_Step::class,
+		'import.inspect'  => \SiteFerry\Import\Inspect_Step::class,
+		'import.confirm'  => \SiteFerry\Import\Confirm_Step::class,
+		'import.extract'  => \SiteFerry\Import\Extract_Step::class,
+		'import.verify'   => \SiteFerry\Import\Verify_Step::class,
+		'import.database' => \SiteFerry\Import\Database_Step::class,
+		'import.replace'  => \SiteFerry\Import\Replace_Step::class,
+		'import.swap'     => \SiteFerry\Import\Swap_Step::class,
+		'import.finish'   => \SiteFerry\Import\Finish_Step::class,
 	);
 
 	/**
@@ -50,14 +58,18 @@ final class Runner {
 	/**
 	 * Runs steps until the job ends or the budget is used up, then saves the job.
 	 *
-	 * Errors end the job: it is marked failed and every step removes its temporary output.
+	 * Errors end the job: it is marked failed and every step undoes its work, last step first
+	 * (an import puts the old tables and files back before the temporary ones are removed).
+	 *
+	 * A step may set the job to STATUS_WAITING (an import waiting for confirmation); the slice then
+	 * ends and later slices do nothing until the job is set back to pending.
 	 *
 	 * @param Job          $job    The job.
 	 * @param Slice_Budget $budget Work limit.
 	 * @throws Job_Exception If another request is running a slice of the same job.
 	 */
 	public static function run_slice( Job $job, Slice_Budget $budget ): void {
-		if ( $job->finished() ) {
+		if ( $job->finished() || Job::STATUS_WAITING === $job->status() ) {
 			return;
 		}
 		if ( ! $job->lock() ) {
@@ -72,7 +84,7 @@ final class Runner {
 					$job->advance();
 				}
 				$job->save();
-				if ( ! $done || $budget->exhausted() ) {
+				if ( ! $done || $budget->exhausted() || Job::STATUS_WAITING === $job->status() ) {
 					break;
 				}
 			}
@@ -82,7 +94,7 @@ final class Runner {
 			}
 		} catch ( \Throwable $e ) {
 			$job->fail( $e->getMessage() );
-			foreach ( $job->steps() as $name ) {
+			foreach ( array_reverse( $job->steps() ) as $name ) {
 				try {
 					self::make( $name )->cleanup( $job );
 				} catch ( \Throwable $ignored ) {

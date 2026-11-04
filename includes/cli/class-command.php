@@ -9,6 +9,7 @@
 namespace SiteFerry\Cli;
 
 use SiteFerry\Export\Export;
+use SiteFerry\Import\Import;
 use SiteFerry\Jobs\Job;
 use SiteFerry\Jobs\Runner;
 use SiteFerry\Jobs\Slice_Budget;
@@ -152,7 +153,120 @@ final class Command {
 	}
 
 	/**
-	 * Runs a job to the end, printing progress.
+	 * Imports a SiteFerry backup into this site, replacing its database and wp-content items.
+	 *
+	 * The backup is checked first (manifest, versions, disk space, checksums) and you are asked to
+	 * confirm. The live site keeps running while files are staged and the database is loaded into
+	 * temporary tables; then tables and files are swapped under maintenance mode. Any failure after
+	 * that puts the previous tables and files back. SiteFerry's own settings and this site's
+	 * SiteFerry plugin are kept. After the import, log in with the imported site's users.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <file>
+	 * : Backup file (.tar or .tar.gz) made by SiteFerry.
+	 *
+	 * [--replace-url=<url>]
+	 * : Address the imported site gets. Default: this site's current address.
+	 *
+	 * [--replace=<pairs>]
+	 * : Extra text to replace in the database, as "old=>new", several separated by ";".
+	 *
+	 * [--include-mu-plugins]
+	 * : Also copy must-use plugins from the backup.
+	 *
+	 * [--include-drop-ins]
+	 * : Also copy server-specific drop-ins (object-cache.php, advanced-cache.php, db.php).
+	 *
+	 * [--force]
+	 * : Import even if the backup comes from a newer WordPress than this site runs.
+	 *
+	 * [--yes]
+	 * : Do not ask for confirmation.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp siteferry import mysite-2026-11-03-1a2b3c4d5e6f.tar
+	 *     wp siteferry import backup.tar.gz --replace-url=https://staging.example.com --yes
+	 *
+	 * @param string[] $args       Positional arguments: the backup file.
+	 * @param array    $assoc_args Options.
+	 */
+	public function import( $args, $assoc_args ): void {
+		$pairs = array();
+		foreach ( array_filter( explode( ';', (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'replace', '' ) ), 'strlen' ) as $pair ) {
+			$parts = explode( '=>', $pair, 2 );
+			if ( 2 !== count( $parts ) || '' === $parts[0] ) {
+				WP_CLI::error( sprintf( 'Cannot read the replacement "%s"; use "old=>new".', $pair ) );
+			}
+			$pairs[] = $parts;
+		}
+		$options = array(
+			'replace_url'        => (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'replace-url', '' ),
+			'replace'            => $pairs,
+			'include_mu_plugins' => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'include-mu-plugins', false ),
+			'include_drop_ins'   => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'include-drop-ins', false ),
+			'force'              => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'force', false ),
+		);
+
+		try {
+			list( $job ) = Import::start( (string) $args[0], $options );
+		} catch ( \Throwable $e ) {
+			WP_CLI::error( $e->getMessage() );
+			return;
+		}
+		WP_CLI::log( sprintf( 'Import started (job %s).', $job->id() ) );
+		$this->drive( $job, false );
+		if ( Job::STATUS_FAILED === $job->status() ) {
+			WP_CLI::error( sprintf( 'Import stopped before any change to this site: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
+		}
+
+		$this->print_inspection( $job->result()['inspection'] );
+		WP_CLI::confirm( 'Replace this site\'s database and files with the backup?', $assoc_args );
+		Import::confirm( $job );
+
+		$this->drive( $job, false );
+		if ( Job::STATUS_FAILED === $job->status() ) {
+			$result = $job->result();
+			$undone = empty( $result['rollback_errors'] ) ? 'The site was left as it was before the import.' : 'Restoring the previous site did not fully succeed; see the log.';
+			WP_CLI::error( sprintf( 'Import failed: %s %s (log: %s)', $job->error(), $undone, $job->path( 'job.log' ) ) );
+		}
+
+		$this->print_warnings( $job, false );
+		$imported = $job->result()['imported'];
+		WP_CLI::success(
+			sprintf(
+				'Imported %s into %s: %d tables, %s files, %s rows updated for the new address (%s). Log in with the imported site\'s users.',
+				$imported['from'],
+				$imported['to'],
+				$imported['tables'],
+				number_format( $imported['files'] ),
+				number_format( $imported['rows_changed'] ),
+				human_time_diff( 0, max( 1, $imported['seconds'] ) )
+			)
+		);
+	}
+
+	/**
+	 * Prints what an import is about to do.
+	 *
+	 * @param array $inspection Inspection summary.
+	 */
+	private function print_inspection( array $inspection ): void {
+		WP_CLI::log( '' );
+		WP_CLI::log( sprintf( 'Backup:      %s (made %s)', $inspection['backup'], $inspection['created'] ) );
+		WP_CLI::log( sprintf( 'From site:   %s (WordPress %s, PHP %s, MySQL %s)', $inspection['from'], $inspection['wordpress'], $inspection['php'], $inspection['mysql'] ) );
+		WP_CLI::log( sprintf( 'Into site:   %s', $inspection['to'] ) );
+		WP_CLI::log( sprintf( 'Contents:    %d tables (prefix %s), %s files, %s', $inspection['tables'], $inspection['prefix'], number_format( $inspection['files'] ), size_format( $inspection['bytes'], 1 ) ) );
+		WP_CLI::log( sprintf( 'Addresses:   %d search/replace pairs', $inspection['replacements'] ) );
+		foreach ( $inspection['warnings'] as $warning ) {
+			WP_CLI::warning( $warning );
+		}
+		WP_CLI::log( '' );
+	}
+
+	/**
+	 * Runs a job until it ends or waits for confirmation, printing progress.
 	 *
 	 * @param Job  $job   The job.
 	 * @param bool $quiet No progress output.
@@ -160,7 +274,7 @@ final class Command {
 	private function drive( Job $job, bool $quiet ): void {
 		$step    = null;
 		$printed = 0;
-		while ( ! $job->finished() ) {
+		while ( ! $job->finished() && Job::STATUS_WAITING !== $job->status() ) {
 			Runner::run_slice( $job, new Slice_Budget( self::SLICE_SECONDS ) );
 			if ( $quiet ) {
 				continue;

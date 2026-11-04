@@ -147,7 +147,7 @@ final class Export {
 
 		if ( null !== $plugins ) {
 			// SiteFerry itself never travels with a backup; the destination keeps its own copy.
-			$paths[] = $plugins . '/' . self::own_folder();
+			$paths[] = $plugins . '/' . \SiteFerry\Plugin::folder();
 			if ( $options['exclude_plugins'] ) {
 				$paths[] = $plugins;
 			} elseif ( $options['exclude_inactive_plugins'] ) {
@@ -196,15 +196,6 @@ final class Export {
 		$prefix  = $base . '/';
 		$match   = $windows ? 0 === stripos( $path, $prefix ) : 0 === strpos( $path, $prefix );
 		return $match ? substr( $path, strlen( $prefix ) ) : null;
-	}
-
-	/**
-	 * Folder name of this plugin inside the plugins folder.
-	 */
-	private static function own_folder(): string {
-		$basename = function_exists( 'plugin_basename' ) ? plugin_basename( SITEFERRY_FILE ) : '';
-		$folder   = false !== strpos( $basename, '/' ) ? dirname( $basename ) : '';
-		return '' !== $folder && '.' !== $folder ? $folder : basename( SITEFERRY_DIR );
 	}
 
 	/**

@@ -7,8 +7,10 @@
  *                                                          out keys of sf_fixture_paths().
  *   php siteferry-tar.php pack <dir> <archive> [--gz]      Pack a folder.
  *   php siteferry-tar.php unpack <archive> <dir>           Extract into an existing empty folder.
- *   php siteferry-tar.php tree <dir>                       Print "type size sha256 path" lines.
+ *   php siteferry-tar.php tree <dir> [--exclude=a,b]       Print "type size sha256 path" lines,
+ *                                                          leaving out relative paths ("*" allowed).
  *   php siteferry-tar.php list <archive>                   Same, for archive contents.
+ *   php siteferry-tar.php manifest <archive>               Print the backup's manifest (JSON).
  *
  * @package SiteFerry
  * SPDX-License-Identifier: GPL-2.0-or-later
@@ -48,10 +50,19 @@ try {
 			sf_unpack( $args[1], $args[2] );
 			break;
 		case 'tree':
-			sf_print_tree( sf_tree( rtrim( $args[1], '/\\' ) ) );
+			$exclude = array();
+			foreach ( $args as $arg ) {
+				if ( 0 === strpos( $arg, '--exclude=' ) ) {
+					$exclude = array_filter( explode( ',', substr( $arg, 10 ) ) );
+				}
+			}
+			sf_print_tree( sf_tree( rtrim( $args[1], '/\\' ), $exclude ) );
 			break;
 		case 'list':
 			sf_print_tree( sf_list( $args[1] ) );
+			break;
+		case 'manifest':
+			echo json_encode( SiteFerry\Backups::manifest( $args[1] ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ), "\n";
 			break;
 		default:
 			fwrite( STDERR, "Unknown command. See the header of this file.\n" );

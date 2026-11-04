@@ -80,11 +80,15 @@ function sf_make_fixture( string $root, array $omit = array() ): void {
  * @return array<int,array{0:string,1:bool}>
  */
 function sf_items( string $root ): array {
-	$items    = array();
-	$iterator = new RecursiveIteratorIterator(
+	$items = array();
+	// Folder links and junctions are skipped (a junction to this plugin would loop into tests/tmp).
+	$filter   = new RecursiveCallbackFilterIterator(
 		new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS ),
-		RecursiveIteratorIterator::SELF_FIRST
+		static function ( SplFileInfo $info, string $key, RecursiveDirectoryIterator $iterator ): bool {
+			return ! $iterator->hasChildren() || ! SiteFerry\Archive\Io::is_link_or_junction( $info->getPathname() );
+		}
 	);
+	$iterator = new RecursiveIteratorIterator( $filter, RecursiveIteratorIterator::SELF_FIRST );
 	foreach ( $iterator as $info ) {
 		$relative = str_replace( '\\', '/', substr( $info->getPathname(), strlen( $root ) + 1 ) );
 		$items[]  = array( $relative, $info->isDir() );
@@ -101,12 +105,27 @@ function sf_items( string $root ): array {
 /**
  * Description of a tree: relative path => ['type', 'size', 'sha256'].
  *
- * @param string $root Folder.
+ * @param string   $root    Folder.
+ * @param string[] $exclude Relative paths (with "*" wildcards) to leave out, not descending into them.
  * @return array<string,array>
  */
-function sf_tree( string $root ): array {
+function sf_tree( string $root, array $exclude = array() ): array {
+	$items = sf_items( $root );
+	if ( array() !== $exclude ) {
+		$regex = '#^(' . implode( '|', array_map( static function ( string $path ): string {
+			return str_replace( '\*', '[^/]*', preg_quote( trim( $path, '/' ), '#' ) );
+		}, $exclude ) ) . ')(/|$)#';
+		$items = array_values(
+			array_filter(
+				$items,
+				static function ( array $item ) use ( $regex ): bool {
+					return ! preg_match( $regex, $item[0] );
+				}
+			)
+		);
+	}
 	$tree = array();
-	foreach ( sf_items( $root ) as list( $relative, $is_dir ) ) {
+	foreach ( $items as list( $relative, $is_dir ) ) {
 		$path              = $root . '/' . $relative;
 		$tree[ $relative ] = $is_dir
 			? array(

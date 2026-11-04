@@ -51,4 +51,20 @@ final class Plugin {
 	 */
 	public static function deactivate(): void {
 	}
+
+	/**
+	 * This plugin's basename as WordPress knows it ("siteferry/siteferry.php").
+	 */
+	public static function basename(): string {
+		return function_exists( 'plugin_basename' ) ? plugin_basename( SITEFERRY_FILE ) : basename( SITEFERRY_DIR ) . '/siteferry.php';
+	}
+
+	/**
+	 * Name of this plugin's folder inside the plugins folder.
+	 */
+	public static function folder(): string {
+		$basename = self::basename();
+		$folder   = false !== strpos( $basename, '/' ) ? dirname( $basename ) : '';
+		return '' !== $folder && '.' !== $folder ? $folder : basename( SITEFERRY_DIR );
+	}
 }
