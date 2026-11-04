@@ -27,12 +27,14 @@ final class Destinations {
 
 	/** Destination id => driver class. */
 	const DRIVERS = array(
-		's3' => S3_Driver::class,
+		's3'  => S3_Driver::class,
+		'ftp' => Ftp_Driver::class,
 	);
 
 	/** Destination id => [name, short name]. */
 	const LABELS = array(
-		's3' => array( 'S3-compatible storage', 'S3' ),
+		's3'  => array( 'S3-compatible storage', 'S3' ),
+		'ftp' => array( 'FTP server', 'FTP' ),
 	);
 
 	/**

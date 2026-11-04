@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,7 +15,7 @@ SiteFerry exports the database and wp-content into a single standard TAR archive
 gzip-compressed) and imports it on another site, replacing the site address where needed.
 
 Work in progress. This version exports and imports sites from the admin screen and from WP-CLI,
-and sends backups to S3-compatible storage. FTP/FTPS, Google Drive and Dropbox follow.
+and sends backups to S3-compatible storage and FTP/FTPS servers. Google Drive and Dropbox follow.
 
 = Admin screen =
 
@@ -40,10 +40,10 @@ job; opening SiteFerry again offers to resume or cancel it. Only one job runs at
 * `wp siteferry export [--compress] [--exclude=media,plugins,themes,inactive-plugins,inactive-themes,spam-comments,revisions] [--include-cache] [--exclude-tables=...] [--exclude-paths=...] [--dir=...] [--porcelain]`
 * `wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] [--include-mu-plugins] [--include-drop-ins] [--force] [--yes]`
 * `wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]`
-* `wp siteferry export --send=s3 [--delete-after-send]`
+* `wp siteferry export --send=<id> [--delete-after-send]`
 * `wp siteferry storage test|list <id>`, `wp siteferry storage send <id> <backup>`,
   `wp siteferry storage fetch <id> <name>`, `wp siteferry storage delete <id> <name> [--yes]`
-  (storage id: s3; settings come from the Storage tab)
+  (storage id: s3 or ftp; settings come from the Storage tab)
 
 = S3-compatible storage =
 
@@ -63,14 +63,34 @@ Backups are stored as `<folder>/<backup name>` in the bucket.
   here is the default "siteferry"):
   `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:ListBucket","Resource":"arn:aws:s3:::BUCKET","Condition":{"StringLike":{"s3:prefix":"siteferry/*"}}},{"Effect":"Allow","Action":["s3:PutObject","s3:GetObject","s3:DeleteObject","s3:AbortMultipartUpload"],"Resource":"arn:aws:s3:::BUCKET/siteferry/*"}]}`
 
+= FTP and FTPS =
+
+Uses PHP's ftp extension. Explicit FTPS (AUTH TLS, with the data connections encrypted as well) is
+the default; plain FTP can be chosen for servers without TLS, and the connection test then warns
+that the password and backups travel unencrypted. Implicit FTPS (port 990) and SFTP are not
+supported.
+
+* PHP's ftp extension does not check the server's TLS certificate: FTPS protects against
+  eavesdropping, not against someone who can redirect the connection.
+* Passive mode by default. Data connections always go to the server SiteFerry logged in to, never
+  to another address the server names in its passive-mode answer.
+* Uploads are written to `<name>.part` in parts of 8 MB, each at its offset (REST + STOR, so an
+  interrupted part is simply written again), and renamed when complete. The server must support
+  resuming uploads, which common servers do; "Test connection" checks it. Cancelling or a failure
+  deletes the `.part` file.
+* Downloads to this server read 8 MB ranges (REST + RETR).
+* Temporary failures (a dropped connection) are retried with growing pauses and a new connection;
+  refusals by the server (permissions, quota) are reported at once.
+* The folder is created if missing. Keep it outside the server's public web folder.
+
 = Stored keys =
 
-The secret key is encrypted before it is saved (libsodium secretbox, or OpenSSL AES-256-GCM if
-libsodium is missing) with a key derived from the site's WordPress salts. It is never shown again
-or sent to the browser, never logged, left out of every export, kept when a backup is imported into
-this site, and removed when SiteFerry is deleted. If the salts change, enter the key again. To use
-a key that survives changed salts, define `SITEFERRY_ENCRYPTION_KEY` (at least 32 random
-characters) in wp-config.php before saving the settings.
+Secret keys and passwords are encrypted before they are saved (libsodium secretbox, or OpenSSL
+AES-256-GCM if libsodium is missing) with a key derived from the site's WordPress salts. They are
+never shown again or sent to the browser, never logged, left out of every export, kept when a
+backup is imported into this site, and removed when SiteFerry is deleted. If the salts change,
+enter them again. To use a key that survives changed salts, define `SITEFERRY_ENCRYPTION_KEY` (at
+least 32 random characters) in wp-config.php before saving the settings.
 
 = How an import works =
 
@@ -113,6 +133,10 @@ Compressed backups (`.tar.gz`) are a series of independent gzip members of about
 are valid gzip files and an interrupted job can resume at a member boundary.
 
 == Changelog ==
+
+= 0.6.0 =
+* FTP/FTPS storage: explicit FTPS by default, passive mode, uploads in parts with resume, ranged downloads, connection test that also checks resume support.
+* The Storage tab forms work the same way for every storage.
 
 = 0.5.0 =
 * S3-compatible storage: settings with provider presets, connection test, send after an export or later, list, download to this server, delete.

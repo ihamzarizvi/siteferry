@@ -51,8 +51,13 @@ final class Admin {
 	 */
 	public static function load(): void {
 		$url = plugins_url( 'assets/', SITEFERRY_FILE );
-		wp_enqueue_style( 'siteferry-admin', $url . 'admin.css', array(), SITEFERRY_VERSION );
-		wp_enqueue_script( 'siteferry-admin', $url . 'admin.js', array(), SITEFERRY_VERSION, true );
+		// The file time in the version makes browsers fetch changed files even within one release.
+		$version = static function ( string $file ): string {
+			$time = @filemtime( SITEFERRY_DIR . '/assets/' . $file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return SITEFERRY_VERSION . ( false === $time ? '' : '.' . $time );
+		};
+		wp_enqueue_style( 'siteferry-admin', $url . 'admin.css', array(), $version( 'admin.css' ) );
+		wp_enqueue_script( 'siteferry-admin', $url . 'admin.js', array(), $version( 'admin.js' ), true );
 		wp_add_inline_script(
 			'siteferry-admin',
 			'window.SiteFerryConfig = ' . wp_json_encode(
@@ -195,7 +200,8 @@ final class Admin {
 				<h2><?php esc_html_e( 'Storage', 'siteferry' ); ?></h2>
 				<p><?php esc_html_e( 'Send backups to remote storage and fetch them back. Keys are stored encrypted, are never shown again and are not part of any backup. SiteFerry connects only to the endpoint entered here.', 'siteferry' ); ?></p>
 				<?php self::render_s3(); ?>
-				<p class="description"><?php esc_html_e( 'FTP/FTPS, Google Drive and Dropbox follow in later versions.', 'siteferry' ); ?></p>
+				<?php self::render_ftp(); ?>
+				<p class="description"><?php esc_html_e( 'Google Drive and Dropbox follow in later versions.', 'siteferry' ); ?></p>
 			</section>
 
 			<section class="siteferry-panel" data-panel="log" hidden>
@@ -265,6 +271,70 @@ final class Admin {
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Addressing', 'siteferry' ); ?></th>
 					<td><label><input type="checkbox" name="path_style"> <?php esc_html_e( 'Path-style requests (endpoint/bucket/file instead of bucket.endpoint/file)', 'siteferry' ); ?></label></td>
+				</tr>
+			</table>
+			<p>
+				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
+				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
+				<button type="button" class="button-link button-link-delete" data-role="remove"><?php esc_html_e( 'Remove these settings', 'siteferry' ); ?></button>
+			</p>
+			<div class="siteferry-progress" data-role="result" hidden></div>
+		</form>
+		<?php
+	}
+
+	/**
+	 * Prints the FTP settings form (submitted by script, like the S3 form).
+	 */
+	private static function render_ftp(): void {
+		$info = \SiteFerry\Storage\Ftp_Driver::info();
+		?>
+		<form id="siteferry-storage-ftp" class="siteferry-storage-form" data-destination="ftp" method="post" action="#" autocomplete="off">
+			<h3><?php esc_html_e( 'FTP server', 'siteferry' ); ?></h3>
+			<p class="siteferry-storage-state" data-role="state"></p>
+			<?php if ( ! $info['available'] ) : ?>
+				<p class="siteferry-warning"><?php esc_html_e( 'This server\'s PHP has no ftp extension, so FTP cannot be used here. Ask the host to enable it.', 'siteferry' ); ?></p>
+			<?php endif; ?>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="siteferry-ftp-host"><?php esc_html_e( 'Server', 'siteferry' ); ?></label></th>
+					<td>
+						<input type="text" class="regular-text" id="siteferry-ftp-host" name="host" placeholder="ftp.example.com" spellcheck="false" autocomplete="off">
+						<label for="siteferry-ftp-port"><?php esc_html_e( 'Port', 'siteferry' ); ?></label>
+						<input type="number" class="small-text" id="siteferry-ftp-port" name="port" min="1" max="65535" placeholder="21">
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="siteferry-ftp-encryption"><?php esc_html_e( 'Encryption', 'siteferry' ); ?></label></th>
+					<td>
+						<select id="siteferry-ftp-encryption" name="encryption" data-default="ftps">
+							<option value="ftps"><?php esc_html_e( 'Explicit FTPS (TLS) - recommended', 'siteferry' ); ?></option>
+							<option value="ftp"><?php esc_html_e( 'None: plain FTP (password and backups unencrypted)', 'siteferry' ); ?></option>
+						</select>
+						<p class="description"><?php esc_html_e( 'FTPS on port 990 ("implicit") and SFTP are not supported. PHP\'s FTP functions encrypt the connection but cannot check the server\'s certificate.', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="siteferry-ftp-username"><?php esc_html_e( 'User name', 'siteferry' ); ?></label></th>
+					<td><input type="text" class="regular-text" id="siteferry-ftp-username" name="username" spellcheck="false" autocomplete="off"></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="siteferry-ftp-password"><?php esc_html_e( 'Password', 'siteferry' ); ?></label></th>
+					<td>
+						<input type="password" class="regular-text" id="siteferry-ftp-password" name="password" spellcheck="false" autocomplete="new-password">
+						<p class="description" data-role="secret-note"><?php esc_html_e( 'Stored encrypted. It is never shown again.', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="siteferry-ftp-folder"><?php esc_html_e( 'Folder', 'siteferry' ); ?></label></th>
+					<td>
+						<input type="text" class="regular-text" id="siteferry-ftp-folder" name="folder" placeholder="siteferry" spellcheck="false" autocomplete="off">
+						<p class="description"><?php esc_html_e( 'Relative to the folder you land in after logging in, or starting with / from the server\'s top. Created if missing. Keep it outside the public web folder.', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Connection', 'siteferry' ); ?></th>
+					<td><label><input type="checkbox" name="passive" data-default="1" checked> <?php esc_html_e( 'Passive mode (works through most firewalls)', 'siteferry' ); ?></label></td>
 				</tr>
 			</table>
 			<p>

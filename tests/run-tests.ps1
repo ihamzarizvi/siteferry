@@ -5,7 +5,7 @@
 .DESCRIPTION
     Uses LocalWP's PHP builds (newest 7.4, 8.2 and 8.5 under %APPDATA%\Local\lightning-services)
     unless -Php is given. PHP runs with -n (no php.ini), so only built-in extensions are used, plus
-    sodium and OpenSSL for the suites when the build has them (the secrets test needs them).
+    sodium, OpenSSL and ftp for the suites when the build has them (the secrets and FTP tests).
     Any deprecation or warning during linting counts as a failure.
 
     Test data goes to tests\tmp\ and is removed afterwards unless -Keep is given.
@@ -64,10 +64,10 @@ try {
         & $exe -n (Join-Path $root 'tests\compat-check.php')
         if ($LASTEXITCODE -ne 0) { $failures.Add("compat-check on PHP $version") }
 
-        # The secrets test needs sodium and OpenSSL, which are not built in on Windows.
+        # The secrets and FTP tests need sodium, OpenSSL and ftp, which are not built in on Windows.
         $extArgs = @()
         $extDir = Join-Path (Split-Path $exe) 'ext'
-        foreach ($ext in 'sodium', 'openssl') {
+        foreach ($ext in 'sodium', 'openssl', 'ftp') {
             if (Test-Path (Join-Path $extDir "php_$ext.dll")) {
                 $extArgs += @('-d', "extension=$ext")
             }

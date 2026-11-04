@@ -358,25 +358,42 @@
 		return destinations.find( ( d ) => d.id === id ) || null;
 	}
 
-	/** Shows a destination's saved settings in its form; the secret field always stays empty. */
+	/**
+	 * Shows a destination's saved settings in its form. Password fields always stay empty;
+	 * unsaved checkboxes and selects take their data-default.
+	 */
 	function fillStorageForm( form ) {
 		const d = destination( form.dataset.destination );
 		if ( ! d ) {
 			return;
 		}
-		const settings = d.settings || {};
-		const preset = form.elements.preset;
-		if ( settings.preset ) {
-			preset.value = settings.preset;
-		}
-		[ 'endpoint', 'region', 'bucket', 'folder', 'access_key' ].forEach( ( name ) => {
-			form.elements[ name ].value = settings[ name ] !== undefined ? settings[ name ] : '';
+		const settings = ( d.configured && d.settings ) || {};
+		Array.from( form.elements ).forEach( ( input ) => {
+			if ( ! input.name ) {
+				return;
+			}
+			const saved = settings[ input.name ];
+			if ( input.type === 'password' ) {
+				input.value = '';
+			} else if ( input.type === 'checkbox' ) {
+				input.checked = saved !== undefined ? !! saved : input.dataset.default === '1';
+			} else if ( input.tagName === 'SELECT' ) {
+				if ( saved !== undefined ) {
+					input.value = saved;
+				} else if ( input.dataset.default ) {
+					input.value = input.dataset.default;
+				}
+			} else {
+				input.value = saved !== undefined ? String( saved ) : '';
+			}
 		} );
-		form.elements.secret_key.value = '';
-		applyPreset( form, d.configured ? settings.path_style : null );
-		const set = d.secrets_set && d.secrets_set.secret_key;
+		if ( form.elements.preset ) {
+			applyPreset( form, d.configured ? settings.path_style : null );
+		}
+		const names = Object.keys( d.secrets_set || {} );
+		const set = names.length > 0 && names.every( ( name ) => d.secrets_set[ name ] );
 		form.querySelector( '[data-role=secret-note]' ).textContent = set
-			? 'A key is saved (not shown). Leave this empty to keep it, or enter a new one.'
+			? 'Saved (not shown). Leave this empty to keep it, or enter a new one.'
 			: 'Stored encrypted. It is never shown again.';
 		form.querySelector( '[data-role=state]' ).textContent = d.configured
 			? 'Set up: ' + d.description + ( d.updated ? ', saved ' + date( d.updated ) : '' ) + '.'
@@ -417,7 +434,9 @@
 		button.disabled = true;
 		try {
 			await api( 'POST', 'storage/' + id, { json: data } );
-			form.elements.secret_key.value = '';
+			form.querySelectorAll( 'input[type=password]' ).forEach( ( input ) => {
+				input.value = '';
+			} );
 			await loadDestinations();
 			storageResult( form, true, [ el( 'p', { text: 'Saved. Use "Test connection" to check the settings.' } ) ] );
 		} catch ( error ) {
@@ -912,8 +931,10 @@
 
 		document.querySelectorAll( '.siteferry-storage-form' ).forEach( ( form ) => {
 			form.addEventListener( 'submit', saveStorage );
-			form.elements.preset.addEventListener( 'change', () => applyPreset( form, null ) );
-			form.elements.region.addEventListener( 'input', () => applyPreset( form, form.elements.path_style.checked ) );
+			if ( form.elements.preset ) {
+				form.elements.preset.addEventListener( 'change', () => applyPreset( form, null ) );
+				form.elements.region.addEventListener( 'input', () => applyPreset( form, form.elements.path_style.checked ) );
+			}
 			form.querySelector( '[data-role=test]' ).addEventListener( 'click', () => testStorage( form ) );
 			form.querySelector( '[data-role=remove]' ).addEventListener( 'click', () => removeStorage( form ) );
 		} );
