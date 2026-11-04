@@ -54,6 +54,16 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 	);
 
 	/**
+	 * The sign-in relay for one-click sign-in ("relay" mode): it holds SiteFerry's Google app
+	 * secret and answers sign-ins and token renewals. SITEFERRY_RELAY_URL or the filter
+	 * "siteferry_relay_url" can point elsewhere (https, or http on localhost for tests).
+	 */
+	const RELAY_URL = 'https://auth.xsofty.com/siteferry';
+
+	/** Modes: one-click sign-in through the relay, or the site owner's own OAuth client. */
+	const MODES = array( 'relay', 'own' );
+
+	/**
 	 * Normalized settings: client_id, folder.
 	 *
 	 * @var array
@@ -152,7 +162,9 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		$this->settings      = $settings;
 		$this->client_secret = $client_secret;
 		$this->transport     = $transport;
-		$this->endpoints     = array_intersect_key( $endpoints, self::ENDPOINTS ) + self::ENDPOINTS;
+		$known               = self::ENDPOINTS + array( 'relay' => self::RELAY_URL );
+		$this->endpoints     = array_intersect_key( $endpoints, $known ) + $known;
+		$this->endpoints['relay'] = rtrim( $this->endpoints['relay'], '/' );
 		$this->sleep         = $sleep;
 		$this->clock         = null === $clock ? 'time' : $clock;
 		$this->use_auth( array(), null );
@@ -172,7 +184,46 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				unset( $endpoints[ $key ] );
 			}
 		}
+		$endpoints['relay'] = self::relay_url();
 		return new self( $settings, isset( $secrets['client_secret'] ) ? $secrets['client_secret'] : '', $transport, $endpoints );
+	}
+
+	/**
+	 * The relay's address: SITEFERRY_RELAY_URL, the "siteferry_relay_url" filter, or RELAY_URL.
+	 * Only https is accepted, except http on localhost (test servers).
+	 */
+	public static function relay_url(): string {
+		$url = defined( 'SITEFERRY_RELAY_URL' ) ? (string) SITEFERRY_RELAY_URL : self::RELAY_URL;
+		if ( function_exists( 'apply_filters' ) ) {
+			$url = (string) apply_filters( 'siteferry_relay_url', $url );
+		}
+		$url   = rtrim( $url, '/' );
+		$parts = parse_url( $url );
+		$ok    = is_array( $parts ) && isset( $parts['scheme'], $parts['host'] ) && ! isset( $parts['user'], $parts['query'], $parts['fragment'] )
+			&& ( 'https' === strtolower( $parts['scheme'] ) || ( 'http' === strtolower( $parts['scheme'] ) && in_array( strtolower( $parts['host'] ), array( '127.0.0.1', 'localhost' ), true ) ) );
+		return $ok ? $url : self::RELAY_URL;
+	}
+
+	/**
+	 * Which client a connection belongs to (a different one drops the saved connection).
+	 *
+	 * @param array $settings Normalized settings.
+	 */
+	public static function client_key( array $settings ): string {
+		// A client ID always ends in .apps.googleusercontent.com, so it never equals "relay".
+		return 'own' === self::mode_of( $settings ) ? (string) $settings['client_id'] : 'relay';
+	}
+
+	/**
+	 * The mode of saved settings (settings saved before modes existed were "own").
+	 *
+	 * @param array $settings Settings.
+	 */
+	private static function mode_of( array $settings ): string {
+		if ( isset( $settings['mode'] ) && in_array( $settings['mode'], self::MODES, true ) ) {
+			return $settings['mode'];
+		}
+		return empty( $settings['client_id'] ) ? 'relay' : 'own';
 	}
 
 	/**
@@ -194,18 +245,41 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 	 */
 	public static function info(): array {
 		return array(
-			'oauth' => true,
-			'scope' => self::SCOPE,
+			'oauth'      => true,
+			'scope'      => self::SCOPE,
+			'relay_host' => (string) parse_url( self::relay_url(), PHP_URL_HOST ),
 		);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @param array $input Raw input: client_id, client_secret, folder.
+	 * "relay" mode needs only the folder; "own" mode also the client ID and secret.
+	 *
+	 * @param array $input Raw input: mode, client_id, client_secret, folder.
 	 * @throws Storage_Exception On invalid input.
 	 */
 	public static function normalize( array $input ): array {
+		$mode = isset( $input['mode'] ) ? (string) $input['mode'] : 'relay';
+		if ( ! in_array( $mode, self::MODES, true ) ) {
+			throw new Storage_Exception( 'Choose how to sign in to Google Drive.', Storage_Exception::CONFIG );
+		}
+		$folder = trim( isset( $input['folder'] ) ? (string) $input['folder'] : '' );
+		$folder = '' === $folder ? 'SiteFerry' : $folder;
+		if ( ! preg_match( '/^[^\x00-\x1f\x7f\/\\\\]{1,100}$/u', $folder ) ) {
+			throw new Storage_Exception( 'The folder name may not contain slashes or control characters (one folder at the top of My Drive).', Storage_Exception::CONFIG );
+		}
+		if ( 'relay' === $mode ) {
+			return array(
+				'settings' => array(
+					'mode'      => 'relay',
+					'client_id' => '',
+					'folder'    => $folder,
+				),
+				'secrets'  => array(), // No secret on the site: the relay holds the app's.
+			);
+		}
+
 		$client_id = trim( isset( $input['client_id'] ) ? (string) $input['client_id'] : '' );
 		if ( ! preg_match( '/^[A-Za-z0-9._-]{1,200}\.apps\.googleusercontent\.com$/', $client_id ) ) {
 			throw new Storage_Exception( 'Enter the OAuth client ID (it ends with .apps.googleusercontent.com).', Storage_Exception::CONFIG );
@@ -214,13 +288,9 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		if ( '' !== $secret && ! preg_match( '/^[\x21-\x7e]{1,200}$/', $secret ) ) {
 			throw new Storage_Exception( 'The client secret contains characters that are not allowed.', Storage_Exception::CONFIG );
 		}
-		$folder = trim( isset( $input['folder'] ) ? (string) $input['folder'] : '' );
-		$folder = '' === $folder ? 'SiteFerry' : $folder;
-		if ( ! preg_match( '/^[^\x00-\x1f\x7f\/\\\\]{1,100}$/u', $folder ) ) {
-			throw new Storage_Exception( 'The folder name may not contain slashes or control characters (one folder at the top of My Drive).', Storage_Exception::CONFIG );
-		}
 		return array(
 			'settings' => array(
+				'mode'      => 'own',
 				'client_id' => $client_id,
 				'folder'    => $folder,
 			),
@@ -272,6 +342,16 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 	 * @param string $challenge PKCE challenge.
 	 */
 	public function authorization_url( string $redirect, string $state, string $challenge ): string {
+		if ( $this->relayed() ) {
+			// The relay checks the return address, signs it with the state and sends the browser on to Google.
+			return $this->endpoints['relay'] . '/google/start?' . self::query(
+				array(
+					'return'    => $redirect,
+					'state'     => $state,
+					'challenge' => $challenge,
+				)
+			);
+		}
 		return $this->endpoints['auth'] . '?' . http_build_query(
 			array(
 				'client_id'             => $this->settings['client_id'],
@@ -854,10 +934,22 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 	 * @throws Storage_Exception If Google refuses.
 	 */
 	private function token_request( array $fields ): array {
+		$relayed = $this->relayed();
+		$url     = $this->endpoints['token'];
+		if ( $relayed ) {
+			// The relay adds the client ID, the secret and its own redirect URI.
+			$url = $this->endpoints['relay'] . '/google/token';
+			unset( $fields['client_id'], $fields['client_secret'], $fields['redirect_uri'] );
+		}
+		$service = $relayed ? 'The sign-in service ' . parse_url( $url, PHP_URL_HOST ) : 'Google\'s sign-in service';
 		return $this->retrying(
-			function () use ( $fields ): array {
-				$response = $this->transport->request( 'POST', $this->endpoints['token'], array( 'Content-Type' => 'application/x-www-form-urlencoded' ), http_build_query( $fields, '', '&' ), self::SHORT_TIMEOUT );
-				$data     = self::json( $response );
+			function () use ( $fields, $url, $relayed, $service ): array {
+				try {
+					$response = $this->transport->request( 'POST', $url, array( 'Content-Type' => 'application/x-www-form-urlencoded' ), http_build_query( $fields, '', '&' ), self::SHORT_TIMEOUT );
+				} catch ( Storage_Exception $e ) {
+					throw new Storage_Exception( $service . ' cannot be reached: ' . $e->getMessage(), $e->getCode(), $e );
+				}
+				$data = self::json( $response );
 				if ( 200 === $response['status'] && ! empty( $data['access_token'] ) ) {
 					return $data;
 				}
@@ -865,17 +957,29 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				$text = isset( $data['error_description'] ) && is_string( $data['error_description'] ) ? ': ' . $data['error_description'] : '';
 				$text = (string) preg_replace( '/[\x00-\x1f\x7f]+/', ' ', $text );
 				if ( $response['status'] >= 500 || 429 === $response['status'] ) {
-					throw new Storage_Exception( sprintf( 'Google\'s sign-in service answered HTTP %d; try again later.', $response['status'] ), Storage_Exception::TRANSIENT );
+					throw new Storage_Exception( sprintf( '%s answered HTTP %d; try again later.', $service, $response['status'] ), Storage_Exception::TRANSIENT );
 				}
 				if ( 'invalid_grant' === $code ) {
 					throw new Storage_Exception( 'Google no longer accepts the saved authorization (invalid_grant' . $text . '). Connect Google Drive again on the Storage tab. If the app\'s consent screen is in "Testing", Google ends authorizations after 7 days; publish the app to keep them.', Storage_Exception::AUTH );
 				}
 				if ( in_array( $code, array( 'invalid_client', 'unauthorized_client' ), true ) ) {
-					throw new Storage_Exception( 'Google refused the client ID or client secret (' . $code . $text . '). Check them on the Storage tab.', Storage_Exception::AUTH );
+					throw new Storage_Exception(
+						$relayed
+							? $service . ' is not set up correctly (' . $code . $text . '). This needs fixing at ' . parse_url( $url, PHP_URL_HOST ) . ', not on this site.'
+							: 'Google refused the client ID or client secret (' . $code . $text . '). Check them on the Storage tab.',
+						Storage_Exception::AUTH
+					);
 				}
-				throw new Storage_Exception( sprintf( 'Google\'s sign-in service refused (HTTP %d%s%s).', $response['status'], '' === $code ? '' : ' ' . $code, $text ), Storage_Exception::REMOTE );
+				throw new Storage_Exception( sprintf( '%s refused (HTTP %d%s%s).', $service, $response['status'], '' === $code ? '' : ' ' . $code, $text ), Storage_Exception::REMOTE );
 			}
 		);
+	}
+
+	/**
+	 * Whether sign-in and token renewals go through the relay.
+	 */
+	private function relayed(): bool {
+		return 'relay' === self::mode_of( $this->settings );
 	}
 
 	/**

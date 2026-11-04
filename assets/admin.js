@@ -396,29 +396,58 @@
 			? 'Saved (not shown). Leave this empty to keep it, or enter a new one.'
 			: 'Stored encrypted. It is never shown again.';
 		let state = d.configured ? 'Set up: ' + d.description + ( d.updated ? ', saved ' + date( d.updated ) : '' ) + '.' : 'Not set up.';
-		if ( d.oauth && d.configured ) {
-			state = d.oauth.connected
-				? 'Connected: ' + d.description + '.'
-				: 'Saved, but not connected yet: click "Connect to Google Drive" and allow access.';
+		if ( d.oauth ) {
+			state = d.oauth.connected ? 'Connected: ' + d.description + '.' : 'Not connected yet.';
 		}
 		form.querySelector( '[data-role=state]' ).textContent = state;
 		form.querySelector( '[data-role=test]' ).disabled = ! d.ready;
 		form.querySelector( '[data-role=remove]' ).hidden = ! d.configured;
-		const connect = form.querySelector( '[data-role=connect]' );
-		if ( connect ) {
-			connect.disabled = ! d.configured;
-			connect.textContent = d.oauth && d.oauth.connected ? 'Connect again' : 'Connect to Google Drive';
+		if ( form.querySelector( '[data-role=disconnect]' ) ) {
 			form.querySelector( '[data-role=disconnect]' ).hidden = ! ( d.oauth && d.oauth.connected );
+		}
+		applyMode( form );
+	}
+
+	/** Shows the fields of the chosen sign-in mode (data-mode) and names the sign-in button. */
+	function applyMode( form ) {
+		if ( ! form.elements.mode ) {
+			return;
+		}
+		const mode = form.elements.mode.value;
+		form.querySelectorAll( '[data-mode]' ).forEach( ( part ) => {
+			part.hidden = part.dataset.mode !== mode;
+		} );
+		const d = destination( form.dataset.destination );
+		const connected = d && d.oauth && d.oauth.connected;
+		const connect = form.querySelector( '[data-role=connect]' );
+		if ( mode === 'relay' ) {
+			connect.textContent = connected ? 'Sign in again' : 'Sign in with Google';
+		} else {
+			connect.textContent = connected ? 'Connect again' : 'Connect to Google Drive';
 		}
 	}
 
-	/** Sends the browser to the provider's consent page (the state is kept on the server). */
+	/**
+	 * Saves the form, then sends the browser to the consent page (through SiteFerry's sign-in
+	 * service in one-click mode). The one-time state stays on the server.
+	 */
 	async function connectStorage( form ) {
+		const id = form.dataset.destination;
+		const data = {};
+		Array.from( form.elements ).forEach( ( input ) => {
+			if ( input.name ) {
+				data[ input.name ] = input.type === 'checkbox' ? input.checked : input.value.trim();
+			}
+		} );
+		const button = form.querySelector( '[data-role=connect]' );
+		button.disabled = true;
 		try {
-			const result = await api( 'POST', 'storage/' + form.dataset.destination + '/authorize' );
+			await api( 'POST', 'storage/' + id, { json: data } );
+			const result = await api( 'POST', 'storage/' + id + '/authorize' );
 			window.location.assign( result.url );
 		} catch ( error ) {
-			storageResult( form, false, [ el( 'p', { text: 'Cannot connect: ' + error.message } ) ] );
+			button.disabled = false;
+			storageResult( form, false, [ el( 'p', { text: 'Cannot sign in: ' + error.message } ) ] );
 		}
 	}
 
@@ -509,7 +538,7 @@
 			await loadDestinations();
 			const d = destination( id );
 			storageResult( form, true, [
-				el( 'p', { text: d && d.oauth && ! d.oauth.connected ? 'Saved. Now click "Connect to Google Drive" and allow access.' : 'Saved. Use "Test connection" to check the settings.' } ),
+				el( 'p', { text: d && d.oauth && ! d.oauth.connected ? 'Saved. Now click "' + form.querySelector( '[data-role=connect]' ).textContent + '" and allow access.' : 'Saved. Use "Test connection" to check the settings.' } ),
 			] );
 		} catch ( error ) {
 			storageResult( form, false, [ el( 'p', { text: 'Not saved: ' + error.message } ) ] );
@@ -1013,6 +1042,15 @@
 			if ( connect ) {
 				connect.addEventListener( 'click', () => connectStorage( form ) );
 				form.querySelector( '[data-role=disconnect]' ).addEventListener( 'click', () => disconnectStorage( form ) );
+			}
+			if ( form.elements.mode ) {
+				form.elements.mode.addEventListener( 'change', () => {
+					applyMode( form );
+					const d = destination( form.dataset.destination );
+					if ( d && d.oauth && d.oauth.connected && d.settings && d.settings.mode !== form.elements.mode.value ) {
+						storageResult( form, true, [ el( 'p', { text: 'Saving or signing in this way replaces the current connection.' } ) ] );
+					}
+				} );
 			}
 			const copy = form.querySelector( '[data-role=copy]' );
 			if ( copy ) {

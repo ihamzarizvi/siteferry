@@ -289,16 +289,33 @@ final class Admin {
 	}
 
 	/**
-	 * Prints the Google Drive settings form: the administrator's own OAuth client, the redirect URI
-	 * to register, and the connect / disconnect buttons.
+	 * Prints the Google Drive settings form: one-click sign-in through SiteFerry's sign-in service,
+	 * or (advanced) the administrator's own OAuth client with the redirect URI to register.
 	 */
 	private static function render_gdrive(): void {
-		$redirect = \SiteFerry\Storage\Destinations::redirect_uri( 'gdrive' );
+		$redirect   = \SiteFerry\Storage\Destinations::redirect_uri( 'gdrive' );
+		$relay_host = (string) wp_parse_url( \SiteFerry\Storage\Gdrive_Driver::relay_url(), PHP_URL_HOST );
 		?>
 		<form id="siteferry-storage-gdrive" class="siteferry-storage-form" data-destination="gdrive" method="post" action="#" autocomplete="off">
 			<h3><?php esc_html_e( 'Google Drive', 'siteferry' ); ?></h3>
 			<p class="siteferry-storage-state" data-role="state"></p>
-			<details class="siteferry-howto">
+			<p>
+				<label for="siteferry-gdrive-mode"><?php esc_html_e( 'Sign-in:', 'siteferry' ); ?></label>
+				<select id="siteferry-gdrive-mode" name="mode" data-default="relay">
+					<option value="relay"><?php esc_html_e( 'Sign in with Google (recommended)', 'siteferry' ); ?></option>
+					<option value="own"><?php esc_html_e( 'Use my own OAuth client (advanced)', 'siteferry' ); ?></option>
+				</select>
+			</p>
+			<p class="description" data-mode="relay">
+				<?php
+				printf(
+					/* translators: %s: host name of the sign-in service */
+					esc_html__( 'Sign in with your Google account; no keys needed. Signing in, and renewing the access while SiteFerry works with your Drive, go through SiteFerry\'s sign-in service at %s, which holds SiteFerry\'s Google app secret and stores nothing. Backups go straight between this site and your Google Drive.', 'siteferry' ),
+					'<strong>' . esc_html( $relay_host ) . '</strong>'
+				);
+				?>
+			</p>
+			<details class="siteferry-howto" data-mode="own">
 				<summary><?php esc_html_e( 'How to create your own OAuth client (once)', 'siteferry' ); ?></summary>
 				<ol>
 					<li><?php esc_html_e( 'In the Google Cloud console, create a project and enable the Google Drive API for it.', 'siteferry' ); ?></li>
@@ -308,7 +325,7 @@ final class Admin {
 				</ol>
 			</details>
 			<table class="form-table" role="presentation">
-				<tr>
+				<tr data-mode="own">
 					<th scope="row"><?php esc_html_e( 'Redirect URI', 'siteferry' ); ?></th>
 					<td>
 						<code class="siteferry-redirect" data-role="redirect"><?php echo esc_html( $redirect ); ?></code>
@@ -316,11 +333,11 @@ final class Admin {
 						<p class="description"><?php esc_html_e( 'Register exactly this address with your OAuth client.', 'siteferry' ); ?></p>
 					</td>
 				</tr>
-				<tr>
+				<tr data-mode="own">
 					<th scope="row"><label for="siteferry-gdrive-client_id"><?php esc_html_e( 'Client ID', 'siteferry' ); ?></label></th>
 					<td><input type="text" class="large-text" id="siteferry-gdrive-client_id" name="client_id" placeholder="1234-abc.apps.googleusercontent.com" spellcheck="false" autocomplete="off"></td>
 				</tr>
-				<tr>
+				<tr data-mode="own">
 					<th scope="row"><label for="siteferry-gdrive-client_secret"><?php esc_html_e( 'Client secret', 'siteferry' ); ?></label></th>
 					<td>
 						<input type="password" class="regular-text" id="siteferry-gdrive-client_secret" name="client_secret" spellcheck="false" autocomplete="new-password">
@@ -336,8 +353,8 @@ final class Admin {
 				</tr>
 			</table>
 			<p>
-				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
-				<button type="button" class="button" data-role="connect"><?php esc_html_e( 'Connect to Google Drive', 'siteferry' ); ?></button>
+				<button type="button" class="button button-primary" data-role="connect"><?php esc_html_e( 'Sign in with Google', 'siteferry' ); ?></button>
+				<button type="submit" class="button"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="disconnect" hidden><?php esc_html_e( 'Disconnect', 'siteferry' ); ?></button>
 				<button type="button" class="button-link button-link-delete" data-role="remove"><?php esc_html_e( 'Remove these settings', 'siteferry' ); ?></button>

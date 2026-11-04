@@ -42,7 +42,7 @@ function sf_gdrive( array $fake = array(), array $settings = array(), ?array &$d
 		)
 	);
 	$transport = new Fake_Google_Transport( $google );
-	$normal    = Gdrive_Driver::normalize( $settings + array( 'client_id' => SF_G_CLIENT ) );
+	$normal    = Gdrive_Driver::normalize( $settings + array( 'mode' => 'own', 'client_id' => SF_G_CLIENT ) );
 	$delays    = array();
 	$sleep     = static function ( float $seconds ) use ( &$delays ) {
 		$delays[] = $seconds;
@@ -131,15 +131,23 @@ function sf_gsend( Gdrive_Driver $driver, string $name, string $data, int $part 
 }
 
 Sf_Test::run(
-	'settings: client ID, secret, folder name',
+	'settings: one-click mode needs only a folder; own-client mode a client ID and secret',
 	static function () {
-		$ok = Gdrive_Driver::normalize( array( 'client_id' => ' 12-ab.apps.googleusercontent.com ', 'client_secret' => 'GOCSPX-x', 'folder' => ' My Backups ' ) );
+		$relay = Gdrive_Driver::normalize( array( 'folder' => ' Backups ' ) );
+		Sf_Test::same( 'relay', $relay['settings']['mode'], 'one-click sign-in by default:' );
+		Sf_Test::same( 'Backups', $relay['settings']['folder'] );
+		Sf_Test::same( array(), $relay['secrets'], 'no secret on the site in relay mode:' );
+		Sf_Test::same( 'relay', Gdrive_Driver::client_key( $relay['settings'] ) );
+
+		$ok = Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => ' 12-ab.apps.googleusercontent.com ', 'client_secret' => 'GOCSPX-x', 'folder' => ' My Backups ' ) );
 		Sf_Test::same( '12-ab.apps.googleusercontent.com', $ok['settings']['client_id'] );
 		Sf_Test::same( 'My Backups', $ok['settings']['folder'] );
 		Sf_Test::same( 'GOCSPX-x', $ok['secrets']['client_secret'] );
-		Sf_Test::same( 'SiteFerry', Gdrive_Driver::normalize( array( 'client_id' => '12-ab.apps.googleusercontent.com' ) )['settings']['folder'], 'default folder:' );
-		Sf_Test::same( null, Gdrive_Driver::normalize( array( 'client_id' => '12-ab.apps.googleusercontent.com' ) )['secrets']['client_secret'], 'empty secret means "keep":' );
-		foreach ( array( array( 'client_id' => '' ), array( 'client_id' => 'abc' ), array( 'client_id' => 'a b.apps.googleusercontent.com' ), array( 'client_id' => '12-ab.apps.googleusercontent.com', 'folder' => 'a/b' ), array( 'client_id' => '12-ab.apps.googleusercontent.com', 'folder' => "a\nb" ) ) as $input ) {
+		Sf_Test::same( '12-ab.apps.googleusercontent.com', Gdrive_Driver::client_key( $ok['settings'] ) );
+		Sf_Test::same( '12-ab.apps.googleusercontent.com', Gdrive_Driver::client_key( array( 'client_id' => '12-ab.apps.googleusercontent.com', 'folder' => 'x' ) ), 'settings saved before modes existed count as own-client:' );
+		Sf_Test::same( 'SiteFerry', Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => '12-ab.apps.googleusercontent.com' ) )['settings']['folder'], 'default folder:' );
+		Sf_Test::same( null, Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => '12-ab.apps.googleusercontent.com' ) )['secrets']['client_secret'], 'empty secret means "keep":' );
+		foreach ( array( array( 'mode' => 'device' ), array( 'mode' => 'own', 'client_id' => '' ), array( 'mode' => 'own', 'client_id' => 'abc' ), array( 'mode' => 'own', 'client_id' => 'a b.apps.googleusercontent.com' ), array( 'folder' => 'a/b' ), array( 'mode' => 'own', 'client_id' => '12-ab.apps.googleusercontent.com', 'folder' => "a\nb" ) ) as $input ) {
 			try {
 				Gdrive_Driver::normalize( $input );
 			} catch ( Storage_Exception $e ) {
@@ -253,18 +261,18 @@ Sf_Test::run(
 
 		// A new driver (next request) with the saved record uses the same folder.
 		list( , , $endpoints ) = sf_gdrive();
-		$next                  = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'client_id' => SF_G_CLIENT ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
+		$next                  = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => SF_G_CLIENT ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
 		$next->use_auth( $saved, null );
 		sf_gsend( $next, 'b-2026-01-01-000000000000.tar', 'def' );
 		Sf_Test::same( 1, count( $transport->google->folders() ), 'no second folder:' );
 
 		$transport->google->trash( key( $folders ) );
-		$after = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'client_id' => SF_G_CLIENT ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
+		$after = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => SF_G_CLIENT ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
 		$after->use_auth( $saved, null );
 		sf_gsend( $after, 'c-2026-01-01-000000000000.tar', 'ghi' );
 		Sf_Test::same( 2, count( $transport->google->folders() ), 'a new folder after the old one was trashed:' );
 
-		$renamed = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'client_id' => SF_G_CLIENT, 'folder' => 'Other' ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
+		$renamed = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => SF_G_CLIENT, 'folder' => 'Other' ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
 		$renamed->use_auth( $saved, null );
 		Sf_Test::same( array(), $renamed->list(), 'another folder name starts empty:' );
 	}
@@ -365,6 +373,158 @@ Sf_Test::run(
 		Sf_Test::same( 'POST /revoke', end( $transport->google->log ) );
 		Sf_Test::same( array(), $transport->google->refresh_tokens(), 'revoked at Google:' );
 		sf_expect_storage_error( Storage_Exception::AUTH, static function () use ( $driver ) { $driver->list(); }, 'not connected yet' );
+	}
+);
+
+require_once dirname( __DIR__ ) . '/relay/src/class-relay.php';
+
+/**
+ * Sends relay addresses to an in-process relay and everything else to the fake Google.
+ */
+final class Sf_Relay_Routing_Transport implements SiteFerry\Storage\Transport {
+
+	/**
+	 * Relay base URL.
+	 *
+	 * @var string
+	 */
+	public $base;
+
+	/**
+	 * The relay (null: unreachable).
+	 *
+	 * @var SiteFerry_Relay\Relay|null
+	 */
+	public $relay;
+
+	/**
+	 * Fake Google transport.
+	 *
+	 * @var Fake_Google_Transport
+	 */
+	public $google;
+
+	/**
+	 * Requests sent: method, URL, body.
+	 *
+	 * @var array
+	 */
+	public $sent = array();
+
+	/**
+	 * Constructor.
+	 *
+	 * @param string                     $base   Relay base URL.
+	 * @param SiteFerry_Relay\Relay|null $relay  Relay.
+	 * @param Fake_Google_Transport      $google Google.
+	 */
+	public function __construct( string $base, ?SiteFerry_Relay\Relay $relay, Fake_Google_Transport $google ) {
+		$this->base   = $base;
+		$this->relay  = $relay;
+		$this->google = $google;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @param string $method  Method.
+	 * @param string $url     URL.
+	 * @param array  $headers Headers.
+	 * @param string $body    Body.
+	 * @param int    $timeout Seconds.
+	 * @throws Storage_Exception When the relay is unreachable.
+	 */
+	public function request( string $method, string $url, array $headers, string $body = '', int $timeout = 60 ): array {
+		$this->sent[] = array(
+			'method' => $method,
+			'url'    => $url,
+			'body'   => $body,
+		);
+		if ( 0 !== strpos( $url, $this->base ) ) {
+			return $this->google->request( $method, $url, $headers, $body, $timeout );
+		}
+		if ( null === $this->relay ) {
+			throw new Storage_Exception( 'Network error: cURL error 7: Failed to connect', Storage_Exception::TRANSIENT );
+		}
+		$query = array();
+		parse_str( (string) parse_url( $url, PHP_URL_QUERY ), $query );
+		$answer = $this->relay->handle( $method, (string) parse_url( $url, PHP_URL_PATH ), $query, $body );
+		return array(
+			'status'  => $answer['status'],
+			'headers' => array_change_key_case( $answer['headers'], CASE_LOWER ),
+			'body'    => $answer['body'],
+		);
+	}
+}
+
+Sf_Test::run(
+	'one-click sign-in through the relay: consent, code exchange and renewals go through it; the site holds no secret',
+	static function () {
+		list( , $google_transport, $endpoints ) = sf_gdrive();
+		$google                                 = $google_transport->google;
+		$base                                   = 'https://relay.test/siteferry';
+		$relay                                  = new SiteFerry_Relay\Relay(
+			array(
+				'base_url'             => $base,
+				'signing_key'          => str_repeat( 's', 40 ),
+				'google_client_id'     => SF_G_CLIENT,
+				'google_client_secret' => SF_G_SECRET,
+				'google_auth_url'      => SF_G_BASE . '/o/oauth2/v2/auth',
+				'google_token_url'     => SF_G_BASE . '/token',
+			),
+			static function ( string $url, array $fields ) use ( $google ) {
+				return $google->handle( 'POST', $url, array(), http_build_query( $fields ) );
+			}
+		);
+		$transport = new Sf_Relay_Routing_Transport( $base, $relay, $google_transport );
+		$driver    = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'folder' => 'SiteFerry' ) )['settings'], '', $transport, array( 'relay' => $base ) + $endpoints, static function () {} );
+
+		$verifier  = Oauth_State::base64url( random_bytes( 48 ) );
+		$challenge = Oauth_State::base64url( hash( 'sha256', $verifier, true ) );
+		$state     = bin2hex( random_bytes( 24 ) );
+		$start     = $driver->authorization_url( SF_G_REDIRECT, $state, $challenge );
+		Sf_Test::ok( 0 === strpos( $start, $base . '/google/start?' ), 'the browser goes to the relay first: ' . $start );
+
+		$to_google = $transport->request( 'GET', $start, array() );
+		$consent   = $to_google['headers']['location'];
+		parse_str( (string) parse_url( $consent, PHP_URL_QUERY ), $asked );
+		Sf_Test::same( SF_G_CLIENT, $asked['client_id'], 'Google sees the relay\'s client:' );
+		Sf_Test::same( $base . '/google/callback', $asked['redirect_uri'] );
+		$to_relay = $google->handle( 'GET', $consent . '&decision=allow', array(), '' );
+		$to_site  = $transport->request( 'GET', $to_relay['headers']['location'], array() );
+		$back     = array();
+		parse_str( (string) parse_url( $to_site['headers']['location'], PHP_URL_QUERY ), $back );
+		Sf_Test::same( 0, strpos( $to_site['headers']['location'], SF_G_REDIRECT ), 'back on the site page:' );
+		Sf_Test::same( $state, $back['state'], 'the site gets its own state back:' );
+
+		$driver->use_auth(
+			array(),
+			static function ( array $auth ) use ( &$saved ) {
+				$saved = $auth;
+			}
+		);
+		$auth = $driver->connect( $back['code'], $verifier, SF_G_REDIRECT );
+		Sf_Test::ok( $driver->connected() && '' !== $auth['refresh_token'], 'connected' );
+		Sf_Test::same( 'tester@example.com', $auth['account'] );
+		sf_gsend( $driver, 'r-2026-01-01-000000000000.tar', 'relay mode works' );
+
+		$google->expire_access_tokens();
+		Sf_Test::same( array( 'r-2026-01-01-000000000000.tar' ), array_column( $driver->list(), 'name' ), 'listing after a renewal:' );
+		$token_posts = array_filter(
+			$transport->sent,
+			static function ( array $r ) use ( $base ) {
+				return 'POST' === $r['method'] && $base . '/google/token' === $r['url'];
+			}
+		);
+		Sf_Test::same( 2, count( $token_posts ), 'the code exchange and the renewal both went to the relay:' );
+		foreach ( $transport->sent as $request ) {
+			Sf_Test::ok( false === strpos( $request['body'] . $request['url'], SF_G_SECRET ), 'the site never sends (or knows) the secret' );
+			Sf_Test::ok( SF_G_BASE . '/token' !== $request['url'], 'the site never calls Google\'s token endpoint itself' );
+		}
+
+		$down = new Sf_Relay_Routing_Transport( $base, null, $google_transport );
+		$cut  = new Gdrive_Driver( Gdrive_Driver::normalize( array() )['settings'], '', $down, array( 'relay' => $base ) + $endpoints, static function () {} );
+		sf_expect_storage_error( Storage_Exception::TRANSIENT, static function () use ( $cut, $back, $verifier ) { $cut->connect( $back['code'], $verifier, SF_G_REDIRECT ); }, 'The sign-in service relay.test cannot be reached' );
 	}
 );
 

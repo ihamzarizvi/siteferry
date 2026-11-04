@@ -1,0 +1,9 @@
+# SiteFerry sign-in relay (Apache): every request goes to index.php; no listings, no other files.
+Options -Indexes
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteRule ^ index.php [L,QSA]
+</IfModule>
+<IfModule mod_headers.c>
+	Header always set Strict-Transport-Security "max-age=31536000"
+</IfModule>

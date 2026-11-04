@@ -140,7 +140,10 @@ final class Destinations {
 
 		$secrets = array();
 		foreach ( $class::secrets() as $name => $label ) {
-			$value = isset( $normal['secrets'][ $name ] ) ? $normal['secrets'][ $name ] : null;
+			if ( ! array_key_exists( $name, $normal['secrets'] ) ) {
+				continue; // Not used with these settings (Google Drive through the relay needs no secret).
+			}
+			$value = $normal['secrets'][ $name ];
 			if ( null !== $value ) {
 				$secrets[ $name ] = self::encrypt( $value );
 			} elseif ( isset( $previous[ $name ] ) ) {
@@ -156,7 +159,7 @@ final class Destinations {
 			'secrets'  => $secrets,
 			'updated'  => time(),
 		);
-		if ( ! empty( $old['auth'] ) && isset( $normal['settings']['client_id'] ) && hash_equals( (string) $old['auth']['client'], hash( 'sha256', $normal['settings']['client_id'] ) ) ) {
+		if ( ! empty( $old['auth'] ) && hash_equals( (string) $old['auth']['client'], self::client_key( $class, $normal['settings'] ) ) ) {
 			$entry['auth'] = $old['auth'];
 		}
 		$stored[ $id ] = $entry;
@@ -250,7 +253,7 @@ final class Destinations {
 		foreach ( $auth as $key => $value ) {
 			$saved[ $key ] = in_array( $key, $class::token_fields(), true ) && '' !== (string) $value ? self::encrypt( (string) $value ) : $value;
 		}
-		$saved['client']      = hash( 'sha256', (string) $stored[ $id ]['settings']['client_id'] );
+		$saved['client']      = self::client_key( $class, (array) $stored[ $id ]['settings'] );
 		$stored[ $id ]['auth'] = $saved;
 		update_option( self::OPTION, $stored, false );
 	}
@@ -326,6 +329,18 @@ final class Destinations {
 			throw new Job_Exception( 'This storage does not use a sign-in.', Job_Exception::STEP );
 		}
 		return $driver;
+	}
+
+	/**
+	 * Hash naming the OAuth client a connection belongs to; saving settings for another client
+	 * drops the connection.
+	 *
+	 * @param string $class    Driver class.
+	 * @param array  $settings Settings.
+	 */
+	private static function client_key( string $class, array $settings ): string {
+		$key = method_exists( $class, 'client_key' ) ? $class::client_key( $settings ) : ( isset( $settings['client_id'] ) ? (string) $settings['client_id'] : '' );
+		return hash( 'sha256', $key );
 	}
 
 	/**

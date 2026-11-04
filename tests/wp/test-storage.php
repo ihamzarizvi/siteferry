@@ -128,7 +128,7 @@ if ( 's3' === $sf_kind ) {
 			return array() === json_decode( (string) file_get_contents( $sf_dir . '/faults.json' ), true );
 		},
 	);
-} elseif ( 'gdrive' === $sf_kind ) {
+} elseif ( 'gdrive' === $sf_kind || 'gdrive-relay' === $sf_kind ) {
 	require dirname( __DIR__ ) . '/lib/class-fake-google.php';
 	$sf_dir = (string) getenv( 'SITEFERRY_FAKE_GOOGLE_DIR' );
 	if ( ! is_file( $sf_dir . '/config.json' ) ) {
@@ -150,23 +150,50 @@ if ( 's3' === $sf_kind ) {
 			);
 		}
 	);
-	$sf_ginput = array(
-		'client_id'     => $sf_config['client_id'],
-		'client_secret' => $sf_config['client_secret'],
-		'folder'        => 'wp-test',
-	);
+	$sf_relayed = 'gdrive-relay' === $sf_kind;
+	if ( $sf_relayed ) {
+		// One-click mode: the real relay (relay/public/index.php under "php -S") between site and fake Google.
+		$sf_relay_url = (string) getenv( 'SITEFERRY_FAKE_RELAY_URL' );
+		add_filter(
+			'siteferry_relay_url',
+			static function () use ( $sf_relay_url ): string {
+				return $sf_relay_url;
+			}
+		);
+		$sf_ginput = array(
+			'mode'   => 'relay',
+			'folder' => 'wp-test',
+		);
+	} else {
+		$sf_ginput = array(
+			'mode'          => 'own',
+			'client_id'     => $sf_config['client_id'],
+			'client_secret' => $sf_config['client_secret'],
+			'folder'        => 'wp-test',
+		);
+	}
+	// From the URL "Connect" returns to the site page Google (and the relay) send the browser back to.
+	$sf_follow = static function ( string $url ) use ( $sf_relayed ): array {
+		$hop = static function ( string $to ): string {
+			return (string) wp_remote_retrieve_header( wp_remote_get( $to, array( 'redirection' => 0 ) ), 'location' );
+		};
+		$back = $sf_relayed ? $hop( $hop( $hop( $url ) . '&decision=allow' ) ) : $hop( $url . '&decision=allow' );
+		$query = array();
+		parse_str( (string) wp_parse_url( $back, PHP_URL_QUERY ), $query );
+		return $query;
+	};
 	$sf_names  = static function () use ( $sf_fake ): array {
 		return array_values( array_column( $sf_fake->files(), 'name' ) );
 	};
 	$sf_b     = array(
 		'id'          => 'gdrive',
-		'where'       => $sf_base,
+		'where'       => $sf_relayed ? $sf_relay_url . ' and ' . $sf_base : $sf_base,
 		'input'       => $sf_ginput,
-		'secret'      => 'client_secret',
-		'invalid'     => array( 'client_id' => 'not-a-client-id' ),
+		'secret'      => $sf_relayed ? null : 'client_secret',
+		'invalid'     => $sf_relayed ? array( 'folder' => 'a/b' ) : array( 'client_id' => 'not-a-client-id' ),
 		'kept'        => array( 'folder', 'wp-test' ),
 		'test_lines'  => 6,
-		'wrong_says'  => array( 'invalid_client', 'Check them on the Storage tab' ),
+		'wrong_says'  => $sf_relayed ? array() : array( 'invalid_client', 'Check them on the Storage tab' ),
 		'hash'        => static function ( string $name ) use ( $sf_fake ) {
 			return $sf_fake->hash( $name );
 		},
@@ -181,16 +208,17 @@ if ( 's3' === $sf_kind ) {
 			return '[]' === (string) file_get_contents( $sf_dir . '/data/faults.json' );
 		},
 		// The sign-in: authorize, the consent page's "Allow", then connect with the code and state.
-		'after_save'  => static function ( int $admin ) use ( $sf_fake, $sf_ginput ) {
+		'after_save'  => static function ( int $admin ) use ( $sf_fake, $sf_ginput, $sf_follow, $sf_relayed ) {
 			list( $status, $start ) = sf_rest( 'POST', '/storage/gdrive/authorize', $admin );
 			Sf_Test::same( 200, $status, 'authorize: ' . wp_json_encode( $start ) );
 			Sf_Test::ok( false !== strpos( $start['redirect_uri'], 'admin.php?page=siteferry&oauth=gdrive' ), $start['redirect_uri'] );
 			list( $status ) = sf_rest( 'GET', '/storage', $admin );
 			Sf_Test::ok( ! Destinations::ready( 'gdrive' ), 'not ready before connecting' );
 
-			$consent = wp_remote_get( $start['url'] . '&decision=allow', array( 'redirection' => 0 ) );
-			$back    = array();
-			parse_str( (string) wp_parse_url( (string) wp_remote_retrieve_header( $consent, 'location' ), PHP_URL_QUERY ), $back );
+			if ( $sf_relayed ) {
+				Sf_Test::ok( false !== strpos( $start['url'], '/google/start?' ), 'one-click sign-in starts at the relay: ' . $start['url'] );
+			}
+			$back = $sf_follow( $start['url'] );
 			Sf_Test::ok( isset( $back['code'], $back['state'] ), 'the consent page sent a code and the state back' );
 
 			list( $status, $wrong ) = sf_rest( 'POST', '/storage/gdrive/connect', $admin, array(), array( 'code' => $back['code'], 'state' => str_repeat( 'a', 48 ) ) );
@@ -200,18 +228,22 @@ if ( 's3' === $sf_kind ) {
 
 			// Start again; this time the answer is right.
 			list( , $start ) = sf_rest( 'POST', '/storage/gdrive/authorize', $admin );
-			$consent         = wp_remote_get( $start['url'] . '&decision=allow', array( 'redirection' => 0 ) );
-			parse_str( (string) wp_parse_url( (string) wp_remote_retrieve_header( $consent, 'location' ), PHP_URL_QUERY ), $back );
+			$back           = $sf_follow( $start['url'] );
 			list( $status, $entry ) = sf_rest( 'POST', '/storage/gdrive/connect', 0, array(), array( 'code' => $back['code'], 'state' => $back['state'] ) );
 			Sf_Test::ok( in_array( $status, array( 401, 403 ), true ), 'connect needs the administrator: ' . $status );
 			list( , $start ) = sf_rest( 'POST', '/storage/gdrive/authorize', $admin );
-			$consent         = wp_remote_get( $start['url'] . '&decision=allow', array( 'redirection' => 0 ) );
-			parse_str( (string) wp_parse_url( (string) wp_remote_retrieve_header( $consent, 'location' ), PHP_URL_QUERY ), $back );
+			$back           = $sf_follow( $start['url'] );
 			list( $status, $entry ) = sf_rest( 'POST', '/storage/gdrive/connect', $admin, array(), array( 'code' => $back['code'], 'state' => $back['state'] ) );
 			Sf_Test::same( 200, $status, 'connect: ' . wp_json_encode( $entry ) );
 			Sf_Test::same( true, $entry['oauth']['connected'] );
 			Sf_Test::same( 'tester@example.com', $entry['oauth']['account'] );
 			Sf_Test::ok( Destinations::ready( 'gdrive' ), 'ready after connecting' );
+			if ( $sf_relayed ) {
+				// The fake Google refuses token requests without the client secret, and in this mode the
+				// site has none: the exchange above can only have gone through the relay, which adds it.
+				$stored = get_option( Destinations::OPTION );
+				Sf_Test::ok( empty( $stored['gdrive']['secrets'] ) && '' === $stored['gdrive']['settings']['client_id'], 'the site holds no Google client ID or secret' );
+			}
 
 			global $wpdb;
 			$raw     = (string) $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", Destinations::OPTION ) );
@@ -287,7 +319,6 @@ function sf_overview( string $id ): array {
 Sf_Test::run(
 	'settings are saved encrypted, not autoloaded, and never sent back',
 	static function () use ( $sf_b, $sf_id, $sf_admin ) {
-		$secret = $sf_b['input'][ $sf_b['secret'] ];
 		list( $status ) = sf_rest( 'POST', "/storage/$sf_id", 0, array(), $sf_b['input'] );
 		Sf_Test::ok( in_array( $status, array( 401, 403 ), true ), 'anonymous save refused: ' . $status );
 		Sf_Test::ok( ! Destinations::configured( $sf_id ), 'nothing saved by the anonymous request' );
@@ -295,21 +326,27 @@ Sf_Test::run(
 		list( $status, $data ) = sf_rest( 'POST', "/storage/$sf_id", $sf_admin, array(), $sf_b['input'] );
 		Sf_Test::same( 200, $status, 'save: ' . wp_json_encode( $data ) );
 		Sf_Test::same( true, $data['configured'] );
-		Sf_Test::same( true, $data['secrets_set'][ $sf_b['secret'] ] );
 
 		global $wpdb;
 		$raw = $wpdb->get_row( $wpdb->prepare( "SELECT option_value, autoload FROM {$wpdb->options} WHERE option_name = %s", Destinations::OPTION ), ARRAY_A );
-		Sf_Test::ok( false === strpos( $raw['option_value'], $secret ), 'the secret is not in the database in plain text' );
-		Sf_Test::ok( false !== strpos( $raw['option_value'], 'sf1s:' ) || false !== strpos( $raw['option_value'], 'sf1o:' ), 'the secret is stored encrypted' );
 		Sf_Test::ok( in_array( $raw['autoload'], array( 'no', 'off' ), true ), 'not autoloaded: ' . $raw['autoload'] );
 
-		list( $status, $list ) = sf_rest( 'GET', '/storage', $sf_admin );
-		Sf_Test::same( 200, $status );
-		Sf_Test::ok( false === strpos( wp_json_encode( $list ), $secret ), 'GET /storage does not contain the secret' );
-		Sf_Test::ok( ! isset( sf_overview( $sf_id )['settings'][ $sf_b['secret'] ] ), 'no secret in the settings sent to the browser' );
+		if ( null !== $sf_b['secret'] ) {
+			$secret = $sf_b['input'][ $sf_b['secret'] ];
+			Sf_Test::same( true, $data['secrets_set'][ $sf_b['secret'] ] );
+			Sf_Test::ok( false === strpos( $raw['option_value'], $secret ), 'the secret is not in the database in plain text' );
+			Sf_Test::ok( false !== strpos( $raw['option_value'], 'sf1s:' ) || false !== strpos( $raw['option_value'], 'sf1o:' ), 'the secret is stored encrypted' );
+
+			list( $status, $list ) = sf_rest( 'GET', '/storage', $sf_admin );
+			Sf_Test::same( 200, $status );
+			Sf_Test::ok( false === strpos( wp_json_encode( $list ), $secret ), 'GET /storage does not contain the secret' );
+			Sf_Test::ok( ! isset( sf_overview( $sf_id )['settings'][ $sf_b['secret'] ] ), 'no secret in the settings sent to the browser' );
+		} else {
+			Sf_Test::same( false, sf_overview( $sf_id )['secrets_set']['client_secret'], 'no secret stored for one-click sign-in:' );
+		}
 
 		// Saving again without the secret keeps it; invalid input changes nothing.
-		list( $status ) = sf_rest( 'POST', "/storage/$sf_id", $sf_admin, array(), array( $sf_b['secret'] => '' ) + $sf_b['input'] );
+		list( $status ) = sf_rest( 'POST', "/storage/$sf_id", $sf_admin, array(), ( null === $sf_b['secret'] ? array() : array( $sf_b['secret'] => '' ) ) + $sf_b['input'] );
 		Sf_Test::same( 200, $status, 'save without the secret:' );
 		list( $status, $error ) = sf_rest( 'POST', "/storage/$sf_id", $sf_admin, array(), $sf_b['invalid'] + $sf_b['input'] );
 		Sf_Test::same( 400, $status, 'invalid input: ' . wp_json_encode( $error ) );
@@ -328,6 +365,9 @@ Sf_Test::run(
 		Sf_Test::same( 200, $status, 'test: ' . wp_json_encode( $data ) );
 		Sf_Test::same( $sf_b['test_lines'], count( $data['lines'] ), implode( ' | ', $data['lines'] ) );
 		Sf_Test::same( array(), $sf_b['names'](), 'test file removed:' );
+		if ( null === $sf_b['secret'] ) {
+			return; // One-click sign-in: there is no secret on the site to get wrong.
+		}
 
 		list( $status ) = sf_rest( 'POST', "/storage/$sf_id", $sf_admin, array(), array( $sf_b['secret'] => 'Wrong-Secret-123' ) + $sf_b['input'] );
 		Sf_Test::same( 200, $status );

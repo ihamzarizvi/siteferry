@@ -131,6 +131,11 @@
 	cursor: pointer;
 }
 
+/* Parts of a form for another sign-in mode (WordPress styles set display on table rows). */
+.siteferry [hidden] {
+	display: none !important;
+}
+
 @media (max-width: 782px) {
 	.siteferry table.widefat td,
 	.siteferry table.widefat th {

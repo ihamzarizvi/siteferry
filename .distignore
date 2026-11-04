@@ -1,0 +1,11 @@
+# Left out of the plugin package (wp dist-archive and similar tools read this file).
+/.git
+/.gitattributes
+/.gitignore
+/.distignore
+/tests
+/relay
+/vendor
+/node_modules
+*.tar
+*.tar.gz

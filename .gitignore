@@ -9,3 +9,6 @@
 # Tooling that is never shipped.
 /vendor/
 /node_modules/
+
+# The relay's live settings (Google client secret); only config.sample.php is committed.
+/relay/config.php

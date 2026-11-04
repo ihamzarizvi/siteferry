@@ -86,27 +86,56 @@ supported.
 
 = Google Drive =
 
-Uses your own OAuth client (Google Cloud console: enable the Google Drive API, set up the consent
-screen, create an OAuth client of type "Web application" and register the redirect URI that the
-Storage tab shows). SiteFerry asks only for the `drive.file` scope: it can see and change only the
-files and folders it created itself, nothing else in the Drive. Backups go into one folder at the
-top of My Drive ("SiteFerry" by default).
+Two ways to sign in, chosen on the Storage tab:
 
-* Connecting: "Connect to Google Drive" (a POST with the administrator's nonce) creates a one-time
+* "Sign in with Google" (the default): click the button and allow access on Google's page. No
+  Google Cloud project or keys are needed; SiteFerry's own Google app is used, through SiteFerry's
+  sign-in service (see "Sign-in service" below).
+* "Use my own OAuth client" (advanced, no sign-in service involved): in the Google Cloud console,
+  enable the Google Drive API, set up the consent screen, create an OAuth client of type "Web
+  application" and register the redirect URI that the Storage tab shows; enter its client ID and
+  secret. If that consent screen is left in "Testing", Google ends the authorization after 7 days;
+  publish the app to keep it (with only the drive.file scope Google usually asks for no review).
+
+SiteFerry asks only for the `drive.file` scope: it can see and change only the files and folders it
+created itself, nothing else in the Drive. Backups go into one folder at the top of My Drive
+("SiteFerry" by default).
+
+* Connecting: the sign-in button (a POST with the administrator's nonce) creates a one-time
   `state`, tied to that administrator, and a PKCE code verifier, both kept for 10 minutes. Google
-  sends the browser back to the SiteFerry page with a code; that page then hands code and state to
-  the REST API with the nonce. Only that request, after the state matches, exchanges the code and
-  saves the tokens. Nothing is saved from the GET request itself, and the code is removed from the
-  address bar at once.
+  (through the sign-in service, in the default way) sends the browser back to the SiteFerry page
+  with a code; that page then hands code and state to the REST API with the nonce. Only that
+  request, after the state matches, exchanges the code and saves the tokens. Nothing is saved from
+  the GET request itself, and the code is removed from the address bar at once.
 * The refresh token and access token are stored encrypted; the access token is refreshed when it
   is about to expire (or when Google refuses it) and the new one saved. "Disconnect" revokes the
-  tokens at Google. Changing the client ID drops the connection.
-* If the consent screen is left in "Testing", Google ends the authorization after 7 days; publish
-  the app to keep it (with only the drive.file scope Google usually asks for no review).
+  tokens at Google. Switching between the two ways of signing in, or changing the client ID, drops
+  the connection.
 * Uploads use resumable uploads in parts of 8 MB; after an interruption Drive is asked how much it
   has and the upload continues from there. Sending a backup again replaces the earlier copy.
   Deleting a backup moves it to the Drive trash. Downloads use range requests.
 * The access token is only ever sent to Google's API hosts.
+
+= Sign-in service (auth.xsofty.com) =
+
+"Sign in with Google" for Google Drive uses SiteFerry's sign-in service at
+`https://auth.xsofty.com/siteferry`, run by the publisher of SiteFerry. It holds the secret of
+SiteFerry's Google app, which a plugin cannot keep secret. SiteFerry contacts it only for that
+storage, only in that mode, and only for these steps:
+
+* Signing in: your browser goes to the service with this site's SiteFerry page address, a random
+  state and a PKCE challenge, and on to Google; Google sends the browser back through the service,
+  which passes the one-time code to this site's page.
+* Getting and renewing access: this site sends the service the one-time code with the PKCE verifier
+  (once), and later the refresh token whenever the access token needs renewing (about once an hour
+  while SiteFerry works with the Drive). The service adds the app's client ID and secret, sends the
+  request to Google and returns Google's answer.
+
+The service stores nothing and keeps no logs of its own. Backups never go through it: they travel
+directly between this site and Google. If the service cannot be reached, signing in and renewing
+access fail with a message saying so; the rest of SiteFerry is not affected. To avoid the service
+completely, choose "Use my own OAuth client". To use a sign-in service of your own instead, define
+`SITEFERRY_RELAY_URL` (an https address) in wp-config.php.
 
 = Stored keys =
 
@@ -160,6 +189,7 @@ are valid gzip files and an interrupted job can resume at a member boundary.
 == Changelog ==
 
 = 0.7.0 =
+* One-click "Sign in with Google" for Google Drive through SiteFerry's sign-in service (auth.xsofty.com); no Google Cloud project needed. Your own OAuth client stays available.
 * Google Drive storage with your own OAuth client: drive.file scope only, one-time state and PKCE, tokens saved only from an authenticated POST, encrypted tokens with refresh, revoke on disconnect, resumable uploads, ranged downloads.
 * Only storages that are ready (and, for Google Drive, connected) are offered for sending.
 * A refusal on the provider's consent page is shown even though WordPress removes "error" from the address bar.
