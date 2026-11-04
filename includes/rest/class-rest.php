@@ -21,6 +21,9 @@ use SiteFerry\Jobs\Runner;
 use SiteFerry\Jobs\Slice_Budget;
 use SiteFerry\Requirements;
 use SiteFerry\Security\Storage;
+use SiteFerry\Storage\Destinations;
+use SiteFerry\Storage\Storage_Exception;
+use SiteFerry\Storage\Transfer;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -48,6 +51,7 @@ final class Rest {
 	const ID   = '(?P<id>[a-f0-9]{16})';
 	const UP   = '(?P<id>[a-f0-9]{24})';
 	const NAME = '(?P<name>[A-Za-z0-9._-]+)';
+	const DEST = '(?P<dest>[a-z0-9]{1,20})';
 
 	/**
 	 * Hooks route registration.
@@ -65,36 +69,46 @@ final class Rest {
 		$confirm = array( self::class, 'can_confirm' );
 
 		$routes = array(
-			'/status'                        => array( WP_REST_Server::READABLE, 'status', $admin ),
-			'/tables'                        => array( WP_REST_Server::READABLE, 'tables', $admin ),
-			'/backups'                       => array( WP_REST_Server::READABLE, 'backups', $admin ),
-			'/backups/' . self::NAME         => array( WP_REST_Server::DELETABLE, 'delete_backup', $admin ),
-			'/backups/' . self::NAME . '/download' => array( WP_REST_Server::READABLE, 'download', $admin ),
-			'/exports'                       => array( WP_REST_Server::CREATABLE, 'start_export', $admin ),
-			'/imports'                       => array( WP_REST_Server::CREATABLE, 'start_import', $admin ),
-			'/jobs'                          => array( WP_REST_Server::READABLE, 'jobs', $admin ),
-			'/jobs/' . self::ID              => array( WP_REST_Server::READABLE, 'job', $job ),
-			'/jobs/' . self::ID . '/run'     => array( WP_REST_Server::CREATABLE, 'run', $job ),
-			'/jobs/' . self::ID . '/confirm' => array( WP_REST_Server::CREATABLE, 'confirm', $confirm ),
-			'/jobs/' . self::ID . '/cancel'  => array( WP_REST_Server::CREATABLE, 'cancel', $job ),
-			'/jobs/' . self::ID . '/log'     => array( WP_REST_Server::READABLE, 'log', $admin ),
-			'/uploads'                       => array( WP_REST_Server::READABLE, 'uploads', $admin ),
-			'/uploads/new'                   => array( WP_REST_Server::CREATABLE, 'start_upload', $admin ),
-			'/uploads/' . self::UP           => array( WP_REST_Server::READABLE, 'upload', $admin ),
-			'/uploads/' . self::UP . '/chunk'  => array( WP_REST_Server::CREATABLE, 'chunk', $admin ),
-			'/uploads/' . self::UP . '/finish' => array( WP_REST_Server::CREATABLE, 'finish_upload', $admin ),
-			'/uploads/' . self::UP . '/cancel' => array( WP_REST_Server::CREATABLE, 'cancel_upload', $admin ),
+			array( '/status', WP_REST_Server::READABLE, 'status', $admin ),
+			array( '/tables', WP_REST_Server::READABLE, 'tables', $admin ),
+			array( '/backups', WP_REST_Server::READABLE, 'backups', $admin ),
+			array( '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_backup', $admin ),
+			array( '/backups/' . self::NAME . '/download', WP_REST_Server::READABLE, 'download', $admin ),
+			array( '/exports', WP_REST_Server::CREATABLE, 'start_export', $admin ),
+			array( '/imports', WP_REST_Server::CREATABLE, 'start_import', $admin ),
+			array( '/jobs', WP_REST_Server::READABLE, 'jobs', $admin ),
+			array( '/jobs/' . self::ID, WP_REST_Server::READABLE, 'job', $job ),
+			array( '/jobs/' . self::ID . '/run', WP_REST_Server::CREATABLE, 'run', $job ),
+			array( '/jobs/' . self::ID . '/confirm', WP_REST_Server::CREATABLE, 'confirm', $confirm ),
+			array( '/jobs/' . self::ID . '/cancel', WP_REST_Server::CREATABLE, 'cancel', $job ),
+			array( '/jobs/' . self::ID . '/log', WP_REST_Server::READABLE, 'log', $admin ),
+			array( '/uploads', WP_REST_Server::READABLE, 'uploads', $admin ),
+			array( '/uploads/new', WP_REST_Server::CREATABLE, 'start_upload', $admin ),
+			array( '/uploads/' . self::UP, WP_REST_Server::READABLE, 'upload', $admin ),
+			array( '/uploads/' . self::UP . '/chunk', WP_REST_Server::CREATABLE, 'chunk', $admin ),
+			array( '/uploads/' . self::UP . '/finish', WP_REST_Server::CREATABLE, 'finish_upload', $admin ),
+			array( '/uploads/' . self::UP . '/cancel', WP_REST_Server::CREATABLE, 'cancel_upload', $admin ),
+			array( '/storage', WP_REST_Server::READABLE, 'storage', $admin ),
+			array( '/storage/' . self::DEST, WP_REST_Server::CREATABLE, 'save_storage', $admin ),
+			array( '/storage/' . self::DEST, WP_REST_Server::DELETABLE, 'remove_storage', $admin ),
+			array( '/storage/' . self::DEST . '/test', WP_REST_Server::CREATABLE, 'test_storage', $admin ),
+			array( '/storage/' . self::DEST . '/backups', WP_REST_Server::READABLE, 'remote_backups', $admin ),
+			array( '/storage/' . self::DEST . '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_remote', $admin ),
+			array( '/storage/' . self::DEST . '/send', WP_REST_Server::CREATABLE, 'start_send', $admin ),
+			array( '/storage/' . self::DEST . '/fetch', WP_REST_Server::CREATABLE, 'start_fetch', $admin ),
 		);
-		foreach ( $routes as $path => list( $methods, $callback, $permission ) ) {
-			register_rest_route(
-				self::NS,
-				$path,
-				array(
-					'methods'             => $methods,
-					'callback'            => self::guard( $callback ),
-					'permission_callback' => $permission,
-				)
+
+		// Several methods on one path become several endpoints of one route.
+		$endpoints = array();
+		foreach ( $routes as list( $path, $methods, $callback, $permission ) ) {
+			$endpoints[ $path ][] = array(
+				'methods'             => $methods,
+				'callback'            => self::guard( $callback ),
+				'permission_callback' => $permission,
 			);
+		}
+		foreach ( $endpoints as $path => $list ) {
+			register_rest_route( self::NS, $path, $list );
 		}
 	}
 
@@ -208,7 +222,7 @@ final class Rest {
 	public static function start_export( WP_REST_Request $request ): array {
 		self::assert_idle();
 		$params  = (array) $request->get_json_params();
-		$options = array_intersect_key( $params, array_flip( array( 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables' ) ) );
+		$options = array_intersect_key( $params, array_flip( array( 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables', 'send_to', 'delete_after_send' ) ) );
 		list( $job, $token ) = Export::start( $options );
 		return array(
 			'job'   => $job->summary(),
@@ -389,6 +403,100 @@ final class Rest {
 	}
 
 	/**
+	 * Storage destinations: settings without secrets, and which secrets are saved.
+	 */
+	public static function storage(): array {
+		return Destinations::overview();
+	}
+
+	/**
+	 * Saves a destination's settings (JSON body). Empty secrets keep the saved ones.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function save_storage( WP_REST_Request $request ): array {
+		Destinations::save( (string) $request['dest'], (array) $request->get_json_params() );
+		return self::destination( (string) $request['dest'] );
+	}
+
+	/**
+	 * Removes a destination's settings and secrets.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function remove_storage( WP_REST_Request $request ): array {
+		Destinations::remove( (string) $request['dest'] );
+		return self::destination( (string) $request['dest'] );
+	}
+
+	/**
+	 * Tests the saved settings of a destination.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function test_storage( WP_REST_Request $request ): array {
+		return array( 'lines' => Destinations::driver( (string) $request['dest'] )->test() );
+	}
+
+	/**
+	 * Backups stored at a destination.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function remote_backups( WP_REST_Request $request ): array {
+		$driver = Destinations::driver( (string) $request['dest'] );
+		return array(
+			'where'   => $driver->describe(),
+			'backups' => $driver->list(),
+		);
+	}
+
+	/**
+	 * Deletes a backup at a destination.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function delete_remote( WP_REST_Request $request ): array {
+		$name = (string) $request['name'];
+		if ( ! preg_match( Backups::SAFE_NAME, $name ) ) {
+			throw new Job_Exception( 'Unknown backup.', Job_Exception::NOT_FOUND );
+		}
+		Destinations::driver( (string) $request['dest'] )->delete( $name );
+		return array( 'deleted' => $name );
+	}
+
+	/**
+	 * Starts sending a stored backup to a destination.
+	 *
+	 * @param WP_REST_Request $request Request with "backup".
+	 */
+	public static function start_send( WP_REST_Request $request ): array {
+		self::assert_idle();
+		$params = (array) $request->get_json_params();
+		$path   = Backups::path( Storage::backups_dir(), isset( $params['backup'] ) ? (string) $params['backup'] : '' );
+		list( $job, $token ) = Transfer::send( (string) $request['dest'], $path );
+		return array(
+			'job'   => $job->summary(),
+			'token' => $token,
+		);
+	}
+
+	/**
+	 * Starts downloading a backup from a destination.
+	 *
+	 * @param WP_REST_Request $request Request with "name".
+	 */
+	public static function start_fetch( WP_REST_Request $request ): array {
+		self::assert_idle();
+		$params = (array) $request->get_json_params();
+		list( $job, $token ) = Transfer::fetch( (string) $request['dest'], isset( $params['name'] ) ? (string) $params['name'] : '' );
+		return array(
+			'job'   => $job->summary(),
+			'token' => $token,
+		);
+	}
+
+	/**
 	 * Chunk size for uploads: about 5 MB, but always below post_max_size.
 	 */
 	public static function chunk_size(): int {
@@ -419,10 +527,28 @@ final class Rest {
 				return new WP_Error( 'siteferry_error', $e->getMessage(), array( 'status' => isset( $status[ $e->getCode() ] ) ? $status[ $e->getCode() ] : 400 ) );
 			} catch ( Archive_Exception $e ) {
 				return new WP_Error( 'siteferry_error', $e->getMessage(), array( 'status' => 400 ) );
+			} catch ( Storage_Exception $e ) {
+				// Never 401/403 here: those would read as "your login expired" to the admin screen.
+				$status = Storage_Exception::NOT_FOUND === $e->getCode() ? 404 : ( Storage_Exception::TRANSIENT === $e->getCode() ? 502 : 400 );
+				return new WP_Error( 'siteferry_storage_error', $e->getMessage(), array( 'status' => $status ) );
 			} catch ( \Throwable $e ) {
 				return new WP_Error( 'siteferry_error', $e->getMessage(), array( 'status' => 500 ) );
 			}
 		};
+	}
+
+	/**
+	 * One destination's overview entry.
+	 *
+	 * @param string $id Destination id.
+	 */
+	private static function destination( string $id ): array {
+		foreach ( Destinations::overview() as $entry ) {
+			if ( $entry['id'] === $id ) {
+				return $entry;
+			}
+		}
+		throw new Job_Exception( 'Unknown storage.', Job_Exception::NOT_FOUND );
 	}
 
 	/**

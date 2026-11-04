@@ -119,6 +119,23 @@ Sf_Test::run(
 );
 
 Sf_Test::run(
+	'a second copy of a SiteFerry backup keeps its site and date, with a new random part',
+	static function () use ( $base, $backups ) {
+		$name = 'copytest-2026-10-31-0123456789ab.tar';
+		foreach ( array( 1, 2 ) as $round ) {
+			$file = $base . '/incoming-' . $round . '.tar';
+			file_put_contents( $file, sf_tiny_backup( $base ) );
+			$kept = Backups::adopt( $file, $name, $backups );
+			if ( 1 === $round ) {
+				Sf_Test::same( $name, $kept, 'first copy:' );
+			} else {
+				Sf_Test::ok( $kept !== $name && (bool) preg_match( '/^copytest-2026-10-31-[a-f0-9]{12}\.tar$/', $kept ), 'second copy: ' . $kept );
+			}
+		}
+	}
+);
+
+Sf_Test::run(
 	'backup file names are looked up safely',
 	static function () use ( $backups ) {
 		foreach ( array( '../x.tar', 'a/b.tar', '..\\x.tar', '.htaccess', 'x.php', 'x.tar.php', '', 'missing-2026-01-01-0123456789ab.tar' ) as $name ) {

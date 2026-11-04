@@ -19,11 +19,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Validates export options and creates the export job.
  *
- * Steps: scan wp-content, dump the database, pack the archive, finish (rename and clean up).
+ * Steps: scan wp-content, dump the database, pack the archive, finish (rename and clean up), and
+ * send to remote storage when "send_to" names a destination.
  */
 final class Export {
 
 	const STEPS = array( 'export.scan', 'export.database', 'export.pack', 'export.finish' );
+
+	const SEND_STEP = 'export.send';
 
 	/** Option names a caller may set, with defaults. */
 	const DEFAULTS = array(
@@ -40,6 +43,8 @@ final class Export {
 		'exclude_tables'           => array(),
 		'exclude_paths'            => array(),
 		'snapshot'                 => false,
+		'send_to'                  => '',
+		'delete_after_send'        => false,
 	);
 
 	/**
@@ -70,12 +75,19 @@ final class Export {
 			}
 		}
 
+		$steps = self::STEPS;
+		if ( '' !== $options['send_to'] ) {
+			// Fails now, not after the export, if the destination is not set up.
+			\SiteFerry\Storage\Destinations::driver( $options['send_to'] );
+			$steps[] = self::SEND_STEP;
+		}
+
 		$options['site']       = $site;
 		$options['exclusions'] = self::exclusions( $options, $site )->to_array();
 		$options['output_dir'] = $output;
 		$options['archive']    = self::archive_name( $site['home'], $options['compress'] );
 
-		return Job::create( $jobs, 'export', self::STEPS, $options );
+		return Job::create( $jobs, 'export', $steps, $options );
 	}
 
 	/**
@@ -97,6 +109,8 @@ final class Export {
 				$value = (bool) $value;
 			} elseif ( is_int( $default ) ) {
 				$value = (int) $value;
+			} elseif ( is_string( $default ) ) {
+				$value = trim( is_scalar( $value ) ? (string) $value : '' );
 			} else {
 				$value = array_values( array_filter( array_map( 'trim', array_map( 'strval', (array) $value ) ), 'strlen' ) );
 			}
@@ -104,6 +118,12 @@ final class Export {
 		}
 
 		$normalized['level'] = max( 1, min( 9, $normalized['level'] ) );
+		if ( '' !== $normalized['send_to'] && ! preg_match( '/^[a-z0-9]{1,20}$/', $normalized['send_to'] ) ) {
+			throw new Job_Exception( 'Unknown storage to send the backup to.', Job_Exception::STEP );
+		}
+		if ( '' === $normalized['send_to'] ) {
+			$normalized['delete_after_send'] = false;
+		}
 		if ( $normalized['compress'] && ! function_exists( 'deflate_init' ) ) {
 			throw new Job_Exception( 'Compression needs the PHP zlib extension.', Job_Exception::STEP );
 		}

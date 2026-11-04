@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,8 +14,8 @@ Back up a whole WordPress site into one TAR file and restore or migrate it to an
 SiteFerry exports the database and wp-content into a single standard TAR archive (optionally
 gzip-compressed) and imports it on another site, replacing the site address where needed.
 
-Work in progress. This version exports and imports sites from the admin screen and from WP-CLI.
-Sending backups to remote storage follows.
+Work in progress. This version exports and imports sites from the admin screen and from WP-CLI,
+and sends backups to S3-compatible storage. FTP/FTPS, Google Drive and Dropbox follow.
 
 = Admin screen =
 
@@ -26,9 +26,11 @@ The SiteFerry menu (administrators only) has these tabs:
 * Import - upload a backup or pick a stored one, set the new site address, check the backup, then
   confirm. Uploads are sent in chunks with a SHA-256 checksum each; an interrupted upload continues
   where it stopped when you choose the same file again.
-* Backups - download (through an authenticated PHP stream with Range support), import or delete.
-* Storage - remote storage settings (coming in later versions).
-* Recent jobs - status and log of the last exports and imports.
+* Backups - download (through an authenticated PHP stream with Range support), import, send to
+  storage or delete; below, the backups on each storage, which can be downloaded to this server or
+  deleted there.
+* Storage - settings for remote storage, with a connection test.
+* Log - status and log of the last jobs.
 
 Exports and imports run as a series of short requests from the open page. Closing the page pauses the
 job; opening SiteFerry again offers to resume or cancel it. Only one job runs at a time.
@@ -38,6 +40,37 @@ job; opening SiteFerry again offers to resume or cancel it. Only one job runs at
 * `wp siteferry export [--compress] [--exclude=media,plugins,themes,inactive-plugins,inactive-themes,spam-comments,revisions] [--include-cache] [--exclude-tables=...] [--exclude-paths=...] [--dir=...] [--porcelain]`
 * `wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] [--include-mu-plugins] [--include-drop-ins] [--force] [--yes]`
 * `wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]`
+* `wp siteferry export --send=s3 [--delete-after-send]`
+* `wp siteferry storage test|list <id>`, `wp siteferry storage send <id> <backup>`,
+  `wp siteferry storage fetch <id> <name>`, `wp siteferry storage delete <id> <name> [--yes]`
+  (storage id: s3; settings come from the Storage tab)
+
+= S3-compatible storage =
+
+Presets for Amazon S3, Backblaze B2, Wasabi, Cloudflare R2 and DigitalOcean Spaces; any other
+service that speaks the S3 API (MinIO, ...) works with its endpoint. Requests are signed with AWS
+Signature Version 4 (no SDK) and carry the SHA-256 of their content, which the service checks.
+Backups are stored as `<folder>/<backup name>` in the bucket.
+
+* Uploads use multipart upload in parts of 8 MB (larger for files over 78 GB), one or a few parts
+  per request, so the PHP time limit does not matter. Temporary errors (network, throttling, server
+  errors) are retried with growing pauses. Cancelling or a failure removes the unfinished upload.
+  A job that is simply abandoned can leave one behind: a bucket lifecycle rule that aborts
+  incomplete multipart uploads after a few days cleans those up.
+* Downloads to this server use range requests of 8 MB and are checked to be SiteFerry backups.
+* "Test connection" writes, reads, lists and deletes a small file in the folder.
+* On Amazon S3, a key limited to the bucket and folder needs only this (replace BUCKET; the folder
+  here is the default "siteferry"):
+  `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:ListBucket","Resource":"arn:aws:s3:::BUCKET","Condition":{"StringLike":{"s3:prefix":"siteferry/*"}}},{"Effect":"Allow","Action":["s3:PutObject","s3:GetObject","s3:DeleteObject","s3:AbortMultipartUpload"],"Resource":"arn:aws:s3:::BUCKET/siteferry/*"}]}`
+
+= Stored keys =
+
+The secret key is encrypted before it is saved (libsodium secretbox, or OpenSSL AES-256-GCM if
+libsodium is missing) with a key derived from the site's WordPress salts. It is never shown again
+or sent to the browser, never logged, left out of every export, kept when a backup is imported into
+this site, and removed when SiteFerry is deleted. If the salts change, enter the key again. To use
+a key that survives changed salts, define `SITEFERRY_ENCRYPTION_KEY` (at least 32 random
+characters) in wp-config.php before saving the settings.
 
 = How an import works =
 
@@ -80,6 +113,13 @@ Compressed backups (`.tar.gz`) are a series of independent gzip members of about
 are valid gzip files and an interrupted job can resume at a member boundary.
 
 == Changelog ==
+
+= 0.5.0 =
+* S3-compatible storage: settings with provider presets, connection test, send after an export or later, list, download to this server, delete.
+* Multipart uploads in slices with retries and backoff; cancelled uploads are aborted on the storage.
+* Storage keys encrypted at rest (libsodium, OpenSSL fallback) and never sent back to the browser.
+* WP-CLI: `wp siteferry storage ...`, `wp siteferry export --send=<id>`.
+* A second copy of a backup keeps its site and date in the file name.
 
 = 0.4.0 =
 * Admin screen: export, import with inspection and confirmation, backups list with download and delete, job log.

@@ -127,6 +127,13 @@ final class Admin {
 					<?php if ( Requirements::can_compress() ) : ?>
 						<p><label><input type="checkbox" name="compress"> <?php esc_html_e( 'Compress (.tar.gz): smaller, slower', 'siteferry' ); ?></label></p>
 					<?php endif; ?>
+					<p id="siteferry-send-row" hidden>
+						<label for="siteferry-send-to"><?php esc_html_e( 'When it is ready, send it to', 'siteferry' ); ?></label>
+						<select id="siteferry-send-to" name="send_to">
+							<option value=""><?php esc_html_e( 'nowhere (keep it on this server only)', 'siteferry' ); ?></option>
+						</select>
+						<label><input type="checkbox" name="delete_after_send"> <?php esc_html_e( 'then delete the copy on this server', 'siteferry' ); ?></label>
+					</p>
 					<p><button type="submit" class="button button-primary"><?php esc_html_e( 'Export', 'siteferry' ); ?></button></p>
 				</form>
 				<div class="siteferry-progress" id="siteferry-export-progress" hidden></div>
@@ -169,7 +176,8 @@ final class Admin {
 			</section>
 
 			<section class="siteferry-panel" data-panel="backups" hidden>
-				<h2><?php esc_html_e( 'Backups', 'siteferry' ); ?></h2>
+				<div class="siteferry-progress" id="siteferry-transfer-progress" hidden></div>
+				<h2><?php esc_html_e( 'Backups on this server', 'siteferry' ); ?></h2>
 				<table class="widefat striped">
 					<thead><tr>
 						<th><?php esc_html_e( 'File', 'siteferry' ); ?></th>
@@ -180,11 +188,14 @@ final class Admin {
 					</tr></thead>
 					<tbody id="siteferry-backups"></tbody>
 				</table>
+				<div id="siteferry-remote"></div>
 			</section>
 
 			<section class="siteferry-panel" data-panel="storage" hidden>
 				<h2><?php esc_html_e( 'Storage', 'siteferry' ); ?></h2>
-				<p><?php esc_html_e( 'Sending backups to S3-compatible storage, FTP/FTPS, Google Drive and Dropbox comes in the next versions. Backups are kept on this server for now.', 'siteferry' ); ?></p>
+				<p><?php esc_html_e( 'Send backups to remote storage and fetch them back. Keys are stored encrypted, are never shown again and are not part of any backup. SiteFerry connects only to the endpoint entered here.', 'siteferry' ); ?></p>
+				<?php self::render_s3(); ?>
+				<p class="description"><?php esc_html_e( 'FTP/FTPS, Google Drive and Dropbox follow in later versions.', 'siteferry' ); ?></p>
 			</section>
 
 			<section class="siteferry-panel" data-panel="log" hidden>
@@ -202,6 +213,67 @@ final class Admin {
 				<pre id="siteferry-log-view" class="siteferry-log" hidden></pre>
 			</section>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Prints the S3 settings form. It is submitted by script as JSON with the REST nonce; method
+	 * "post" only keeps a browser without script from putting the key into a URL.
+	 */
+	private static function render_s3(): void {
+		$fields = array(
+			'endpoint'   => array( __( 'Endpoint', 'siteferry' ), __( 'Host name of the service. Leave empty to use the provider\'s endpoint for the region.', 'siteferry' ) ),
+			'region'     => array( __( 'Region', 'siteferry' ), '' ),
+			'bucket'     => array( __( 'Bucket', 'siteferry' ), __( 'Create the bucket at the provider first; keep it private.', 'siteferry' ) ),
+			'folder'     => array( __( 'Folder in the bucket', 'siteferry' ), __( 'Backups are stored as folder/file name. Default: siteferry.', 'siteferry' ) ),
+			'access_key' => array( __( 'Access key ID', 'siteferry' ), '' ),
+		);
+		?>
+		<form id="siteferry-storage-s3" class="siteferry-storage-form" data-destination="s3" method="post" action="#" autocomplete="off">
+			<h3><?php esc_html_e( 'S3-compatible storage', 'siteferry' ); ?></h3>
+			<p class="siteferry-storage-state" data-role="state"></p>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="siteferry-s3-preset"><?php esc_html_e( 'Provider', 'siteferry' ); ?></label></th>
+					<td>
+						<select id="siteferry-s3-preset" name="preset">
+							<?php foreach ( \SiteFerry\Storage\S3_Driver::PRESETS as $id => $preset ) : ?>
+								<option value="<?php echo esc_attr( $id ); ?>" data-endpoint="<?php echo esc_attr( $preset['endpoint'] ); ?>" data-region="<?php echo esc_attr( $preset['region'] ); ?>" data-path-style="<?php echo $preset['path_style'] ? '1' : '0'; ?>" data-help="<?php echo esc_attr( $preset['help'] ); ?>"><?php echo esc_html( $preset['label'] ); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description" data-role="help"></p>
+					</td>
+				</tr>
+				<?php foreach ( $fields as $name => list( $label, $help ) ) : ?>
+					<tr>
+						<th scope="row"><label for="siteferry-s3-<?php echo esc_attr( $name ); ?>"><?php echo esc_html( $label ); ?></label></th>
+						<td>
+							<input type="text" class="regular-text" id="siteferry-s3-<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" spellcheck="false" autocomplete="off">
+							<?php if ( '' !== $help ) : ?>
+								<p class="description"><?php echo esc_html( $help ); ?></p>
+							<?php endif; ?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+				<tr>
+					<th scope="row"><label for="siteferry-s3-secret_key"><?php esc_html_e( 'Secret access key', 'siteferry' ); ?></label></th>
+					<td>
+						<input type="password" class="regular-text" id="siteferry-s3-secret_key" name="secret_key" spellcheck="false" autocomplete="new-password">
+						<p class="description" data-role="secret-note"><?php esc_html_e( 'Stored encrypted. It is never shown again.', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Addressing', 'siteferry' ); ?></th>
+					<td><label><input type="checkbox" name="path_style"> <?php esc_html_e( 'Path-style requests (endpoint/bucket/file instead of bucket.endpoint/file)', 'siteferry' ); ?></label></td>
+				</tr>
+			</table>
+			<p>
+				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
+				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
+				<button type="button" class="button-link button-link-delete" data-role="remove"><?php esc_html_e( 'Remove these settings', 'siteferry' ); ?></button>
+			</p>
+			<div class="siteferry-progress" data-role="result" hidden></div>
+		</form>
 		<?php
 	}
 }

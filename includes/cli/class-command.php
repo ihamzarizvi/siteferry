@@ -45,6 +45,7 @@ final class Command {
 	public static function register(): void {
 		WP_CLI::add_command( 'siteferry', self::class );
 		WP_CLI::add_command( 'siteferry backups', Backups_Command::class );
+		WP_CLI::add_command( 'siteferry storage', Storage_Command::class );
 	}
 
 	/**
@@ -84,6 +85,12 @@ final class Command {
 	 * Nothing is then written to the site, so this also works on a site where SiteFerry is not
 	 * installed: wp --require=/path/to/siteferry/siteferry.php siteferry export --dir=...
 	 *
+	 * [--send=<id>]
+	 * : Send the backup to remote storage set up on the Storage tab (s3) when it is ready.
+	 *
+	 * [--delete-after-send]
+	 * : With --send: delete the copy on this server once the upload is complete.
+	 *
 	 * [--porcelain]
 	 * : Print only the path of the backup file.
 	 *
@@ -92,18 +99,21 @@ final class Command {
 	 *     wp siteferry export
 	 *     wp siteferry export --exclude=media,inactive-themes --compress
 	 *     wp siteferry export --dir=/home/me/backups --porcelain
+	 *     wp siteferry export --send=s3 --delete-after-send
 	 *
 	 * @param string[] $args       Positional arguments (none).
 	 * @param array    $assoc_args Options.
 	 */
 	public function export( $args, $assoc_args ): void {
 		$options = array(
-			'compress'       => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'compress', false ),
-			'level'          => (int) \WP_CLI\Utils\get_flag_value( $assoc_args, 'level', 6 ),
-			'exclude_cache'  => ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'include-cache', false ),
-			'exclude_tables' => self::csv( $assoc_args, 'exclude-tables' ),
-			'exclude_paths'  => self::csv( $assoc_args, 'exclude-paths' ),
-			'snapshot'       => true,
+			'compress'          => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'compress', false ),
+			'level'             => (int) \WP_CLI\Utils\get_flag_value( $assoc_args, 'level', 6 ),
+			'exclude_cache'     => ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'include-cache', false ),
+			'exclude_tables'    => self::csv( $assoc_args, 'exclude-tables' ),
+			'exclude_paths'     => self::csv( $assoc_args, 'exclude-paths' ),
+			'snapshot'          => true,
+			'send_to'           => (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'send', '' ),
+			'delete_after_send' => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'delete-after-send', false ),
 		);
 		foreach ( self::csv( $assoc_args, 'exclude' ) as $item ) {
 			if ( ! isset( self::EXCLUDE_ITEMS[ $item ] ) ) {
@@ -128,7 +138,7 @@ final class Command {
 		if ( ! $porcelain ) {
 			WP_CLI::log( sprintf( 'Export started (job %s).', $job->id() ) );
 		}
-		$this->drive( $job, $porcelain );
+		self::drive( $job, $porcelain );
 
 		if ( Job::STATUS_FAILED === $job->status() ) {
 			WP_CLI::error( sprintf( 'Export failed: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
@@ -139,6 +149,13 @@ final class Command {
 		if ( $porcelain ) {
 			WP_CLI::line( $result['file'] );
 			return;
+		}
+		if ( isset( $result['sent'] ) ) {
+			WP_CLI::log( sprintf( 'Sent to %s as %s.', $result['sent']['where'], $result['sent']['name'] ) );
+			if ( ! empty( $result['deleted_local'] ) ) {
+				WP_CLI::success( sprintf( 'Backup made and sent (%s); the copy on this server was deleted.', size_format( $result['size'], 1 ) ) );
+				return;
+			}
 		}
 		WP_CLI::success(
 			sprintf(
@@ -216,7 +233,7 @@ final class Command {
 			return;
 		}
 		WP_CLI::log( sprintf( 'Import started (job %s).', $job->id() ) );
-		$this->drive( $job, false );
+		self::drive( $job, false );
 		if ( Job::STATUS_FAILED === $job->status() ) {
 			WP_CLI::error( sprintf( 'Import stopped before any change to this site: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
 		}
@@ -225,7 +242,7 @@ final class Command {
 		WP_CLI::confirm( 'Replace this site\'s database and files with the backup?', $assoc_args );
 		Import::confirm( $job );
 
-		$this->drive( $job, false );
+		self::drive( $job, false );
 		if ( Job::STATUS_FAILED === $job->status() ) {
 			$result = $job->result();
 			$undone = empty( $result['rollback_errors'] ) ? 'The site was left as it was before the import.' : 'Restoring the previous site did not fully succeed; see the log.';
@@ -271,7 +288,7 @@ final class Command {
 	 * @param Job  $job   The job.
 	 * @param bool $quiet No progress output.
 	 */
-	private function drive( Job $job, bool $quiet ): void {
+	public static function drive( Job $job, bool $quiet ): void {
 		$step    = null;
 		$printed = 0;
 		while ( ! $job->finished() && Job::STATUS_WAITING !== $job->status() ) {

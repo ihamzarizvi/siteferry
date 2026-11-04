@@ -94,6 +94,29 @@
 	color: #b32d2e;
 }
 
+.siteferry-storage-form {
+	margin: 1em 0 2em;
+	padding: 0.2em 1.2em 0.6em;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+}
+
+.siteferry-storage-form .form-table th {
+	width: 12em;
+}
+
+.siteferry-storage-state {
+	font-weight: 600;
+}
+
+.siteferry-remote {
+	margin-top: 2em;
+}
+
+#siteferry-send-row label {
+	margin-right: 1em;
+}
+
 @media (max-width: 782px) {
 	.siteferry table.widefat td,
 	.siteferry table.widefat th {

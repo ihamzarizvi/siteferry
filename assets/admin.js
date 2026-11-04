@@ -10,8 +10,10 @@
 	const cfg = window.SiteFerryConfig || {};
 	const $ = ( id ) => document.getElementById( id );
 	const JOB_KEY = 'siteferry.job';
+	const JOB_NAMES = { export: 'An export', import: 'An import', send: 'A transfer to storage', fetch: 'A download from storage' };
 	let selectedBackup = null;
 	let importJob = null;
+	let destinations = [];
 
 	// ---------------------------------------------------------------- helpers
 
@@ -300,6 +302,7 @@
 				options[ input.name ] = input.checked;
 			}
 		} );
+		options.send_to = $( 'siteferry-send-row' ).hidden ? '' : $( 'siteferry-send-to' ).value;
 		const view = progressView( 'siteferry-export-progress' );
 		const button = form.querySelector( 'button[type=submit]' );
 		button.disabled = true;
@@ -323,12 +326,237 @@
 			return;
 		}
 		const r = job.result;
-		view.finish( true, [
-			el( 'p', { text: 'Backup ready: ' + r.name + ' (' + bytes( r.size ) + ', ' + r.files + ' files).' } ),
-			el( 'p', {}, [ el( 'a', { class: 'button', href: downloadUrl( r.name ), text: 'Download' } ) ] ),
-			...warningList( job ),
-		] );
+		const nodes = [ el( 'p', { text: 'Backup ready: ' + r.name + ' (' + bytes( r.size ) + ', ' + r.files + ' files).' } ) ];
+		if ( r.sent ) {
+			nodes.push( el( 'p', { text: 'Sent to ' + r.sent.where + '.' + ( r.deleted_local ? ' The copy on this server was deleted.' : '' ) } ) );
+		}
+		if ( ! r.deleted_local ) {
+			nodes.push( el( 'p', {}, [ el( 'a', { class: 'button', href: downloadUrl( r.name ), text: 'Download' } ) ] ) );
+		}
+		view.finish( true, [ ...nodes, ...warningList( job ) ] );
 		loadBackups();
+	}
+
+	// ------------------------------------------------------------ storage
+
+	async function loadDestinations() {
+		try {
+			destinations = await api( 'GET', 'storage' );
+		} catch ( error ) {
+			destinations = [];
+			notice( 'Cannot read the storage settings: ' + error.message, 'error' );
+		}
+		const configured = destinations.filter( ( d ) => d.configured );
+		const select = $( 'siteferry-send-to' );
+		select.replaceChildren( select.options[ 0 ], ...configured.map( ( d ) => el( 'option', { value: d.id, text: d.description } ) ) );
+		$( 'siteferry-send-row' ).hidden = configured.length === 0;
+		document.querySelectorAll( '.siteferry-storage-form' ).forEach( ( form ) => fillStorageForm( form ) );
+		return configured;
+	}
+
+	function destination( id ) {
+		return destinations.find( ( d ) => d.id === id ) || null;
+	}
+
+	/** Shows a destination's saved settings in its form; the secret field always stays empty. */
+	function fillStorageForm( form ) {
+		const d = destination( form.dataset.destination );
+		if ( ! d ) {
+			return;
+		}
+		const settings = d.settings || {};
+		const preset = form.elements.preset;
+		if ( settings.preset ) {
+			preset.value = settings.preset;
+		}
+		[ 'endpoint', 'region', 'bucket', 'folder', 'access_key' ].forEach( ( name ) => {
+			form.elements[ name ].value = settings[ name ] !== undefined ? settings[ name ] : '';
+		} );
+		form.elements.secret_key.value = '';
+		applyPreset( form, d.configured ? settings.path_style : null );
+		const set = d.secrets_set && d.secrets_set.secret_key;
+		form.querySelector( '[data-role=secret-note]' ).textContent = set
+			? 'A key is saved (not shown). Leave this empty to keep it, or enter a new one.'
+			: 'Stored encrypted. It is never shown again.';
+		form.querySelector( '[data-role=state]' ).textContent = d.configured
+			? 'Set up: ' + d.description + ( d.updated ? ', saved ' + date( d.updated ) : '' ) + '.'
+			: 'Not set up.';
+		form.querySelector( '[data-role=test]' ).disabled = ! d.configured;
+		form.querySelector( '[data-role=remove]' ).hidden = ! d.configured;
+	}
+
+	/** Hint, placeholders and path-style default of the chosen provider. */
+	function applyPreset( form, pathStyle ) {
+		const option = form.elements.preset.selectedOptions[ 0 ];
+		const region = form.elements.region.value.trim() || option.dataset.region;
+		form.querySelector( '[data-role=help]' ).textContent = option.dataset.help;
+		form.elements.region.placeholder = option.dataset.region;
+		form.elements.endpoint.placeholder = option.dataset.endpoint.replace( '{region}', region );
+		form.elements.folder.placeholder = 'siteferry';
+		form.elements.path_style.checked = pathStyle === null || pathStyle === undefined ? option.dataset.pathStyle === '1' : !! pathStyle;
+	}
+
+	function storageResult( form, ok, nodes ) {
+		const box = form.querySelector( '[data-role=result]' );
+		box.className = 'siteferry-progress ' + ( ok ? 'is-done' : 'is-failed' );
+		box.replaceChildren( ...nodes );
+		box.hidden = false;
+	}
+
+	async function saveStorage( event ) {
+		event.preventDefault();
+		const form = event.target;
+		const id = form.dataset.destination;
+		const data = {};
+		Array.from( form.elements ).forEach( ( input ) => {
+			if ( input.name ) {
+				data[ input.name ] = input.type === 'checkbox' ? input.checked : input.value.trim();
+			}
+		} );
+		const button = form.querySelector( 'button[type=submit]' );
+		button.disabled = true;
+		try {
+			await api( 'POST', 'storage/' + id, { json: data } );
+			form.elements.secret_key.value = '';
+			await loadDestinations();
+			storageResult( form, true, [ el( 'p', { text: 'Saved. Use "Test connection" to check the settings.' } ) ] );
+		} catch ( error ) {
+			storageResult( form, false, [ el( 'p', { text: 'Not saved: ' + error.message } ) ] );
+		} finally {
+			button.disabled = false;
+		}
+	}
+
+	async function testStorage( form ) {
+		const id = form.dataset.destination;
+		const button = form.querySelector( '[data-role=test]' );
+		button.disabled = true;
+		storageResult( form, true, [ el( 'p', { text: 'Testing...' } ) ] );
+		try {
+			const result = await api( 'POST', 'storage/' + id + '/test' );
+			storageResult( form, true, [ el( 'ul', {}, result.lines.map( ( line ) => el( 'li', { text: line } ) ) ), el( 'p', { text: 'The storage works.' } ) ] );
+		} catch ( error ) {
+			storageResult( form, false, [ el( 'p', { text: error.message } ) ] );
+		} finally {
+			button.disabled = false;
+		}
+	}
+
+	async function removeStorage( form ) {
+		const d = destination( form.dataset.destination );
+		// eslint-disable-next-line no-alert
+		if ( ! d || ! window.confirm( 'Remove the settings and key for ' + d.label + '? Backups already stored there are not deleted.' ) ) {
+			return;
+		}
+		try {
+			await api( 'DELETE', 'storage/' + d.id );
+			await loadDestinations();
+			form.reset();
+			fillStorageForm( form );
+			storageResult( form, true, [ el( 'p', { text: 'Settings removed.' } ) ] );
+		} catch ( error ) {
+			storageResult( form, false, [ el( 'p', { text: error.message } ) ] );
+		}
+	}
+
+	/** Runs a send or fetch job with the progress box on the Backups tab. */
+	async function runTransfer( id, token, message ) {
+		const view = progressView( 'siteferry-transfer-progress' );
+		view.start( message );
+		let job;
+		try {
+			job = await driveJob( id, token, progressHandler( view ) );
+		} catch ( error ) {
+			view.finish( false, [ el( 'p', { text: 'Stopped: ' + error.message } ) ] );
+			return;
+		}
+		store.remove( JOB_KEY );
+		if ( job.status !== 'done' ) {
+			view.finish( false, [ el( 'p', { text: 'Failed: ' + job.error } ), ...warningList( job ) ] );
+		} else if ( job.type === 'send' ) {
+			view.finish( true, [ el( 'p', { text: 'Sent ' + job.result.sent.name + ' to ' + job.result.sent.where + '.' } ) ] );
+		} else {
+			const name = job.result.fetched.name;
+			view.finish( true, [
+				el( 'p', { text: 'Downloaded to this server as ' + name + '.' } ),
+				el( 'p', {}, [ el( 'button', { type: 'button', class: 'button', text: 'Import it', onclick: () => { selectBackup( name ); showTab( 'import' ); } } ) ] ),
+			] );
+		}
+		loadBackups();
+	}
+
+	async function startTransfer( path, body, message ) {
+		try {
+			const started = await api( 'POST', path, { json: body } );
+			remember( started.job, started.token );
+			await runTransfer( started.job.id, started.token, message );
+		} catch ( error ) {
+			progressView( 'siteferry-transfer-progress' ).finish( false, [ el( 'p', { text: error.message } ) ] );
+		}
+	}
+
+	async function loadRemote() {
+		const box = $( 'siteferry-remote' );
+		const configured = destinations.filter( ( d ) => d.configured );
+		box.replaceChildren(
+			...configured.map( ( d ) => {
+				const body = el( 'tbody', {}, [ el( 'tr', {}, [ el( 'td', { colspan: '4', text: 'Loading...' } ) ] ) ] );
+				const where = el( 'p', { class: 'description', text: d.description } );
+				fillRemote( d, body, where );
+				return el( 'div', { class: 'siteferry-remote' }, [
+					el( 'h2', {}, [
+						document.createTextNode( 'Backups on ' + d.label + ' ' ),
+						el( 'button', { type: 'button', class: 'button button-small', text: 'Refresh', onclick: () => fillRemote( d, body, where ) } ),
+					] ),
+					where,
+					el( 'table', { class: 'widefat striped' }, [
+						el( 'thead', {}, [ el( 'tr', {}, [ 'File', 'Size', 'Stored', 'Actions' ].map( ( t ) => el( 'th', { text: t } ) ) ) ] ),
+						body,
+					] ),
+				] );
+			} )
+		);
+	}
+
+	async function fillRemote( d, body, where ) {
+		try {
+			const result = await api( 'GET', 'storage/' + d.id + '/backups' );
+			where.textContent = result.where;
+			if ( ! result.backups.length ) {
+				body.replaceChildren( el( 'tr', {}, [ el( 'td', { colspan: '4', text: 'No SiteFerry backups there yet.' } ) ] ) );
+				return;
+			}
+			body.replaceChildren(
+				...result.backups.map( ( b ) =>
+					el( 'tr', {}, [
+						el( 'td', { text: b.name } ),
+						el( 'td', { text: bytes( b.size ) } ),
+						el( 'td', { text: date( b.modified ) } ),
+						el( 'td', {}, [
+							el( 'button', { type: 'button', class: 'button button-small', text: 'Download to this server', onclick: () => startTransfer( 'storage/' + d.id + '/fetch', { name: b.name }, 'Downloading ' + b.name + '...' ) } ),
+							document.createTextNode( ' ' ),
+							el( 'button', { type: 'button', class: 'button-link button-link-delete', text: 'Delete', onclick: () => deleteRemote( d, b.name, body, where ) } ),
+						] ),
+					] )
+				)
+			);
+		} catch ( error ) {
+			body.replaceChildren( el( 'tr', {}, [ el( 'td', { colspan: '4', text: error.message } ) ] ) );
+		}
+	}
+
+	async function deleteRemote( d, name, body, where ) {
+		// eslint-disable-next-line no-alert
+		if ( ! window.confirm( 'Delete ' + name + ' from ' + d.label + '? This cannot be undone.' ) ) {
+			return;
+		}
+		try {
+			await api( 'DELETE', 'storage/' + d.id + '/backups/' + encodeURIComponent( name ) );
+			notice( 'Deleted ' + name + ' from ' + d.label + '.', 'success' );
+		} catch ( error ) {
+			notice( 'Could not delete: ' + error.message, 'error' );
+		}
+		fillRemote( d, body, where );
 	}
 
 	function downloadUrl( name ) {
@@ -507,12 +735,14 @@
 
 	async function loadBackups() {
 		const body = $( 'siteferry-backups' );
+		loadRemote();
 		try {
 			const backups = await api( 'GET', 'backups' );
 			if ( ! backups.length ) {
 				body.replaceChildren( el( 'tr', {}, [ el( 'td', { colspan: '5', text: 'No backups yet.' } ) ] ) );
 				return;
 			}
+			const targets = destinations.filter( ( d ) => d.configured );
 			body.replaceChildren(
 				...backups.map( ( b ) =>
 					el( 'tr', {}, [
@@ -524,6 +754,10 @@
 							el( 'a', { class: 'button button-small', href: downloadUrl( b.name ), text: 'Download' } ),
 							document.createTextNode( ' ' ),
 							el( 'button', { type: 'button', class: 'button button-small', text: 'Import', onclick: () => { selectBackup( b.name ); showTab( 'import' ); } } ),
+							...( b.error ? [] : targets ).flatMap( ( d ) => [
+								document.createTextNode( ' ' ),
+								el( 'button', { type: 'button', class: 'button button-small', text: 'Send to ' + d.short, onclick: () => startTransfer( 'storage/' + d.id + '/send', { backup: b.name }, 'Sending ' + b.name + ' to ' + d.label + '...' ) } ),
+							] ),
 							document.createTextNode( ' ' ),
 							el( 'button', { type: 'button', class: 'button-link button-link-delete', text: 'Delete', onclick: () => deleteBackup( b.name ) } ),
 						] ),
@@ -621,12 +855,16 @@
 		}
 		const saved = store.get( JOB_KEY );
 		const token = saved && saved.id === active.id ? saved.token : null;
-		$( 'siteferry-active-text' ).textContent = 'An ' + active.type + ' started ' + date( active.created ) + ' is not finished (' + ( active.progress.message || active.status ) + ').';
+		const what = JOB_NAMES[ active.type ] || 'A job';
+		$( 'siteferry-active-text' ).textContent = what + ' started ' + date( active.created ) + ' is not finished (' + ( active.progress.message || active.status ) + ').';
 		$( 'siteferry-active' ).hidden = false;
 		$( 'siteferry-active-resume' ).hidden = ! token;
 		$( 'siteferry-active-resume' ).onclick = async () => {
 			$( 'siteferry-active' ).hidden = true;
-			if ( active.type === 'export' ) {
+			if ( active.type === 'send' || active.type === 'fetch' ) {
+				showTab( 'backups' );
+				await runTransfer( active.id, token, 'Resuming...' );
+			} else if ( active.type === 'export' ) {
 				showTab( 'export' );
 				const view = progressView( 'siteferry-export-progress' );
 				view.start( 'Resuming the export...' );
@@ -642,7 +880,7 @@
 		$( 'siteferry-active-cancel' ).onclick = async () => {
 			if ( await cancelJob( active.id, token ) ) {
 				$( 'siteferry-active' ).hidden = true;
-				notice( 'The ' + active.type + ' was cancelled and its work undone.', 'success' );
+				notice( what + ' was cancelled and its work undone.', 'success' );
 			}
 		};
 	}
@@ -672,9 +910,17 @@
 			}
 		} );
 
+		document.querySelectorAll( '.siteferry-storage-form' ).forEach( ( form ) => {
+			form.addEventListener( 'submit', saveStorage );
+			form.elements.preset.addEventListener( 'change', () => applyPreset( form, null ) );
+			form.elements.region.addEventListener( 'input', () => applyPreset( form, form.elements.path_style.checked ) );
+			form.querySelector( '[data-role=test]' ).addEventListener( 'click', () => testStorage( form ) );
+			form.querySelector( '[data-role=remove]' ).addEventListener( 'click', () => removeStorage( form ) );
+		} );
+
 		const tabs = [ 'export', 'import', 'backups', 'storage', 'log' ];
 		const hash = window.location.hash.replace( '#', '' );
-		showTab( tabs.indexOf( hash ) === -1 ? 'export' : hash );
+		loadDestinations().then( () => showTab( tabs.indexOf( hash ) === -1 ? 'export' : hash ) );
 		loadTables();
 		checkActiveJob();
 	}

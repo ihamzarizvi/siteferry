@@ -24,6 +24,9 @@ A single suite can be run directly, for example `php -n tests\test-tar-roundtrip
 | `test-sql.php` | Column kinds and SQL literals in dumps (NULL, numbers, BIT, binary, escapes, UTF-8) |
 | `test-import-sql.php` | Serialization-safe replacement (nested values, objects, references, broken and custom-serialized values); replacement pairs; resumable statement reading; statement rewriting and refusal of statements a dump never contains |
 | `test-upload.php` | Chunked upload sessions: unsafe names, chunks only at the current end with a matching SHA-256, junk left by a dead request cut off, non-backups refused, safe backup-name lookup |
+| `test-sigv4.php` | AWS Signature Version 4 against the examples AWS publishes (S3 GET with Range, PUT with "$" in the key, parameter without value, sorted query; IAM example with its signing key; the test suite's get-vanilla) |
+| `test-s3.php` | S3 driver against an in-process fake S3 (`lib/class-fake-s3.php`, which checks every signature and payload hash): settings and presets, URLs in both addressing styles, connection test, multipart upload, listing over several pages, ranged download, part sizes, error messages (wrong key, region, bucket, clock), retries with backoff, a 200 answer with an error document, keep-alive spaces, refused DOCTYPEs |
+| `test-secrets.php` | Encryption of stored keys with libsodium and OpenSSL: round trip, fresh nonces, tampering and wrong keys detected (`run-tests.ps1` loads both extensions) |
 | `js/test-sha256.js` | The admin screen's SHA-256 fallback against Node's crypto (run by `run-tests.ps1` when Node is installed) |
 | `compat-check.php` | Calls to built-in functions newer than PHP 7.4 (syntax is checked by `php -l` on 7.4 itself) |
 
@@ -46,6 +49,14 @@ powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-src eval-fil
 # REST API: anonymous requests refused on every route, job token checks, an export driven with the
 # token only, a chunked upload with a wrong offset and a damaged chunk. Removes the backups it makes.
 powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-src eval-file tests/wp/test-rest.php
+
+# Remote storage through the WordPress HTTP API against a fake S3 server on 127.0.0.1 (started and
+# stopped by the script, with test keys generated for the run): encrypted settings, connection
+# test, export sent to storage and fetched back byte-identical, sending in slices, cancel (the
+# multipart upload is aborted), retried 503s, the WP-CLI storage commands, remote delete.
+# Refuses to run when the site already has S3 settings. -Serve keeps the server running for
+# browser tests.
+powershell -ExecutionPolicy Bypass -File tests\wp-storage-check.ps1 -Site siteferry-src
 
 # Import tests. They REPLACE siteferry-dst's content; run them only with the owner's permission.
 #   site:     export siteferry-src (with marker content) and import it into siteferry-dst
@@ -72,6 +83,10 @@ Done by hand (or by an assistant driving a browser) while logged in as an admini
 * Reload the page while an export runs: the banner offers to resume or cancel it.
 * On siteferry-dst only, with the owner's permission: check a backup, cancel at the confirmation
   (nothing changes), then import it; the page then asks you to log in with the imported site's users.
+* Storage tab (with `wp-storage-check.ps1 -Serve` running, or a real account): save the settings
+  (the key field empties and the page says a key is saved), test the connection, export with
+  "send it to", download the stored backup to this server, delete it there, remove the settings.
+  Start a send, run one short slice, reload: the banner resumes it.
 * The browser console shows no errors.
 
 ## Exporting a site without installing SiteFerry
@@ -85,4 +100,5 @@ wp --skip-plugins --skip-themes --exec="define('DISABLE_WP_CRON', true);" --requ
 ```
 
 `run-tests.ps1`, `interop-tar.ps1` and the WordPress test scripts call external programs (tar,
-sha256sum, PHP, WP-CLI, a junction for the safety test); the plugin itself never does.
+sha256sum, PHP, WP-CLI, Node, "php -S" for the fake S3 server, a junction for the safety test); the
+plugin itself never does.

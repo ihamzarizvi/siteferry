@@ -43,6 +43,42 @@ final class Backups {
 	}
 
 	/**
+	 * Moves a received file (an upload or a download) into a backups folder after checking that it
+	 * is a SiteFerry backup. A SiteFerry-style name is kept unless it is taken; any other name is
+	 * replaced by an unguessable one.
+	 *
+	 * @param string $file File to move.
+	 * @param string $name Name it arrived with.
+	 * @param string $dir  Backups folder.
+	 * @return string The backup's file name.
+	 * @throws Archive_Exception If the file is not a SiteFerry backup.
+	 * @throws \SiteFerry\Jobs\Job_Exception If it cannot be moved.
+	 */
+	public static function adopt( string $file, string $name, string $dir ): string {
+		self::manifest( $file );
+		if ( preg_match( self::NAME_PATTERN, $name ) ) {
+			// A second copy of a SiteFerry backup keeps its site and date; only the random part changes.
+			while ( file_exists( $dir . '/' . $name ) ) {
+				$name = (string) preg_replace( '/-[a-f0-9]{12}(\.tar(\.gz)?)$/', '-' . Security\Storage::random_hex( 6 ) . '$1', $name );
+			}
+		} else {
+			$compressed = (bool) preg_match( '/\.(tar\.gz|tgz)$/i', $name );
+			$base       = trim( (string) preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) preg_replace( '/\.(tar\.gz|tgz|tar)$/i', '', $name ) ) ), '-' );
+			$name       = sprintf( '%s-%s-%s.%s', '' === $base ? 'upload' : substr( $base, 0, 40 ), gmdate( 'Y-m-d' ), Security\Storage::random_hex( 6 ), $compressed ? 'tar.gz' : 'tar' );
+		}
+		$target = $dir . '/' . $name;
+		$moved  = Archive\Io::quiet(
+			static function () use ( $file, $target ) {
+				return rename( $file, $target ); // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
+			}
+		);
+		if ( ! $moved ) {
+			throw new \SiteFerry\Jobs\Job_Exception( 'Cannot move the backup into place.', \SiteFerry\Jobs\Job_Exception::STEP );
+		}
+		return $name;
+	}
+
+	/**
 	 * Sends a backup to the browser and ends the request.
 	 *
 	 * Supports a single "Range: bytes=a-b" so interrupted downloads can resume.

@@ -41,34 +41,7 @@ $admins = get_users(
 );
 $admin  = (int) $admins[0];
 
-/**
- * Dispatches a REST request.
- *
- * @param string      $method  HTTP method.
- * @param string      $route   Route under /siteferry/v1.
- * @param int         $user    User id (0 = anonymous).
- * @param array       $headers Headers.
- * @param array|null  $json    JSON body.
- * @param string|null $raw     Raw body.
- * @return array{0:int,1:mixed} Status and data.
- */
-function sf_rest( string $method, string $route, int $user, array $headers = array(), ?array $json = null, ?string $raw = null ): array {
-	wp_set_current_user( $user );
-	$request = new WP_REST_Request( $method, '/siteferry/v1' . $route );
-	foreach ( $headers as $name => $value ) {
-		$request->set_header( $name, $value );
-	}
-	if ( null !== $json ) {
-		$request->set_header( 'Content-Type', 'application/json' );
-		$request->set_body( wp_json_encode( $json ) );
-	}
-	if ( null !== $raw ) {
-		$request->set_header( 'Content-Type', 'application/octet-stream' );
-		$request->set_body( $raw );
-	}
-	$response = rest_do_request( $request );
-	return array( $response->get_status(), $response->get_data() );
-}
+require dirname( __DIR__ ) . '/lib/wp-rest.php';
 
 $created = array();
 
@@ -95,6 +68,14 @@ Sf_Test::run(
 			array( 'POST', '/uploads/0123456789abcdef01234567/chunk' ),
 			array( 'POST', '/uploads/0123456789abcdef01234567/finish' ),
 			array( 'POST', '/uploads/0123456789abcdef01234567/cancel' ),
+			array( 'GET', '/storage' ),
+			array( 'POST', '/storage/s3' ),
+			array( 'DELETE', '/storage/s3' ),
+			array( 'POST', '/storage/s3/test' ),
+			array( 'GET', '/storage/s3/backups' ),
+			array( 'DELETE', '/storage/s3/backups/x-2026-01-01-0123456789ab.tar' ),
+			array( 'POST', '/storage/s3/send' ),
+			array( 'POST', '/storage/s3/fetch' ),
 		);
 		foreach ( $routes as list( $method, $route ) ) {
 			list( $status ) = sf_rest( $method, $route, 0 );

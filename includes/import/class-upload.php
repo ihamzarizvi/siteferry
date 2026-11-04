@@ -12,7 +12,6 @@ use SiteFerry\Archive\Archive_Exception;
 use SiteFerry\Archive\Io;
 use SiteFerry\Backups;
 use SiteFerry\Jobs\Job_Exception;
-use SiteFerry\Security\Storage;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -215,29 +214,11 @@ final class Upload {
 		if ( $this->data['offset'] !== $this->data['size'] ) {
 			throw new Job_Exception( 'The upload is not complete yet.', Job_Exception::STEP );
 		}
-		$part = $this->dir . '/data.part';
 		try {
-			Backups::manifest( $part );
+			$name = Backups::adopt( $this->dir . '/data.part', $this->data['name'], $backups );
 		} catch ( Archive_Exception $e ) {
 			$this->delete();
 			throw new Job_Exception( 'The uploaded file is not a SiteFerry backup: ' . $e->getMessage(), Job_Exception::STEP );
-		}
-
-		$name = $this->data['name'];
-		if ( ! preg_match( Backups::NAME_PATTERN, $name ) || file_exists( $backups . '/' . $name ) ) {
-			// Backups need unguessable names; give the file one.
-			$compressed = (bool) preg_match( '/\.(tar\.gz|tgz)$/i', $name );
-			$base       = trim( (string) preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) preg_replace( '/\.(tar\.gz|tgz|tar)$/i', '', $name ) ) ), '-' );
-			$name       = sprintf( '%s-%s-%s.%s', '' === $base ? 'upload' : substr( $base, 0, 40 ), gmdate( 'Y-m-d' ), Storage::random_hex( 6 ), $compressed ? 'tar.gz' : 'tar' );
-		}
-		$target = $backups . '/' . $name;
-		$moved  = Io::quiet(
-			static function () use ( $part, $target ) {
-				return rename( $part, $target ); // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
-			}
-		);
-		if ( ! $moved ) {
-			throw new Job_Exception( 'Cannot move the uploaded backup into place.', Job_Exception::STEP );
 		}
 		$this->delete();
 		return $name;
