@@ -65,6 +65,20 @@
 	fill: var(--sf-ink);
 }
 
+/* The maker's credit, next to the name: quiet, but a real link. */
+.siteferry .sf-by {
+	margin-left: -12px;
+	font-size: 12px;
+	color: var(--sf-ink-soft);
+	text-decoration: none;
+}
+
+.siteferry .sf-by:hover,
+.siteferry .sf-by:focus {
+	color: var(--sf-ink);
+	text-decoration: underline;
+}
+
 .sf-facts {
 	display: flex;
 	flex-wrap: wrap;

@@ -23,6 +23,9 @@ final class Admin {
 
 	const SLUG = 'siteferry';
 
+	/** The maker's website (a plain link; nothing is loaded from it). */
+	const MAKER_URL = 'https://xsofty.com/';
+
 	/**
 	 * Hooks the menu.
 	 */
@@ -56,6 +59,8 @@ final class Admin {
 			$time = @filemtime( SITEFERRY_DIR . '/assets/' . $file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			return SITEFERRY_VERSION . ( false === $time ? '' : '.' . $time );
 		};
+		// This page only (load-{page} hook): credit the maker in the admin footer.
+		add_filter( 'admin_footer_text', array( self::class, 'footer_text' ) );
 		wp_enqueue_style( 'siteferry-admin', $url . 'admin.css', array(), $version( 'admin.css' ) );
 		wp_enqueue_script( 'siteferry-admin', $url . 'admin.js', array(), $version( 'admin.js' ), true );
 		// WordPress removes "error" from the address bar before the script runs, so a refusal from
@@ -75,6 +80,17 @@ final class Admin {
 				)
 			) . ';',
 			'before'
+		);
+	}
+
+	/**
+	 * Footer text on the SiteFerry page.
+	 */
+	public static function footer_text(): string {
+		return sprintf(
+			/* translators: %s: link to the maker's website */
+			esc_html__( 'SiteFerry is a product of %s.', 'siteferry' ),
+			'<a href="' . esc_url( self::MAKER_URL ) . '" target="_blank" rel="noopener noreferrer">xsofty</a>'
 		);
 	}
 
@@ -114,6 +130,7 @@ final class Admin {
 					<svg class="sf-mark-icon" viewBox="0 0 32 20" aria-hidden="true" focusable="false"><path d="M9 3h9l3 5H6z"/><path d="M1 9h30l-4 8H5z"/></svg>
 					<?php esc_html_e( 'SiteFerry', 'siteferry' ); ?>
 				</h1>
+				<a class="sf-by" href="<?php echo esc_url( self::MAKER_URL ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'by xsofty', 'siteferry' ); ?><span class="screen-reader-text"> <?php esc_html_e( '(opens in a new tab)', 'siteferry' ); ?></span></a>
 				<p class="sf-facts" id="siteferry-facts">
 					<span class="sf-fact sf-fact-host"><?php echo esc_html( $host ); ?></span>
 					<span class="sf-fact" id="siteferry-facts-backups" hidden></span>
