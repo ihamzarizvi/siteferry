@@ -128,8 +128,106 @@ if ( 's3' === $sf_kind ) {
 			return array() === json_decode( (string) file_get_contents( $sf_dir . '/faults.json' ), true );
 		},
 	);
+} elseif ( 'gdrive' === $sf_kind ) {
+	require dirname( __DIR__ ) . '/lib/class-fake-google.php';
+	$sf_dir = (string) getenv( 'SITEFERRY_FAKE_GOOGLE_DIR' );
+	if ( ! is_file( $sf_dir . '/config.json' ) ) {
+		echo "Start the fake Google server first (tests\\wp-storage-check.ps1 does that).\n";
+		exit( 1 );
+	}
+	$sf_config = json_decode( (string) file_get_contents( $sf_dir . '/config.json' ), true );
+	$sf_fake   = new Fake_Google( $sf_dir . '/data', $sf_config );
+	$sf_base   = $sf_config['base'];
+	add_filter(
+		'siteferry_gdrive_endpoints',
+		static function () use ( $sf_base ): array {
+			return array(
+				'auth'   => $sf_base . '/o/oauth2/v2/auth',
+				'token'  => $sf_base . '/token',
+				'revoke' => $sf_base . '/revoke',
+				'api'    => $sf_base . '/drive/v3',
+				'upload' => $sf_base . '/upload/drive/v3',
+			);
+		}
+	);
+	$sf_ginput = array(
+		'client_id'     => $sf_config['client_id'],
+		'client_secret' => $sf_config['client_secret'],
+		'folder'        => 'wp-test',
+	);
+	$sf_names  = static function () use ( $sf_fake ): array {
+		return array_values( array_column( $sf_fake->files(), 'name' ) );
+	};
+	$sf_b     = array(
+		'id'          => 'gdrive',
+		'where'       => $sf_base,
+		'input'       => $sf_ginput,
+		'secret'      => 'client_secret',
+		'invalid'     => array( 'client_id' => 'not-a-client-id' ),
+		'kept'        => array( 'folder', 'wp-test' ),
+		'test_lines'  => 6,
+		'wrong_says'  => array( 'invalid_client', 'Check them on the Storage tab' ),
+		'hash'        => static function ( string $name ) use ( $sf_fake ) {
+			return $sf_fake->hash( $name );
+		},
+		'names'       => $sf_names,
+		'pending'     => static function () use ( $sf_fake ): int {
+			return $sf_fake->open_sessions();
+		},
+		'fault'       => static function () use ( $sf_dir ) {
+			file_put_contents( $sf_dir . '/data/faults.json', '[503,503]' );
+		},
+		'faults_used' => static function () use ( $sf_dir ): bool {
+			return '[]' === (string) file_get_contents( $sf_dir . '/data/faults.json' );
+		},
+		// The sign-in: authorize, the consent page's "Allow", then connect with the code and state.
+		'after_save'  => static function ( int $admin ) use ( $sf_fake, $sf_ginput ) {
+			list( $status, $start ) = sf_rest( 'POST', '/storage/gdrive/authorize', $admin );
+			Sf_Test::same( 200, $status, 'authorize: ' . wp_json_encode( $start ) );
+			Sf_Test::ok( false !== strpos( $start['redirect_uri'], 'admin.php?page=siteferry&oauth=gdrive' ), $start['redirect_uri'] );
+			list( $status ) = sf_rest( 'GET', '/storage', $admin );
+			Sf_Test::ok( ! Destinations::ready( 'gdrive' ), 'not ready before connecting' );
+
+			$consent = wp_remote_get( $start['url'] . '&decision=allow', array( 'redirection' => 0 ) );
+			$back    = array();
+			parse_str( (string) wp_parse_url( (string) wp_remote_retrieve_header( $consent, 'location' ), PHP_URL_QUERY ), $back );
+			Sf_Test::ok( isset( $back['code'], $back['state'] ), 'the consent page sent a code and the state back' );
+
+			list( $status, $wrong ) = sf_rest( 'POST', '/storage/gdrive/connect', $admin, array(), array( 'code' => $back['code'], 'state' => str_repeat( 'a', 48 ) ) );
+			Sf_Test::same( 400, $status, 'a wrong state is refused: ' . wp_json_encode( $wrong ) );
+			list( $status ) = sf_rest( 'POST', '/storage/gdrive/connect', $admin, array(), array( 'code' => $back['code'], 'state' => $back['state'] ) );
+			Sf_Test::same( 400, $status, 'the state is used up by any answer, even a wrong one:' );
+
+			// Start again; this time the answer is right.
+			list( , $start ) = sf_rest( 'POST', '/storage/gdrive/authorize', $admin );
+			$consent         = wp_remote_get( $start['url'] . '&decision=allow', array( 'redirection' => 0 ) );
+			parse_str( (string) wp_parse_url( (string) wp_remote_retrieve_header( $consent, 'location' ), PHP_URL_QUERY ), $back );
+			list( $status, $entry ) = sf_rest( 'POST', '/storage/gdrive/connect', 0, array(), array( 'code' => $back['code'], 'state' => $back['state'] ) );
+			Sf_Test::ok( in_array( $status, array( 401, 403 ), true ), 'connect needs the administrator: ' . $status );
+			list( , $start ) = sf_rest( 'POST', '/storage/gdrive/authorize', $admin );
+			$consent         = wp_remote_get( $start['url'] . '&decision=allow', array( 'redirection' => 0 ) );
+			parse_str( (string) wp_parse_url( (string) wp_remote_retrieve_header( $consent, 'location' ), PHP_URL_QUERY ), $back );
+			list( $status, $entry ) = sf_rest( 'POST', '/storage/gdrive/connect', $admin, array(), array( 'code' => $back['code'], 'state' => $back['state'] ) );
+			Sf_Test::same( 200, $status, 'connect: ' . wp_json_encode( $entry ) );
+			Sf_Test::same( true, $entry['oauth']['connected'] );
+			Sf_Test::same( 'tester@example.com', $entry['oauth']['account'] );
+			Sf_Test::ok( Destinations::ready( 'gdrive' ), 'ready after connecting' );
+
+			global $wpdb;
+			$raw     = (string) $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", Destinations::OPTION ) );
+			list( , $overview ) = sf_rest( 'GET', '/storage', $admin );
+			foreach ( $sf_fake->refresh_tokens() as $token ) {
+				Sf_Test::ok( false === strpos( $raw, $token ), 'the refresh token is stored encrypted' );
+				Sf_Test::ok( false === strpos( wp_json_encode( $overview ), $token ), 'the refresh token is not sent to the browser' );
+			}
+
+			// Saving the settings again (same client ID) keeps the connection.
+			list( $status, $entry ) = sf_rest( 'POST', '/storage/gdrive', $admin, array(), array( 'client_secret' => '' ) + $sf_ginput );
+			Sf_Test::same( true, $entry['oauth']['connected'], 'still connected after saving again:' );
+		},
+	);
 } else {
-	echo "Set SITEFERRY_TEST_STORAGE to s3 or ftp (tests\\wp-storage-check.ps1 does that).\n";
+	echo "Set SITEFERRY_TEST_STORAGE to s3, ftp or gdrive (tests\\wp-storage-check.ps1 does that).\n";
 	exit( 1 );
 }
 
@@ -216,6 +314,10 @@ Sf_Test::run(
 		list( $status, $error ) = sf_rest( 'POST', "/storage/$sf_id", $sf_admin, array(), $sf_b['invalid'] + $sf_b['input'] );
 		Sf_Test::same( 400, $status, 'invalid input: ' . wp_json_encode( $error ) );
 		Sf_Test::same( $sf_b['kept'][1], sf_overview( $sf_id )['settings'][ $sf_b['kept'][0] ], 'settings unchanged after invalid input:' );
+
+		if ( isset( $sf_b['after_save'] ) ) {
+			$sf_b['after_save']( $sf_admin );
+		}
 	}
 );
 

@@ -58,16 +58,20 @@ final class Admin {
 		};
 		wp_enqueue_style( 'siteferry-admin', $url . 'admin.css', array(), $version( 'admin.css' ) );
 		wp_enqueue_script( 'siteferry-admin', $url . 'admin.js', array(), $version( 'admin.js' ), true );
+		// WordPress removes "error" from the address bar before the script runs, so a refusal from
+		// the OAuth provider is passed along here. Display only: nothing is saved from a GET.
+		$oauth_error = isset( $_GET['oauth'], $_GET['error'] ) ? sanitize_key( wp_unslash( $_GET['error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		wp_add_inline_script(
 			'siteferry-admin',
 			'window.SiteFerryConfig = ' . wp_json_encode(
 				array(
-					'root'     => esc_url_raw( rest_url( Rest::NS . '/' ) ),
-					'nonce'    => wp_create_nonce( 'wp_rest' ),
-					'home'     => home_url(),
-					'compress' => Requirements::can_compress(),
-					'chunk'    => Rest::chunk_size(),
-					'loginUrl' => wp_login_url( admin_url( 'admin.php?page=' . self::SLUG ) ),
+					'root'       => esc_url_raw( rest_url( Rest::NS . '/' ) ),
+					'nonce'      => wp_create_nonce( 'wp_rest' ),
+					'home'       => home_url(),
+					'compress'   => Requirements::can_compress(),
+					'chunk'      => Rest::chunk_size(),
+					'loginUrl'   => wp_login_url( admin_url( 'admin.php?page=' . self::SLUG ) ),
+					'oauthError' => $oauth_error,
 				)
 			) . ';',
 			'before'
@@ -201,7 +205,8 @@ final class Admin {
 				<p><?php esc_html_e( 'Send backups to remote storage and fetch them back. Keys are stored encrypted, are never shown again and are not part of any backup. SiteFerry connects only to the endpoint entered here.', 'siteferry' ); ?></p>
 				<?php self::render_s3(); ?>
 				<?php self::render_ftp(); ?>
-				<p class="description"><?php esc_html_e( 'Google Drive and Dropbox follow in later versions.', 'siteferry' ); ?></p>
+				<?php self::render_gdrive(); ?>
+				<p class="description"><?php esc_html_e( 'Dropbox follows in a later version.', 'siteferry' ); ?></p>
 			</section>
 
 			<section class="siteferry-panel" data-panel="log" hidden>
@@ -276,6 +281,65 @@ final class Admin {
 			<p>
 				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
+				<button type="button" class="button-link button-link-delete" data-role="remove"><?php esc_html_e( 'Remove these settings', 'siteferry' ); ?></button>
+			</p>
+			<div class="siteferry-progress" data-role="result" hidden></div>
+		</form>
+		<?php
+	}
+
+	/**
+	 * Prints the Google Drive settings form: the administrator's own OAuth client, the redirect URI
+	 * to register, and the connect / disconnect buttons.
+	 */
+	private static function render_gdrive(): void {
+		$redirect = \SiteFerry\Storage\Destinations::redirect_uri( 'gdrive' );
+		?>
+		<form id="siteferry-storage-gdrive" class="siteferry-storage-form" data-destination="gdrive" method="post" action="#" autocomplete="off">
+			<h3><?php esc_html_e( 'Google Drive', 'siteferry' ); ?></h3>
+			<p class="siteferry-storage-state" data-role="state"></p>
+			<details class="siteferry-howto">
+				<summary><?php esc_html_e( 'How to create your own OAuth client (once)', 'siteferry' ); ?></summary>
+				<ol>
+					<li><?php esc_html_e( 'In the Google Cloud console, create a project and enable the Google Drive API for it.', 'siteferry' ); ?></li>
+					<li><?php esc_html_e( 'Set up the OAuth consent screen (External; add yourself as a test user). Apps left in "Testing" lose their authorization after 7 days; publish the app to keep it. SiteFerry asks only for the drive.file scope.', 'siteferry' ); ?></li>
+					<li><?php esc_html_e( 'Create an OAuth client ID of type "Web application" and add the redirect URI below as an authorized redirect URI.', 'siteferry' ); ?></li>
+					<li><?php esc_html_e( 'Enter the client ID and secret here, save, then click "Connect to Google Drive".', 'siteferry' ); ?></li>
+				</ol>
+			</details>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Redirect URI', 'siteferry' ); ?></th>
+					<td>
+						<code class="siteferry-redirect" data-role="redirect"><?php echo esc_html( $redirect ); ?></code>
+						<button type="button" class="button button-small" data-role="copy" data-copy="<?php echo esc_attr( $redirect ); ?>"><?php esc_html_e( 'Copy', 'siteferry' ); ?></button>
+						<p class="description"><?php esc_html_e( 'Register exactly this address with your OAuth client.', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="siteferry-gdrive-client_id"><?php esc_html_e( 'Client ID', 'siteferry' ); ?></label></th>
+					<td><input type="text" class="large-text" id="siteferry-gdrive-client_id" name="client_id" placeholder="1234-abc.apps.googleusercontent.com" spellcheck="false" autocomplete="off"></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="siteferry-gdrive-client_secret"><?php esc_html_e( 'Client secret', 'siteferry' ); ?></label></th>
+					<td>
+						<input type="password" class="regular-text" id="siteferry-gdrive-client_secret" name="client_secret" spellcheck="false" autocomplete="new-password">
+						<p class="description" data-role="secret-note"><?php esc_html_e( 'Stored encrypted. It is never shown again.', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="siteferry-gdrive-folder"><?php esc_html_e( 'Folder in My Drive', 'siteferry' ); ?></label></th>
+					<td>
+						<input type="text" class="regular-text" id="siteferry-gdrive-folder" name="folder" placeholder="SiteFerry" spellcheck="false" autocomplete="off">
+						<p class="description"><?php esc_html_e( 'Created at the top of My Drive. SiteFerry can only see the files and folders it created itself.', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+			</table>
+			<p>
+				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
+				<button type="button" class="button" data-role="connect"><?php esc_html_e( 'Connect to Google Drive', 'siteferry' ); ?></button>
+				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
+				<button type="button" class="button" data-role="disconnect" hidden><?php esc_html_e( 'Disconnect', 'siteferry' ); ?></button>
 				<button type="button" class="button-link button-link-delete" data-role="remove"><?php esc_html_e( 'Remove these settings', 'siteferry' ); ?></button>
 			</p>
 			<div class="siteferry-progress" data-role="result" hidden></div>

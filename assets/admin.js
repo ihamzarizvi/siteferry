@@ -346,12 +346,12 @@
 			destinations = [];
 			notice( 'Cannot read the storage settings: ' + error.message, 'error' );
 		}
-		const configured = destinations.filter( ( d ) => d.configured );
+		const ready = destinations.filter( ( d ) => d.ready );
 		const select = $( 'siteferry-send-to' );
-		select.replaceChildren( select.options[ 0 ], ...configured.map( ( d ) => el( 'option', { value: d.id, text: d.description } ) ) );
-		$( 'siteferry-send-row' ).hidden = configured.length === 0;
+		select.replaceChildren( select.options[ 0 ], ...ready.map( ( d ) => el( 'option', { value: d.id, text: d.description } ) ) );
+		$( 'siteferry-send-row' ).hidden = ready.length === 0;
 		document.querySelectorAll( '.siteferry-storage-form' ).forEach( ( form ) => fillStorageForm( form ) );
-		return configured;
+		return ready;
 	}
 
 	function destination( id ) {
@@ -395,11 +395,80 @@
 		form.querySelector( '[data-role=secret-note]' ).textContent = set
 			? 'Saved (not shown). Leave this empty to keep it, or enter a new one.'
 			: 'Stored encrypted. It is never shown again.';
-		form.querySelector( '[data-role=state]' ).textContent = d.configured
-			? 'Set up: ' + d.description + ( d.updated ? ', saved ' + date( d.updated ) : '' ) + '.'
-			: 'Not set up.';
-		form.querySelector( '[data-role=test]' ).disabled = ! d.configured;
+		let state = d.configured ? 'Set up: ' + d.description + ( d.updated ? ', saved ' + date( d.updated ) : '' ) + '.' : 'Not set up.';
+		if ( d.oauth && d.configured ) {
+			state = d.oauth.connected
+				? 'Connected: ' + d.description + '.'
+				: 'Saved, but not connected yet: click "Connect to Google Drive" and allow access.';
+		}
+		form.querySelector( '[data-role=state]' ).textContent = state;
+		form.querySelector( '[data-role=test]' ).disabled = ! d.ready;
 		form.querySelector( '[data-role=remove]' ).hidden = ! d.configured;
+		const connect = form.querySelector( '[data-role=connect]' );
+		if ( connect ) {
+			connect.disabled = ! d.configured;
+			connect.textContent = d.oauth && d.oauth.connected ? 'Connect again' : 'Connect to Google Drive';
+			form.querySelector( '[data-role=disconnect]' ).hidden = ! ( d.oauth && d.oauth.connected );
+		}
+	}
+
+	/** Sends the browser to the provider's consent page (the state is kept on the server). */
+	async function connectStorage( form ) {
+		try {
+			const result = await api( 'POST', 'storage/' + form.dataset.destination + '/authorize' );
+			window.location.assign( result.url );
+		} catch ( error ) {
+			storageResult( form, false, [ el( 'p', { text: 'Cannot connect: ' + error.message } ) ] );
+		}
+	}
+
+	async function disconnectStorage( form ) {
+		const d = destination( form.dataset.destination );
+		// eslint-disable-next-line no-alert
+		if ( ! d || ! window.confirm( 'Disconnect ' + d.label + '? SiteFerry revokes its access and forgets the tokens; backups stored there stay.' ) ) {
+			return;
+		}
+		try {
+			await api( 'POST', 'storage/' + d.id + '/disconnect' );
+			await loadDestinations();
+			storageResult( form, true, [ el( 'p', { text: 'Disconnected.' } ) ] );
+		} catch ( error ) {
+			storageResult( form, false, [ el( 'p', { text: error.message } ) ] );
+		}
+	}
+
+	/**
+	 * Back from the provider's consent page (?oauth=<id>&code=...&state=...): the GET changed
+	 * nothing; the code and state are handed to the REST API with the nonce, then removed from
+	 * the address bar.
+	 */
+	async function finishOauth() {
+		const params = new URLSearchParams( window.location.search );
+		const id = params.get( 'oauth' );
+		if ( ! id ) {
+			return false;
+		}
+		const code = params.get( 'code' );
+		const state = params.get( 'state' );
+		const failure = params.get( 'error' ) || cfg.oauthError;
+		window.history.replaceState( null, '', window.location.pathname + '?page=siteferry#storage' );
+		const form = document.querySelector( '.siteferry-storage-form[data-destination="' + CSS.escape( id ) + '"]' );
+		if ( ! form ) {
+			return true;
+		}
+		if ( failure || ! code || ! state ) {
+			storageResult( form, false, [ el( 'p', { text: 'Not connected: ' + ( failure === 'access_denied' ? 'access was not allowed.' : failure || 'the answer had no authorization code.' ) } ) ] );
+			return true;
+		}
+		storageResult( form, true, [ el( 'p', { text: 'Finishing the connection...' } ) ] );
+		try {
+			const d = await api( 'POST', 'storage/' + id + '/connect', { json: { code, state } } );
+			await loadDestinations();
+			storageResult( form, true, [ el( 'p', { text: 'Connected: ' + d.description + '. Use "Test connection" to check it.' } ) ] );
+		} catch ( error ) {
+			storageResult( form, false, [ el( 'p', { text: 'Not connected: ' + error.message } ) ] );
+		}
+		return true;
 	}
 
 	/** Hint, placeholders and path-style default of the chosen provider. */
@@ -438,7 +507,10 @@
 				input.value = '';
 			} );
 			await loadDestinations();
-			storageResult( form, true, [ el( 'p', { text: 'Saved. Use "Test connection" to check the settings.' } ) ] );
+			const d = destination( id );
+			storageResult( form, true, [
+				el( 'p', { text: d && d.oauth && ! d.oauth.connected ? 'Saved. Now click "Connect to Google Drive" and allow access.' : 'Saved. Use "Test connection" to check the settings.' } ),
+			] );
 		} catch ( error ) {
 			storageResult( form, false, [ el( 'p', { text: 'Not saved: ' + error.message } ) ] );
 		} finally {
@@ -516,9 +588,9 @@
 
 	async function loadRemote() {
 		const box = $( 'siteferry-remote' );
-		const configured = destinations.filter( ( d ) => d.configured );
+		const ready = destinations.filter( ( d ) => d.ready );
 		box.replaceChildren(
-			...configured.map( ( d ) => {
+			...ready.map( ( d ) => {
 				const body = el( 'tbody', {}, [ el( 'tr', {}, [ el( 'td', { colspan: '4', text: 'Loading...' } ) ] ) ] );
 				const where = el( 'p', { class: 'description', text: d.description } );
 				fillRemote( d, body, where );
@@ -761,7 +833,7 @@
 				body.replaceChildren( el( 'tr', {}, [ el( 'td', { colspan: '5', text: 'No backups yet.' } ) ] ) );
 				return;
 			}
-			const targets = destinations.filter( ( d ) => d.configured );
+			const targets = destinations.filter( ( d ) => d.ready );
 			body.replaceChildren(
 				...backups.map( ( b ) =>
 					el( 'tr', {}, [
@@ -937,11 +1009,28 @@
 			}
 			form.querySelector( '[data-role=test]' ).addEventListener( 'click', () => testStorage( form ) );
 			form.querySelector( '[data-role=remove]' ).addEventListener( 'click', () => removeStorage( form ) );
+			const connect = form.querySelector( '[data-role=connect]' );
+			if ( connect ) {
+				connect.addEventListener( 'click', () => connectStorage( form ) );
+				form.querySelector( '[data-role=disconnect]' ).addEventListener( 'click', () => disconnectStorage( form ) );
+			}
+			const copy = form.querySelector( '[data-role=copy]' );
+			if ( copy ) {
+				copy.addEventListener( 'click', () => {
+					if ( navigator.clipboard ) {
+						navigator.clipboard.writeText( copy.dataset.copy ).then( () => {
+							copy.textContent = 'Copied';
+						} );
+					}
+				} );
+			}
 		} );
 
 		const tabs = [ 'export', 'import', 'backups', 'storage', 'log' ];
 		const hash = window.location.hash.replace( '#', '' );
-		loadDestinations().then( () => showTab( tabs.indexOf( hash ) === -1 ? 'export' : hash ) );
+		loadDestinations()
+			.then( () => finishOauth() )
+			.then( ( fromOauth ) => showTab( fromOauth ? 'storage' : ( tabs.indexOf( hash ) === -1 ? 'export' : hash ) ) );
 		loadTables();
 		checkActiveJob();
 	}

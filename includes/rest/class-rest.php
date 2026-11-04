@@ -96,6 +96,9 @@ final class Rest {
 			array( '/storage/' . self::DEST . '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_remote', $admin ),
 			array( '/storage/' . self::DEST . '/send', WP_REST_Server::CREATABLE, 'start_send', $admin ),
 			array( '/storage/' . self::DEST . '/fetch', WP_REST_Server::CREATABLE, 'start_fetch', $admin ),
+			array( '/storage/' . self::DEST . '/authorize', WP_REST_Server::CREATABLE, 'authorize_storage', $admin ),
+			array( '/storage/' . self::DEST . '/connect', WP_REST_Server::CREATABLE, 'connect_storage', $admin ),
+			array( '/storage/' . self::DEST . '/disconnect', WP_REST_Server::CREATABLE, 'disconnect_storage', $admin ),
 		);
 
 		// Several methods on one path become several endpoints of one route.
@@ -494,6 +497,42 @@ final class Rest {
 			'job'   => $job->summary(),
 			'token' => $token,
 		);
+	}
+
+	/**
+	 * Starts connecting an OAuth storage; the browser then goes to the returned consent URL.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function authorize_storage( WP_REST_Request $request ): array {
+		return Destinations::authorize( (string) $request['dest'] );
+	}
+
+	/**
+	 * Finishes connecting an OAuth storage with the code and state the provider sent back to the
+	 * SiteFerry page. Only this authenticated POST (administrator, REST nonce, matching one-time
+	 * state) saves tokens; the provider's GET redirect itself changes nothing.
+	 *
+	 * @param WP_REST_Request $request Request with "code" and "state".
+	 */
+	public static function connect_storage( WP_REST_Request $request ): array {
+		$params = (array) $request->get_json_params();
+		Destinations::connect(
+			(string) $request['dest'],
+			isset( $params['code'] ) && is_string( $params['code'] ) ? $params['code'] : '',
+			isset( $params['state'] ) && is_string( $params['state'] ) ? $params['state'] : ''
+		);
+		return self::destination( (string) $request['dest'] );
+	}
+
+	/**
+	 * Revokes an OAuth connection; the settings stay.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function disconnect_storage( WP_REST_Request $request ): array {
+		Destinations::disconnect( (string) $request['dest'] );
+		return self::destination( (string) $request['dest'] );
 	}
 
 	/**

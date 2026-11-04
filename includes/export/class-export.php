@@ -77,8 +77,8 @@ final class Export {
 
 		$steps = self::STEPS;
 		if ( '' !== $options['send_to'] ) {
-			// Fails now, not after the export, if the destination is not set up.
-			\SiteFerry\Storage\Destinations::driver( $options['send_to'] );
+			// Fails now, not after the export, if the destination is not set up (or not connected).
+			\SiteFerry\Storage\Destinations::require_ready( $options['send_to'] );
 			$steps[] = self::SEND_STEP;
 		}
 

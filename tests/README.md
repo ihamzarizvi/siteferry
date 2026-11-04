@@ -27,6 +27,7 @@ A single suite can be run directly, for example `php -n tests\test-tar-roundtrip
 | `test-sigv4.php` | AWS Signature Version 4 against the examples AWS publishes (S3 GET with Range, PUT with "$" in the key, parameter without value, sorted query; IAM example with its signing key; the test suite's get-vanilla) |
 | `test-s3.php` | S3 driver against an in-process fake S3 (`lib/class-fake-s3.php`, which checks every signature and payload hash): settings and presets, URLs in both addressing styles, connection test, multipart upload, listing over several pages, ranged download, part sizes, error messages (wrong key, region, bucket, clock), retries with backoff, a 200 answer with an error document, keep-alive spaces, refused DOCTYPEs |
 | `test-ftp.php` | FTP driver through PHP's real ftp extension against `tools/fake-ftp-server.php` (started on 127.0.0.1 for each case): settings, line breaks refused, explicit FTPS on control and data connections, plain FTP, FTPS against a server without TLS, wrong password, upload in parts with a repeated part and a stale `.part` file, rename on finish, listing, ranged downloads, retry after a dropped connection, no retry for refusals, abort, the PASV address ignored, absolute and login folders |
+| `test-gdrive.php` | Google Drive driver against an in-process fake Google (`lib/class-fake-google.php`): consent URL (drive.file only, offline, PKCE S256), code exchange (reused code, wrong verifier, missing scope, missing refresh token, wrong client secret), token refresh before expiry and after a 401 with the new token saved, revoked grant, folder created/found/re-created, resumable upload with a repeated and a half-stored part, replacing an earlier copy, paged listing, ranged downloads, trash, abort, rate limits retried, a full Drive and a foreign upload host refused, connection test, disconnect revokes |
 | `test-secrets.php` | Encryption of stored keys with libsodium and OpenSSL: round trip, fresh nonces, tampering and wrong keys detected (`run-tests.ps1` loads both extensions) |
 | `js/test-sha256.js` | The admin screen's SHA-256 fallback against Node's crypto (run by `run-tests.ps1` when Node is installed) |
 | `compat-check.php` | Calls to built-in functions newer than PHP 7.4 (syntax is checked by `php -l` on 7.4 itself) |
@@ -52,12 +53,13 @@ powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-src eval-fil
 powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-src eval-file tests/wp/test-rest.php
 
 # Remote storage against fake servers on 127.0.0.1 (started and stopped by the script, with test
-# logins generated for the run): S3 through the WordPress HTTP API, FTPS through PHP's ftp
-# extension. Encrypted settings, connection test, export sent to storage and fetched back
-# byte-identical, sending in slices, cancel (the unfinished upload is removed), retried
-# temporary failures, the WP-CLI storage commands, remote delete. Refuses to run when the site
-# already has settings for that storage. -Driver s3|ftp|all; -Serve keeps one server running for
-# browser tests.
+# logins generated for the run): S3 and Google Drive through the WordPress HTTP API (the test
+# points the "siteferry_gdrive_endpoints" filter at the fake and goes through the sign-in: state,
+# consent, connect), FTPS through PHP's ftp extension. Encrypted settings, connection test,
+# export sent to storage and fetched back byte-identical, sending in slices, cancel (the
+# unfinished upload is removed), retried temporary failures, the WP-CLI storage commands, remote
+# delete. Refuses to run when the site already has settings for that storage.
+# -Driver s3|ftp|gdrive|all; -Serve keeps one server running for browser tests.
 powershell -ExecutionPolicy Bypass -File tests\wp-storage-check.ps1 -Site siteferry-src
 
 # Import tests. They REPLACE siteferry-dst's content; run them only with the owner's permission.
@@ -90,6 +92,11 @@ Done by hand (or by an assistant driving a browser) while logged in as an admini
   (the key field empties and the page says a key is saved), test the connection, export with
   "send it to", download the stored backup to this server, delete it there, remove the settings.
   Start a send, run one short slice, reload: the banner resumes it.
+* Google Drive with the fake: run `wp-storage-check.ps1 -Driver gdrive -Serve` (or start
+  `tools/fake-google-server.php` yourself) and add a temporary must-use plugin that points the
+  `siteferry_gdrive_endpoints` filter at it. Save the client, Connect, Deny (the page says access
+  was not allowed), Connect, Allow (connected; the code is gone from the address bar), test, send,
+  download back, delete, Disconnect, remove. Delete the must-use plugin afterwards.
 * The browser console shows no errors.
 
 ## Exporting a site without installing SiteFerry
@@ -103,5 +110,5 @@ wp --skip-plugins --skip-themes --exec="define('DISABLE_WP_CRON', true);" --requ
 ```
 
 `run-tests.ps1`, `interop-tar.ps1` and the WordPress test scripts call external programs (tar,
-sha256sum, PHP, WP-CLI, Node, "php -S" for the fake S3 server, a PHP process for the fake FTP
-server, a junction for the safety test); the plugin itself never does.
+sha256sum, PHP, WP-CLI, Node, "php -S" for the fake S3 and Google servers, a PHP process for the
+fake FTP server, a junction for the safety test); the plugin itself never does.

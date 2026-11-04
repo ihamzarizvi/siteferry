@@ -36,7 +36,7 @@ final class Transfer {
 	 * @throws Job_Exception If the destination is not set up.
 	 */
 	public static function send( string $destination, string $file ): array {
-		Destinations::driver( $destination );
+		Destinations::require_ready( $destination );
 		return Job::create(
 			Storage::jobs_dir(),
 			'send',
@@ -60,6 +60,7 @@ final class Transfer {
 		if ( ! preg_match( Backups::SAFE_NAME, $name ) ) {
 			throw new Job_Exception( 'Unknown backup.', Job_Exception::NOT_FOUND );
 		}
+		Destinations::require_ready( $destination );
 		$found = null;
 		foreach ( Destinations::driver( $destination )->list() as $item ) {
 			if ( $item['name'] === $name ) {

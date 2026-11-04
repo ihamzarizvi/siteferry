@@ -7,6 +7,7 @@
     (data in tests\tmp\), runs the WordPress storage test through WP-CLI and stops the server:
       s3:  tests\tools\fake-s3-server.php under "php -S" (port 18765)
       ftp: tests\tools\fake-ftp-server.php, explicit FTPS with a self-signed certificate (port 18767)
+      gdrive: tests\tools\fake-google-server.php under "php -S" (port 18769), OAuth and Drive
     With -Serve the server of -Driver keeps running for browser tests until Enter is pressed; the
     logins are in the printed config.json (test values only).
 
@@ -16,7 +17,7 @@
 #>
 param(
     [string] $Site = 'siteferry-src',
-    [ValidateSet('s3', 'ftp', 'all')] [string] $Driver = 'all',
+    [ValidateSet('s3', 'ftp', 'gdrive', 'all')] [string] $Driver = 'all',
     [switch] $Serve,
     [switch] $Keep
 )
@@ -72,6 +73,17 @@ function Start-FakeServer([string] $Kind, [string] $Dir) {
         $env:SITEFERRY_FAKE_S3_DIR = $Dir
         $env:SITEFERRY_FAKE_S3_URL = "http://127.0.0.1:$port"
         $arguments = @('-n', '-d', 'memory_limit=512M', '-S', "127.0.0.1:$port", (Join-Path $root 'tests\tools\fake-s3-server.php'))
+    } elseif ($Kind -eq 'gdrive') {
+        $port = 18769
+        Write-Json (Join-Path $Dir 'config.json') ([ordered] @{
+            base          = "http://127.0.0.1:$port"
+            client_id     = ('123456-' + (New-TestKey 10).ToLower().Replace('+', 'x').Replace('/', 'y') + '.apps.googleusercontent.com')
+            client_secret = 'GOCSPX-' + (New-TestKey 24).Replace('+', 'x').Replace('/', 'y')
+            account       = 'tester@example.com'
+            page_size     = 2
+        })
+        $env:SITEFERRY_FAKE_GOOGLE_DIR = $Dir
+        $arguments = @('-n', '-d', 'memory_limit=512M', '-S', "127.0.0.1:$port", (Join-Path $root 'tests\tools\fake-google-server.php'))
     } else {
         $port = 18767
         $user = 'sftest-' + (New-TestKey 6).ToLower().Replace('+', 'x').Replace('/', 'y')
@@ -91,7 +103,7 @@ function Start-FakeServer([string] $Kind, [string] $Dir) {
     return $process
 }
 
-$kinds = if ($Driver -eq 'all') { @('s3', 'ftp') } else { @($Driver) }
+$kinds = if ($Driver -eq 'all') { @('s3', 'ftp', 'gdrive') } else { @($Driver) }
 if ($Serve -and $kinds.Count -ne 1) { throw 'Use -Serve with -Driver s3 or -Driver ftp.' }
 
 $failed = 0
@@ -113,7 +125,7 @@ foreach ($kind in $kinds) {
     }
     finally {
         if ($null -ne $server) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
-        foreach ($name in 'SITEFERRY_TEST_STORAGE', 'SITEFERRY_FAKE_S3_DIR', 'SITEFERRY_FAKE_S3_URL', 'SITEFERRY_FAKE_FTP_DIR') {
+        foreach ($name in 'SITEFERRY_TEST_STORAGE', 'SITEFERRY_FAKE_S3_DIR', 'SITEFERRY_FAKE_S3_URL', 'SITEFERRY_FAKE_FTP_DIR', 'SITEFERRY_FAKE_GOOGLE_DIR') {
             Remove-Item "Env:\$name" -ErrorAction SilentlyContinue
         }
         if (-not $Keep) {

@@ -76,6 +76,9 @@ Sf_Test::run(
 			array( 'DELETE', '/storage/s3/backups/x-2026-01-01-0123456789ab.tar' ),
 			array( 'POST', '/storage/s3/send' ),
 			array( 'POST', '/storage/s3/fetch' ),
+			array( 'POST', '/storage/gdrive/authorize' ),
+			array( 'POST', '/storage/gdrive/connect' ),
+			array( 'POST', '/storage/gdrive/disconnect' ),
 		);
 		foreach ( $routes as list( $method, $route ) ) {
 			list( $status ) = sf_rest( $method, $route, 0 );

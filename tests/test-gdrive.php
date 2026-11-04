@@ -1,0 +1,371 @@
+<?php
+/**
+ * Google Drive driver against an in-process fake Google (tests/lib/class-fake-google.php):
+ * OAuth with PKCE, token refresh, folders, resumable uploads, listing, ranged downloads, trash.
+ *
+ * Run: php tests/test-gdrive.php [--keep]
+ *
+ * @package SiteFerry
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
+
+require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/lib/class-fake-google.php';
+
+use SiteFerry\Storage\Gdrive_Driver;
+use SiteFerry\Storage\Oauth_State;
+use SiteFerry\Storage\Storage_Exception;
+
+echo "Google Drive driver tests\n";
+
+const SF_G_BASE     = 'https://fake.google.test';
+const SF_G_CLIENT   = '123456-test.apps.googleusercontent.com';
+const SF_G_SECRET   = 'GOCSPX-test-secret-0123456789';
+const SF_G_REDIRECT = 'http://localhost:10009/wp-admin/admin.php?page=siteferry&oauth=gdrive';
+
+/**
+ * A fake Google and a driver for it (not connected yet).
+ *
+ * @param array         $fake     Fake config overrides.
+ * @param array         $settings Settings overrides (before normalize()).
+ * @param array|null    $delays   Receives retry delays.
+ * @param callable|null $clock    Clock.
+ * @return array{0:Gdrive_Driver,1:Fake_Google_Transport,2:array}
+ */
+function sf_gdrive( array $fake = array(), array $settings = array(), ?array &$delays = null, ?callable $clock = null ): array {
+	$google    = new Fake_Google(
+		Sf_Test::temp_dir( 'google' ),
+		$fake + array(
+			'base'          => SF_G_BASE,
+			'client_id'     => SF_G_CLIENT,
+			'client_secret' => SF_G_SECRET,
+		)
+	);
+	$transport = new Fake_Google_Transport( $google );
+	$normal    = Gdrive_Driver::normalize( $settings + array( 'client_id' => SF_G_CLIENT ) );
+	$delays    = array();
+	$sleep     = static function ( float $seconds ) use ( &$delays ) {
+		$delays[] = $seconds;
+	};
+	$endpoints = array(
+		'auth'   => SF_G_BASE . '/o/oauth2/v2/auth',
+		'token'  => SF_G_BASE . '/token',
+		'revoke' => SF_G_BASE . '/revoke',
+		'api'    => SF_G_BASE . '/drive/v3',
+		'upload' => SF_G_BASE . '/upload/drive/v3',
+	);
+	$driver    = new Gdrive_Driver( $normal['settings'], isset( $settings['client_secret'] ) ? $settings['client_secret'] : SF_G_SECRET, $transport, $endpoints, $sleep, $clock );
+	return array( $driver, $transport, $endpoints );
+}
+
+/**
+ * Goes through the consent page like a user clicking "Allow" and connects the driver.
+ *
+ * @param Gdrive_Driver         $driver    Driver.
+ * @param Fake_Google_Transport $transport Transport.
+ * @param array|null            $saved     Receives what the driver saves.
+ * @param string                $decision  allow or deny.
+ * @return array The query of the redirect back.
+ */
+function sf_consent( Gdrive_Driver $driver, Fake_Google_Transport $transport, ?array &$saved = null, string $decision = 'allow' ): array {
+	$verifier  = Oauth_State::base64url( random_bytes( 48 ) );
+	$challenge = Oauth_State::base64url( hash( 'sha256', $verifier, true ) );
+	$state     = bin2hex( random_bytes( 24 ) );
+	$url       = $driver->authorization_url( SF_G_REDIRECT, $state, $challenge );
+	$page      = $transport->google->handle( 'GET', $url, array(), '' );
+	Sf_Test::same( 200, $page['status'], 'consent page:' );
+	$answer = $transport->google->handle( 'GET', $url . '&decision=' . $decision, array(), '' );
+	Sf_Test::same( 302, $answer['status'] );
+	$query = array();
+	parse_str( (string) parse_url( $answer['headers']['location'], PHP_URL_QUERY ), $query );
+	Sf_Test::same( $state, $query['state'], 'state returned unchanged:' );
+	if ( 'allow' === $decision ) {
+		$saved = array();
+		$driver->use_auth(
+			array(),
+			static function ( array $auth ) use ( &$saved ) {
+				$saved = $auth;
+			}
+		);
+		$auth  = $driver->connect( $query['code'], $verifier, SF_G_REDIRECT );
+		$saved = $auth;
+	}
+	$query['verifier'] = $verifier;
+	return $query;
+}
+
+/**
+ * Asserts a Storage_Exception.
+ *
+ * @param int      $code     Expected code.
+ * @param callable $callback Code that must throw.
+ * @param string   $contains Text the message must contain.
+ */
+function sf_expect_storage_error( int $code, callable $callback, string $contains = '' ): Storage_Exception {
+	try {
+		$callback();
+	} catch ( Storage_Exception $e ) {
+		Sf_Test::same( $code, $e->getCode(), 'error code for "' . $e->getMessage() . '":' );
+		Sf_Test::ok( '' === $contains || false !== strpos( $e->getMessage(), $contains ), 'message should contain "' . $contains . '": ' . $e->getMessage() );
+		return $e;
+	}
+	throw new RuntimeException( 'expected a Storage_Exception' );
+}
+
+/**
+ * Sends data in parts of $part bytes.
+ *
+ * @param Gdrive_Driver $driver Driver.
+ * @param string        $name   Name.
+ * @param string        $data   Data.
+ * @param int           $part   Part size.
+ */
+function sf_gsend( Gdrive_Driver $driver, string $name, string $data, int $part = 524288 ): array {
+	$state              = $driver->begin( $name, strlen( $data ) );
+	$state['part_size'] = $part;
+	for ( $i = 0; $i * $part < strlen( $data ); $i++ ) {
+		$state = $driver->put_part( $state, $i, substr( $data, $i * $part, $part ) );
+	}
+	$driver->finish( $state );
+	return $state;
+}
+
+Sf_Test::run(
+	'settings: client ID, secret, folder name',
+	static function () {
+		$ok = Gdrive_Driver::normalize( array( 'client_id' => ' 12-ab.apps.googleusercontent.com ', 'client_secret' => 'GOCSPX-x', 'folder' => ' My Backups ' ) );
+		Sf_Test::same( '12-ab.apps.googleusercontent.com', $ok['settings']['client_id'] );
+		Sf_Test::same( 'My Backups', $ok['settings']['folder'] );
+		Sf_Test::same( 'GOCSPX-x', $ok['secrets']['client_secret'] );
+		Sf_Test::same( 'SiteFerry', Gdrive_Driver::normalize( array( 'client_id' => '12-ab.apps.googleusercontent.com' ) )['settings']['folder'], 'default folder:' );
+		Sf_Test::same( null, Gdrive_Driver::normalize( array( 'client_id' => '12-ab.apps.googleusercontent.com' ) )['secrets']['client_secret'], 'empty secret means "keep":' );
+		foreach ( array( array( 'client_id' => '' ), array( 'client_id' => 'abc' ), array( 'client_id' => 'a b.apps.googleusercontent.com' ), array( 'client_id' => '12-ab.apps.googleusercontent.com', 'folder' => 'a/b' ), array( 'client_id' => '12-ab.apps.googleusercontent.com', 'folder' => "a\nb" ) ) as $input ) {
+			try {
+				Gdrive_Driver::normalize( $input );
+			} catch ( Storage_Exception $e ) {
+				Sf_Test::same( Storage_Exception::CONFIG, $e->getCode() );
+				continue;
+			}
+			throw new RuntimeException( 'accepted: ' . json_encode( $input ) );
+		}
+	}
+);
+
+Sf_Test::run(
+	'consent URL asks only for drive.file, offline access and PKCE S256',
+	static function () {
+		list( $driver ) = sf_gdrive();
+		$url            = $driver->authorization_url( SF_G_REDIRECT, 'st', 'ch' );
+		$query          = array();
+		parse_str( (string) parse_url( $url, PHP_URL_QUERY ), $query );
+		Sf_Test::same( SF_G_BASE . '/o/oauth2/v2/auth', strtok( $url, '?' ) );
+		Sf_Test::same( 'https://www.googleapis.com/auth/drive.file', $query['scope'] );
+		Sf_Test::same( 'offline', $query['access_type'] );
+		Sf_Test::same( 'consent', $query['prompt'] );
+		Sf_Test::same( 'code', $query['response_type'] );
+		Sf_Test::same( 'S256', $query['code_challenge_method'] );
+		Sf_Test::same( 'ch', $query['code_challenge'] );
+		Sf_Test::same( 'st', $query['state'] );
+		Sf_Test::same( SF_G_REDIRECT, $query['redirect_uri'] );
+		Sf_Test::ok( false === strpos( $url, SF_G_SECRET ), 'the client secret is not in the URL' );
+	}
+);
+
+Sf_Test::run(
+	'connecting: code exchange with PKCE; a reused code, a wrong verifier, a missing scope or refresh token fail',
+	static function () {
+		list( $driver, $transport ) = sf_gdrive();
+		$query                      = sf_consent( $driver, $transport, $saved );
+		Sf_Test::ok( $driver->connected(), 'connected' );
+		Sf_Test::ok( 0 === strpos( $saved['refresh_token'], 'refresh-' ) && 0 === strpos( $saved['access_token'], 'access-' ), 'tokens kept' );
+		Sf_Test::same( 'tester@example.com', $saved['account'] );
+		Sf_Test::same( 'Google Drive of tester@example.com, folder "SiteFerry"', $driver->describe() );
+		foreach ( $transport->sent as $request ) {
+			Sf_Test::ok( false === strpos( $request['url'], SF_G_SECRET ), 'the client secret is never in a URL' );
+		}
+
+		list( $again, $t2 ) = sf_gdrive();
+		sf_expect_storage_error( Storage_Exception::AUTH, static function () use ( $again, $query ) { $again->connect( $query['code'], $query['verifier'], SF_G_REDIRECT ); }, 'invalid_grant' );
+
+		$other = sf_consent( $again, $t2, $ignored, 'deny' );
+		Sf_Test::same( 'access_denied', $other['error'], 'deny:' );
+		list( $pkce, $t3 ) = sf_gdrive();
+		$verifier          = Oauth_State::base64url( random_bytes( 48 ) );
+		$url               = $pkce->authorization_url( SF_G_REDIRECT, 's', Oauth_State::base64url( hash( 'sha256', $verifier, true ) ) );
+		$answer            = $t3->google->handle( 'GET', $url . '&decision=allow', array(), '' );
+		parse_str( (string) parse_url( $answer['headers']['location'], PHP_URL_QUERY ), $back );
+		sf_expect_storage_error( Storage_Exception::AUTH, static function () use ( $pkce, $back ) { $pkce->connect( $back['code'], 'not-the-verifier-not-the-verifier-not-the-verifier', SF_G_REDIRECT ); }, 'invalid_grant' );
+
+		list( $scope, $t4 ) = sf_gdrive( array( 'grant_scope' => 'openid' ) );
+		sf_expect_storage_error( Storage_Exception::AUTH, static function () use ( $scope, $t4 ) { sf_consent( $scope, $t4 ); }, 'was not granted' );
+
+		list( $none, $t5 ) = sf_gdrive( array( 'no_refresh' => true ) );
+		sf_expect_storage_error( Storage_Exception::REMOTE, static function () use ( $none, $t5 ) { sf_consent( $none, $t5 ); }, 'did not send a refresh token' );
+
+		list( $wrong, $t6 ) = sf_gdrive( array(), array( 'client_secret' => 'wrong' ) );
+		sf_expect_storage_error( Storage_Exception::AUTH, static function () use ( $wrong, $t6 ) { sf_consent( $wrong, $t6 ); }, 'invalid_client' );
+	}
+);
+
+Sf_Test::run(
+	'tokens: refreshed before they expire and after a refusal; new tokens are saved; a revoked grant asks to reconnect',
+	static function () {
+		$now                        = time();
+		$clock                      = static function () use ( &$now ) {
+			return $now;
+		};
+		list( $driver, $transport ) = sf_gdrive( array(), array(), $delays, $clock );
+		sf_consent( $driver, $transport, $saved );
+		$first = $saved['access_token'];
+		$driver->list();
+		Sf_Test::same( 0, $transport->google->token_calls( 'refresh_token' ), 'a fresh token is used as it is:' );
+
+		$now += 3500; // Less than five minutes left.
+		$driver->list();
+		Sf_Test::same( 1, $transport->google->token_calls( 'refresh_token' ), 'refreshed before expiry:' );
+		Sf_Test::ok( $saved['access_token'] !== $first, 'the new token was handed to the saver' );
+
+		$transport->google->expire_access_tokens();
+		Sf_Test::same( array(), $driver->list(), 'listing after the token was refused:' );
+		Sf_Test::same( 2, $transport->google->token_calls( 'refresh_token' ), 'refreshed after a 401:' );
+
+		$transport->google->revoke_all();
+		sf_expect_storage_error( Storage_Exception::AUTH, static function () use ( $driver ) { $driver->list(); }, 'Connect Google Drive again' );
+
+		list( $unconnected ) = sf_gdrive();
+		sf_expect_storage_error( Storage_Exception::AUTH, static function () use ( $unconnected ) { $unconnected->list(); }, 'not connected yet' );
+	}
+);
+
+Sf_Test::run(
+	'folder: created once, found again, re-created after it was trashed or renamed',
+	static function () {
+		list( $driver, $transport ) = sf_gdrive();
+		sf_consent( $driver, $transport, $saved );
+		Sf_Test::same( array(), $driver->list(), 'no folder yet, nothing listed:' );
+		Sf_Test::same( 0, count( $transport->google->folders() ), 'listing does not create the folder:' );
+		sf_gsend( $driver, 'a-2026-01-01-000000000000.tar', 'abc' );
+		$folders = $transport->google->folders();
+		Sf_Test::same( 1, count( $folders ) );
+		Sf_Test::same( 'SiteFerry', reset( $folders )['name'] );
+		Sf_Test::same( array( 'root' ), reset( $folders )['parents'], 'at the top of My Drive:' );
+		Sf_Test::same( key( $folders ), $saved['folder_id'], 'folder id saved:' );
+
+		// A new driver (next request) with the saved record uses the same folder.
+		list( , , $endpoints ) = sf_gdrive();
+		$next                  = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'client_id' => SF_G_CLIENT ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
+		$next->use_auth( $saved, null );
+		sf_gsend( $next, 'b-2026-01-01-000000000000.tar', 'def' );
+		Sf_Test::same( 1, count( $transport->google->folders() ), 'no second folder:' );
+
+		$transport->google->trash( key( $folders ) );
+		$after = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'client_id' => SF_G_CLIENT ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
+		$after->use_auth( $saved, null );
+		sf_gsend( $after, 'c-2026-01-01-000000000000.tar', 'ghi' );
+		Sf_Test::same( 2, count( $transport->google->folders() ), 'a new folder after the old one was trashed:' );
+
+		$renamed = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'client_id' => SF_G_CLIENT, 'folder' => 'Other' ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
+		$renamed->use_auth( $saved, null );
+		Sf_Test::same( array(), $renamed->list(), 'another folder name starts empty:' );
+	}
+);
+
+Sf_Test::run(
+	'resumable upload in parts (one repeated, one interrupted halfway), listing, ranged download, trash',
+	static function () {
+		list( $driver, $transport ) = sf_gdrive( array( 'page_size' => 2 ), array(), $delays );
+		sf_consent( $driver, $transport, $saved );
+		$name = 'mysite-2026-11-04-0123456789ab.tar';
+		$part = 2 * Fake_Google::CHUNK;
+		$data = random_bytes( 3 * $part + 1000 );
+
+		$state              = $driver->begin( $name, strlen( $data ) );
+		$state['part_size'] = $part;
+		$state              = json_decode( json_encode( $state ), true );
+		$state              = $driver->put_part( $state, 0, substr( $data, 0, $part ) );
+		$state              = $driver->put_part( $state, 1, substr( $data, $part, $part ) );
+		$state              = $driver->put_part( $state, 1, substr( $data, $part, $part ) ); // Repeated after an interruption.
+		$transport->google->fail_next = array( 'partial' );
+		$state                        = $driver->put_part( $state, 2, substr( $data, 2 * $part, $part ) );
+		Sf_Test::same( 1, count( $delays ), 'one retry for the half-stored part:' );
+		$state = $driver->put_part( $state, 3, substr( $data, 3 * $part ) );
+		Sf_Test::ok( '' !== $state['file_id'], 'the last part returned the file' );
+		$driver->finish( $state );
+		Sf_Test::same( hash( 'sha256', $data ), $transport->google->hash( $name ), 'stored bytes:' );
+		Sf_Test::same( 0, count( array_filter( $transport->sent, static function ( $r ) { return false !== strpos( $r['url'], 'upload_id' ) && 'PUT' !== $r['method']; } ) ), 'no other requests to the session' );
+
+		// Sending the same backup again replaces the first copy.
+		sf_gsend( $driver, $name, $data, $part );
+		Sf_Test::same( 1, count( array_filter( $transport->google->files(), static function ( $f ) use ( $name ) { return $f['name'] === $name; } ) ), 'one copy left:' );
+
+		foreach ( array( 'b-2026-01-01-000000000000.tar', 'c-2026-01-01-000000000000.tar.gz', 'notes.txt' ) as $other ) {
+			sf_gsend( $driver, $other, 'x' );
+		}
+		$listed = array_column( $driver->list(), 'name' );
+		sort( $listed );
+		Sf_Test::same( array( 'b-2026-01-01-000000000000.tar', 'c-2026-01-01-000000000000.tar.gz', $name ), $listed, 'backups over several pages, other files left out:' );
+
+		$back = '';
+		for ( $offset = 0; $offset < strlen( $data ); $offset += 400000 ) {
+			$back .= $driver->download_range( $name, $offset, (int) min( 400000, strlen( $data ) - $offset ) );
+		}
+		Sf_Test::same( hash( 'sha256', $data ), hash( 'sha256', $back ), 'downloaded in ranges:' );
+
+		$driver->delete( $name );
+		Sf_Test::ok( ! in_array( $name, array_column( $driver->list(), 'name' ), true ), 'deleted backups are not listed' );
+		$trashed = array_filter( $transport->google->files( true ), static function ( $f ) use ( $name ) { return $f['name'] === $name; } );
+		Sf_Test::ok( array() !== $trashed && reset( $trashed )['trashed'], 'it is in the Drive trash' );
+		sf_expect_storage_error( Storage_Exception::NOT_FOUND, static function () use ( $driver, $name ) { $driver->download_range( $name, 0, 10 ); }, 'not in the Google Drive folder' );
+
+		$before = $transport->google->sessions();
+		$open   = $driver->begin( 'open-2026-01-01-000000000000.tar', 10 );
+		Sf_Test::same( $before + 1, $transport->google->sessions(), 'one more session open:' );
+		$driver->abort( $open );
+		Sf_Test::same( $before, $transport->google->sessions(), 'aborted session removed:' );
+	}
+);
+
+Sf_Test::run(
+	'errors: rate limits and server errors are retried, a full Drive and a foreign upload host are not',
+	static function () {
+		list( $driver, $transport ) = sf_gdrive( array(), array(), $delays );
+		sf_consent( $driver, $transport, $saved );
+		$transport->google->fail_next = array( array( 'status' => 403, 'reason' => 'userRateLimitExceeded' ), 500 );
+		$transport->drop_next         = 0;
+		Sf_Test::same( array(), $driver->list() );
+		Sf_Test::same( 2, count( $delays ), 'two retries:' );
+
+		$transport->google->fail_next = array( array( 'status' => 403, 'reason' => 'storageQuotaExceeded' ) );
+		$before                       = count( $delays );
+		sf_expect_storage_error( Storage_Exception::REMOTE, static function () use ( $driver ) { $driver->begin( 'x-2026-01-01-000000000000.tar', 5 ); }, 'The Google Drive is full' );
+		Sf_Test::same( $before, count( $delays ), 'no retry for a full Drive:' );
+
+		list( $evil, $t2 ) = sf_gdrive( array( 'session_base' => 'https://attacker.example' ) );
+		sf_consent( $evil, $t2 );
+		sf_expect_storage_error( Storage_Exception::REMOTE, static function () use ( $evil ) { $evil->begin( 'x-2026-01-01-000000000000.tar', 5 ); }, 'Refusing to send the Google token to https://attacker.example' );
+	}
+);
+
+Sf_Test::run(
+	'connection test: six checks, no file left behind, no retries; disconnect revokes',
+	static function () {
+		list( $driver, $transport ) = sf_gdrive( array(), array(), $delays );
+		sf_consent( $driver, $transport, $saved );
+		$lines = $driver->test();
+		Sf_Test::same( 6, count( $lines ), implode( ' | ', $lines ) );
+		Sf_Test::ok( false !== strpos( $lines[0], 'tester@example.com' ), $lines[0] );
+		Sf_Test::same( array(), $transport->google->files( true ), 'test file deleted for good:' );
+
+		$transport->google->fail_next = array( 503 );
+		sf_expect_storage_error( Storage_Exception::TRANSIENT, static function () use ( $driver ) { $driver->test(); } );
+		Sf_Test::same( array(), $delays, 'no retry during test():' );
+
+		$driver->disconnect();
+		Sf_Test::ok( ! $driver->connected(), 'tokens forgotten' );
+		Sf_Test::same( 'POST /revoke', end( $transport->google->log ) );
+		Sf_Test::same( array(), $transport->google->refresh_tokens(), 'revoked at Google:' );
+		sf_expect_storage_error( Storage_Exception::AUTH, static function () use ( $driver ) { $driver->list(); }, 'not connected yet' );
+	}
+);
+
+exit( Sf_Test::finish( 'test-gdrive' ) );

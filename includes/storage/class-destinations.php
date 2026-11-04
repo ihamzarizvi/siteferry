@@ -16,10 +16,14 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Settings of each storage destination, in the option siteferry_destinations (not autoloaded):
- * id => {driver, settings, secrets (encrypted), updated}.
+ * id => {driver, settings, secrets (encrypted), auth, updated}.
+ *
+ * "auth" exists for OAuth storages once they are connected: the driver's token fields encrypted,
+ * the rest (account, folder id, expiry) as they are, and a hash of the client ID it belongs to.
+ * Saving the settings with another client ID drops it.
  *
  * Like every siteferry_ option it is left out of exports and kept on the destination site during
- * an import, and uninstall.php removes it. Secrets are never sent back to the browser.
+ * an import, and uninstall.php removes it. Secrets and tokens are never sent back to the browser.
  */
 final class Destinations {
 
@@ -27,19 +31,21 @@ final class Destinations {
 
 	/** Destination id => driver class. */
 	const DRIVERS = array(
-		's3'  => S3_Driver::class,
-		'ftp' => Ftp_Driver::class,
+		's3'     => S3_Driver::class,
+		'ftp'    => Ftp_Driver::class,
+		'gdrive' => Gdrive_Driver::class,
 	);
 
 	/** Destination id => [name, short name]. */
 	const LABELS = array(
-		's3'  => array( 'S3-compatible storage', 'S3' ),
-		'ftp' => array( 'FTP server', 'FTP' ),
+		's3'     => array( 'S3-compatible storage', 'S3' ),
+		'ftp'    => array( 'FTP server', 'FTP' ),
+		'gdrive' => array( 'Google Drive', 'Google Drive' ),
 	);
 
 	/**
 	 * Every destination for the admin screen: settings without secrets, which secrets are set,
-	 * and driver information.
+	 * whether it is ready, and driver information.
 	 *
 	 * @return array<int,array>
 	 */
@@ -47,22 +53,33 @@ final class Destinations {
 		$stored = self::stored();
 		$list   = array();
 		foreach ( self::DRIVERS as $id => $class ) {
-			$saved  = isset( $stored[ $id ] ) ? $stored[ $id ] : null;
-			$set    = array();
+			$saved = isset( $stored[ $id ] ) ? $stored[ $id ] : null;
+			$set   = array();
 			foreach ( array_keys( $class::secrets() ) as $name ) {
 				$set[ $name ] = null !== $saved && isset( $saved['secrets'][ $name ] );
 			}
-			$list[] = array(
+			$oauth     = self::is_oauth( $class );
+			$connected = $oauth && null !== $saved && ! empty( $saved['auth'] );
+			$entry     = array(
 				'id'          => $id,
 				'label'       => self::LABELS[ $id ][0],
 				'short'       => self::LABELS[ $id ][1],
 				'configured'  => null !== $saved,
+				'ready'       => null !== $saved && ( ! $oauth || $connected ),
 				'settings'    => null === $saved ? null : $saved['settings'],
 				'secrets_set' => $set,
 				'description' => null === $saved ? null : self::driver( $id, new Null_Transport() )->describe(),
 				'updated'     => null === $saved ? null : (int) $saved['updated'],
 				'info'        => $class::info(),
 			);
+			if ( $oauth ) {
+				$entry['oauth'] = array(
+					'connected'    => $connected,
+					'account'      => $connected && isset( $saved['auth']['account'] ) ? (string) $saved['auth']['account'] : '',
+					'redirect_uri' => self::redirect_uri( $id ),
+				);
+			}
+			$list[] = $entry;
 		}
 		return $list;
 	}
@@ -77,7 +94,37 @@ final class Destinations {
 	}
 
 	/**
+	 * Whether a destination can take backups (set up and, for OAuth storages, connected).
+	 *
+	 * @param string $id Destination id.
+	 */
+	public static function ready( string $id ): bool {
+		$stored = self::stored();
+		if ( ! isset( $stored[ $id ], self::DRIVERS[ $id ] ) ) {
+			return false;
+		}
+		return ! self::is_oauth( self::DRIVERS[ $id ] ) || ! empty( $stored[ $id ]['auth'] );
+	}
+
+	/**
+	 * Throws unless a destination is ready.
+	 *
+	 * @param string $id Destination id.
+	 * @throws Job_Exception If it is not set up or not connected.
+	 */
+	public static function require_ready( string $id ): void {
+		self::driver_class( $id );
+		if ( ! self::configured( $id ) ) {
+			throw new Job_Exception( sprintf( '%s is not set up yet (Storage tab).', self::LABELS[ $id ][0] ), Job_Exception::NOT_FOUND );
+		}
+		if ( ! self::ready( $id ) ) {
+			throw new Job_Exception( sprintf( '%s is not connected yet: click "Connect" on the Storage tab.', self::LABELS[ $id ][0] ), Job_Exception::STEP );
+		}
+	}
+
+	/**
 	 * Validates and saves a destination's settings. Secrets left empty keep their saved value.
+	 * An OAuth connection is kept unless the client ID changes.
 	 *
 	 * @param string $id    Destination id.
 	 * @param array  $input Raw input.
@@ -87,18 +134,15 @@ final class Destinations {
 	public static function save( string $id, array $input ): void {
 		$class    = self::driver_class( $id );
 		$stored   = self::stored();
-		$previous = isset( $stored[ $id ]['secrets'] ) ? (array) $stored[ $id ]['secrets'] : array();
+		$old      = isset( $stored[ $id ] ) ? $stored[ $id ] : array();
+		$previous = isset( $old['secrets'] ) ? (array) $old['secrets'] : array();
 		$normal   = $class::normalize( $input );
 
 		$secrets = array();
 		foreach ( $class::secrets() as $name => $label ) {
 			$value = isset( $normal['secrets'][ $name ] ) ? $normal['secrets'][ $name ] : null;
 			if ( null !== $value ) {
-				try {
-					$secrets[ $name ] = Secrets::site()->encrypt( $value );
-				} catch ( Secret_Exception $e ) {
-					throw new Storage_Exception( $e->getMessage(), Storage_Exception::CONFIG );
-				}
+				$secrets[ $name ] = self::encrypt( $value );
 			} elseif ( isset( $previous[ $name ] ) ) {
 				$secrets[ $name ] = $previous[ $name ];
 			} else {
@@ -106,22 +150,34 @@ final class Destinations {
 			}
 		}
 
-		$stored[ $id ] = array(
+		$entry = array(
 			'driver'   => $id,
 			'settings' => $normal['settings'],
 			'secrets'  => $secrets,
 			'updated'  => time(),
 		);
+		if ( ! empty( $old['auth'] ) && isset( $normal['settings']['client_id'] ) && hash_equals( (string) $old['auth']['client'], hash( 'sha256', $normal['settings']['client_id'] ) ) ) {
+			$entry['auth'] = $old['auth'];
+		}
+		$stored[ $id ] = $entry;
 		update_option( self::OPTION, $stored, false );
 	}
 
 	/**
-	 * Removes a destination's settings and secrets.
+	 * Removes a destination's settings, secrets and tokens (an OAuth connection is revoked first,
+	 * as far as the provider can be reached).
 	 *
 	 * @param string $id Destination id.
 	 */
 	public static function remove( string $id ): void {
 		self::driver_class( $id );
+		if ( self::ready( $id ) && self::is_oauth( self::DRIVERS[ $id ] ) ) {
+			try {
+				self::disconnect( $id );
+			} catch ( \Throwable $e ) {
+				unset( $e ); // The settings go regardless.
+			}
+		}
 		$stored = self::stored();
 		unset( $stored[ $id ] );
 		if ( array() === $stored ) {
@@ -129,6 +185,74 @@ final class Destinations {
 		} else {
 			update_option( self::OPTION, $stored, false );
 		}
+	}
+
+	/**
+	 * Starts connecting an OAuth storage: a one-time state, and the provider's consent URL.
+	 *
+	 * @param string $id Destination id.
+	 * @return array{url:string,redirect_uri:string}
+	 * @throws Job_Exception If the storage is not set up or does not use OAuth.
+	 */
+	public static function authorize( string $id ): array {
+		$driver = self::oauth_driver( $id );
+		$start  = Oauth_State::start( $id );
+		return array(
+			'url'          => $driver->authorization_url( self::redirect_uri( $id ), $start['state'], $start['challenge'] ),
+			'redirect_uri' => self::redirect_uri( $id ),
+		);
+	}
+
+	/**
+	 * Finishes connecting: checks the state, exchanges the code and saves the tokens.
+	 *
+	 * @param string $id    Destination id.
+	 * @param string $code  Authorization code.
+	 * @param string $state State from the provider's answer.
+	 * @throws Job_Exception If the state is not valid.
+	 * @throws Storage_Exception If the provider refuses.
+	 */
+	public static function connect( string $id, string $code, string $state ): void {
+		$verifier = Oauth_State::finish( $id, $state );
+		if ( '' === $code || strlen( $code ) > 2048 || preg_match( '/[\x00-\x20\x7f]/', $code ) ) {
+			throw new Job_Exception( 'The answer from the provider has no valid authorization code.', Job_Exception::STEP );
+		}
+		$driver = self::oauth_driver( $id );
+		self::save_auth( $id, $driver->connect( $code, $verifier, self::redirect_uri( $id ) ) );
+	}
+
+	/**
+	 * Revokes an OAuth connection and forgets its tokens; the settings stay.
+	 *
+	 * @param string $id Destination id.
+	 */
+	public static function disconnect( string $id ): void {
+		$driver = self::oauth_driver( $id );
+		$driver->disconnect();
+		$stored = self::stored();
+		unset( $stored[ $id ]['auth'] );
+		update_option( self::OPTION, $stored, false );
+	}
+
+	/**
+	 * Saves a changed auth record (tokens encrypted).
+	 *
+	 * @param string $id   Destination id.
+	 * @param array  $auth Auth record (plain).
+	 */
+	public static function save_auth( string $id, array $auth ): void {
+		$class  = self::driver_class( $id );
+		$stored = self::stored();
+		if ( ! isset( $stored[ $id ] ) || ! self::is_oauth( $class ) ) {
+			return;
+		}
+		$saved = array();
+		foreach ( $auth as $key => $value ) {
+			$saved[ $key ] = in_array( $key, $class::token_fields(), true ) && '' !== (string) $value ? self::encrypt( (string) $value ) : $value;
+		}
+		$saved['client']      = hash( 'sha256', (string) $stored[ $id ]['settings']['client_id'] );
+		$stored[ $id ]['auth'] = $saved;
+		update_option( self::OPTION, $stored, false );
 	}
 
 	/**
@@ -145,17 +269,40 @@ final class Destinations {
 		if ( ! isset( $stored[ $id ] ) ) {
 			throw new Job_Exception( sprintf( '%s is not set up yet (Storage tab).', self::LABELS[ $id ][0] ), Job_Exception::NOT_FOUND );
 		}
-		$secrets = array();
-		if ( ! $transport instanceof Null_Transport ) {
+		$describe_only = $transport instanceof Null_Transport;
+		$secrets       = array();
+		if ( ! $describe_only ) {
 			foreach ( (array) $stored[ $id ]['secrets'] as $name => $value ) {
-				try {
-					$secrets[ $name ] = Secrets::site()->decrypt( (string) $value );
-				} catch ( Secret_Exception $e ) {
-					throw new Storage_Exception( $e->getMessage(), Storage_Exception::CONFIG );
-				}
+				$secrets[ $name ] = self::decrypt( (string) $value );
 			}
 		}
-		return $class::create( $stored[ $id ]['settings'], $secrets, null === $transport ? new Wp_Transport() : $transport );
+		$driver = $class::create( $stored[ $id ]['settings'], $secrets, null === $transport ? new Wp_Transport() : $transport );
+		if ( $driver instanceof Oauth_Driver ) {
+			$auth = isset( $stored[ $id ]['auth'] ) ? (array) $stored[ $id ]['auth'] : array();
+			unset( $auth['client'] );
+			foreach ( $class::token_fields() as $field ) {
+				if ( isset( $auth[ $field ] ) && '' !== (string) $auth[ $field ] ) {
+					$auth[ $field ] = $describe_only ? 'x' : self::decrypt( (string) $auth[ $field ] );
+				}
+			}
+			$driver->use_auth(
+				$auth,
+				$describe_only ? null : static function ( array $changed ) use ( $id ) {
+					self::save_auth( $id, $changed );
+				}
+			);
+		}
+		return $driver;
+	}
+
+	/**
+	 * Where the provider sends the administrator back: the SiteFerry page, which hands the answer
+	 * to the REST API with the administrator's nonce (nothing is saved from the GET itself).
+	 *
+	 * @param string $id Destination id.
+	 */
+	public static function redirect_uri( string $id ): string {
+		return admin_url( 'admin.php?page=siteferry&oauth=' . rawurlencode( $id ) );
 	}
 
 	/**
@@ -165,6 +312,29 @@ final class Destinations {
 	 */
 	public static function short_label( string $id ): string {
 		return isset( self::LABELS[ $id ] ) ? self::LABELS[ $id ][1] : $id;
+	}
+
+	/**
+	 * The driver of an OAuth destination.
+	 *
+	 * @param string $id Destination id.
+	 * @throws Job_Exception If it is not set up or does not use OAuth.
+	 */
+	private static function oauth_driver( string $id ): Oauth_Driver {
+		$driver = self::driver( $id );
+		if ( ! $driver instanceof Oauth_Driver ) {
+			throw new Job_Exception( 'This storage does not use a sign-in.', Job_Exception::STEP );
+		}
+		return $driver;
+	}
+
+	/**
+	 * Whether a driver class signs in with OAuth.
+	 *
+	 * @param string $class Driver class.
+	 */
+	private static function is_oauth( string $class ): bool {
+		return is_subclass_of( $class, Oauth_Driver::class );
 	}
 
 	/**
@@ -178,6 +348,37 @@ final class Destinations {
 			throw new Job_Exception( 'Unknown storage.', Job_Exception::NOT_FOUND );
 		}
 		return self::DRIVERS[ $id ];
+	}
+
+	/**
+	 * Encrypts a secret.
+	 *
+	 * @param string $value Secret.
+	 * @throws Storage_Exception If it cannot be encrypted.
+	 */
+	private static function encrypt(
+		#[\SensitiveParameter]
+		string $value
+	): string {
+		try {
+			return Secrets::site()->encrypt( $value );
+		} catch ( Secret_Exception $e ) {
+			throw new Storage_Exception( $e->getMessage(), Storage_Exception::CONFIG );
+		}
+	}
+
+	/**
+	 * Decrypts a secret.
+	 *
+	 * @param string $value Stored form.
+	 * @throws Storage_Exception If it cannot be decrypted.
+	 */
+	private static function decrypt( string $value ): string {
+		try {
+			return Secrets::site()->decrypt( $value );
+		} catch ( Secret_Exception $e ) {
+			throw new Storage_Exception( $e->getMessage(), Storage_Exception::CONFIG );
+		}
 	}
 
 	/**

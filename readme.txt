@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.6.0
+Stable tag: 0.7.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,7 +15,7 @@ SiteFerry exports the database and wp-content into a single standard TAR archive
 gzip-compressed) and imports it on another site, replacing the site address where needed.
 
 Work in progress. This version exports and imports sites from the admin screen and from WP-CLI,
-and sends backups to S3-compatible storage and FTP/FTPS servers. Google Drive and Dropbox follow.
+and sends backups to S3-compatible storage, FTP/FTPS servers and Google Drive. Dropbox follows.
 
 = Admin screen =
 
@@ -43,7 +43,8 @@ job; opening SiteFerry again offers to resume or cancel it. Only one job runs at
 * `wp siteferry export --send=<id> [--delete-after-send]`
 * `wp siteferry storage test|list <id>`, `wp siteferry storage send <id> <backup>`,
   `wp siteferry storage fetch <id> <name>`, `wp siteferry storage delete <id> <name> [--yes]`
-  (storage id: s3 or ftp; settings come from the Storage tab)
+  (storage id: s3, ftp or gdrive; settings come from the Storage tab, where Google Drive is also
+  connected)
 
 = S3-compatible storage =
 
@@ -83,9 +84,33 @@ supported.
   refusals by the server (permissions, quota) are reported at once.
 * The folder is created if missing. Keep it outside the server's public web folder.
 
+= Google Drive =
+
+Uses your own OAuth client (Google Cloud console: enable the Google Drive API, set up the consent
+screen, create an OAuth client of type "Web application" and register the redirect URI that the
+Storage tab shows). SiteFerry asks only for the `drive.file` scope: it can see and change only the
+files and folders it created itself, nothing else in the Drive. Backups go into one folder at the
+top of My Drive ("SiteFerry" by default).
+
+* Connecting: "Connect to Google Drive" (a POST with the administrator's nonce) creates a one-time
+  `state`, tied to that administrator, and a PKCE code verifier, both kept for 10 minutes. Google
+  sends the browser back to the SiteFerry page with a code; that page then hands code and state to
+  the REST API with the nonce. Only that request, after the state matches, exchanges the code and
+  saves the tokens. Nothing is saved from the GET request itself, and the code is removed from the
+  address bar at once.
+* The refresh token and access token are stored encrypted; the access token is refreshed when it
+  is about to expire (or when Google refuses it) and the new one saved. "Disconnect" revokes the
+  tokens at Google. Changing the client ID drops the connection.
+* If the consent screen is left in "Testing", Google ends the authorization after 7 days; publish
+  the app to keep it (with only the drive.file scope Google usually asks for no review).
+* Uploads use resumable uploads in parts of 8 MB; after an interruption Drive is asked how much it
+  has and the upload continues from there. Sending a backup again replaces the earlier copy.
+  Deleting a backup moves it to the Drive trash. Downloads use range requests.
+* The access token is only ever sent to Google's API hosts.
+
 = Stored keys =
 
-Secret keys and passwords are encrypted before they are saved (libsodium secretbox, or OpenSSL
+Secret keys, passwords and OAuth tokens are encrypted before they are saved (libsodium secretbox, or OpenSSL
 AES-256-GCM if libsodium is missing) with a key derived from the site's WordPress salts. They are
 never shown again or sent to the browser, never logged, left out of every export, kept when a
 backup is imported into this site, and removed when SiteFerry is deleted. If the salts change,
@@ -133,6 +158,11 @@ Compressed backups (`.tar.gz`) are a series of independent gzip members of about
 are valid gzip files and an interrupted job can resume at a member boundary.
 
 == Changelog ==
+
+= 0.7.0 =
+* Google Drive storage with your own OAuth client: drive.file scope only, one-time state and PKCE, tokens saved only from an authenticated POST, encrypted tokens with refresh, revoke on disconnect, resumable uploads, ranged downloads.
+* Only storages that are ready (and, for Google Drive, connected) are offered for sending.
+* A refusal on the provider's consent page is shown even though WordPress removes "error" from the address bar.
 
 = 0.6.0 =
 * FTP/FTPS storage: explicit FTPS by default, passive mode, uploads in parts with resume, ranged downloads, connection test that also checks resume support.

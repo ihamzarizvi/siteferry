@@ -117,6 +117,20 @@
 	margin-right: 1em;
 }
 
+.siteferry-redirect {
+	display: inline-block;
+	padding: 0.3em 0.5em;
+	word-break: break-all;
+}
+
+.siteferry-howto {
+	margin: 0 0 1em;
+}
+
+.siteferry-howto summary {
+	cursor: pointer;
+}
+
 @media (max-width: 782px) {
 	.siteferry table.widefat td,
 	.siteferry table.widefat th {
