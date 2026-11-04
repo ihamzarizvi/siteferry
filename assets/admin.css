@@ -568,7 +568,31 @@
 	border: 0;
 }
 
-.sf-checks legend {
+.sf-format {
+	margin: 14px 0 0;
+	padding: 12px 0 0;
+	border: 0;
+	border-top: 1px solid var(--sf-fog);
+}
+
+.sf-format legend {
+	float: left;
+	width: 100%;
+}
+
+.sf-format .sf-choices {
+	clear: both;
+	margin-top: 0;
+}
+
+.sf-format .sf-compress {
+	margin: 10px 0 0;
+	padding: 0;
+	border: 0;
+}
+
+.sf-checks legend,
+.sf-format legend {
 	margin-bottom: 6px;
 	padding: 0;
 	font-size: 12px;

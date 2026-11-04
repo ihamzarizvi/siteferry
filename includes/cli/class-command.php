@@ -57,8 +57,18 @@ final class Command {
 	 *
 	 * ## OPTIONS
 	 *
+	 * [--format=<format>]
+	 * : tar: a SiteFerry backup. wpress: a .wpress backup, the format of the All-in-One WP Migration
+	 * plugin, which that plugin can import.
+	 * ---
+	 * default: tar
+	 * options:
+	 *   - tar
+	 *   - wpress
+	 * ---
+	 *
 	 * [--compress]
-	 * : Write a .tar.gz instead of a .tar.
+	 * : Write a .tar.gz instead of a .tar (SiteFerry format only).
 	 *
 	 * [--level=<level>]
 	 * : gzip compression level, 1 (fastest) to 9 (smallest).
@@ -100,12 +110,14 @@ final class Command {
 	 *     wp siteferry export --exclude=media,inactive-themes --compress
 	 *     wp siteferry export --dir=/home/me/backups --porcelain
 	 *     wp siteferry export --send=s3 --delete-after-send
+	 *     wp siteferry export --format=wpress
 	 *
 	 * @param string[] $args       Positional arguments (none).
 	 * @param array    $assoc_args Options.
 	 */
 	public function export( $args, $assoc_args ): void {
 		$options = array(
+			'format'            => (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'tar' ),
 			'compress'          => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'compress', false ),
 			'level'             => (int) \WP_CLI\Utils\get_flag_value( $assoc_args, 'level', 6 ),
 			'exclude_cache'     => ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'include-cache', false ),
@@ -181,7 +193,8 @@ final class Command {
 	 * ## OPTIONS
 	 *
 	 * <file>
-	 * : Backup file (.tar or .tar.gz) made by SiteFerry.
+	 * : Backup file: a .tar or .tar.gz made by SiteFerry, or a .wpress made by All-in-One WP Migration
+	 * (without a password).
 	 *
 	 * [--replace-url=<url>]
 	 * : Address the imported site gets. Default: this site's current address.

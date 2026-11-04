@@ -17,6 +17,9 @@ use SiteFerry\Export\Manifest;
 use SiteFerry\Jobs\Job;
 use SiteFerry\Jobs\Slice_Budget;
 use SiteFerry\Jobs\Step;
+use SiteFerry\Wpress\Import_Step;
+use SiteFerry\Wpress\Reader as Wpress_Reader;
+use SiteFerry\Wpress\Wpress;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -42,7 +45,18 @@ final class Extract_Step implements Step {
 			throw new Archive_Exception( 'Cannot create the staging folder.', Archive_Exception::IO );
 		}
 
-		$reader    = Tar_Reader::open( $job->option( 'archive' ), isset( $state['extractor'] ) ? $state['extractor']['reader'] : null );
+		$saved     = isset( $state['extractor'] ) ? $state['extractor']['reader'] : null;
+		$wpress    = 'wpress' === $job->option( 'format' );
+		$reader    = $wpress
+			? Wpress_Reader::open(
+				$job->option( 'archive' ),
+				$saved,
+				array(
+					'prefix' => 'wp-content/',
+					'skip'   => array( Wpress::class, 'skipped' ),
+				)
+			)
+			: Tar_Reader::open( $job->option( 'archive' ), $saved );
 		$extractor = new Tar_Extractor(
 			$reader,
 			$staging,
@@ -84,6 +98,9 @@ final class Extract_Step implements Step {
 		$inspect = $job->state( 'inspect' );
 		$total   = $inspect['bytes'] + $inspect['db_size'];
 		$job->set_progress( sprintf( 'Unpacking: %s of %s', size_format( $bytes, 1 ), size_format( $total, 1 ) ), $bytes, $total );
+		if ( $done && $wpress ) {
+			Import_Step::stage( $job, $staging, $job->path( 'extracted.sha256' ) );
+		}
 		if ( $done ) {
 			$job->log( 'info', sprintf( 'Backup unpacked: %s.', size_format( $bytes, 1 ) ) );
 		}

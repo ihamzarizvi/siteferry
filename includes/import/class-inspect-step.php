@@ -36,7 +36,9 @@ final class Inspect_Step implements Step {
 	 * @throws Job_Exception If the backup cannot be imported here.
 	 */
 	public function run( Job $job, Slice_Budget $budget ): bool {
-		$manifest = Backups::manifest( $job->option( 'archive' ) );
+		$manifest = 'wpress' === $job->option( 'format' )
+			? \SiteFerry\Wpress\Import_Step::manifest( $job )
+			: Backups::manifest( $job->option( 'archive' ) );
 		$site     = $job->option( 'site' );
 		$warnings = array();
 

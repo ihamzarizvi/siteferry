@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * Entry names are returned exactly as stored. Callers that write to disk must validate them,
  * which Tar_Extractor does with Path_Guard.
  */
-final class Tar_Reader {
+final class Tar_Reader implements Entry_Reader {
 
 	/** Bytes copied at a time. */
 	const CHUNK = 1048576;

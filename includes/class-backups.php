@@ -22,11 +22,14 @@ final class Backups {
 	/** Largest manifest accepted. */
 	const MAX_MANIFEST_BYTES = 4194304;
 
-	/** Names SiteFerry gives backups: <site>-<YYYY-MM-DD>-<12 hex>.tar[.gz]. */
-	const NAME_PATTERN = '/^[a-z0-9][a-z0-9-]{0,80}-\d{4}-\d{2}-\d{2}-[a-f0-9]{12}\.tar(\.gz)?$/';
+	/** Names SiteFerry gives backups: <site>-<YYYY-MM-DD>-<12 hex>.tar[.gz] or .wpress. */
+	const NAME_PATTERN = '/^[a-z0-9][a-z0-9-]{0,80}-\d{4}-\d{2}-\d{2}-[a-f0-9]{12}\.(tar(\.gz)?|wpress)$/';
 
-	/** Any backup file name the admin screen may refer to (no paths, no "..", .tar or .tar.gz). */
-	const SAFE_NAME = '/^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*\.tar(\.gz)?$/';
+	/** Any backup file name the admin screen may refer to (no paths, no "..", .tar, .tar.gz or .wpress). */
+	const SAFE_NAME = '/^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*\.(tar(\.gz)?|wpress)$/';
+
+	/** Backup files in a folder: SiteFerry backups and .wpress backups. */
+	const FILE_PATTERN = '/\.(tar(\.gz)?|wpress)$/';
 
 	/**
 	 * Full path of a backup in a folder, by file name.
@@ -55,16 +58,22 @@ final class Backups {
 	 * @throws \SiteFerry\Jobs\Job_Exception If it cannot be moved.
 	 */
 	public static function adopt( string $file, string $name, string $dir ): string {
-		self::manifest( $file );
+		$wpress = Wpress\Wpress::is_name( $name );
+		if ( $wpress ) {
+			Wpress\Wpress::describe( $file );
+		} else {
+			self::manifest( $file );
+		}
 		if ( preg_match( self::NAME_PATTERN, $name ) ) {
 			// A second copy of a SiteFerry backup keeps its site and date; only the random part changes.
 			while ( file_exists( $dir . '/' . $name ) ) {
-				$name = (string) preg_replace( '/-[a-f0-9]{12}(\.tar(\.gz)?)$/', '-' . Security\Storage::random_hex( 6 ) . '$1', $name );
+				$name = (string) preg_replace( '/-[a-f0-9]{12}(\.(tar(\.gz)?|wpress))$/', '-' . Security\Storage::random_hex( 6 ) . '$1', $name );
 			}
 		} else {
 			$compressed = (bool) preg_match( '/\.(tar\.gz|tgz)$/i', $name );
-			$base       = trim( (string) preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) preg_replace( '/\.(tar\.gz|tgz|tar)$/i', '', $name ) ) ), '-' );
-			$name       = sprintf( '%s-%s-%s.%s', '' === $base ? 'upload' : substr( $base, 0, 40 ), gmdate( 'Y-m-d' ), Security\Storage::random_hex( 6 ), $compressed ? 'tar.gz' : 'tar' );
+			$base       = trim( (string) preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) preg_replace( '/\.(tar\.gz|tgz|tar|wpress)$/i', '', $name ) ) ), '-' );
+			$extension  = $wpress ? 'wpress' : ( $compressed ? 'tar.gz' : 'tar' );
+			$name       = sprintf( '%s-%s-%s.%s', '' === $base ? 'upload' : substr( $base, 0, 40 ), gmdate( 'Y-m-d' ), Security\Storage::random_hex( 6 ), $extension );
 		}
 		$target = $dir . '/' . $name;
 		$moved  = Archive\Io::quiet(
@@ -118,7 +127,8 @@ final class Backups {
 		);
 
 		status_header( $code );
-		header( 'Content-Type: ' . ( '.gz' === substr( $file, -3 ) ? 'application/gzip' : 'application/x-tar' ) );
+		$type = Wpress\Wpress::is_name( $file ) ? 'application/octet-stream' : ( '.gz' === substr( $file, -3 ) ? 'application/gzip' : 'application/x-tar' );
+		header( 'Content-Type: ' . $type );
 		header( 'Content-Disposition: attachment; filename="' . basename( $file ) . '"' );
 		header( 'Content-Length: ' . ( $end - $start + 1 ) );
 		header( 'Accept-Ranges: bytes' );
@@ -166,14 +176,17 @@ final class Backups {
 
 		$backups = array();
 		foreach ( $names as $name ) {
-			if ( ! preg_match( '/\.tar(\.gz)?$/', $name ) || ! is_file( $dir . '/' . $name ) ) {
+			if ( ! preg_match( self::FILE_PATTERN, $name ) || ! is_file( $dir . '/' . $name ) ) {
 				continue;
 			}
 			$path     = $dir . '/' . $name;
 			$manifest = null;
 			$error    = null;
 			try {
-				$manifest = self::manifest( $path );
+				$manifest = Wpress\Wpress::is_name( $name ) ? Wpress\Wpress::describe( $path ) : self::manifest( $path );
+				if ( ! empty( $manifest['encrypted'] ) ) {
+					$error = 'Protected with a password; SiteFerry cannot open password-protected .wpress backups yet.';
+				}
 			} catch ( Archive_Exception $e ) {
 				$error = $e->getMessage();
 			}

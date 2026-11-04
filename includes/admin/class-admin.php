@@ -160,9 +160,24 @@ final class Admin {
 							<summary><?php esc_html_e( 'Leave out single database tables', 'siteferry' ); ?> <span class="sf-more-count" id="siteferry-tables-count" hidden></span></summary>
 							<div id="siteferry-tables" class="sf-tables"><?php esc_html_e( 'Loading...', 'siteferry' ); ?></div>
 						</details>
-						<?php if ( Requirements::can_compress() ) : ?>
-							<p class="sf-compress"><label><input type="checkbox" name="compress"> <?php esc_html_e( 'Compress the file (.tar.gz): smaller, but takes longer to make', 'siteferry' ); ?></label></p>
-						<?php endif; ?>
+						<fieldset class="sf-format">
+							<legend><?php esc_html_e( 'File', 'siteferry' ); ?></legend>
+							<div class="sf-choices" role="radiogroup" aria-label="<?php esc_attr_e( 'Backup file format', 'siteferry' ); ?>">
+								<label class="sf-choice">
+									<input type="radio" name="format" value="tar" checked>
+									<span class="sf-choice-name"><?php esc_html_e( 'SiteFerry backup (.tar)', 'siteferry' ); ?></span>
+									<span class="sf-choice-note"><?php esc_html_e( 'Every file is checked when it is imported.', 'siteferry' ); ?></span>
+								</label>
+								<label class="sf-choice">
+									<input type="radio" name="format" value="wpress">
+									<span class="sf-choice-name"><?php esc_html_e( '.wpress file', 'siteferry' ); ?></span>
+									<span class="sf-choice-note"><?php esc_html_e( 'For importing with the All-in-One WP Migration plugin.', 'siteferry' ); ?></span>
+								</label>
+							</div>
+							<?php if ( Requirements::can_compress() ) : ?>
+								<p class="sf-compress" id="siteferry-compress-row"><label><input type="checkbox" name="compress"> <?php esc_html_e( 'Compress the file (.tar.gz): smaller, but takes longer to make', 'siteferry' ); ?></label></p>
+							<?php endif; ?>
+						</fieldset>
 					</div>
 
 					<div class="sf-card">
@@ -195,11 +210,11 @@ final class Admin {
 
 				<div class="sf-card" id="siteferry-import-choose">
 					<p class="sf-caution"><?php esc_html_e( 'An import replaces this site\'s database and files. SiteFerry and its settings stay. Afterwards you log in with the imported site\'s users.', 'siteferry' ); ?></p>
-					<input type="file" id="siteferry-file" class="sf-file-input" accept=".tar,.gz,.tgz">
+					<input type="file" id="siteferry-file" class="sf-file-input" accept=".tar,.gz,.tgz,.wpress">
 					<label for="siteferry-file" class="sf-drop" id="siteferry-drop">
 						<span class="dashicons dashicons-upload" aria-hidden="true"></span>
 						<span class="sf-drop-main"><?php esc_html_e( 'Drop a backup file here, or choose one', 'siteferry' ); ?></span>
-						<span class="sf-drop-note"><?php esc_html_e( 'A .tar or .tar.gz made by SiteFerry. Large files upload in pieces; an interrupted upload continues when you choose the same file again.', 'siteferry' ); ?></span>
+						<span class="sf-drop-note"><?php esc_html_e( 'A .tar or .tar.gz made by SiteFerry, or a .wpress made by All-in-One WP Migration (without a password). Large files upload in pieces; an interrupted upload continues when you choose the same file again.', 'siteferry' ); ?></span>
 					</label>
 					<div class="sf-progress" id="siteferry-upload-progress" hidden></div>
 					<p id="siteferry-unfinished-uploads" class="description" hidden></p>

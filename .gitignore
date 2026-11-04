@@ -5,6 +5,7 @@
 /tests/local-sites.credentials.json
 *.tar
 *.tar.gz
+*.wpress
 
 # Tooling that is never shipped.
 /vendor/

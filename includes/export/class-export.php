@@ -30,6 +30,7 @@ final class Export {
 
 	/** Option names a caller may set, with defaults. */
 	const DEFAULTS = array(
+		'format'                   => 'tar',
 		'compress'                 => false,
 		'level'                    => 6,
 		'exclude_media'            => false,
@@ -76,6 +77,9 @@ final class Export {
 		}
 
 		$steps = self::STEPS;
+		if ( 'wpress' === $options['format'] ) {
+			$steps[] = \SiteFerry\Wpress\Export_Step::STEP;
+		}
 		if ( '' !== $options['send_to'] ) {
 			// Fails now, not after the export, if the destination is not set up (or not connected).
 			\SiteFerry\Storage\Destinations::require_ready( $options['send_to'] );
@@ -118,6 +122,13 @@ final class Export {
 		}
 
 		$normalized['level'] = max( 1, min( 9, $normalized['level'] ) );
+		$normalized['format'] = strtolower( $normalized['format'] );
+		if ( ! in_array( $normalized['format'], array( 'tar', 'wpress' ), true ) ) {
+			throw new Job_Exception( 'Unknown backup format; use "tar" or "wpress".', Job_Exception::STEP );
+		}
+		if ( 'wpress' === $normalized['format'] ) {
+			$normalized['compress'] = false; // A .wpress file is made from a plain TAR.
+		}
 		if ( '' !== $normalized['send_to'] && ! preg_match( '/^[a-z0-9]{1,20}$/', $normalized['send_to'] ) ) {
 			throw new Job_Exception( 'Unknown storage to send the backup to.', Job_Exception::STEP );
 		}

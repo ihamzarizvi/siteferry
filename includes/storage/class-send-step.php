@@ -139,7 +139,9 @@ final class Send_Step implements Step {
 	 */
 	private static function source( Job $job ): string {
 		if ( 'export' === $job->type() ) {
-			return $job->option( 'output_dir' ) . '/' . $job->option( 'archive' );
+			// The finished backup, which is a .wpress file when the export made one.
+			$result = $job->result();
+			return ! empty( $result['file'] ) ? (string) $result['file'] : $job->option( 'output_dir' ) . '/' . $job->option( 'archive' );
 		}
 		return (string) $job->option( 'file' );
 	}

@@ -80,7 +80,7 @@ final class Fetch_Step implements Step {
 		try {
 			$final = Backups::adopt( $part, $name, (string) $job->option( 'output_dir' ) );
 		} catch ( Archive_Exception $e ) {
-			throw new Job_Exception( 'The downloaded file is not a SiteFerry backup: ' . $e->getMessage(), Job_Exception::STEP );
+			throw new Job_Exception( 'The downloaded file is not a backup SiteFerry can import: ' . $e->getMessage(), Job_Exception::STEP );
 		}
 		$job->set_result(
 			array(

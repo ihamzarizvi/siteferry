@@ -67,8 +67,8 @@ final class Upload {
 	 */
 	public static function create( string $base, string $name, int $size ): self {
 		$name = self::clean_name( $name );
-		if ( ! preg_match( '/\.(tar|tar\.gz|tgz)$/i', $name ) ) {
-			throw new Job_Exception( 'Only SiteFerry backups (.tar or .tar.gz) can be uploaded.', Job_Exception::STEP );
+		if ( ! preg_match( '/\.(tar|tar\.gz|tgz|wpress)$/i', $name ) ) {
+			throw new Job_Exception( 'Only SiteFerry backups (.tar or .tar.gz) and All-in-One WP Migration backups (.wpress) can be uploaded.', Job_Exception::STEP );
 		}
 		if ( $size <= 0 ) {
 			throw new Job_Exception( 'The file is empty.', Job_Exception::STEP );
@@ -218,7 +218,7 @@ final class Upload {
 			$name = Backups::adopt( $this->dir . '/data.part', $this->data['name'], $backups );
 		} catch ( Archive_Exception $e ) {
 			$this->delete();
-			throw new Job_Exception( 'The uploaded file is not a SiteFerry backup: ' . $e->getMessage(), Job_Exception::STEP );
+			throw new Job_Exception( 'The uploaded file is not a backup SiteFerry can import: ' . $e->getMessage(), Job_Exception::STEP );
 		}
 		$this->delete();
 		return $name;

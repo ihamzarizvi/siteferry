@@ -23,9 +23,9 @@ defined( 'ABSPATH' ) || exit;
 final class Tar_Extractor {
 
 	/**
-	 * Archive being read.
+	 * Archive being read (a Tar_Reader, or a .wpress reader).
 	 *
-	 * @var Tar_Reader
+	 * @var Entry_Reader
 	 */
 	private $reader;
 
@@ -81,19 +81,19 @@ final class Tar_Extractor {
 	/**
 	 * Constructor.
 	 *
-	 * @param Tar_Reader $reader  Reader, opened fresh or from the 'reader' part of a saved state.
-	 * @param string     $root    Existing staging folder.
-	 * @param array      $options {
+	 * @param Entry_Reader $reader  Reader, opened fresh or from the 'reader' part of a saved state.
+	 * @param string       $root    Existing staging folder.
+	 * @param array        $options {
 	 *     Optional settings.
 	 *
 	 *     @type callable $allow          function( string $path, Tar_Entry $entry ): bool.
 	 *     @type bool     $windows        Force Windows name rules on or off (default: this server's OS).
 	 *     @type bool     $serialize_hash Save hash state directly when possible. Default true.
 	 * }
-	 * @param array|null $state   Data from state() to continue a previous slice.
+	 * @param array|null   $state   Data from state() to continue a previous slice.
 	 * @throws Archive_Exception If the staging folder does not exist.
 	 */
-	public function __construct( Tar_Reader $reader, string $root, array $options = array(), ?array $state = null ) {
+	public function __construct( Entry_Reader $reader, string $root, array $options = array(), ?array $state = null ) {
 		$real = realpath( $root );
 		if ( false === $real || ! is_dir( $real ) ) {
 			throw new Archive_Exception( 'The staging folder does not exist.', Archive_Exception::IO );

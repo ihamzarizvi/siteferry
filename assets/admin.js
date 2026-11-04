@@ -36,6 +36,8 @@
 		'import.replace': 'Addresses',
 		'import.swap': 'Switch over',
 		'import.finish': 'Clean up',
+		'import.wpress': 'Read .wpress',
+		'export.wpress': 'Make .wpress',
 		upload: 'Upload',
 	};
 	const IMPORT_STEPS = [ 'choose', 'check', 'import' ];
@@ -447,6 +449,15 @@
 		$( 'siteferry-delete-after' ).hidden = ! choice || ! choice.value;
 	}
 
+	/** Compression applies to SiteFerry's own format only. */
+	function syncFormat() {
+		const format = $( 'siteferry-export-form' ).querySelector( 'input[name=format]:checked' );
+		const row = $( 'siteferry-compress-row' );
+		if ( row ) {
+			row.hidden = !! format && format.value === 'wpress';
+		}
+	}
+
 	async function startExport( event ) {
 		event.preventDefault();
 		const form = event.target;
@@ -460,6 +471,11 @@
 				options[ input.name ] = input.checked;
 			}
 		} );
+		const format = form.querySelector( 'input[name=format]:checked' );
+		options.format = format ? format.value : 'tar';
+		if ( options.format === 'wpress' ) {
+			options.compress = false;
+		}
 		const choice = form.querySelector( 'input[name=send_to]:checked' );
 		options.send_to = choice ? choice.value : '';
 		if ( ! options.send_to ) {
@@ -1145,6 +1161,9 @@
 
 	function backupRow( b, targets ) {
 		const meta = [ el( 'span', { text: bytes( b.size ) } ), el( 'span', { text: date( b.created || b.modified ) } ) ];
+		if ( b.format === 'wpress' ) {
+			meta.push( el( 'span', { text: '.wpress (All-in-One WP Migration)' } ) );
+		}
 		if ( b.error ) {
 			meta.push( el( 'span', { class: 'is-bad', text: b.error } ) );
 		} else {
@@ -1320,6 +1339,7 @@
 		);
 		$( 'siteferry-export-form' ).addEventListener( 'submit', startExport );
 		$( 'siteferry-send-options' ).addEventListener( 'change', syncDeleteAfter );
+		$( 'siteferry-export-form' ).querySelectorAll( 'input[name=format]' ).forEach( ( input ) => input.addEventListener( 'change', syncFormat ) );
 		$( 'siteferry-tables' ).addEventListener( 'change', countLeftOutTables );
 		$( 'siteferry-file' ).addEventListener( 'change', onFileChosen );
 		setUpDropZone();

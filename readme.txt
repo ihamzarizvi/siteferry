@@ -12,7 +12,9 @@ Back up a whole WordPress site into one TAR file and restore or migrate it to an
 == Description ==
 
 SiteFerry exports the database and wp-content into a single standard TAR archive (optionally
-gzip-compressed) and imports it on another site, replacing the site address where needed.
+gzip-compressed) and imports it on another site, replacing the site address where needed. It also
+imports and writes .wpress files, the backup format of the All-in-One WP Migration plugin (see
+".wpress backups" below).
 
 Work in progress. This version exports and imports sites from the admin screen and from WP-CLI,
 and sends backups to S3-compatible storage, FTP/FTPS servers and Google Drive. Dropbox follows.
@@ -22,9 +24,10 @@ and sends backups to S3-compatible storage, FTP/FTPS servers and Google Drive. D
 The SiteFerry menu (administrators only) has these tabs:
 
 * Export - choose what to leave out (media, plugins, themes, inactive plugins and themes, spam
-  comments, revisions, single tables), whether to compress, and where the backup goes (this server
-  or a storage that is set up).
-* Import - drop or choose a backup file, or pick one stored on this server, set the new site
+  comments, revisions, single tables), the file (a SiteFerry .tar, optionally compressed, or a
+  .wpress file), and where the backup goes (this server or a storage that is set up).
+* Import - drop or choose a backup file (SiteFerry .tar or .tar.gz, or .wpress), or pick one stored
+  on this server, set the new site
   address, check the backup, then confirm. Uploads are sent in chunks with a SHA-256 checksum each;
   an interrupted upload continues where it stopped when you choose the same file again.
 * Backups - download (through an authenticated PHP stream with Range support), import, send to
@@ -41,7 +44,7 @@ job; opening SiteFerry again offers to resume or cancel it. Only one job runs at
 
 = WP-CLI =
 
-* `wp siteferry export [--compress] [--exclude=media,plugins,themes,inactive-plugins,inactive-themes,spam-comments,revisions] [--include-cache] [--exclude-tables=...] [--exclude-paths=...] [--dir=...] [--porcelain]`
+* `wp siteferry export [--format=tar|wpress] [--compress] [--exclude=media,plugins,themes,inactive-plugins,inactive-themes,spam-comments,revisions] [--include-cache] [--exclude-tables=...] [--exclude-paths=...] [--dir=...] [--porcelain]`
 * `wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] [--include-mu-plugins] [--include-drop-ins] [--force] [--yes]`
 * `wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]`
 * `wp siteferry export --send=<id> [--delete-after-send]`
@@ -190,9 +193,44 @@ open. It contains:
 Compressed backups (`.tar.gz`) are a series of independent gzip members of about 8 MB each, so they
 are valid gzip files and an interrupted job can resume at a member boundary.
 
+= .wpress backups =
+
+.wpress is the backup format of the All-in-One WP Migration plugin. SiteFerry reads and writes it
+from the format's layout, for moving sites between the two plugins; it is not affiliated with that
+plugin or its makers. All-in-One WP Migration is a trademark of its owner.
+
+Importing a .wpress backup (Import tab, or `wp siteferry import site.wpress`) runs the usual import
+with one more step first:
+
+* Every file's CRC-32, stored in the archive, is checked as it is unpacked; a damaged backup stops
+  the import before the site is touched. (.wpress files have no SHA-256 list.)
+* The database dump is rewritten as a SiteFerry dump: the format's placeholder table prefix goes
+  back to the source site's prefix, column lists are added, and the theme and active plugins, which
+  the dump leaves empty and package.json holds, are filled in. Only DROP TABLE, CREATE TABLE and
+  INSERT statements are accepted, as for SiteFerry's own dumps.
+* Addresses and paths come from the backup's package.json; the import then replaces them as usual.
+* Left out: other SiteFerry storage folders inside the backup, All-in-One WP Migration's own backup
+  folder, and SiteFerry's plugin folder (this site keeps its own SiteFerry).
+* Not supported: password-protected .wpress backups (listed, but they cannot be imported yet),
+  multisite backups, and backups made with "Exclude database". The server needs room for the backup,
+  the unpacked files and the database twice, as with any import.
+
+Exporting as .wpress (Export tab: File, or `wp siteferry export --format=wpress`) makes a normal
+SiteFerry backup first and then converts it: package.json first, then the files, then database.sql,
+with each file's CRC-32 and the archive's CRC-32 in their headers. In the dump, the table prefix is
+replaced by the format's placeholder in table names, in the user_roles option and at the start of
+user-meta keys, so the importing plugin can use its own prefix; option names that start with "wp_"
+whatever the prefix (such as wp_page_for_privacy_policy) stay as they are. Compression does not
+apply to .wpress files. All-in-One WP Migration's free version imports such a file with "Import
+from file", within the host's upload limit.
+
+Tested with backups made by All-in-One WP Migration 7.113, and by importing SiteFerry's .wpress files
+with that version.
+
 == Changelog ==
 
 = 0.7.0 =
+* .wpress backups (All-in-One WP Migration's format): import them, with each file's CRC-32 checked, and export as .wpress. Password-protected .wpress backups are recognized but not supported yet.
 * Reworked admin screen: a header with the site's backups and storages, "Where it goes" choices on the Export tab, a drop zone, a stored-backup picker and steps on the Import tab, list layouts that work on phones, storage cards, inline job logs, empty states and dismissible messages. Job progress is drawn as a route with one leg per step.
 * One-click "Sign in with Google" for Google Drive through SiteFerry's sign-in service (auth.xsofty.com); no Google Cloud project needed. Your own OAuth client stays available.
 * Google Drive storage with your own OAuth client: drive.file scope only, one-time state and PKCE, tokens saved only from an authenticated POST, encrypted tokens with refresh, revoke on disconnect, resumable uploads, ranged downloads.

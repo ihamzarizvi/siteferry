@@ -61,15 +61,19 @@ final class Import {
 		$options = self::normalize( $options );
 		$tag     = Storage::random_hex( 3 );
 		$active  = (array) get_option( 'active_plugins', array() );
+		// .wpress backups (All-in-One WP Migration) are read and converted by one more step first.
+		$wpress = \SiteFerry\Wpress\Wpress::is_name( $real ) || \SiteFerry\Wpress\Reader::is_wpress( $real );
 
 		$options['archive']     = $real;
+		$options['format']      = $wpress ? 'wpress' : 'siteferry';
 		$options['site']        = Site_Info::collect();
 		$options['temp_prefix'] = 'sft' . $tag . '_';
 		$options['old_prefix']  = 'sfo' . $tag . '_';
 		$options['own_plugin']  = in_array( Plugin::basename(), $active, true ) ? Plugin::basename() : '';
 		$options['own_folder']  = Plugin::folder();
 
-		return Job::create( Storage::jobs_dir(), 'import', self::STEPS, $options );
+		$steps = $wpress ? array_merge( array( \SiteFerry\Wpress\Import_Step::STEP ), self::STEPS ) : self::STEPS;
+		return Job::create( Storage::jobs_dir(), 'import', $steps, $options );
 	}
 
 	/**

@@ -184,6 +184,7 @@ final class Rest {
 				'created'   => null === $manifest ? null : $manifest['created'],
 				'source'    => null === $manifest ? null : $manifest['site']['home'],
 				'wordpress' => null === $manifest ? null : $manifest['versions']['wordpress'],
+				'format'    => \SiteFerry\Wpress\Wpress::is_name( $backup['name'] ) ? 'wpress' : 'siteferry',
 				'error'     => $backup['error'],
 			);
 		}
@@ -225,7 +226,7 @@ final class Rest {
 	public static function start_export( WP_REST_Request $request ): array {
 		self::assert_idle();
 		$params  = (array) $request->get_json_params();
-		$options = array_intersect_key( $params, array_flip( array( 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables', 'send_to', 'delete_after_send' ) ) );
+		$options = array_intersect_key( $params, array_flip( array( 'format', 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables', 'send_to', 'delete_after_send' ) ) );
 		list( $job, $token ) = Export::start( $options );
 		return array(
 			'job'   => $job->summary(),
