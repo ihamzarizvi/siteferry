@@ -72,6 +72,8 @@ final class Rest {
 			array( '/status', WP_REST_Server::READABLE, 'status', $admin ),
 			array( '/tables', WP_REST_Server::READABLE, 'tables', $admin ),
 			array( '/backups', WP_REST_Server::READABLE, 'backups', $admin ),
+			array( '/labels', WP_REST_Server::READABLE, 'labels', $admin ),
+			array( '/labels/' . self::NAME, WP_REST_Server::CREATABLE, 'save_label', $admin ),
 			array( '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_backup', $admin ),
 			array( '/backups/' . self::NAME . '/download', WP_REST_Server::READABLE, 'download', $admin ),
 			array( '/exports', WP_REST_Server::CREATABLE, 'start_export', $admin ),
@@ -174,10 +176,17 @@ final class Rest {
 	 * Backups, newest first.
 	 */
 	public static function backups(): array {
-		$list = array();
+		$list   = array();
+		$labels = \SiteFerry\Labels::all();
 		foreach ( Backups::in( Storage::backups_dir() ) as $backup ) {
 			$manifest = $backup['manifest'];
+			// The label set on this site; otherwise the one the backup was made with.
+			$given    = isset( $manifest['options'] ) && is_array( $manifest['options'] ) ? $manifest['options'] : array();
+			$label    = isset( $labels[ $backup['name'] ] ) ? $labels[ $backup['name'] ] : \SiteFerry\Labels::normalize( isset( $given['title'] ) ? $given['title'] : '', isset( $given['note'] ) ? $given['note'] : '', isset( $given['tags'] ) ? $given['tags'] : array() );
 			$list[]   = array(
+				'title'     => $label['title'],
+				'note'      => $label['note'],
+				'tags'      => $label['tags'],
 				'name'      => $backup['name'],
 				'size'      => $backup['size'],
 				'modified'  => $backup['modified'],
@@ -185,10 +194,70 @@ final class Rest {
 				'source'    => null === $manifest ? null : $manifest['site']['home'],
 				'wordpress' => null === $manifest ? null : $manifest['versions']['wordpress'],
 				'format'    => \SiteFerry\Wpress\Wpress::is_name( $backup['name'] ) ? 'wpress' : 'siteferry',
+				'contents'  => null === $manifest ? null : self::contents( $manifest ),
 				'error'     => $backup['error'],
 			);
 		}
 		return $list;
+	}
+
+	/**
+	 * Every backup label (file name => title, note, tags), for backups on storage too.
+	 */
+	public static function labels(): array {
+		return \SiteFerry\Labels::all();
+	}
+
+	/**
+	 * Sets a backup's name, note and tags; all empty removes the label.
+	 *
+	 * @param WP_REST_Request $request Request with title, note and tags.
+	 */
+	public static function save_label( WP_REST_Request $request ): array {
+		$params = (array) $request->get_json_params();
+		$label  = \SiteFerry\Labels::set(
+			(string) $request['name'],
+			isset( $params['title'] ) ? $params['title'] : '',
+			isset( $params['note'] ) ? $params['note'] : '',
+			isset( $params['tags'] ) ? $params['tags'] : array()
+		);
+		return array(
+			'name'  => (string) $request['name'],
+			'label' => $label,
+		);
+	}
+
+	/**
+	 * What a backup holds, in a few words ("Whole site", "Without media and plugins"), from the
+	 * export options in its manifest; null when the manifest does not say (.wpress backups).
+	 *
+	 * @param array $manifest Manifest.
+	 */
+	private static function contents( array $manifest ): ?string {
+		if ( ! isset( $manifest['options'] ) || ! is_array( $manifest['options'] ) || array() === $manifest['options'] ) {
+			return null;
+		}
+		$options = $manifest['options'];
+		$missing = array();
+		foreach (
+			array(
+				'exclude_media'   => __( 'media', 'siteferry' ),
+				'exclude_plugins' => __( 'plugins', 'siteferry' ),
+				'exclude_themes'  => __( 'themes', 'siteferry' ),
+			) as $key => $label
+		) {
+			if ( ! empty( $options[ $key ] ) ) {
+				$missing[] = $label;
+			}
+		}
+		if ( ! empty( $options['exclude_tables'] ) ) {
+			$missing[] = __( 'some tables', 'siteferry' );
+		}
+		if ( array() === $missing ) {
+			return __( 'Whole site', 'siteferry' );
+		}
+		/* translators: %s: list of left-out parts, such as "media and plugins" */
+		return sprintf( __( 'Without %s', 'siteferry' ), wp_sprintf_l( '%l', $missing ) );
 	}
 
 	/**
@@ -226,7 +295,7 @@ final class Rest {
 	public static function start_export( WP_REST_Request $request ): array {
 		self::assert_idle();
 		$params  = (array) $request->get_json_params();
-		$options = array_intersect_key( $params, array_flip( array( 'format', 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables', 'send_to', 'delete_after_send' ) ) );
+		$options = array_intersect_key( $params, array_flip( array( 'title', 'note', 'tags', 'format', 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables', 'send_to', 'delete_after_send' ) ) );
 		list( $job, $token ) = Export::start( $options );
 		return array(
 			'job'   => $job->summary(),

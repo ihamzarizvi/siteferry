@@ -114,6 +114,9 @@ final class Export_Step implements Step {
 			}
 		);
 		$job->delete_file( self::DUMP );
+		if ( $job->option( 'save_labels', false ) ) {
+			\SiteFerry\Labels::rename( (string) $job->option( 'archive' ), basename( $final ) );
+		}
 
 		$result         = $job->result();
 		$result['file'] = $final;

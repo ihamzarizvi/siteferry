@@ -54,6 +54,8 @@ Sf_Test::run(
 			array( 'GET', '/backups' ),
 			array( 'DELETE', '/backups/x-2026-01-01-0123456789ab.tar' ),
 			array( 'GET', '/backups/x-2026-01-01-0123456789ab.tar/download' ),
+			array( 'GET', '/labels' ),
+			array( 'POST', '/labels/x-2026-01-01-0123456789ab.tar' ),
 			array( 'POST', '/exports' ),
 			array( 'POST', '/imports' ),
 			array( 'GET', '/jobs' ),
@@ -97,7 +99,18 @@ Sf_Test::run(
 Sf_Test::run(
 	'export through the API, driven with the job token only; tokens are checked',
 	static function () use ( $admin, &$created ) {
-		list( $status, $data ) = sf_rest( 'POST', '/exports', $admin, array(), array( 'exclude_media' => true ) );
+		list( $status, $data ) = sf_rest(
+			'POST',
+			'/exports',
+			$admin,
+			array(),
+			array(
+				'exclude_media' => true,
+				'title'         => '  Before   the update ',
+				'note'          => "Line one\nline two",
+				'tags'          => 'test, Before-update, test',
+			)
+		);
 		Sf_Test::same( 200, $status, 'start: ' . wp_json_encode( $data ) );
 		$id    = $data['job']['id'];
 		$token = $data['token'];
@@ -128,8 +141,49 @@ Sf_Test::run(
 
 		list( $status, $backups ) = sf_rest( 'GET', '/backups', $admin );
 		Sf_Test::ok( in_array( $job['result']['name'], array_column( $backups, 'name' ), true ), 'new backup is listed' );
+		$listed = array_values( array_filter( $backups, static function ( $b ) use ( $job ) { return $b['name'] === $job['result']['name']; } ) )[0];
+		Sf_Test::same( array( 'Before the update', "Line one\nline two", array( 'test', 'Before-update' ), 'Without media' ), array( $listed['title'], $listed['note'], $listed['tags'], $listed['contents'] ), 'name, note, tags and contents' );
+		$manifest = SiteFerry\Backups::manifest( SiteFerry\Backups::path( SiteFerry\Security\Storage::backups_dir(), $job['result']['name'] ) );
+		Sf_Test::same( 'Before the update', $manifest['options']['title'], 'the name travels in the manifest' );
 		list( $status, $log ) = sf_rest( 'GET', "/jobs/$id/log", $admin );
 		Sf_Test::ok( false !== strpos( $log['log'], 'Backup complete' ), 'log readable' );
+	}
+);
+
+Sf_Test::run(
+	'names, notes and tags: renamed, cleaned up, refused for non-backup names, removed when emptied',
+	static function () use ( $admin, &$created ) {
+		$name = $created[0];
+		list( $status, $saved ) = sf_rest(
+			'POST',
+			'/labels/' . $name,
+			$admin,
+			array(),
+			array(
+				'title' => "Renamed\tbackup <b>bold</b>" . str_repeat( 'x', 200 ),
+				'note'  => "Note\x07 with a bell",
+				'tags'  => array( 'one', 'ONE', 'two<script>', '', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i' ),
+			)
+		);
+		Sf_Test::same( 200, $status, 'save: ' . wp_json_encode( $saved ) );
+		Sf_Test::same( 100, mb_strlen( $saved['label']['title'] ), 'name cut to 100 characters' );
+		Sf_Test::ok( 0 === strpos( $saved['label']['title'], 'Renamed backup <b>bold</b>' ), 'one line, stored as text (escaped when shown): ' . $saved['label']['title'] );
+		Sf_Test::same( 'Note with a bell', $saved['label']['note'], 'control characters dropped' );
+		Sf_Test::same( array( 'one', 'twoscript', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' ), $saved['label']['tags'], 'tags: duplicates and symbols dropped, at most 10' );
+
+		list( $status, $labels ) = sf_rest( 'GET', '/labels', $admin );
+		Sf_Test::same( $saved['label'], $labels[ $name ], 'listed by file name' );
+		list( $status, $backups ) = sf_rest( 'GET', '/backups', $admin );
+		$listed = array_values( array_filter( $backups, static function ( $b ) use ( $name ) { return $b['name'] === $name; } ) )[0];
+		Sf_Test::same( $saved['label']['title'], $listed['title'], 'the new name replaces the one in the manifest' );
+
+		foreach ( array( 'x.php', 'x-2026-01-01-0123456789ab.zip' ) as $bad ) {
+			list( $status ) = sf_rest( 'POST', '/labels/' . $bad, $admin, array(), array( 'title' => 'x' ) );
+			Sf_Test::ok( in_array( $status, array( 400, 404 ), true ), "label for $bad answered $status" );
+		}
+		list( $status, $cleared ) = sf_rest( 'POST', '/labels/' . $name, $admin, array(), array( 'title' => ' ', 'note' => '', 'tags' => array() ) );
+		Sf_Test::same( null, $cleared['label'], 'emptied: removed' );
+		Sf_Test::ok( ! isset( SiteFerry\Labels::all()[ $name ] ), 'gone from the option' );
 	}
 );
 
@@ -175,6 +229,7 @@ Sf_Test::run(
 		foreach ( $created as $name ) {
 			list( $status ) = sf_rest( 'DELETE', '/backups/' . $name, $admin );
 			Sf_Test::same( 200, $status, "delete $name:" );
+			SiteFerry\Labels::set( $name, '', '', array() );
 		}
 		$created = array();
 	}

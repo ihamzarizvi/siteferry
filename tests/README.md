@@ -84,13 +84,22 @@ The logins of the test sites are in `tests\local-sites.credentials.json` (ignore
 
 Done by hand (or by an assistant driving a browser) while logged in as an administrator:
 
-* Export from the Export tab; the backup is listed and downloads byte-identical; a `Range` request
-  answers 206.
-* Upload a backup on the Import tab, reload the page partway, choose the same file again: the
-  upload continues from the last stored chunk.
-* Reload the page while an export runs: the banner offers to resume or cancel it.
-* On siteferry-dst only, with the owner's permission: check a backup, cancel at the confirmation
-  (nothing changes), then import it; the page then asks you to log in with the imported site's users.
+* Backups tab with no backups: the empty list offers "Back up now" and "Upload a backup".
+* "Back up now" with Options closed makes a whole-site backup; with a name, note and tags in
+  Options they show in the list (and the fields empty afterwards). The backup downloads
+  byte-identical; a `Range` request answers 206. "Also download it to my computer" starts the
+  download when it is ready.
+* "Name, note and tags" in a row's menu edits them in place; a tag click filters the list (the chip
+  turns on, the summary says "1 of N"); a search with no match offers "Show all backups".
+* "Upload a backup", reload the page partway, choose the same file again: the upload continues from
+  the last stored chunk. The uploaded backup is offered as "Restore it" or "Move it here".
+* Reload the page while a backup runs: the banner offers to resume or cancel it.
+* "Restore" opens the panel and checks the backup without changing anything (title with the
+  backup's name and date, no From/Into for this site's own backups, red "Restore now"); Cancel
+  closes it and the check job is cancelled. On siteferry-dst only, with the owner's permission:
+  confirm, and the site is restored. A backup from another site says "Move here", shows From/Into and
+  needs the tick.
+* Deleting the last copy of a backup also removes its name, note and tags.
 * Storage tab, for each storage (with `wp-storage-check.ps1 -Driver <id> -Serve` running, or a
   real account): save the settings
   (the key field empties and the page says a key is saved), test the connection, export with

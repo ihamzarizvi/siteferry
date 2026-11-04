@@ -23,18 +23,26 @@ and sends backups to S3-compatible storage, FTP/FTPS servers and Google Drive. D
 
 The SiteFerry menu (administrators only) has these tabs:
 
-* Export - choose what to leave out (media, plugins, themes, inactive plugins and themes, spam
-  comments, revisions, single tables), the file (a SiteFerry .tar, optionally compressed, or a
-  .wpress file), and where the backup goes (this server or a storage that is set up).
-* Import - drop or choose a backup file (SiteFerry .tar or .tar.gz, or .wpress), or pick one stored
-  on this server, set the new site
-  address, check the backup, then confirm. Uploads are sent in chunks with a SHA-256 checksum each;
-  an interrupted upload continues where it stopped when you choose the same file again.
-* Backups - download (through an authenticated PHP stream with Range support), import, send to
-  storage or delete; below, the backups on each storage, which can be downloaded to this server or
-  deleted there.
+* Backups - "Back up now" backs up the whole site to this server in one click. "Options" holds the
+  rest: a name, note and tags for the backup, what to leave out (media, plugins, themes, inactive
+  plugins and themes, spam comments, revisions, single tables), the file (a SiteFerry .tar,
+  optionally compressed, or a .wpress file), where it goes (this server or a storage that is set
+  up), and downloading it to your computer when it is ready. "Upload a backup" adds a SiteFerry
+  .tar/.tar.gz or a .wpress file to the list; uploads are sent in chunks with a SHA-256 checksum
+  each, and an interrupted upload continues when you choose the same file again.
+  Below, one list of every backup on this server and on each storage, newest first, with where
+  each copy is, its name, note and tags, a search box and a tag filter. Each backup's menu
+  downloads it (through an authenticated PHP stream with Range support), sends it to a storage,
+  edits its name, note and tags (the file name stays), or deletes a copy.
+  "Restore" (a backup of this site) or "Move here" (a backup of another site) opens a panel that
+  checks the backup first (versions, disk space, files) without changing anything, says what will
+  happen, and only then offers to go ahead. A backup that is only on a storage is downloaded to
+  this server first. The site address, must-use plugins and drop-ins are under "Advanced".
 * Storage - one card per storage with its state; open it for the settings and a connection test.
-* Log - status and log of the last jobs.
+* Activity - status and log of the last jobs.
+
+Names, notes and tags are kept by file name, so they apply to every copy of a backup. Those given
+when a backup is made are also stored in its manifest and travel with it.
 
 The header shows the site, its backups and the storages set up. While a job runs, its steps are
 drawn as the legs of a route, with the current step and how far it is.
@@ -230,6 +238,7 @@ with that version.
 == Changelog ==
 
 = 0.7.0 =
+* Simpler backup and restore: one Backups tab with "Back up now", Options, "Upload a backup" and one list of all backups (this server and every storage) in columns; a guided panel to restore a backup of this site or move another site here, checked before anything changes; names, notes and tags for backups, with search and a tag filter. Export and Import tabs are folded into Backups, Log is now Activity.
 * .wpress backups (All-in-One WP Migration's format): import them, with each file's CRC-32 checked, and export as .wpress. Password-protected .wpress backups are recognized but not supported yet.
 * Reworked admin screen: a header with the site's backups and storages, "Where it goes" choices on the Export tab, a drop zone, a stored-backup picker and steps on the Import tab, list layouts that work on phones, storage cards, inline job logs, empty states and dismissible messages. Job progress is drawn as a route with one leg per step.
 * One-click "Sign in with Google" for Google Drive through SiteFerry's sign-in service (auth.xsofty.com); no Google Cloud project needed. Your own OAuth client stays available.

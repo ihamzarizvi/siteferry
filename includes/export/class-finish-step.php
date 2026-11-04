@@ -47,6 +47,9 @@ final class Finish_Step implements Step {
 		foreach ( array( 'files.list', 'database.sql', 'checksums.tmp' ) as $temporary ) {
 			$job->delete_file( $temporary );
 		}
+		if ( $job->option( 'save_labels', false ) && ( '' !== (string) $job->option( 'title', '' ) || '' !== (string) $job->option( 'note', '' ) || array() !== (array) $job->option( 'tags', array() ) ) ) {
+			\SiteFerry\Labels::set( (string) $job->option( 'archive' ), $job->option( 'title', '' ), $job->option( 'note', '' ), $job->option( 'tags', array() ) );
+		}
 
 		$pack = $job->state( 'pack' );
 		$job->set_result(

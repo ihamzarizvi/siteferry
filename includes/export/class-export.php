@@ -30,6 +30,9 @@ final class Export {
 
 	/** Option names a caller may set, with defaults. */
 	const DEFAULTS = array(
+		'title'                    => '',
+		'note'                     => '',
+		'tags'                     => array(),
 		'format'                   => 'tar',
 		'compress'                 => false,
 		'level'                    => 6,
@@ -86,9 +89,10 @@ final class Export {
 			$steps[] = self::SEND_STEP;
 		}
 
-		$options['site']       = $site;
-		$options['exclusions'] = self::exclusions( $options, $site )->to_array();
-		$options['output_dir'] = $output;
+		$options['site']        = $site;
+		$options['exclusions']  = self::exclusions( $options, $site )->to_array();
+		$options['output_dir']  = $output;
+		$options['save_labels'] = null === $work_dir; // Exports to another folder write nothing to the site.
 		$options['archive']    = self::archive_name( $site['home'], $options['compress'] );
 
 		return Job::create( $jobs, 'export', $steps, $options );
@@ -122,6 +126,10 @@ final class Export {
 		}
 
 		$normalized['level'] = max( 1, min( 9, $normalized['level'] ) );
+		$label               = \SiteFerry\Labels::normalize( isset( $options['title'] ) ? $options['title'] : '', isset( $options['note'] ) ? $options['note'] : '', isset( $options['tags'] ) ? $options['tags'] : array() );
+		$normalized['title'] = $label['title'];
+		$normalized['note']  = $label['note'];
+		$normalized['tags']  = $label['tags'];
 		$normalized['format'] = strtolower( $normalized['format'] );
 		if ( ! in_array( $normalized['format'], array( 'tar', 'wpress' ), true ) ) {
 			throw new Job_Exception( 'Unknown backup format; use "tar" or "wpress".', Job_Exception::STEP );
