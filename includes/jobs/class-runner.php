@@ -94,16 +94,47 @@ final class Runner {
 			}
 		} catch ( \Throwable $e ) {
 			$job->fail( $e->getMessage() );
-			foreach ( array_reverse( $job->steps() ) as $name ) {
-				try {
-					self::make( $name )->cleanup( $job );
-				} catch ( \Throwable $ignored ) {
-					$job->log( 'warning', 'Cleanup of ' . $name . ' failed: ' . $ignored->getMessage() );
-				}
-			}
+			self::cleanup( $job );
 		} finally {
 			$job->save();
 			$job->unlock();
+		}
+	}
+
+	/**
+	 * Stops an unfinished job and undoes its work, as a failure would.
+	 *
+	 * @param Job $job The job.
+	 * @throws Job_Exception If a slice of the job is running right now.
+	 */
+	public static function cancel( Job $job ): void {
+		if ( $job->finished() ) {
+			return;
+		}
+		if ( ! $job->lock() ) {
+			throw new Job_Exception( 'This job is running right now; try again in a moment.', Job_Exception::BUSY );
+		}
+		try {
+			$job->fail( 'Cancelled.' );
+			self::cleanup( $job );
+		} finally {
+			$job->save();
+			$job->unlock();
+		}
+	}
+
+	/**
+	 * Runs every step's cleanup, last step first.
+	 *
+	 * @param Job $job The job.
+	 */
+	private static function cleanup( Job $job ): void {
+		foreach ( array_reverse( $job->steps() ) as $name ) {
+			try {
+				self::make( $name )->cleanup( $job );
+			} catch ( \Throwable $e ) {
+				$job->log( 'warning', 'Cleanup of ' . $name . ' failed: ' . $e->getMessage() );
+			}
 		}
 	}
 

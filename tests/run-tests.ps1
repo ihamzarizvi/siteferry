@@ -70,6 +70,16 @@ try {
             if ($LASTEXITCODE -ne 0) { $failures.Add("$($suite.Name) on PHP $version") }
         }
     }
+
+    # The admin screen's SHA-256 fallback, if Node is installed.
+    if (Get-Command node -ErrorAction SilentlyContinue) {
+        Write-Host '=== JavaScript' -ForegroundColor Cyan
+        & node (Join-Path $root 'tests\js\test-sha256.js')
+        if ($LASTEXITCODE -ne 0) { $failures.Add('js/test-sha256.js') }
+    }
+    else {
+        Write-Host 'Node not found: skipped tests\js\test-sha256.js' -ForegroundColor Yellow
+    }
 }
 finally {
     # Remove the junction itself first (never its target), then the case folder.

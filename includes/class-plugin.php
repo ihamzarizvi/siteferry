@@ -22,6 +22,10 @@ final class Plugin {
 	 * each area is added.
 	 */
 	public static function boot(): void {
+		Rest\Rest::register();
+		if ( is_admin() ) {
+			Admin\Admin::init();
+		}
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			Cli\Command::register();
 		}

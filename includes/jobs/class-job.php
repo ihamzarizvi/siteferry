@@ -179,6 +179,84 @@ final class Job {
 	}
 
 	/**
+	 * Time of the last save.
+	 */
+	public function updated(): int {
+		return (int) $this->data['updated'];
+	}
+
+	/**
+	 * Public view of the job for the admin screen (no token hash, no step internals).
+	 *
+	 * @return array
+	 */
+	public function summary(): array {
+		$steps = $this->data['steps'];
+		$index = min( (int) $this->data['step'], count( $steps ) );
+		return array(
+			'id'       => $this->data['id'],
+			'type'     => $this->data['type'],
+			'status'   => $this->data['status'],
+			'step'     => array(
+				'index' => $index,
+				'count' => count( $steps ),
+				'name'  => isset( $steps[ $index ] ) ? $steps[ $index ] : null,
+			),
+			'progress' => $this->data['progress'],
+			'warnings' => array(
+				'count' => (int) $this->data['warning_count'],
+				'first' => array_slice( $this->data['warnings'], 0, 20 ),
+			),
+			'error'    => $this->data['error'],
+			'result'   => $this->data['result'],
+			'created'  => (int) $this->data['created'],
+			'updated'  => (int) $this->data['updated'],
+		);
+	}
+
+	/**
+	 * All jobs in a folder, newest first. Unreadable job folders are skipped.
+	 *
+	 * @param string $base Folder that holds job folders.
+	 * @return Job[]
+	 */
+	public static function all( string $base ): array {
+		$names = is_dir( $base ) ? scandir( $base ) : false;
+		$jobs  = array();
+		foreach ( false === $names ? array() : $names as $name ) {
+			if ( preg_match( '/^[a-f0-9]{16}$/', $name ) ) {
+				try {
+					$jobs[] = self::load( $base, $name );
+				} catch ( Job_Exception $e ) {
+					continue;
+				}
+			}
+		}
+		usort(
+			$jobs,
+			static function ( Job $a, Job $b ): int {
+				return $b->created() - $a->created();
+			}
+		);
+		return $jobs;
+	}
+
+	/**
+	 * The unfinished job that was active recently, if any (only one job may run at a time).
+	 *
+	 * @param string $base      Folder that holds job folders.
+	 * @param int    $stale_age Seconds without progress after which an unfinished job no longer blocks.
+	 */
+	public static function active( string $base, int $stale_age = 3600 ): ?self {
+		foreach ( self::all( $base ) as $job ) {
+			if ( ! $job->finished() && time() - $job->updated() < $stale_age ) {
+				return $job;
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * One option, or $default.
 	 *
 	 * @param string $key     Option name.

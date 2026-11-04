@@ -1,0 +1,493 @@
+<?php
+/**
+ * REST API: siteferry/v1.
+ *
+ * @package SiteFerry
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
+
+namespace SiteFerry\Rest;
+
+use SiteFerry\Archive\Archive_Exception;
+use SiteFerry\Archive\Io;
+use SiteFerry\Backups;
+use SiteFerry\Database\Dumper;
+use SiteFerry\Export\Export;
+use SiteFerry\Import\Import;
+use SiteFerry\Import\Upload;
+use SiteFerry\Jobs\Job;
+use SiteFerry\Jobs\Job_Exception;
+use SiteFerry\Jobs\Runner;
+use SiteFerry\Jobs\Slice_Budget;
+use SiteFerry\Requirements;
+use SiteFerry\Security\Storage;
+use WP_Error;
+use WP_REST_Request;
+use WP_REST_Response;
+use WP_REST_Server;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Routes for the admin screen.
+ *
+ * Every route has a permission callback. Most require manage_options (with WordPress's REST
+ * nonce, checked by the cookie authentication). The job routes also accept the job's own token
+ * in the X-SiteFerry-Job header, compared with hash_equals(): an import replaces the users table,
+ * after which the admin's login no longer exists, yet the job must be able to finish. The same
+ * header lets these requests through SiteFerry's maintenance mode. Confirming an import needs
+ * both the admin and the token.
+ */
+final class Rest {
+
+	const NS = 'siteferry/v1';
+
+	/** A job token only works while the job has made progress within this many seconds. */
+	const TOKEN_MAX_AGE = 86400;
+
+	const ID   = '(?P<id>[a-f0-9]{16})';
+	const UP   = '(?P<id>[a-f0-9]{24})';
+	const NAME = '(?P<name>[A-Za-z0-9._-]+)';
+
+	/**
+	 * Hooks route registration.
+	 */
+	public static function register(): void {
+		add_action( 'rest_api_init', array( self::class, 'routes' ) );
+	}
+
+	/**
+	 * Registers the routes.
+	 */
+	public static function routes(): void {
+		$admin   = array( self::class, 'can_manage' );
+		$job     = array( self::class, 'can_drive_job' );
+		$confirm = array( self::class, 'can_confirm' );
+
+		$routes = array(
+			'/status'                        => array( WP_REST_Server::READABLE, 'status', $admin ),
+			'/tables'                        => array( WP_REST_Server::READABLE, 'tables', $admin ),
+			'/backups'                       => array( WP_REST_Server::READABLE, 'backups', $admin ),
+			'/backups/' . self::NAME         => array( WP_REST_Server::DELETABLE, 'delete_backup', $admin ),
+			'/backups/' . self::NAME . '/download' => array( WP_REST_Server::READABLE, 'download', $admin ),
+			'/exports'                       => array( WP_REST_Server::CREATABLE, 'start_export', $admin ),
+			'/imports'                       => array( WP_REST_Server::CREATABLE, 'start_import', $admin ),
+			'/jobs'                          => array( WP_REST_Server::READABLE, 'jobs', $admin ),
+			'/jobs/' . self::ID              => array( WP_REST_Server::READABLE, 'job', $job ),
+			'/jobs/' . self::ID . '/run'     => array( WP_REST_Server::CREATABLE, 'run', $job ),
+			'/jobs/' . self::ID . '/confirm' => array( WP_REST_Server::CREATABLE, 'confirm', $confirm ),
+			'/jobs/' . self::ID . '/cancel'  => array( WP_REST_Server::CREATABLE, 'cancel', $job ),
+			'/jobs/' . self::ID . '/log'     => array( WP_REST_Server::READABLE, 'log', $admin ),
+			'/uploads'                       => array( WP_REST_Server::READABLE, 'uploads', $admin ),
+			'/uploads/new'                   => array( WP_REST_Server::CREATABLE, 'start_upload', $admin ),
+			'/uploads/' . self::UP           => array( WP_REST_Server::READABLE, 'upload', $admin ),
+			'/uploads/' . self::UP . '/chunk'  => array( WP_REST_Server::CREATABLE, 'chunk', $admin ),
+			'/uploads/' . self::UP . '/finish' => array( WP_REST_Server::CREATABLE, 'finish_upload', $admin ),
+			'/uploads/' . self::UP . '/cancel' => array( WP_REST_Server::CREATABLE, 'cancel_upload', $admin ),
+		);
+		foreach ( $routes as $path => list( $methods, $callback, $permission ) ) {
+			register_rest_route(
+				self::NS,
+				$path,
+				array(
+					'methods'             => $methods,
+					'callback'            => self::guard( $callback ),
+					'permission_callback' => $permission,
+				)
+			);
+		}
+	}
+
+	/**
+	 * Permission: administrators.
+	 */
+	public static function can_manage(): bool {
+		return current_user_can( 'manage_options' );
+	}
+
+	/**
+	 * Permission: administrators, or a request carrying this job's token.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function can_drive_job( WP_REST_Request $request ): bool {
+		return self::can_manage() || null !== self::job_from_token( $request );
+	}
+
+	/**
+	 * Permission: an administrator who also holds this job's token.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function can_confirm( WP_REST_Request $request ): bool {
+		return self::can_manage() && null !== self::job_from_token( $request );
+	}
+
+	/**
+	 * Limits and the active job, for the admin screen.
+	 */
+	public static function status(): array {
+		global $wpdb;
+		$active = Job::active( Storage::jobs_dir() );
+		return array(
+			'version'  => SITEFERRY_VERSION,
+			'compress' => Requirements::can_compress(),
+			'chunk'    => self::chunk_size(),
+			'prefix'   => $wpdb->prefix,
+			'home'     => home_url(),
+			'active'   => null === $active ? null : $active->summary(),
+			'uploads'  => array_map(
+				static function ( Upload $upload ): array {
+					return $upload->to_array();
+				},
+				Upload::all( self::uploads_dir() )
+			),
+		);
+	}
+
+	/**
+	 * Tables an export would include.
+	 */
+	public static function tables(): array {
+		global $wpdb;
+		return ( new Dumper( $wpdb ) )->tables( $wpdb->prefix );
+	}
+
+	/**
+	 * Backups, newest first.
+	 */
+	public static function backups(): array {
+		$list = array();
+		foreach ( Backups::in( Storage::backups_dir() ) as $backup ) {
+			$manifest = $backup['manifest'];
+			$list[]   = array(
+				'name'      => $backup['name'],
+				'size'      => $backup['size'],
+				'modified'  => $backup['modified'],
+				'created'   => null === $manifest ? null : $manifest['created'],
+				'source'    => null === $manifest ? null : $manifest['site']['home'],
+				'wordpress' => null === $manifest ? null : $manifest['versions']['wordpress'],
+				'error'     => $backup['error'],
+			);
+		}
+		return $list;
+	}
+
+	/**
+	 * Deletes a backup.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function delete_backup( WP_REST_Request $request ): array {
+		$path = Backups::path( Storage::backups_dir(), (string) $request['name'] );
+		if ( ! Io::quiet(
+			static function () use ( $path ) {
+				return unlink( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+			}
+		) ) {
+			throw new Job_Exception( 'The backup could not be deleted.', Job_Exception::STEP );
+		}
+		return array( 'deleted' => (string) $request['name'] );
+	}
+
+	/**
+	 * Streams a backup (supports Range) and ends the request.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function download( WP_REST_Request $request ): void {
+		$path = Backups::path( Storage::backups_dir(), (string) $request['name'] );
+		Backups::stream( $path, $request->get_header( 'range' ) );
+	}
+
+	/**
+	 * Starts an export.
+	 *
+	 * @param WP_REST_Request $request Request with export options as JSON.
+	 */
+	public static function start_export( WP_REST_Request $request ): array {
+		self::assert_idle();
+		$params  = (array) $request->get_json_params();
+		$options = array_intersect_key( $params, array_flip( array( 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables' ) ) );
+		list( $job, $token ) = Export::start( $options );
+		return array(
+			'job'   => $job->summary(),
+			'token' => $token,
+		);
+	}
+
+	/**
+	 * Starts an import of a stored backup.
+	 *
+	 * @param WP_REST_Request $request Request with "backup" and import options as JSON.
+	 */
+	public static function start_import( WP_REST_Request $request ): array {
+		self::assert_idle();
+		$params  = (array) $request->get_json_params();
+		$path    = Backups::path( Storage::backups_dir(), isset( $params['backup'] ) ? (string) $params['backup'] : '' );
+		$options = array_intersect_key( $params, array_flip( array( 'replace_url', 'include_mu_plugins', 'include_drop_ins', 'force' ) ) );
+		list( $job, $token ) = Import::start( $path, $options );
+		return array(
+			'job'   => $job->summary(),
+			'token' => $token,
+		);
+	}
+
+	/**
+	 * Recent jobs.
+	 */
+	public static function jobs(): array {
+		return array_map(
+			static function ( Job $job ): array {
+				return $job->summary();
+			},
+			array_slice( Job::all( Storage::jobs_dir() ), 0, 30 )
+		);
+	}
+
+	/**
+	 * One job.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function job( WP_REST_Request $request ): array {
+		return self::load_job( $request )->summary();
+	}
+
+	/**
+	 * Runs one slice of a job (up to 15 seconds of work) and reports progress.
+	 *
+	 * An optional "seconds" parameter asks for a shorter slice (for proxies with short timeouts);
+	 * it can never raise the server's own limit.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function run( WP_REST_Request $request ): array {
+		$job     = self::load_job( $request );
+		$seconds = self::slice_seconds();
+		$asked   = $request->get_param( 'seconds' );
+		if ( is_numeric( $asked ) ) {
+			$seconds = max( 0.0, min( $seconds, (float) $asked ) );
+		}
+		ignore_user_abort( true );
+		Runner::run_slice( $job, new Slice_Budget( $seconds ) );
+		return $job->summary();
+	}
+
+	/**
+	 * Confirms an import that is waiting after its inspection.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function confirm( WP_REST_Request $request ): array {
+		$job = self::load_job( $request );
+		Import::confirm( $job );
+		return $job->summary();
+	}
+
+	/**
+	 * Cancels an unfinished job (its work is undone).
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function cancel( WP_REST_Request $request ): array {
+		$job = self::load_job( $request );
+		Runner::cancel( $job );
+		return $job->summary();
+	}
+
+	/**
+	 * The end of a job's log.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function log( WP_REST_Request $request ): array {
+		$job  = self::load_job( $request );
+		$file = $job->path( 'job.log' );
+		$size = is_file( $file ) ? (int) filesize( $file ) : 0;
+		$text = '';
+		if ( $size > 0 ) {
+			$handle = fopen( $file, 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+			fseek( $handle, max( 0, $size - 262144 ) );
+			$text = (string) stream_get_contents( $handle );
+			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		}
+		return array(
+			'id'        => $job->id(),
+			'log'       => $text,
+			'truncated' => $size > 262144,
+		);
+	}
+
+	/**
+	 * Unfinished uploads (to resume after a page reload).
+	 */
+	public static function uploads(): array {
+		return array_map(
+			static function ( Upload $upload ): array {
+				return $upload->to_array();
+			},
+			Upload::all( self::uploads_dir() )
+		);
+	}
+
+	/**
+	 * Starts an upload.
+	 *
+	 * @param WP_REST_Request $request Request with "name" and "size".
+	 */
+	public static function start_upload( WP_REST_Request $request ): array {
+		$params = (array) $request->get_json_params();
+		return Upload::create( self::uploads_dir(), isset( $params['name'] ) ? (string) $params['name'] : '', isset( $params['size'] ) ? (int) $params['size'] : 0 )->to_array();
+	}
+
+	/**
+	 * One upload.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function upload( WP_REST_Request $request ): array {
+		return Upload::load( self::uploads_dir(), (string) $request['id'] )->to_array();
+	}
+
+	/**
+	 * Receives one chunk as the raw request body.
+	 *
+	 * Headers: X-SiteFerry-Offset (byte offset) and X-SiteFerry-Sha256 (hex SHA-256 of the body).
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function chunk( WP_REST_Request $request ): array {
+		$upload = Upload::load( self::uploads_dir(), (string) $request['id'] );
+		$offset = (string) $request->get_header( 'x_siteferry_offset' );
+		if ( ! preg_match( '/^[0-9]{1,18}$/', $offset ) ) {
+			throw new Job_Exception( 'Missing or invalid chunk offset.', Job_Exception::STEP );
+		}
+		ignore_user_abort( true );
+		$upload->append( (int) $offset, $request->get_body(), (string) $request->get_header( 'x_siteferry_sha256' ) );
+		return $upload->to_array();
+	}
+
+	/**
+	 * Checks a complete upload and turns it into a backup.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function finish_upload( WP_REST_Request $request ): array {
+		$upload = Upload::load( self::uploads_dir(), (string) $request['id'] );
+		return array( 'backup' => $upload->finish( Storage::backups_dir() ) );
+	}
+
+	/**
+	 * Abandons an upload.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function cancel_upload( WP_REST_Request $request ): array {
+		Upload::load( self::uploads_dir(), (string) $request['id'] )->delete();
+		return array( 'cancelled' => (string) $request['id'] );
+	}
+
+	/**
+	 * Chunk size for uploads: about 5 MB, but always below post_max_size.
+	 */
+	public static function chunk_size(): int {
+		$post  = wp_convert_hr_to_bytes( (string) ini_get( 'post_max_size' ) );
+		$chunk = 5242880;
+		if ( $post > 0 ) {
+			$chunk = min( $chunk, $post - 262144 );
+		}
+		return max( 262144, min( $chunk, Upload::MAX_CHUNK ) );
+	}
+
+	/**
+	 * Wraps a handler: maps SiteFerry exceptions to REST errors with fitting status codes.
+	 *
+	 * @param string $method Handler name.
+	 * @return callable
+	 */
+	private static function guard( string $method ): callable {
+		return static function ( WP_REST_Request $request ) use ( $method ) {
+			try {
+				$result = call_user_func( array( self::class, $method ), $request );
+				return $result instanceof WP_REST_Response ? $result : new WP_REST_Response( $result );
+			} catch ( Job_Exception $e ) {
+				$status = array(
+					Job_Exception::NOT_FOUND => 404,
+					Job_Exception::BUSY      => 409,
+				);
+				return new WP_Error( 'siteferry_error', $e->getMessage(), array( 'status' => isset( $status[ $e->getCode() ] ) ? $status[ $e->getCode() ] : 400 ) );
+			} catch ( Archive_Exception $e ) {
+				return new WP_Error( 'siteferry_error', $e->getMessage(), array( 'status' => 400 ) );
+			} catch ( \Throwable $e ) {
+				return new WP_Error( 'siteferry_error', $e->getMessage(), array( 'status' => 500 ) );
+			}
+		};
+	}
+
+	/**
+	 * The job named in the route.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @throws Job_Exception If it does not exist.
+	 */
+	private static function load_job( WP_REST_Request $request ): Job {
+		return Job::load( Storage::jobs_dir(), (string) $request['id'] );
+	}
+
+	/**
+	 * The job named in the route if the request carries its valid, recently used token.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	private static function job_from_token( WP_REST_Request $request ): ?Job {
+		$token = (string) $request->get_header( 'x_siteferry_job' );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $token ) ) {
+			return null;
+		}
+		try {
+			$job = self::load_job( $request );
+		} catch ( Job_Exception $e ) {
+			return null;
+		}
+		if ( ! $job->check_token( $token ) || time() - $job->updated() > self::TOKEN_MAX_AGE ) {
+			return null;
+		}
+		return $job;
+	}
+
+	/**
+	 * Refuses to start a job while another one is active.
+	 *
+	 * @throws Job_Exception If a job is active.
+	 */
+	private static function assert_idle(): void {
+		$active = Job::active( Storage::jobs_dir() );
+		if ( null !== $active ) {
+			throw new Job_Exception( sprintf( 'Another %s is still in progress (job %s). Finish or cancel it first.', $active->type(), $active->id() ), Job_Exception::BUSY );
+		}
+	}
+
+	/**
+	 * Seconds of work per slice: 15, or half of a short max_execution_time.
+	 */
+	private static function slice_seconds(): float {
+		Io::quiet(
+			static function () {
+				return set_time_limit( 120 );
+			}
+		);
+		$limit = (int) ini_get( 'max_execution_time' );
+		if ( $limit <= 0 ) {
+			return 15.0;
+		}
+		return (float) max( 3, min( 15, intdiv( $limit, 2 ) ) );
+	}
+
+	/**
+	 * Folder for upload sessions.
+	 */
+	private static function uploads_dir(): string {
+		return Storage::ensure( Storage::root() . '/uploads' );
+	}
+}

@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,24 @@ Back up a whole WordPress site into one TAR file and restore or migrate it to an
 SiteFerry exports the database and wp-content into a single standard TAR archive (optionally
 gzip-compressed) and imports it on another site, replacing the site address where needed.
 
-Work in progress. This version exports and imports sites from WP-CLI; the admin screen follows.
+Work in progress. This version exports and imports sites from the admin screen and from WP-CLI.
+Sending backups to remote storage follows.
+
+= Admin screen =
+
+The SiteFerry menu (administrators only) has these tabs:
+
+* Export - choose what to leave out (media, plugins, themes, inactive plugins and themes, spam
+  comments, revisions, single tables) and whether to compress.
+* Import - upload a backup or pick a stored one, set the new site address, check the backup, then
+  confirm. Uploads are sent in chunks with a SHA-256 checksum each; an interrupted upload continues
+  where it stopped when you choose the same file again.
+* Backups - download (through an authenticated PHP stream with Range support), import or delete.
+* Storage - remote storage settings (coming in later versions).
+* Recent jobs - status and log of the last exports and imports.
+
+Exports and imports run as a series of short requests from the open page. Closing the page pauses the
+job; opening SiteFerry again offers to resume or cancel it. Only one job runs at a time.
 
 = WP-CLI =
 
@@ -63,6 +80,12 @@ Compressed backups (`.tar.gz`) are a series of independent gzip members of about
 are valid gzip files and an interrupted job can resume at a member boundary.
 
 == Changelog ==
+
+= 0.4.0 =
+* Admin screen: export, import with inspection and confirmation, backups list with download and delete, job log.
+* REST API (`siteferry/v1`) for the admin screen: administrator nonce for site actions, a per-job token for driving a job.
+* Chunked, resumable uploads with per-chunk SHA-256; downloads with Range support.
+* Jobs can be cancelled; their cleanups run in reverse order.
 
 = 0.3.0 =
 * Import: staging with checksum verification, temporary tables, serialization-safe search-replace, atomic table swap, journalled file moves, automatic rollback.

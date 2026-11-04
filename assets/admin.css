@@ -1,0 +1,102 @@
+/* SiteFerry admin page. SPDX-License-Identifier: GPL-2.0-or-later */
+
+.siteferry .nav-tab-wrapper {
+	margin-bottom: 1em;
+}
+
+.siteferry-panel {
+	max-width: 960px;
+}
+
+.siteferry-options {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 0.4em 1.5em;
+	margin: 0.5em 0 1em;
+	padding: 0.8em 1em;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+}
+
+.siteferry-options legend {
+	padding: 0 0.3em;
+	font-weight: 600;
+}
+
+.siteferry-tables {
+	margin: 0 0 1em;
+}
+
+.siteferry-tables summary {
+	cursor: pointer;
+}
+
+#siteferry-tables {
+	max-height: 260px;
+	overflow: auto;
+	margin-top: 0.5em;
+	padding: 0.5em 1em;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	columns: 2 280px;
+}
+
+#siteferry-tables label {
+	display: block;
+	break-inside: avoid;
+}
+
+.siteferry-progress {
+	margin: 1em 0;
+	padding: 0.8em 1em;
+	border-left: 4px solid #2271b1;
+	background: #fff;
+}
+
+.siteferry-progress progress {
+	width: 100%;
+	height: 1.2em;
+}
+
+.siteferry-progress.is-done {
+	border-left-color: #00a32a;
+}
+
+.siteferry-progress.is-failed {
+	border-left-color: #d63638;
+}
+
+.siteferry-warning {
+	padding: 0.6em 0.8em;
+	border-left: 4px solid #dba617;
+	background: #fcf9e8;
+}
+
+.siteferry-warnings li {
+	color: #8a5a00;
+}
+
+.siteferry-summary th {
+	width: 12em;
+}
+
+.siteferry-log {
+	max-height: 420px;
+	overflow: auto;
+	padding: 0.8em;
+	background: #1d2327;
+	color: #f0f0f1;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.siteferry .button-link-delete {
+	color: #b32d2e;
+}
+
+@media (max-width: 782px) {
+	.siteferry table.widefat td,
+	.siteferry table.widefat th {
+		word-break: break-word;
+	}
+}

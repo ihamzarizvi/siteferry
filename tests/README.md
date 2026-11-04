@@ -23,6 +23,8 @@ A single suite can be run directly, for example `php -n tests\test-tar-roundtrip
 | `test-export-scan.php` | Export exclusion rules; resumable wp-content scan (order, counts, one-folder slices with junk from dead requests, junctions not followed) |
 | `test-sql.php` | Column kinds and SQL literals in dumps (NULL, numbers, BIT, binary, escapes, UTF-8) |
 | `test-import-sql.php` | Serialization-safe replacement (nested values, objects, references, broken and custom-serialized values); replacement pairs; resumable statement reading; statement rewriting and refusal of statements a dump never contains |
+| `test-upload.php` | Chunked upload sessions: unsafe names, chunks only at the current end with a matching SHA-256, junk left by a dead request cut off, non-backups refused, safe backup-name lookup |
+| `js/test-sha256.js` | The admin screen's SHA-256 fallback against Node's crypto (run by `run-tests.ps1` when Node is installed) |
 | `compat-check.php` | Calls to built-in functions newer than PHP 7.4 (syntax is checked by `php -l` on 7.4 itself) |
 
 ## WordPress tests on LocalWP test sites
@@ -41,6 +43,10 @@ powershell -ExecutionPolicy Bypass -File tests\wp-export-check.ps1 -Site sitefer
 # Database dump round trip only (creates and drops {prefix}sftest_/sfcopy_ tables).
 powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-src eval-file tests/wp/test-dump.php
 
+# REST API: anonymous requests refused on every route, job token checks, an export driven with the
+# token only, a chunked upload with a wrong offset and a damaged chunk. Removes the backups it makes.
+powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-src eval-file tests/wp/test-rest.php
+
 # Import tests. They REPLACE siteferry-dst's content; run them only with the owner's permission.
 #   site:     export siteferry-src (with marker content) and import it into siteferry-dst
 #   rollback: the same with a simulated failure after the table swap; siteferry-dst must be unchanged
@@ -54,6 +60,19 @@ powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario arc
 for these checks.
 
 The logins of the test sites are in `tests\local-sites.credentials.json` (ignored by git).
+
+## Admin screen checks in a browser
+
+Done by hand (or by an assistant driving a browser) while logged in as an administrator:
+
+* Export from the Export tab; the backup is listed and downloads byte-identical; a `Range` request
+  answers 206.
+* Upload a backup on the Import tab, reload the page partway, choose the same file again: the
+  upload continues from the last stored chunk.
+* Reload the page while an export runs: the banner offers to resume or cancel it.
+* On siteferry-dst only, with the owner's permission: check a backup, cancel at the confirmation
+  (nothing changes), then import it; the page then asks you to log in with the imported site's users.
+* The browser console shows no errors.
 
 ## Exporting a site without installing SiteFerry
 
