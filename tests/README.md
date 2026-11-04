@@ -104,6 +104,9 @@ Done by hand (or by an assistant driving a browser) while logged in as an admini
   gdrive-relay -Serve`) and the must-use plugin also setting `siteferry_relay_url`. "Sign in with
   Google" leads through the relay to the consent page; after Allow the page says connected with no
   client ID or secret entered. Switching to "Use my own OAuth client" shows the client fields.
+* The progress box draws one leg per job step (export: 4, or 5 with sending; import: 8; send and
+  fetch: 1) and ends with every leg solid, or stopped on the failed leg.
+* At phone width (375 px) nothing scrolls sideways; the tab bar scrolls on its own.
 * The browser console shows no errors.
 
 ## Exporting a site without installing SiteFerry

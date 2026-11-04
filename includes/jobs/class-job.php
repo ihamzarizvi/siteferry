@@ -201,6 +201,8 @@ final class Job {
 				'index' => $index,
 				'count' => count( $steps ),
 				'name'  => isset( $steps[ $index ] ) ? $steps[ $index ] : null,
+				// The step names, so the admin screen can draw the whole route of the job.
+				'names' => array_values( $steps ),
 			),
 			'progress' => $this->data['progress'],
 			'warnings' => array(

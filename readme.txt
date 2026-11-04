@@ -22,15 +22,19 @@ and sends backups to S3-compatible storage, FTP/FTPS servers and Google Drive. D
 The SiteFerry menu (administrators only) has these tabs:
 
 * Export - choose what to leave out (media, plugins, themes, inactive plugins and themes, spam
-  comments, revisions, single tables) and whether to compress.
-* Import - upload a backup or pick a stored one, set the new site address, check the backup, then
-  confirm. Uploads are sent in chunks with a SHA-256 checksum each; an interrupted upload continues
-  where it stopped when you choose the same file again.
+  comments, revisions, single tables), whether to compress, and where the backup goes (this server
+  or a storage that is set up).
+* Import - drop or choose a backup file, or pick one stored on this server, set the new site
+  address, check the backup, then confirm. Uploads are sent in chunks with a SHA-256 checksum each;
+  an interrupted upload continues where it stopped when you choose the same file again.
 * Backups - download (through an authenticated PHP stream with Range support), import, send to
   storage or delete; below, the backups on each storage, which can be downloaded to this server or
   deleted there.
-* Storage - settings for remote storage, with a connection test.
+* Storage - one card per storage with its state; open it for the settings and a connection test.
 * Log - status and log of the last jobs.
+
+The header shows the site, its backups and the storages set up. While a job runs, its steps are
+drawn as the legs of a route, with the current step and how far it is.
 
 Exports and imports run as a series of short requests from the open page. Closing the page pauses the
 job; opening SiteFerry again offers to resume or cancel it. Only one job runs at a time.
@@ -189,6 +193,7 @@ are valid gzip files and an interrupted job can resume at a member boundary.
 == Changelog ==
 
 = 0.7.0 =
+* Reworked admin screen: a header with the site's backups and storages, "Where it goes" choices on the Export tab, a drop zone, a stored-backup picker and steps on the Import tab, list layouts that work on phones, storage cards, inline job logs, empty states and dismissible messages. Job progress is drawn as a route with one leg per step.
 * One-click "Sign in with Google" for Google Drive through SiteFerry's sign-in service (auth.xsofty.com); no Google Cloud project needed. Your own OAuth client stays available.
 * Google Drive storage with your own OAuth client: drive.file scope only, one-time state and PKCE, tokens saved only from an authenticated POST, encrypted tokens with refresh, revoke on disconnect, resumable uploads, ranged downloads.
 * Only storages that are ready (and, for Google Drive, connected) are offered for sending.

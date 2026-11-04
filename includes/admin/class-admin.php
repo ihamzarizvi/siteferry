@@ -92,138 +92,216 @@ final class Admin {
 			'storage' => __( 'Storage', 'siteferry' ),
 			'log'     => __( 'Log', 'siteferry' ),
 		);
-		$leave_out = array(
-			'exclude_media'            => array( __( 'Media library (uploads)', 'siteferry' ), false ),
-			'exclude_plugins'          => array( __( 'Plugins', 'siteferry' ), false ),
-			'exclude_themes'           => array( __( 'Themes', 'siteferry' ), false ),
+		$whole_parts = array(
+			'exclude_media'   => __( 'Media library (uploads)', 'siteferry' ),
+			'exclude_plugins' => __( 'Plugins', 'siteferry' ),
+			'exclude_themes'  => __( 'Themes', 'siteferry' ),
+		);
+		$clutter     = array(
 			'exclude_inactive_plugins' => array( __( 'Inactive plugins', 'siteferry' ), false ),
 			'exclude_inactive_themes'  => array( __( 'Inactive themes', 'siteferry' ), false ),
 			'exclude_cache'            => array( __( 'Cache folders', 'siteferry' ), true ),
 			'exclude_spam_comments'    => array( __( 'Spam comments', 'siteferry' ), false ),
 			'exclude_revisions'        => array( __( 'Post revisions', 'siteferry' ), false ),
 		);
+		$host        = (string) wp_parse_url( home_url(), PHP_URL_HOST );
+		$port        = wp_parse_url( home_url(), PHP_URL_PORT );
+		$host       .= $port ? ':' . $port : '';
 		?>
 		<div class="wrap siteferry" id="siteferry">
-			<h1><?php esc_html_e( 'SiteFerry', 'siteferry' ); ?></h1>
-			<div id="siteferry-notice" class="siteferry-notice" hidden></div>
-			<div id="siteferry-active" class="notice notice-warning siteferry-active" hidden>
-				<p><span id="siteferry-active-text"></span>
-					<button type="button" class="button" id="siteferry-active-resume" hidden><?php esc_html_e( 'Resume', 'siteferry' ); ?></button>
+			<header class="sf-head">
+				<h1 class="sf-mark">
+					<svg class="sf-mark-icon" viewBox="0 0 32 20" aria-hidden="true" focusable="false"><path d="M9 3h9l3 5H6z"/><path d="M1 9h30l-4 8H5z"/></svg>
+					<?php esc_html_e( 'SiteFerry', 'siteferry' ); ?>
+				</h1>
+				<p class="sf-facts" id="siteferry-facts">
+					<span class="sf-fact sf-fact-host"><?php echo esc_html( $host ); ?></span>
+					<span class="sf-fact" id="siteferry-facts-backups" hidden></span>
+					<span class="sf-fact" id="siteferry-facts-storage" hidden></span>
+				</p>
+			</header>
+			<hr class="wp-header-end">
+			<div id="siteferry-notice" class="sf-notice" role="status" hidden></div>
+			<div id="siteferry-active" class="sf-active" hidden>
+				<p class="sf-active-text" id="siteferry-active-text"></p>
+				<p class="sf-active-actions">
+					<button type="button" class="button button-primary" id="siteferry-active-resume" hidden><?php esc_html_e( 'Resume', 'siteferry' ); ?></button>
 					<button type="button" class="button" id="siteferry-active-cancel"><?php esc_html_e( 'Cancel it', 'siteferry' ); ?></button>
 				</p>
 			</div>
 
-			<nav class="nav-tab-wrapper" aria-label="<?php esc_attr_e( 'SiteFerry sections', 'siteferry' ); ?>">
+			<nav class="nav-tab-wrapper sf-tabs" aria-label="<?php esc_attr_e( 'SiteFerry sections', 'siteferry' ); ?>">
 				<?php foreach ( $tabs as $id => $label ) : ?>
-					<a href="#<?php echo esc_attr( $id ); ?>" class="nav-tab" data-tab="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $label ); ?></a>
+					<a href="#<?php echo esc_attr( $id ); ?>" class="nav-tab" data-tab="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $label ); ?><?php if ( 'backups' === $id ) : ?> <span class="sf-tab-count" id="siteferry-tab-count" hidden></span><?php endif; ?></a>
 				<?php endforeach; ?>
 			</nav>
 
 			<section class="siteferry-panel" data-panel="export" hidden>
-				<form id="siteferry-export-form">
-					<h2><?php esc_html_e( 'Export this site', 'siteferry' ); ?></h2>
-					<p><?php esc_html_e( 'Saves the database and wp-content into one backup file. Other backup plugins\' folders, upgrade folders, .git and node_modules are always left out.', 'siteferry' ); ?></p>
-					<fieldset class="siteferry-options">
-						<legend><?php esc_html_e( 'Leave out', 'siteferry' ); ?></legend>
-						<?php foreach ( $leave_out as $name => list( $label, $checked ) ) : ?>
-							<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>" <?php checked( $checked ); ?>> <?php echo esc_html( $label ); ?></label>
-						<?php endforeach; ?>
-					</fieldset>
-					<details class="siteferry-tables">
-						<summary><?php esc_html_e( 'Leave out database tables', 'siteferry' ); ?></summary>
-						<div id="siteferry-tables"><?php esc_html_e( 'Loading...', 'siteferry' ); ?></div>
-					</details>
-					<?php if ( Requirements::can_compress() ) : ?>
-						<p><label><input type="checkbox" name="compress"> <?php esc_html_e( 'Compress (.tar.gz): smaller, slower', 'siteferry' ); ?></label></p>
-					<?php endif; ?>
-					<p id="siteferry-send-row" hidden>
-						<label for="siteferry-send-to"><?php esc_html_e( 'When it is ready, send it to', 'siteferry' ); ?></label>
-						<select id="siteferry-send-to" name="send_to">
-							<option value=""><?php esc_html_e( 'nowhere (keep it on this server only)', 'siteferry' ); ?></option>
-						</select>
-						<label><input type="checkbox" name="delete_after_send"> <?php esc_html_e( 'then delete the copy on this server', 'siteferry' ); ?></label>
-					</p>
-					<p><button type="submit" class="button button-primary"><?php esc_html_e( 'Export', 'siteferry' ); ?></button></p>
+				<div class="sf-progress" id="siteferry-export-progress" hidden></div>
+				<form id="siteferry-export-form" class="sf-stack">
+					<div class="sf-card">
+						<h2 class="sf-card-title"><?php esc_html_e( 'What goes into the backup', 'siteferry' ); ?></h2>
+						<p class="sf-lead"><?php esc_html_e( 'The database and everything in wp-content, as one file. Other backup plugins\' folders, upgrade folders, .git and node_modules are always left out.', 'siteferry' ); ?></p>
+						<div class="sf-groups">
+							<fieldset class="sf-checks">
+								<legend><?php esc_html_e( 'Leave out whole parts', 'siteferry' ); ?></legend>
+								<?php foreach ( $whole_parts as $name => $label ) : ?>
+									<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>"> <?php echo esc_html( $label ); ?></label>
+								<?php endforeach; ?>
+							</fieldset>
+							<fieldset class="sf-checks">
+								<legend><?php esc_html_e( 'Leave out clutter', 'siteferry' ); ?></legend>
+								<?php foreach ( $clutter as $name => list( $label, $checked ) ) : ?>
+									<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>" <?php checked( $checked ); ?>> <?php echo esc_html( $label ); ?></label>
+								<?php endforeach; ?>
+							</fieldset>
+						</div>
+						<details class="sf-more">
+							<summary><?php esc_html_e( 'Leave out single database tables', 'siteferry' ); ?> <span class="sf-more-count" id="siteferry-tables-count" hidden></span></summary>
+							<div id="siteferry-tables" class="sf-tables"><?php esc_html_e( 'Loading...', 'siteferry' ); ?></div>
+						</details>
+						<?php if ( Requirements::can_compress() ) : ?>
+							<p class="sf-compress"><label><input type="checkbox" name="compress"> <?php esc_html_e( 'Compress the file (.tar.gz): smaller, but takes longer to make', 'siteferry' ); ?></label></p>
+						<?php endif; ?>
+					</div>
+
+					<div class="sf-card">
+						<h2 class="sf-card-title"><?php esc_html_e( 'Where it goes', 'siteferry' ); ?></h2>
+						<div class="sf-choices" id="siteferry-send-options" role="radiogroup" aria-label="<?php esc_attr_e( 'Where the backup goes', 'siteferry' ); ?>">
+							<label class="sf-choice">
+								<input type="radio" name="send_to" value="" checked>
+								<span class="sf-choice-name"><?php esc_html_e( 'This server', 'siteferry' ); ?></span>
+								<span class="sf-choice-note"><?php esc_html_e( 'Download it or move it later from the Backups tab.', 'siteferry' ); ?></span>
+							</label>
+						</div>
+						<p class="sf-delete-after" id="siteferry-delete-after" hidden><label><input type="checkbox" name="delete_after_send"> <?php esc_html_e( 'Then delete the copy on this server', 'siteferry' ); ?></label></p>
+						<p class="description" id="siteferry-no-storage" hidden>
+							<?php esc_html_e( 'To send backups to S3, an FTP server or Google Drive, set one up first.', 'siteferry' ); ?>
+							<a href="#storage" data-goto="storage"><?php esc_html_e( 'Set up storage', 'siteferry' ); ?></a>
+						</p>
+					</div>
+
+					<p class="sf-actions"><button type="submit" class="button button-primary button-large"><?php esc_html_e( 'Create backup', 'siteferry' ); ?></button></p>
 				</form>
-				<div class="siteferry-progress" id="siteferry-export-progress" hidden></div>
 			</section>
 
 			<section class="siteferry-panel" data-panel="import" hidden>
-				<h2><?php esc_html_e( 'Import a backup into this site', 'siteferry' ); ?></h2>
-				<p class="siteferry-warning"><?php esc_html_e( 'An import replaces this site\'s database and files. SiteFerry and its settings stay. You will need to log in with the imported site\'s users afterwards.', 'siteferry' ); ?></p>
-				<h3><?php esc_html_e( '1. Choose a backup', 'siteferry' ); ?></h3>
-				<p>
-					<label for="siteferry-file"><?php esc_html_e( 'Upload a backup file:', 'siteferry' ); ?></label>
-					<input type="file" id="siteferry-file" accept=".tar,.gz,.tgz">
-				</p>
-				<div class="siteferry-progress" id="siteferry-upload-progress" hidden></div>
-				<p id="siteferry-unfinished-uploads" class="description" hidden></p>
-				<p><?php esc_html_e( 'Or pick a stored backup on the Backups tab.', 'siteferry' ); ?></p>
-				<p><?php esc_html_e( 'Selected backup:', 'siteferry' ); ?> <strong id="siteferry-import-selected"><?php esc_html_e( 'none', 'siteferry' ); ?></strong></p>
+				<ol class="sf-steps" id="siteferry-import-steps" aria-label="<?php esc_attr_e( 'Import steps', 'siteferry' ); ?>">
+					<li data-step="choose" class="is-current"><?php esc_html_e( 'Choose a backup', 'siteferry' ); ?></li>
+					<li data-step="check"><?php esc_html_e( 'Check it', 'siteferry' ); ?></li>
+					<li data-step="import"><?php esc_html_e( 'Import', 'siteferry' ); ?></li>
+				</ol>
+				<div class="sf-progress" id="siteferry-import-progress" hidden></div>
 
-				<h3><?php esc_html_e( '2. Options', 'siteferry' ); ?></h3>
-				<p>
-					<label for="siteferry-replace-url"><?php esc_html_e( 'Site address after the import:', 'siteferry' ); ?></label>
-					<input type="url" class="regular-text" id="siteferry-replace-url" placeholder="<?php echo esc_attr( home_url() ); ?>">
-					<span class="description"><?php esc_html_e( 'Leave empty to keep this site\'s address.', 'siteferry' ); ?></span>
-				</p>
-				<p><label><input type="checkbox" id="siteferry-include-mu"> <?php esc_html_e( 'Also copy must-use plugins', 'siteferry' ); ?></label></p>
-				<p><label><input type="checkbox" id="siteferry-include-dropins"> <?php esc_html_e( 'Also copy server-specific drop-ins (object-cache.php, advanced-cache.php, db.php)', 'siteferry' ); ?></label></p>
-				<p><button type="button" class="button button-primary" id="siteferry-import-start" disabled><?php esc_html_e( 'Check backup', 'siteferry' ); ?></button></p>
+				<div class="sf-card" id="siteferry-import-choose">
+					<p class="sf-caution"><?php esc_html_e( 'An import replaces this site\'s database and files. SiteFerry and its settings stay. Afterwards you log in with the imported site\'s users.', 'siteferry' ); ?></p>
+					<input type="file" id="siteferry-file" class="sf-file-input" accept=".tar,.gz,.tgz">
+					<label for="siteferry-file" class="sf-drop" id="siteferry-drop">
+						<span class="dashicons dashicons-upload" aria-hidden="true"></span>
+						<span class="sf-drop-main"><?php esc_html_e( 'Drop a backup file here, or choose one', 'siteferry' ); ?></span>
+						<span class="sf-drop-note"><?php esc_html_e( 'A .tar or .tar.gz made by SiteFerry. Large files upload in pieces; an interrupted upload continues when you choose the same file again.', 'siteferry' ); ?></span>
+					</label>
+					<div class="sf-progress" id="siteferry-upload-progress" hidden></div>
+					<p id="siteferry-unfinished-uploads" class="description" hidden></p>
 
-				<div id="siteferry-inspection" hidden>
-					<h3><?php esc_html_e( '3. Confirm', 'siteferry' ); ?></h3>
-					<table class="widefat striped siteferry-summary"><tbody id="siteferry-inspection-rows"></tbody></table>
-					<ul id="siteferry-inspection-warnings" class="siteferry-warnings"></ul>
-					<p><label><input type="checkbox" id="siteferry-confirm-check"> <?php esc_html_e( 'I understand that this replaces this site\'s database and files.', 'siteferry' ); ?></label></p>
-					<p>
-						<button type="button" class="button button-primary" id="siteferry-confirm" disabled><?php esc_html_e( 'Import now', 'siteferry' ); ?></button>
-						<button type="button" class="button" id="siteferry-import-cancel"><?php esc_html_e( 'Cancel', 'siteferry' ); ?></button>
+					<p class="sf-pick">
+						<label for="siteferry-import-pick"><?php esc_html_e( 'Or use a backup stored on this server:', 'siteferry' ); ?></label>
+						<select id="siteferry-import-pick">
+							<option value=""><?php esc_html_e( 'Choose a stored backup', 'siteferry' ); ?></option>
+						</select>
+					</p>
+					<p class="sf-selected" id="siteferry-import-selected-row" hidden><?php esc_html_e( 'Selected:', 'siteferry' ); ?> <code id="siteferry-import-selected"></code></p>
+
+					<h3 class="sf-sub"><?php esc_html_e( 'Options', 'siteferry' ); ?></h3>
+					<p class="sf-field">
+						<label for="siteferry-replace-url"><?php esc_html_e( 'Site address after the import', 'siteferry' ); ?></label>
+						<input type="url" class="regular-text" id="siteferry-replace-url" placeholder="<?php echo esc_attr( home_url() ); ?>">
+						<span class="description"><?php esc_html_e( 'Leave empty to keep this site\'s address. Links inside the content are changed to match.', 'siteferry' ); ?></span>
+					</p>
+					<p><label><input type="checkbox" id="siteferry-include-mu"> <?php esc_html_e( 'Also copy must-use plugins', 'siteferry' ); ?></label></p>
+					<p><label><input type="checkbox" id="siteferry-include-dropins"> <?php esc_html_e( 'Also copy server-specific drop-ins (object-cache.php, advanced-cache.php, db.php)', 'siteferry' ); ?></label></p>
+					<p class="sf-actions"><button type="button" class="button button-primary button-large" id="siteferry-import-start" disabled><?php esc_html_e( 'Check backup', 'siteferry' ); ?></button></p>
+				</div>
+
+				<div class="sf-card" id="siteferry-inspection" hidden>
+					<h2 class="sf-card-title"><?php esc_html_e( 'Check before you import', 'siteferry' ); ?></h2>
+					<div class="sf-crossing" id="siteferry-crossing"></div>
+					<table class="sf-facts-table"><tbody id="siteferry-inspection-rows"></tbody></table>
+					<ul id="siteferry-inspection-warnings" class="sf-warnings"></ul>
+					<p class="sf-caution"><label><input type="checkbox" id="siteferry-confirm-check"> <?php esc_html_e( 'I understand that this replaces this site\'s database and files.', 'siteferry' ); ?></label></p>
+					<p class="sf-actions">
+						<button type="button" class="button button-primary button-large" id="siteferry-confirm" disabled><?php esc_html_e( 'Import now', 'siteferry' ); ?></button>
+						<button type="button" class="button button-large" id="siteferry-import-cancel"><?php esc_html_e( 'Cancel', 'siteferry' ); ?></button>
 					</p>
 				</div>
-				<div class="siteferry-progress" id="siteferry-import-progress" hidden></div>
 			</section>
 
 			<section class="siteferry-panel" data-panel="backups" hidden>
-				<div class="siteferry-progress" id="siteferry-transfer-progress" hidden></div>
-				<h2><?php esc_html_e( 'Backups on this server', 'siteferry' ); ?></h2>
-				<table class="widefat striped">
-					<thead><tr>
-						<th><?php esc_html_e( 'File', 'siteferry' ); ?></th>
-						<th><?php esc_html_e( 'Size', 'siteferry' ); ?></th>
-						<th><?php esc_html_e( 'Made', 'siteferry' ); ?></th>
-						<th><?php esc_html_e( 'From', 'siteferry' ); ?></th>
-						<th><?php esc_html_e( 'Actions', 'siteferry' ); ?></th>
-					</tr></thead>
-					<tbody id="siteferry-backups"></tbody>
-				</table>
+				<div class="sf-progress" id="siteferry-transfer-progress" hidden></div>
+				<div class="sf-card sf-card-flush">
+					<div class="sf-list-head">
+						<h2 class="sf-card-title"><?php esc_html_e( 'On this server', 'siteferry' ); ?></h2>
+						<span class="sf-list-summary" id="siteferry-backups-summary"></span>
+					</div>
+					<ul class="sf-list" id="siteferry-backups"></ul>
+				</div>
 				<div id="siteferry-remote"></div>
 			</section>
 
 			<section class="siteferry-panel" data-panel="storage" hidden>
-				<h2><?php esc_html_e( 'Storage', 'siteferry' ); ?></h2>
-				<p><?php esc_html_e( 'Send backups to remote storage and fetch them back. Keys are stored encrypted, are never shown again and are not part of any backup. SiteFerry connects only to the endpoint entered here.', 'siteferry' ); ?></p>
-				<?php self::render_s3(); ?>
-				<?php self::render_ftp(); ?>
-				<?php self::render_gdrive(); ?>
-				<p class="description"><?php esc_html_e( 'Dropbox follows in a later version.', 'siteferry' ); ?></p>
+				<p class="sf-lead"><?php esc_html_e( 'Places SiteFerry can send backups to and fetch them back from. Keys are stored encrypted, are never shown again and are not part of any backup. SiteFerry connects only to the services set up here.', 'siteferry' ); ?></p>
+				<div class="sf-dests">
+					<?php
+					self::render_destination( 's3', 'dashicons-cloud', __( 'S3-compatible storage', 'siteferry' ), __( 'Amazon S3, Backblaze B2, Wasabi, Cloudflare R2, DigitalOcean Spaces, MinIO', 'siteferry' ), array( self::class, 'render_s3' ) );
+					self::render_destination( 'ftp', 'dashicons-networking', __( 'FTP server', 'siteferry' ), __( 'FTPS (encrypted) or plain FTP', 'siteferry' ), array( self::class, 'render_ftp' ) );
+					self::render_destination( 'gdrive', 'dashicons-google', __( 'Google Drive', 'siteferry' ), __( 'Sign in with your Google account', 'siteferry' ), array( self::class, 'render_gdrive' ) );
+					?>
+					<div class="sf-dest is-soon">
+						<div class="sf-dest-head">
+							<span class="sf-dest-icon dashicons dashicons-cloud-saved" aria-hidden="true"></span>
+							<span class="sf-dest-text"><span class="sf-dest-name"><?php esc_html_e( 'Dropbox', 'siteferry' ); ?></span><span class="sf-dest-state"><?php esc_html_e( 'Comes in a later version.', 'siteferry' ); ?></span></span>
+						</div>
+					</div>
+				</div>
 			</section>
 
 			<section class="siteferry-panel" data-panel="log" hidden>
-				<h2><?php esc_html_e( 'Recent jobs', 'siteferry' ); ?></h2>
-				<table class="widefat striped">
-					<thead><tr>
-						<th><?php esc_html_e( 'Started', 'siteferry' ); ?></th>
-						<th><?php esc_html_e( 'Type', 'siteferry' ); ?></th>
-						<th><?php esc_html_e( 'Status', 'siteferry' ); ?></th>
-						<th><?php esc_html_e( 'Details', 'siteferry' ); ?></th>
-						<th></th>
-					</tr></thead>
-					<tbody id="siteferry-jobs"></tbody>
-				</table>
-				<pre id="siteferry-log-view" class="siteferry-log" hidden></pre>
+				<div class="sf-card sf-card-flush">
+					<div class="sf-list-head">
+						<h2 class="sf-card-title"><?php esc_html_e( 'Recent jobs', 'siteferry' ); ?></h2>
+						<button type="button" class="button button-small" id="siteferry-jobs-refresh"><?php esc_html_e( 'Refresh', 'siteferry' ); ?></button>
+					</div>
+					<ul class="sf-list" id="siteferry-jobs"></ul>
+				</div>
 			</section>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Prints one storage as a card that opens its settings form.
+	 *
+	 * @param string   $id    Storage id.
+	 * @param string   $icon  Dashicons class.
+	 * @param string   $name  Name.
+	 * @param string   $about What it covers, shown until it is set up.
+	 * @param callable $form  Prints the form.
+	 */
+	private static function render_destination( string $id, string $icon, string $name, string $about, callable $form ): void {
+		?>
+		<details class="sf-dest" data-dest="<?php echo esc_attr( $id ); ?>">
+			<summary class="sf-dest-head">
+				<span class="sf-dest-icon dashicons <?php echo esc_attr( $icon ); ?>" aria-hidden="true"></span>
+				<span class="sf-dest-text">
+					<span class="sf-dest-name"><?php echo esc_html( $name ); ?></span>
+					<span class="sf-dest-state" data-role="state" data-about="<?php echo esc_attr( $about ); ?>"><?php echo esc_html( $about ); ?></span>
+				</span>
+				<span class="sf-chip" data-role="chip"><?php esc_html_e( 'Not set up', 'siteferry' ); ?></span>
+			</summary>
+			<div class="sf-dest-body">
+				<?php call_user_func( $form ); ?>
+			</div>
+		</details>
 		<?php
 	}
 
@@ -241,8 +319,6 @@ final class Admin {
 		);
 		?>
 		<form id="siteferry-storage-s3" class="siteferry-storage-form" data-destination="s3" method="post" action="#" autocomplete="off">
-			<h3><?php esc_html_e( 'S3-compatible storage', 'siteferry' ); ?></h3>
-			<p class="siteferry-storage-state" data-role="state"></p>
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row"><label for="siteferry-s3-preset"><?php esc_html_e( 'Provider', 'siteferry' ); ?></label></th>
@@ -278,12 +354,12 @@ final class Admin {
 					<td><label><input type="checkbox" name="path_style"> <?php esc_html_e( 'Path-style requests (endpoint/bucket/file instead of bucket.endpoint/file)', 'siteferry' ); ?></label></td>
 				</tr>
 			</table>
-			<p>
+			<p class="sf-form-actions">
 				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
 				<button type="button" class="button-link button-link-delete" data-role="remove"><?php esc_html_e( 'Remove these settings', 'siteferry' ); ?></button>
 			</p>
-			<div class="siteferry-progress" data-role="result" hidden></div>
+			<div class="sf-result" data-role="result" role="status" hidden></div>
 		</form>
 		<?php
 	}
@@ -297,8 +373,6 @@ final class Admin {
 		$relay_host = (string) wp_parse_url( \SiteFerry\Storage\Gdrive_Driver::relay_url(), PHP_URL_HOST );
 		?>
 		<form id="siteferry-storage-gdrive" class="siteferry-storage-form" data-destination="gdrive" method="post" action="#" autocomplete="off">
-			<h3><?php esc_html_e( 'Google Drive', 'siteferry' ); ?></h3>
-			<p class="siteferry-storage-state" data-role="state"></p>
 			<p>
 				<label for="siteferry-gdrive-mode"><?php esc_html_e( 'Sign-in:', 'siteferry' ); ?></label>
 				<select id="siteferry-gdrive-mode" name="mode" data-default="relay">
@@ -352,14 +426,14 @@ final class Admin {
 					</td>
 				</tr>
 			</table>
-			<p>
+			<p class="sf-form-actions">
 				<button type="button" class="button button-primary" data-role="connect"><?php esc_html_e( 'Sign in with Google', 'siteferry' ); ?></button>
 				<button type="submit" class="button"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="disconnect" hidden><?php esc_html_e( 'Disconnect', 'siteferry' ); ?></button>
 				<button type="button" class="button-link button-link-delete" data-role="remove"><?php esc_html_e( 'Remove these settings', 'siteferry' ); ?></button>
 			</p>
-			<div class="siteferry-progress" data-role="result" hidden></div>
+			<div class="sf-result" data-role="result" role="status" hidden></div>
 		</form>
 		<?php
 	}
@@ -371,10 +445,8 @@ final class Admin {
 		$info = \SiteFerry\Storage\Ftp_Driver::info();
 		?>
 		<form id="siteferry-storage-ftp" class="siteferry-storage-form" data-destination="ftp" method="post" action="#" autocomplete="off">
-			<h3><?php esc_html_e( 'FTP server', 'siteferry' ); ?></h3>
-			<p class="siteferry-storage-state" data-role="state"></p>
 			<?php if ( ! $info['available'] ) : ?>
-				<p class="siteferry-warning"><?php esc_html_e( 'This server\'s PHP has no ftp extension, so FTP cannot be used here. Ask the host to enable it.', 'siteferry' ); ?></p>
+				<p class="sf-caution"><?php esc_html_e( 'This server\'s PHP has no ftp extension, so FTP cannot be used here. Ask the host to enable it.', 'siteferry' ); ?></p>
 			<?php endif; ?>
 			<table class="form-table" role="presentation">
 				<tr>
@@ -418,12 +490,12 @@ final class Admin {
 					<td><label><input type="checkbox" name="passive" data-default="1" checked> <?php esc_html_e( 'Passive mode (works through most firewalls)', 'siteferry' ); ?></label></td>
 				</tr>
 			</table>
-			<p>
+			<p class="sf-form-actions">
 				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
 				<button type="button" class="button-link button-link-delete" data-role="remove"><?php esc_html_e( 'Remove these settings', 'siteferry' ); ?></button>
 			</p>
-			<div class="siteferry-progress" data-role="result" hidden></div>
+			<div class="sf-result" data-role="result" role="status" hidden></div>
 		</form>
 		<?php
 	}
