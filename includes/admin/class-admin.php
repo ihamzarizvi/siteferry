@@ -285,7 +285,7 @@ final class Admin {
 						<h2 class="sf-card-title"><?php esc_html_e( 'All backups', 'siteferry' ); ?></h2>
 						<span class="sf-list-tools">
 							<span class="sf-list-summary" id="siteferry-backups-summary"></span>
-							<button type="button" class="button button-small" id="siteferry-backups-refresh"><?php esc_html_e( 'Refresh', 'siteferry' ); ?></button>
+							<button type="button" class="button sf-quiet sf-quiet-small" id="siteferry-backups-refresh"><?php esc_html_e( 'Refresh', 'siteferry' ); ?></button>
 						</span>
 					</div>
 					<div class="sf-filter" id="siteferry-filter" hidden>
@@ -334,7 +334,7 @@ final class Admin {
 				<div class="sf-card sf-card-flush">
 					<div class="sf-list-head">
 						<h2 class="sf-card-title"><?php esc_html_e( 'Recent activity', 'siteferry' ); ?></h2>
-						<button type="button" class="button button-small" id="siteferry-jobs-refresh"><?php esc_html_e( 'Refresh', 'siteferry' ); ?></button>
+						<button type="button" class="button sf-quiet sf-quiet-small" id="siteferry-jobs-refresh"><?php esc_html_e( 'Refresh', 'siteferry' ); ?></button>
 					</div>
 					<ul class="sf-list" id="siteferry-jobs"></ul>
 				</div>

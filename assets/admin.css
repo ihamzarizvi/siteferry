@@ -884,7 +884,7 @@
 .sf-columns,
 .sf-list .sf-row.sf-backup {
 	display: grid;
-	grid-template-columns: 36px minmax(0, 1fr) minmax(120px, 190px) 72px 156px;
+	grid-template-columns: 36px minmax(0, 1fr) minmax(120px, 190px) 72px 132px;
 	align-items: center;
 	gap: 0 18px;
 }
@@ -896,7 +896,8 @@
 /* While its name, note and tags are edited, a row is a plain block. */
 .sf-list .sf-row.sf-backup.is-editing {
 	display: block;
-	padding: 16px 20px 16px 74px;
+	padding: 14px 20px 14px 74px;
+	background: var(--sf-fog);
 }
 
 .sf-columns {
@@ -1005,18 +1006,48 @@
 
 .siteferry .sf-row-actions {
 	flex-wrap: nowrap;
-	gap: 6px;
+	gap: 4px;
 }
 
-.siteferry .sf-menu > summary.button {
-	justify-content: center;
-	width: 32px;
-	min-height: 32px;
-	padding: 0;
+.siteferry .sf-backup .sf-row-actions .button {
+	min-width: 92px;
+	text-align: center;
+}
+
+/* The editor: a panel of its own inside the row, so it reads as "editing this backup". */
+.sf-edit {
+	padding: 14px 18px 16px;
+	border: 1px solid var(--sf-rope);
+	border-radius: var(--sf-radius);
+	background: var(--sf-deck);
+}
+
+.sf-edit-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 12px;
+	margin: 0 0 12px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid var(--sf-fog);
+}
+
+.sf-edit-title {
+	font-weight: 600;
+	color: var(--sf-ink);
 }
 
 .sf-edit .sf-row-name {
-	margin: 0 0 10px;
+	margin: 0;
+}
+
+.sf-edit .sf-field label {
+	font-weight: 600;
+	color: var(--sf-ink);
+}
+
+.sf-edit .sf-field .description {
+	font-size: 12px;
 }
 
 .sf-edit .sf-actions {
@@ -1353,21 +1384,67 @@
 	position: relative;
 }
 
-.siteferry .sf-menu > summary.button {
-	display: inline-flex;
-	align-items: center;
-	padding: 0 6px;
-	list-style: none;
-}
-
 .sf-menu > summary::-webkit-details-marker {
 	display: none;
 }
 
-.sf-menu > summary .dashicons {
-	width: 18px;
-	height: 18px;
-	font-size: 18px;
+/* Icon-only buttons (the row's "..."): no border until hovered or open. */
+.sf-icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	width: 32px;
+	height: 32px;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	color: var(--sf-ink-soft);
+	list-style: none;
+	cursor: pointer;
+}
+
+.sf-icon-button svg {
+	display: block;
+	fill: currentColor;
+}
+
+.sf-icon-button:hover,
+.sf-menu[open] > .sf-icon-button {
+	border-color: var(--sf-rope);
+	background: var(--sf-fog);
+	color: var(--sf-ink);
+}
+
+.sf-icon-button:focus-visible {
+	outline: 2px solid var(--sf-focus);
+	outline-offset: 1px;
+}
+
+/* Quiet buttons: outlined in the page's ink, for actions repeated on every row. */
+.siteferry .button.sf-quiet {
+	border-color: var(--sf-rope);
+	background: var(--sf-deck);
+	color: var(--sf-ink);
+	font-weight: 500;
+}
+
+.siteferry .button.sf-quiet:hover,
+.siteferry .button.sf-quiet:focus {
+	border-color: var(--sf-ink-soft);
+	background: #f6fafa;
+	color: var(--sf-ink);
+}
+
+.siteferry .button.sf-quiet:focus {
+	box-shadow: 0 0 0 1px var(--sf-focus);
+	outline: none;
+}
+
+.siteferry .button.sf-quiet-small {
+	min-height: 28px;
+	padding: 0 12px;
+	font-size: 12px;
+	line-height: 26px;
 }
 
 .sf-menu-list {
@@ -1815,6 +1892,14 @@ details.sf-dest[open] > .sf-dest-head::after {
 
 	.siteferry .sf-backup .sf-row-actions {
 		justify-content: flex-start;
+	}
+
+	.sf-list .sf-row.sf-backup.is-editing {
+		padding: 12px 16px;
+	}
+
+	.sf-edit {
+		padding: 12px 14px 14px;
 	}
 
 	.sf-filter input[type="search"] {

@@ -1172,7 +1172,7 @@
 
 		const actions = [];
 		if ( ! item.error ) {
-			actions.push( button( mine ? 'Restore' : 'Move here', () => openRestore( item ), 'button' ) );
+			actions.push( button( mine ? 'Restore' : 'Move here', () => openRestore( item ), 'button sf-quiet' ) );
 		}
 		actions.push( menu( item ) );
 
@@ -1219,7 +1219,8 @@
 		}
 		editing = item.name;
 		const id = 'siteferry-edit-' + Math.random().toString( 36 ).slice( 2, 8 );
-		const title = el( 'input', { type: 'text', id: id + '-title', maxlength: '100', placeholder: ours( item ) ? when( item.time ) : hostOf( item.source ) } );
+		const fallback = ours( item ) ? when( item.time, true ) : hostOf( item.source ) || 'the site address';
+		const title = el( 'input', { type: 'text', id: id + '-title', maxlength: '100', placeholder: 'Give this backup a name' } );
 		const tags = el( 'input', { type: 'text', id: id + '-tags', maxlength: '200', placeholder: 'before-update, monthly' } );
 		const note = el( 'textarea', { id: id + '-note', rows: '2', maxlength: '1000' } );
 		title.value = item.title || '';
@@ -1230,15 +1231,22 @@
 			editing = '';
 			renderList();
 		};
-		const form = el( 'form', { class: 'sf-edit' }, [
-			el( 'p', { class: 'sf-row-name', text: item.name } ),
+		const form = el( 'form', { class: 'sf-edit', 'aria-label': 'Name, note and tags of ' + item.name }, [
+			el( 'div', { class: 'sf-edit-head' }, [
+				el( 'span', { class: 'sf-edit-title', text: 'Name, note and tags' } ),
+				el( 'span', { class: 'sf-row-name', text: item.name } ),
+			] ),
 			el( 'div', { class: 'sf-label-fields' }, [
-				el( 'p', { class: 'sf-field' }, [ el( 'label', { for: title.id, text: 'Name' } ), title ] ),
+				el( 'p', { class: 'sf-field' }, [
+					el( 'label', { for: title.id, text: 'Name' } ),
+					title,
+					el( 'span', { class: 'description', text: 'Left empty, the list shows ' + fallback + '.' } ),
+				] ),
 				el( 'p', { class: 'sf-field' }, [ el( 'label', { for: tags.id, text: 'Tags' } ), tags, el( 'span', { class: 'description', text: 'Separate tags with commas.' } ) ] ),
 				el( 'p', { class: 'sf-field sf-field-wide' }, [ el( 'label', { for: note.id, text: 'Note' } ), note ] ),
 			] ),
 			message,
-			el( 'p', { class: 'sf-actions' }, [ el( 'button', { type: 'submit', class: 'button button-primary', text: 'Save' } ), button( 'Cancel', cancel, 'button' ) ] ),
+			el( 'p', { class: 'sf-actions' }, [ el( 'button', { type: 'submit', class: 'button button-primary', text: 'Save' } ), button( 'Cancel', cancel, 'button sf-quiet' ) ] ),
 		] );
 		form.addEventListener( 'submit', async ( event ) => {
 			event.preventDefault();
@@ -1290,9 +1298,28 @@
 			}
 		} );
 		return el( 'details', { class: 'sf-menu' }, [
-			el( 'summary', { class: 'button', 'aria-label': 'More actions for ' + item.name }, [ el( 'span', { class: 'dashicons dashicons-ellipsis', 'aria-hidden': 'true' } ) ] ),
+			el( 'summary', { class: 'sf-icon-button', title: 'More actions', 'aria-label': 'More actions for ' + called( item ) }, [ dotsIcon() ] ),
 			el( 'div', { class: 'sf-menu-list', role: 'menu' }, entries ),
 		] );
+	}
+
+	/** Three dots, drawn centred (the icon font's glyph sits low). */
+	function dotsIcon() {
+		const ns = 'http://www.w3.org/2000/svg';
+		const svg = document.createElementNS( ns, 'svg' );
+		svg.setAttribute( 'viewBox', '0 0 16 4' );
+		svg.setAttribute( 'width', '16' );
+		svg.setAttribute( 'height', '4' );
+		svg.setAttribute( 'aria-hidden', 'true' );
+		svg.setAttribute( 'focusable', 'false' );
+		[ 2, 8, 14 ].forEach( ( x ) => {
+			const dot = document.createElementNS( ns, 'circle' );
+			dot.setAttribute( 'cx', String( x ) );
+			dot.setAttribute( 'cy', '2' );
+			dot.setAttribute( 'r', '1.6' );
+			svg.appendChild( dot );
+		} );
+		return svg;
 	}
 
 	function menuItem( text, action, danger ) {
@@ -1743,7 +1770,7 @@
 				const cancelled = job.status === 'failed' && /^cancel/i.test( job.error || '' );
 				const [ label, tone ] = cancelled ? [ 'Cancelled', '' ] : JOB_STATES[ job.status ] || [ job.status, '' ];
 				const row = el( 'li', { class: 'sf-row sf-job' } );
-				const view = button( 'View log', () => toggleLog( row, job.id, view ) );
+				const view = button( 'View log', () => toggleLog( row, job.id, view ), 'button sf-quiet' );
 				row.append(
 					el( 'span', { class: 'sf-job-when', text: date( job.created ) } ),
 					el( 'div', { class: 'sf-job-what' }, [
