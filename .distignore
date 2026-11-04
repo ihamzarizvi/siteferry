@@ -9,3 +9,5 @@
 /node_modules
 *.tar
 *.tar.gz
+/README.md
+/.github

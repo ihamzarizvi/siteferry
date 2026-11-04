@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-labelledby="t d">
+  <title id="t">SiteFerry: WordPress backup, restore and migration plugin</title>
+  <desc id="d">The SiteFerry ferry mark on a dashed route between two docks, with the name SiteFerry and the words: back up, restore and move WordPress sites.</desc>
+  <rect width="1280" height="320" fill="#12355b"/>
+  <g fill="none" stroke="#2f5d8f" stroke-width="2">
+    <path d="M0 250 C 220 230, 420 270, 640 250 S 1060 230, 1280 250"/>
+    <path d="M0 276 C 240 258, 460 294, 680 276 S 1080 258, 1280 276" opacity="0.6"/>
+  </g>
+  <g stroke="#8fb4dc" stroke-width="3" stroke-dasharray="10 10" fill="none">
+    <path d="M150 210 L1130 210"/>
+  </g>
+  <path d="M150 210 L520 210" stroke="#ffffff" stroke-width="3"/>
+  <circle cx="150" cy="210" r="9" fill="#ffffff"/>
+  <circle cx="1130" cy="210" r="9" fill="#12355b" stroke="#8fb4dc" stroke-width="3"/>
+  <g transform="translate(486 168)" fill="#f97316">
+    <path d="M18 6h18l6 10H12z"/>
+    <path d="M2 18h60l-8 16H10z"/>
+  </g>
+  <g transform="translate(150 70)" fill="#ffffff">
+    <path d="M18 6h18l6 10H12z"/>
+    <path d="M2 18h60l-8 16H10z"/>
+  </g>
+  <text x="236" y="112" fill="#ffffff" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="64" font-weight="700" letter-spacing="-1">SiteFerry</text>
+  <text x="152" y="160" fill="#c9daef" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="26">Back up, restore and move WordPress sites: S3, FTP, Google Drive, .wpress</text>
+  <text x="150" y="244" fill="#8fb4dc" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18">This site</text>
+  <text x="1130" y="244" fill="#8fb4dc" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" text-anchor="end">New host</text>
+</svg>
