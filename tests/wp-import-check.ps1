@@ -7,9 +7,15 @@
                         post meta and options), exports it and imports it into siteferry-dst. Checks
                         addresses, serialized data, files, users, SiteFerry staying active and its
                         settings kept, no leftovers, and that the front page loads.
-    -Scenario rollback  Same export, imported with a simulated failure right after the table swap.
-                        Checks that siteferry-dst's tables (CHECKSUM TABLE) and files are exactly as
-                        before and nothing is left over.
+    -Scenario rollback  A backup of siteferry-dst itself (with marker content), imported with a
+                        simulated failure right after the table swap. Checks that its tables (CHECKSUM
+                        TABLE) and files are exactly as before, nothing is left over, and the safety
+                        backup made first was removed again. Does not touch siteferry-src.
+    -Scenario undo      Imports such a backup of siteferry-dst with a safety backup (the default), then
+                        undoes it by importing that safety backup. Does not touch siteferry-src. Checks that the safety backup
+                        and the undo point exist after the first import, and that after the undo every
+                        table but the options table (CHECKSUM TABLE) and every file in wp-content is
+                        exactly as before, the marker content is gone and the undo point is cleared.
     -Scenario archive   Imports an existing backup (-Archive). Checks addresses and leftovers, and with
                         -SourceChecksums (a "table checksum" list of the source site) that every table
                         the search-replace did not change is identical to the source. -VerifyOnly runs
@@ -18,7 +24,7 @@
     Run each scenario only with the site owner's permission: it replaces siteferry-dst's content.
 #>
 param(
-    [ValidateSet('site', 'rollback', 'archive')] [string] $Scenario = 'site',
+    [ValidateSet('site', 'rollback', 'undo', 'archive')] [string] $Scenario = 'site',
     [string] $Archive = '',
     [string] $SourceChecksums = '',
     [switch] $VerifyOnly,
@@ -84,6 +90,18 @@ function Export-Source {
     return (Wp $src @($noCron, 'siteferry', 'export', '--porcelain') | Select-Object -Last 1).Trim()
 }
 
+# A backup of siteferry-dst itself with marker content (written to the test folder, not to dst's
+# backup list); the marker is removed again afterwards, so importing the backup brings it back.
+# Leaves siteferry-src alone.
+function Export-Self {
+    $id = (Wp $dst @('post', 'create', '--post_type=post', '--post_status=publish', '--post_title=SFTEST-UNDO', '--post_content=undo marker', '--porcelain') | Select-Object -Last 1).Trim()
+    Wp $dst @('option', 'update', 'sftest_undo', 'marker') | Out-Null
+    $made = (Wp $dst @($noCron, 'siteferry', 'export', "--dir=$work", '--porcelain') | Select-Object -Last 1).Trim()
+    Wp $dst @('post', 'delete', $id, '--force') | Out-Null
+    Wp $dst @('option', 'delete', 'sftest_undo') | Out-Null
+    return $made
+}
+
 try {
     Write-Host "Scenario: $Scenario; target: $($dst.Name) ($($dst.Url))"
     Ensure-Plugin $dst
@@ -146,8 +164,9 @@ try {
     }
 
     if ($Scenario -eq 'rollback') {
-        $file = Export-Source
+        $file = Export-Self
         Write-Host "Exported $file"
+        $before = DbState $dst
         $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
         $out = Wp $dst @($noCron, "--exec=define('SITEFERRY_TEST_FAIL_AFTER_SWAP', true);", 'siteferry', 'import', $file, '--yes') -AllowFail
         $importCode = $script:lastCode
@@ -158,6 +177,13 @@ try {
         Check 'the import failed with the simulated error' {
             Assert ($importCode -ne 0 -and $message.Contains('Simulated failure after the swap')) "exit ${importCode}: $message"
             Assert ($message.Contains('left as it was before')) 'rollback not reported as complete'
+        }
+        Check 'the safety backup made first was removed (the site is as it was)' {
+            $job = Get-ChildItem (Join-Path $dst.Public ('wp-content\' + $after.storage + '\jobs')) -Directory | Sort-Object LastWriteTime | Where-Object { (Get-Content (Join-Path $_.FullName 'job.json') -Raw | ConvertFrom-Json).type -eq 'import' } | Select-Object -Last 1
+            $log = Get-Content (Join-Path $job.FullName 'job.log') -Raw
+            Assert ($log.Contains('Safety backup made:') -and $log.Contains('Removed the safety backup')) 'safety backup not made and removed'
+            $left = @(Get-ChildItem (Join-Path $dst.Public ('wp-content\' + $after.storage + '\backups')) -File | Where-Object { $log.Contains($_.Name) })
+            Assert ($left.Count -eq 0) ('safety backup still there: ' + ($left.Name -join ', '))
         }
         Check 'every table is exactly as before (CHECKSUM TABLE)' {
             $diff = Compare-Object @($before.checksums.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" }) @($after.checksums.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" })
@@ -173,8 +199,60 @@ try {
             $left = @(Get-ChildItem $jobs -Recurse -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'staging', 'rollback' })
             Assert ($left.Count -eq 0) ('job folders left: ' + ($left.FullName -join ', '))
         }
-        Wp $src @('post', 'delete', $script:postId, '--force') | Out-Null
-        Wp $src @('option', 'delete', 'sftest_option') | Out-Null
+    }
+
+    if ($Scenario -eq 'undo') {
+        $file = Export-Self
+        Write-Host "Exported $file"
+        $before = DbState $dst
+        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+
+        $out = Wp $dst @($noCron, 'siteferry', 'import', $file, '--yes')
+        Write-Host (($out | Select-Object -Last 3) -join "`n")
+        $safety = (($out -join "`n") | Select-String -Pattern 'Safety backup of the site as it was: (\S+)\.').Matches | ForEach-Object { $_.Groups[1].Value } | Select-Object -First 1
+        $mid = DbState $dst
+        $backups = Join-Path $dst.Public ('wp-content\' + $mid.storage + '\backups')
+
+        Check 'the import made a safety backup first and recorded the undo point' {
+            Assert ([bool] $safety) ('no safety backup reported: ' + ($out -join ' | '))
+            Assert (Test-Path (Join-Path $backups $safety)) "missing: $safety"
+            $undo = (Wp $dst @($noCron, 'option', 'get', 'siteferry_undo', '--format=json')) -join '' | ConvertFrom-Json
+            Assert ($undo.safety -eq $safety -and $undo.from -eq $dst.Url -and $undo.to -eq $dst.Url) ('undo point: ' + ($undo | ConvertTo-Json -Compress))
+            $label = (Wp $dst @($noCron, 'eval', "echo wp_json_encode( SiteFerry\Labels::get( '$safety' ) );")) -join '' | ConvertFrom-Json
+            Assert ($label.tags -contains 'before-restore' -and $label.title.StartsWith('Before restoring')) ('label: ' + ($label | ConvertTo-Json -Compress))
+        }
+        Check 'the import brought the marker back' {
+            $ids = (Wp $dst @('post', 'list', '--post_type=post', '--title=SFTEST-UNDO', '--field=ID', '--post_status=any')) -join ''
+            Assert ($ids.Trim() -ne '') 'marker post missing after the import'
+        }
+
+        $out = Wp $dst @($noCron, 'siteferry', 'import', (Join-Path $backups $safety), '--yes', '--skip-safety-backup')
+        Write-Host (($out | Select-Object -Last 2) -join "`n")
+        $after = DbState $dst
+        $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+        $prefix = (Wp $dst @('config', 'get', 'table_prefix') | Select-Object -Last 1).Trim()
+
+        Check 'after the undo every table but the options is exactly as before (CHECKSUM TABLE)' {
+            $skip = $prefix + 'options'
+            $diff = Compare-Object @($before.checksums.PSObject.Properties | Where-Object { $_.Name -ne $skip } | ForEach-Object { "$($_.Name)=$($_.Value)" }) @($after.checksums.PSObject.Properties | Where-Object { $_.Name -ne $skip } | ForEach-Object { "$($_.Name)=$($_.Value)" })
+            Assert ($null -eq $diff) ('tables differ: ' + (($diff | ForEach-Object { $_.SideIndicator + $_.InputObject }) -join ', '))
+        }
+        Check 'after the undo every file in wp-content is exactly as before' {
+            Assert ($treeAfter -eq $treeBefore) 'wp-content differs'
+        }
+        Check 'the marker content and option are gone, the address is the site''s, the undo point is cleared' {
+            $ids = @(Wp $dst @('post', 'list', '--post_type=post', '--title=SFTEST-UNDO', '--field=ID', '--post_status=any'))
+            Assert ($ids.Count -eq 0 -or ($ids -join '').Trim() -eq '') 'marker post still there'
+            Wp $dst @($noCron, 'option', 'get', 'sftest_undo') -AllowFail | Out-Null
+            Assert ($script:lastCode -ne 0) 'marker option still there'
+            Assert ($after.home -eq $dst.Url) "home=$($after.home)"
+            Wp $dst @($noCron, 'option', 'get', 'siteferry_undo') -AllowFail | Out-Null
+            Assert ($script:lastCode -ne 0) 'undo point not cleared after an import without a safety backup'
+            Assert (@($after.import_tables).Count -eq 0) ('import tables left: ' + ($after.import_tables -join ', '))
+        }
+        # The safety backup is test data now: remove it and its label.
+        Remove-Item -LiteralPath (Join-Path $backups $safety) -Force -ErrorAction SilentlyContinue
+        Wp $dst @($noCron, 'eval', "SiteFerry\Labels::set( '$safety', '', '', array() );") | Out-Null
     }
 
     if ($Scenario -eq 'archive') {

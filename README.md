@@ -8,7 +8,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.9.0-f97316" alt="Version 0.9.0">
+  <img src="https://img.shields.io/badge/version-0.10.0-f97316" alt="Version 0.10.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -23,8 +23,8 @@ Large sites are no problem: every job runs in short, resumable steps, so the PHP
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.9.0). A safety backup before every restore, with Undo,
-> is next; see the [roadmap](#roadmap).
+> SiteFerry is in active development (0.10.0). A quick backup before WordPress, plugin and theme
+> updates is next; see the [roadmap](#roadmap).
 
 ## Contents
 
@@ -90,6 +90,8 @@ upload limits and dropped connections don't break a backup or a restore.
 - Addresses and folder paths are replaced everywhere (http/https, `www`, JSON, URL-encoded and
   serialized data stays valid).
 - If anything fails after the swap starts, the previous site is put back.
+- **Safety backup and Undo**: before anything changes, SiteFerry backs up the site as it is; after
+  the restore, **Undo this restore** brings it back if it was the wrong backup.
 - Collations a new database server lacks are mapped to close equivalents.
 - SiteFerry itself, its settings and its stored backups stay on the site you restore into.
 
@@ -214,6 +216,19 @@ flowchart LR
 - A backup that is only on a storage is downloaded first, in the same flow.
 - After a move, log in with the imported site's users.
 
+**Safety backup and Undo.** With **Make a safety backup of this site first** ticked (the
+default), SiteFerry backs up the whole site as it is right after you confirm, before anything
+changes. Once the restore is done, the Backups tab offers **Undo this restore**, which restores
+that safety backup. If the restore fails and the site is left as it was, the safety backup is
+removed again; if putting the site back had problems, it is kept.
+
+```mermaid
+flowchart LR
+    A["Confirm the restore"] --> B["Safety backup<br/>of the site as it is"]
+    B --> C["Restore<br/>(checked, swapped,<br/>rolled back on failure)"]
+    C --> D["Undo this restore<br/>= restore the safety backup"]
+```
+
 > [!TIP]
 > Different address after the move? Open **Advanced** in the restore panel and enter it.
 > Must-use plugins and server-specific drop-ins are only copied if you tick them there.
@@ -337,7 +352,7 @@ wp siteferry export --send=<id> [--delete-after-send]
 
 # Restore or migrate
 wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] \
-  [--include-mu-plugins] [--include-drop-ins] [--force] [--yes]
+  [--include-mu-plugins] [--include-drop-ins] [--force] [--skip-safety-backup] [--yes]
 
 # Backups and storage
 wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]
@@ -437,7 +452,8 @@ close the page, SiteFerry offers to resume the job next time.
 <summary><b>What happens if a restore fails?</b></summary>
 
 Nothing changes until the backup is checked and you confirm. If anything fails after the switch
-starts, the previous tables and files are put back.
+starts, the previous tables and files are put back. And if the restore works but was the wrong
+backup, **Undo this restore** brings back the safety backup made just before it.
 
 </details>
 
@@ -473,9 +489,17 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] Backups home, guided restore, names, notes, tags and search
 - [x] Dropbox (one-click sign-in)
 - [x] Scheduled backups to your chosen storage, with retention and email
-- [ ] Safety backup before a restore, with Undo
-- [ ] Password-protected .wpress backups
+- [x] Safety backup before a restore, with Undo
+- [ ] A quick backup before WordPress, plugin and theme updates
+- [ ] Look inside a backup (list and download single files); restore only parts of it
+- [ ] Check a stored copy (download it and verify its checksums)
+- [ ] Encrypted backups with a password (and password-protected .wpress backups)
+- [ ] Space report before a backup
+- [ ] Backups split into parts, for file size limits
+- [ ] More storages: WebDAV (Nextcloud, ownCloud), OneDrive, pCloud
+- [ ] Site-to-site move without downloading
 - [ ] Multisite
+- [ ] Translations
 
 ## Development and tests
 

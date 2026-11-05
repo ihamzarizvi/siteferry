@@ -83,10 +83,15 @@ powershell -ExecutionPolicy Bypass -File tests\wp-storage-check.ps1 -Site sitefe
 
 # Import tests. They REPLACE siteferry-dst's content; run them only with the owner's permission.
 #   site:     export siteferry-src (with marker content) and import it into siteferry-dst
-#   rollback: the same with a simulated failure after the table swap; siteferry-dst must be unchanged
+#   rollback: a backup of siteferry-dst itself (marker content), imported with a simulated failure
+#             after the table swap; dst must be unchanged and the safety backup removed again
+#   undo:     the same backup imported with a safety backup, then undone by importing the safety
+#             backup; every table but the options and every file must be as before
 #   archive:  import an existing backup; tables not touched by search-replace must match the source
+# rollback and undo do not touch siteferry-src.
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario site
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario rollback
+powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario undo
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario archive -Archive <backup.tar> -SourceChecksums <list>
 ```
 

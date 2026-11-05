@@ -812,6 +812,34 @@
 	margin: 0;
 }
 
+/* ------------------------------------------------------------ safety backup and undo */
+
+.sf-safety {
+	margin: 16px 0 0;
+}
+
+.sf-safety .description {
+	display: block;
+	margin: 4px 0 0 24px;
+}
+
+.sf-undo {
+	margin: 16px 0 0;
+	padding: 14px 18px;
+	border: 1px solid var(--sf-rope);
+	border-left: 4px solid var(--sf-accent);
+	border-radius: 6px;
+	background: var(--sf-deck);
+}
+
+.sf-undo p {
+	margin: 0;
+}
+
+.sf-undo .sf-actions {
+	margin-top: 10px;
+}
+
 /* ------------------------------------------------------------ schedule */
 
 .sf-schedule-line {

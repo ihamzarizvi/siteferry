@@ -105,6 +105,7 @@ final class Rest {
 			array( '/schedule', WP_REST_Server::READABLE, 'schedule', $admin ),
 			array( '/schedule', WP_REST_Server::CREATABLE, 'save_schedule', $admin ),
 			array( '/schedule/run', WP_REST_Server::CREATABLE, 'run_schedule', $admin ),
+			array( '/undo/dismiss', WP_REST_Server::CREATABLE, 'dismiss_undo', $admin ),
 		);
 
 		// Several methods on one path become several endpoints of one route.
@@ -159,6 +160,7 @@ final class Rest {
 			'prefix'   => $wpdb->prefix,
 			'home'     => home_url(),
 			'active'   => null === $active ? null : $active->summary(),
+			'undo'     => Import::undo_point(),
 			'uploads'  => array_map(
 				static function ( Upload $upload ): array {
 					return $upload->to_array();
@@ -316,7 +318,7 @@ final class Rest {
 		self::assert_idle();
 		$params  = (array) $request->get_json_params();
 		$path    = Backups::path( Storage::backups_dir(), isset( $params['backup'] ) ? (string) $params['backup'] : '' );
-		$options = array_intersect_key( $params, array_flip( array( 'replace_url', 'include_mu_plugins', 'include_drop_ins', 'force' ) ) );
+		$options = array_intersect_key( $params, array_flip( array( 'replace_url', 'include_mu_plugins', 'include_drop_ins', 'force', 'safety' ) ) );
 		list( $job, $token ) = Import::start( $path, $options );
 		return array(
 			'job'   => $job->summary(),
@@ -393,14 +395,24 @@ final class Rest {
 	}
 
 	/**
-	 * Confirms an import that is waiting after its inspection.
+	 * Confirms an import that is waiting after its inspection; "safety" (JSON, optional) says
+	 * whether to make a safety backup of the site first.
 	 *
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function confirm( WP_REST_Request $request ): array {
-		$job = self::load_job( $request );
-		Import::confirm( $job );
+		$job    = self::load_job( $request );
+		$params = (array) $request->get_json_params();
+		Import::confirm( $job, array_key_exists( 'safety', $params ) ? (bool) $params['safety'] : null );
 		return $job->summary();
+	}
+
+	/**
+	 * Forgets the offer to undo the last restore (the safety backup stays in the list).
+	 */
+	public static function dismiss_undo(): array {
+		delete_option( Import::UNDO_OPTION );
+		return array( 'undo' => null );
 	}
 
 	/**

@@ -57,12 +57,14 @@ final class Export {
 	 * @param array       $options  Export options (see DEFAULTS).
 	 * @param string|null $work_dir Folder for the backup and job files instead of SiteFerry's
 	 *                              storage folder. When given, nothing is written to the site.
-	 * @param string      $origin   Who started it: "admin" (the admin screen or WP-CLI) or
-	 *                              "schedule" (which adds the schedule's last step).
+	 * @param string      $origin   Who started it: "admin" (the admin screen or WP-CLI),
+	 *                              "schedule" (which adds the schedule's last step) or "safety" (the
+	 *                              safety backup an import makes first, inside its own job).
+	 * @param string      $parent   For "safety": the import job it runs in.
 	 * @return array{0:Job,1:string} The job and its token.
 	 * @throws Job_Exception If the site cannot be exported.
 	 */
-	public static function start( array $options, ?string $work_dir = null, string $origin = 'admin' ): array {
+	public static function start( array $options, ?string $work_dir = null, string $origin = 'admin', string $parent = '' ): array {
 		if ( is_multisite() ) {
 			throw new Job_Exception( 'Multisite networks are not supported by this version of SiteFerry.', Job_Exception::STEP );
 		}
@@ -94,7 +96,8 @@ final class Export {
 			$steps[] = \SiteFerry\Schedule\Finish_Step::STEP;
 		}
 
-		$options['origin']      = 'schedule' === $origin ? 'schedule' : 'admin';
+		$options['origin']      = in_array( $origin, array( 'schedule', 'safety' ), true ) ? $origin : 'admin';
+		$options['parent']      = $parent; // A job that runs inside another one never counts as the active job.
 		$options['site']        = $site;
 		$options['exclusions']  = self::exclusions( $options, $site )->to_array();
 		$options['output_dir']  = $output;

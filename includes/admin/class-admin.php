@@ -261,6 +261,8 @@ final class Admin {
 					<?php self::render_schedule( $whole_parts, $clutter ); ?>
 				</div>
 
+				<div class="sf-undo" id="siteferry-undo" role="status" hidden></div>
+
 				<div class="sf-progress" id="siteferry-job-progress" hidden></div>
 
 				<div class="sf-card sf-restore" id="siteferry-restore" hidden tabindex="-1" aria-labelledby="siteferry-restore-title">
@@ -283,6 +285,10 @@ final class Admin {
 						<p><label><input type="checkbox" id="siteferry-include-mu"> <?php esc_html_e( 'Also copy must-use plugins', 'siteferry' ); ?></label></p>
 						<p><label><input type="checkbox" id="siteferry-include-dropins"> <?php esc_html_e( 'Also copy server-specific drop-ins (object-cache.php, advanced-cache.php, db.php)', 'siteferry' ); ?></label></p>
 					</details>
+					<p class="sf-safety" id="siteferry-safety-row" hidden>
+						<label><input type="checkbox" id="siteferry-safety" checked> <strong><?php esc_html_e( 'Make a safety backup of this site first (recommended)', 'siteferry' ); ?></strong></label>
+						<span class="description"><?php esc_html_e( 'A whole-site backup of this site as it is now, so you can undo the restore. It takes about as long as a normal backup and needs room for one.', 'siteferry' ); ?></span>
+					</p>
 					<p class="sf-caution" id="siteferry-confirm-row" hidden><label><input type="checkbox" id="siteferry-confirm-check"> <span id="siteferry-confirm-text"></span></label></p>
 					<p class="sf-actions sf-restore-actions">
 						<button type="button" class="button button-large" id="siteferry-import-cancel"><?php esc_html_e( 'Cancel', 'siteferry' ); ?></button>

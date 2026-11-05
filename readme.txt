@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.9.0
+Stable tag: 0.10.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -41,6 +41,9 @@ The SiteFerry menu (administrators only) has these tabs:
   checks the backup first (versions, disk space, files) without changing anything, says what will
   happen, and only then offers to go ahead. A backup that is only on a storage is downloaded to
   this server first. The site address, must-use plugins and drop-ins are under "Advanced".
+  "Make a safety backup of this site first" (ticked by default) backs up the whole site as it is
+  before anything changes; after the restore, the Backups tab offers "Undo this restore", which
+  restores that safety backup (see "Safety backup and Undo" below).
 * Storage - one card per storage with its state; open it for the settings and a connection test.
 * Activity - status and log of the last jobs.
 
@@ -84,7 +87,7 @@ and when to send an email.
 = WP-CLI =
 
 * `wp siteferry export [--format=tar|wpress] [--compress] [--exclude=media,plugins,themes,inactive-plugins,inactive-themes,spam-comments,revisions] [--include-cache] [--exclude-tables=...] [--exclude-paths=...] [--dir=...] [--porcelain]`
-* `wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] [--include-mu-plugins] [--include-drop-ins] [--force] [--yes]`
+* `wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] [--include-mu-plugins] [--include-drop-ins] [--force] [--skip-safety-backup] [--yes]`
 * `wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]`
 * `wp siteferry export --send=<id> [--delete-after-send]`
 * `wp siteferry storage test|list <id>`, `wp siteferry storage send <id> <backup>`,
@@ -238,6 +241,7 @@ least 32 random characters) in wp-config.php before saving the settings.
 = How an import works =
 
 1. The backup's manifest, WordPress and PHP versions and free disk space are checked, and you confirm.
+   Then, unless you untick it, a safety backup of the whole site as it is now is made.
 2. Files are unpacked into a staging folder and checked against the backup's SHA-256 list.
 3. The database is loaded into temporary tables while the site keeps running. Only the statements a
    SiteFerry dump contains are accepted. Collations the server lacks are mapped to close equivalents.
@@ -250,6 +254,22 @@ least 32 random characters) in wp-config.php before saving the settings.
 
 If anything fails after step 5 starts, the previous tables and files are put back. After an import,
 log in with the imported site's users.
+
+= Safety backup and Undo =
+
+Rolling back on failure protects against a restore that breaks halfway; the safety backup protects
+against one that works but was the wrong choice.
+
+* After you confirm a restore (or a move), SiteFerry first backs up this whole site as it is, as
+  an ordinary backup named "Before restoring ..." with the tag "before-restore". It takes about as
+  long as a normal backup and needs room for one. Untick "Make a safety backup of this site first"
+  to skip it (WP-CLI: `--skip-safety-backup`).
+* If the safety backup fails, the restore stops before anything changes.
+* If the restore then fails and the site is left as it was, or is put back completely, the safety
+  backup is not needed and is removed. If putting the site back does not fully succeed, it is kept.
+* After a restore, the Backups tab offers "Undo this restore": it opens the restore panel for the
+  safety backup, checked like any other restore. "Keep it as it is" hides the offer; the safety
+  backup stays in the list until you delete it. Safety backups are never deleted automatically.
 
 Left out of every export: cache folders (unless `--include-cache`), WordPress's upgrade folders,
 other backup plugins' folders, `.git`, `node_modules`, SiteFerry itself, its storage folder and its
@@ -310,6 +330,11 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.10.0 =
+* Safety backup before every restore: after you confirm, SiteFerry backs up the whole site as it is (an ordinary backup tagged "before-restore") before anything changes. Untick it to skip; WP-CLI `--skip-safety-backup`.
+* "Undo this restore" on the Backups tab restores that safety backup. A restore that fails and leaves the site as it was removes its safety backup; one whose rollback had problems keeps it.
+* Jobs that run inside another job (the safety backup inside a restore) never count as the active job.
 
 = 0.9.0 =
 * Scheduled backups: every day, week or month at a set time in the site's time zone, with the same choices as a backup made by hand, to this server or a storage (optionally keeping a local copy). Runs without anyone logged in: WP-Cron starts it and each step asks the site for the next one, with a five-minute check as a fallback that also stops a backup stuck for an hour.

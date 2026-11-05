@@ -39,6 +39,7 @@
 		'import.wpress': 'Read .wpress',
 		'export.wpress': 'Make .wpress',
 		'schedule.finish': 'Wrap up',
+		'import.safety': 'Safety backup',
 		upload: 'Upload',
 	};
 	const WEEKDAYS = [ 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' ];
@@ -1555,6 +1556,7 @@
 		}
 		closeMenus();
 		restore = { item, mine: ours( item ), name: item.local ? item.name : null, job: null, phase: 'open', seq: 0 };
+		$( 'siteferry-safety' ).checked = true;
 		$( 'siteferry-replace-url' ).value = '';
 		$( 'siteferry-include-mu' ).checked = false;
 		$( 'siteferry-include-dropins' ).checked = false;
@@ -1601,6 +1603,7 @@
 	/** Shows the confirm button; moving another site here also needs the tick. */
 	function setConfirm( ready ) {
 		const tick = $( 'siteferry-confirm-check' );
+		$( 'siteferry-safety-row' ).hidden = ! ready;
 		$( 'siteferry-confirm-row' ).hidden = ! ready || restore.mine;
 		tick.checked = false;
 		$( 'siteferry-confirm' ).hidden = false;
@@ -1705,13 +1708,16 @@
 		$( 'siteferry-import-cancel' ).hidden = false;
 		$( 'siteferry-confirm' ).hidden = true;
 		$( 'siteferry-confirm-row' ).hidden = true;
+		$( 'siteferry-safety-row' ).hidden = true;
 		$( 'siteferry-restore-advanced' ).hidden = true;
 		if ( job.status === 'done' ) {
 			const r = job.result.imported;
+			const safety = job.result.safety;
 			restore.phase = 'done';
 			const moved = siteKey( r.from ) !== siteKey( r.to );
 			view.finish( true, moved ? 'Moved ' + hostOf( r.from ) + ' here' : 'Restored', [
 				el( 'p', { text: moved ? 'This site now has the content of ' + hostOf( r.from ) + ', at ' + hostOf( r.to ) + '.' : 'This site is back to how it was when the backup was made.' } ),
+				...( safety ? [ el( 'p', { text: 'A safety backup of the site as it was before (' + bytes( safety.size ) + ') is in the list. To undo, use "Undo this restore" on the Backups tab, or restore that backup.' } ) ] : [] ),
 				el( 'p', { text: moved ? 'Log in with one of that site’s users.' : 'You may need to log in again.' } ),
 				el( 'p', { class: 'sf-actions' }, [ el( 'a', { class: 'button button-primary', href: cfg.loginUrl, text: 'Log in' } ) ] ),
 				...warningList( job ),
@@ -1758,14 +1764,16 @@
 		}
 		restore.phase = 'running';
 		const view = progressView( 'siteferry-import-progress', [ 'Backup', 'This site' ] );
+		const safety = $( 'siteferry-safety' ).checked;
 		$( 'siteferry-confirm' ).hidden = true;
 		$( 'siteferry-confirm-row' ).hidden = true;
+		$( 'siteferry-safety-row' ).hidden = true;
 		$( 'siteferry-import-cancel' ).hidden = true;
 		$( 'siteferry-restore-advanced' ).hidden = true;
 		$( 'siteferry-inspection' ).hidden = true;
-		view.start( restore.mine ? 'Restoring...' : 'Moving the site here...' );
+		view.start( safety ? 'Making a safety backup of this site first...' : restore.mine ? 'Restoring...' : 'Moving the site here...' );
 		try {
-			await api( 'POST', 'jobs/' + importJob.id + '/confirm', { token: importJob.token } );
+			await api( 'POST', 'jobs/' + importJob.id + '/confirm', { token: importJob.token, json: { safety } } );
 			await continueImport( view );
 		} catch ( error ) {
 			view.finish( false, 'Stopped', [ el( 'p', { text: error.message } ) ] );
@@ -2090,7 +2098,7 @@
 				row.append(
 					el( 'span', { class: 'sf-job-when', text: date( job.created ) } ),
 					el( 'div', { class: 'sf-job-what' }, [
-						el( 'span', { class: 'sf-job-type', text: job.origin === 'schedule' ? 'Scheduled backup' : JOB_TYPES[ job.type ] || job.type } ),
+						el( 'span', { class: 'sf-job-type', text: { schedule: 'Scheduled backup', safety: 'Safety backup' }[ job.origin ] || JOB_TYPES[ job.type ] || job.type } ),
 						el( 'span', { class: 'sf-chip ' + tone, text: label } ),
 						el( 'span', { class: 'sf-job-detail', text: job.error || ( job.progress && job.progress.message ) || '' } ),
 					] ),
@@ -2161,6 +2169,43 @@
 		} );
 	}
 
+	/** After a restore with a safety backup: offers to undo it by restoring that backup. */
+	function renderUndo( undo ) {
+		const box = $( 'siteferry-undo' );
+		if ( ! undo ) {
+			box.hidden = true;
+			return;
+		}
+		const moved = siteKey( undo.from ) !== siteKey( undo.to );
+		box.replaceChildren(
+			el( 'p', {}, [
+				el( 'strong', { text: ( moved ? 'Moved ' + hostOf( undo.from ) + ' here ' : 'Restored ' ) + when( undo.time, true ) + '.' } ),
+				' A safety backup of the site as it was just before is kept. Changed your mind?',
+			] ),
+			el( 'p', { class: 'sf-actions' }, [
+				button( 'Undo this restore', () => undoRestore( undo ), 'button button-primary' ),
+				button( 'Keep it as it is', dismissUndo, 'button sf-quiet' ),
+			] )
+		);
+		box.hidden = false;
+	}
+
+	/** Opens the restore panel for the safety backup made before the last restore. */
+	function undoRestore( undo ) {
+		showTab( 'backups' );
+		openRestore( { name: undo.safety, local: true, places: [], source: cfg.home, time: undo.time, title: 'the site before the last restore', size: 0 } );
+	}
+
+	async function dismissUndo() {
+		try {
+			await api( 'POST', 'undo/dismiss' );
+			$( 'siteferry-undo' ).hidden = true;
+			notice( 'Kept as it is. The safety backup stays in the list until you delete it.', 'success' );
+		} catch ( error ) {
+			notice( error.message, 'error' );
+		}
+	}
+
 	/** Offers to resume (or cancel) a job that was running when the page was left. */
 	async function checkActiveJob() {
 		let status;
@@ -2170,6 +2215,7 @@
 			notice( 'SiteFerry cannot reach its REST API: ' + error.message, 'error' );
 			return;
 		}
+		renderUndo( status.undo );
 		const unfinished = status.uploads || [];
 		if ( unfinished.length ) {
 			const box = $( 'siteferry-unfinished-uploads' );
@@ -2217,6 +2263,7 @@
 		};
 		$( 'siteferry-active-cancel' ).onclick = async () => {
 			if ( await cancelJob( active.id, token ) ) {
+				// (A restore stopped here also stops its safety backup and removes it.)
 				$( 'siteferry-active' ).hidden = true;
 				notice( what + ' was cancelled and its work undone.', 'success' );
 			}

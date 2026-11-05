@@ -86,6 +86,7 @@ Sf_Test::run(
 			array( 'GET', '/schedule' ),
 			array( 'POST', '/schedule' ),
 			array( 'POST', '/schedule/run' ),
+			array( 'POST', '/undo/dismiss' ),
 		);
 		foreach ( $routes as list( $method, $route ) ) {
 			list( $status ) = sf_rest( $method, $route, 0 );

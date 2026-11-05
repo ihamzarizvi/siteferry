@@ -20,13 +20,17 @@ defined( 'ABSPATH' ) || exit;
  * Creates import jobs.
  *
  * Steps: inspect the backup (manifest, versions, disk space, replacements), wait for
- * confirmation, stage the files, verify their checksums, load the database into temporary
- * tables, search-replace, swap tables and files under maintenance mode, then remove the old
- * copies. Until the swap the live site is untouched; a failure after it puts everything back.
+ * confirmation, make a safety backup of the site as it is (unless declined), stage the files,
+ * verify their checksums, load the database into temporary tables, search-replace, swap tables
+ * and files under maintenance mode, then remove the old copies. Until the swap the live site is
+ * untouched; a failure after it puts everything back.
  */
 final class Import {
 
-	const STEPS = array( 'import.inspect', 'import.confirm', 'import.extract', 'import.verify', 'import.database', 'import.replace', 'import.swap', 'import.finish' );
+	const STEPS = array( 'import.inspect', 'import.confirm', 'import.safety', 'import.extract', 'import.verify', 'import.database', 'import.replace', 'import.swap', 'import.finish' );
+
+	/** The last restore and the safety backup made before it, for "Undo this restore". */
+	const UNDO_OPTION = 'siteferry_undo';
 
 	/** Option names a caller may set, with defaults. */
 	const DEFAULTS = array(
@@ -36,6 +40,7 @@ final class Import {
 		'include_drop_ins'   => false,
 		'force'              => false,
 		'confirmed'          => false,
+		'safety'             => true,
 	);
 
 	/** Drop-ins tied to a server's own services; not copied unless asked for. */
@@ -72,24 +77,41 @@ final class Import {
 		$options['own_plugin']  = in_array( Plugin::basename(), $active, true ) ? Plugin::basename() : '';
 		$options['own_folder']  = Plugin::folder();
 
-		$steps = $wpress ? array_merge( array( \SiteFerry\Wpress\Import_Step::STEP ), self::STEPS ) : self::STEPS;
+		$steps = $wpress ? array_merge( array( \SiteFerry\Wpress\Import_Step::STEP ), self::STEPS ) : self::STEPS; // The safety step skips itself when declined.
 		return Job::create( Storage::jobs_dir(), 'import', $steps, $options );
 	}
 
 	/**
 	 * Lets a job waiting after its inspection continue.
 	 *
-	 * @param Job $job Import job.
+	 * @param Job       $job    Import job.
+	 * @param bool|null $safety Make a safety backup first (null: as the job's options say).
 	 * @throws Job_Exception If the job is not waiting for confirmation.
 	 */
-	public static function confirm( Job $job ): void {
+	public static function confirm( Job $job, ?bool $safety = null ): void {
 		if ( Job::STATUS_WAITING !== $job->status() ) {
 			throw new Job_Exception( 'This import is not waiting for confirmation.', Job_Exception::STEP );
 		}
-		$job->set_state( 'confirm', array( 'confirmed' => true ) );
+		$job->set_state( 'confirm', array( 'confirmed' => true ) + ( null === $safety ? array() : array( 'safety' => $safety ) ) );
 		$job->set_status( Job::STATUS_PENDING );
-		$job->log( 'info', 'Import confirmed.' );
+		$job->log( 'info', 'Import confirmed' . ( Safety_Step::wanted( $job ) ? '.' : ', without a safety backup.' ) );
 		$job->save();
+	}
+
+	/**
+	 * The last restore, while the safety backup made before it is still here: safety (its file
+	 * name), backup (what was restored), time, from, to. Null otherwise.
+	 */
+	public static function undo_point(): ?array {
+		$undo = get_option( self::UNDO_OPTION );
+		if ( ! is_array( $undo ) || empty( $undo['safety'] ) ) {
+			return null;
+		}
+		$dir = Storage::existing_backups_dir();
+		if ( null === $dir || ! is_file( $dir . '/' . $undo['safety'] ) ) {
+			return null;
+		}
+		return $undo;
 	}
 
 	/**
@@ -125,6 +147,7 @@ final class Import {
 			'include_drop_ins'   => (bool) $options['include_drop_ins'],
 			'force'              => (bool) $options['force'],
 			'confirmed'          => (bool) $options['confirmed'],
+			'safety'             => (bool) $options['safety'],
 		);
 	}
 }

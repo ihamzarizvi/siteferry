@@ -207,8 +207,9 @@ final class Job {
 		return array(
 			'id'       => $this->data['id'],
 			'type'     => $this->data['type'],
-			// "schedule" for a scheduled backup, which runs by itself; the admin screen only watches it.
-			'origin'   => 'schedule' === $this->option( 'origin', '' ) ? 'schedule' : 'admin',
+			// "schedule" for a scheduled backup, which runs by itself (the admin screen only watches
+			// it); "safety" for the backup an import makes first, inside the import's job.
+			'origin'   => in_array( $this->option( 'origin', '' ), array( 'schedule', 'safety' ), true ) ? $this->option( 'origin' ) : 'admin',
 			'status'   => $this->data['status'],
 			'step'     => array(
 				'index' => $index,
@@ -264,6 +265,9 @@ final class Job {
 	 */
 	public static function active( string $base, int $stale_age = 3600 ): ?self {
 		foreach ( self::all( $base ) as $job ) {
+			if ( '' !== (string) $job->option( 'parent', '' ) ) {
+				continue; // Runs inside another job, which is the active one.
+			}
 			if ( ! $job->finished() && time() - $job->updated() < $stale_age ) {
 				return $job;
 			}

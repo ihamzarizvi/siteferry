@@ -212,6 +212,10 @@ final class Command {
 	 * [--force]
 	 * : Import even if the backup comes from a newer WordPress than this site runs.
 	 *
+	 * [--skip-safety-backup]
+	 * : Do not make a safety backup of this site first. (By default SiteFerry backs up the whole
+	 * site as it is before anything changes, so the import can be undone by restoring that backup.)
+	 *
 	 * [--yes]
 	 * : Do not ask for confirmation.
 	 *
@@ -238,6 +242,7 @@ final class Command {
 			'include_mu_plugins' => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'include-mu-plugins', false ),
 			'include_drop_ins'   => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'include-drop-ins', false ),
 			'force'              => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'force', false ),
+			'safety'             => ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-safety-backup', false ),
 		);
 
 		try {
@@ -264,7 +269,11 @@ final class Command {
 		}
 
 		$this->print_warnings( $job, false );
-		$imported = $job->result()['imported'];
+		$result = $job->result();
+		if ( isset( $result['safety']['name'] ) ) {
+			WP_CLI::log( sprintf( 'Safety backup of the site as it was: %s. Restore it to undo this import.', $result['safety']['name'] ) );
+		}
+		$imported = $result['imported'];
 		WP_CLI::success(
 			sprintf(
 				'Imported %s into %s: %d tables, %s files, %s rows updated for the new address (%s). Log in with the imported site\'s users.',

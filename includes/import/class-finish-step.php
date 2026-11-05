@@ -54,6 +54,26 @@ final class Finish_Step implements Step {
 				)
 			)
 		);
+		// "Undo this restore" restores the safety backup made before it; a restore without one has
+		// nothing to undo with (an earlier safety backup stays an ordinary backup).
+		$result = $job->result();
+		$safety = isset( $result['safety'] ) ? $result['safety'] : null;
+		if ( is_array( $safety ) ) {
+			update_option(
+				Import::UNDO_OPTION,
+				array(
+					'safety' => (string) $safety['name'],
+					'backup' => basename( (string) $job->option( 'archive' ) ),
+					'time'   => time(),
+					'from'   => $inspect['source']['home'],
+					'to'     => $inspect['target']['home'],
+				),
+				false
+			);
+		} else {
+			delete_option( Import::UNDO_OPTION );
+		}
+
 		$job->set_progress( 'Import complete', 1, 1 );
 		$job->log( 'info', 'Import complete; rollback copies removed.' );
 		return true;

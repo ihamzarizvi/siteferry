@@ -35,6 +35,7 @@ final class Runner {
 		'import.wpress'   => \SiteFerry\Wpress\Import_Step::class,
 		'import.inspect'  => \SiteFerry\Import\Inspect_Step::class,
 		'import.confirm'  => \SiteFerry\Import\Confirm_Step::class,
+		'import.safety'   => \SiteFerry\Import\Safety_Step::class,
 		'import.extract'  => \SiteFerry\Import\Extract_Step::class,
 		'import.verify'   => \SiteFerry\Import\Verify_Step::class,
 		'import.database' => \SiteFerry\Import\Database_Step::class,
