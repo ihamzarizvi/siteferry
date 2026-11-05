@@ -92,6 +92,9 @@ final class Replace_Step implements Step {
 			if ( in_array( $temp . 'options', $state['tables'], true ) ) {
 				$this->set_addresses( $wpdb, $temp, $inspect['target'] ); // Unless a partial restore leaves the options as they are.
 			}
+			if ( ! empty( $inspect['network'] ) ) {
+				$this->set_network( $wpdb, $temp, $inspect['network'], $state['tables'] );
+			}
 			if ( $state['stats']['broken'] > 0 ) {
 				$job->warn( sprintf( '%d values looked serialized but were already damaged in the backup; they were updated as plain text.', $state['stats']['broken'] ) );
 			}
@@ -162,6 +165,50 @@ final class Replace_Step implements Step {
 		}
 	}
 
+	/**
+	 * Puts every subsite of a restored network at its address in this network: the network and
+	 * blog tables, the network address, and each subsite's home and siteurl.
+	 *
+	 * @param \wpdb  $db      Connection.
+	 * @param string $temp    Temporary prefix.
+	 * @param array  $network Network map (Inspect_Step::network_map()).
+	 * @param array  $tables  Loaded temporary tables.
+	 */
+	private function set_network( $db, string $temp, array $network, array $tables ): void {
+		if ( in_array( $temp . 'site', $tables, true ) ) {
+			Raw_Query::run(
+				$db,
+				'UPDATE ' . Sql::identifier( $temp . 'site' ) . ' SET domain = ' . Raw_Query::quote( $db, $network['domain'] ) . ', path = ' . Raw_Query::quote( $db, $network['path'] )
+				. ' WHERE id = ' . (int) $network['id']
+			);
+		}
+		if ( in_array( $temp . 'sitemeta', $tables, true ) ) {
+			Raw_Query::run(
+				$db,
+				'UPDATE ' . Sql::identifier( $temp . 'sitemeta' ) . ' SET meta_value = ' . Raw_Query::quote( $db, $network['url'] )
+				. " WHERE meta_key = 'siteurl' AND site_id = " . (int) $network['id']
+			);
+		}
+		foreach ( $network['blogs'] as $blog ) {
+			if ( in_array( $temp . 'blogs', $tables, true ) ) {
+				Raw_Query::run(
+					$db,
+					'UPDATE ' . Sql::identifier( $temp . 'blogs' ) . ' SET domain = ' . Raw_Query::quote( $db, $blog['domain'] ) . ', path = ' . Raw_Query::quote( $db, $blog['path'] )
+					. ' WHERE blog_id = ' . (int) $blog['id']
+				);
+			}
+			$options = $temp . ( (int) $network['main_site'] === (int) $blog['id'] ? '' : $blog['id'] . '_' ) . 'options';
+			if ( (int) $network['main_site'] !== (int) $blog['id'] && in_array( $options, $tables, true ) ) {
+				foreach ( array( 'home', 'siteurl' ) as $name ) {
+					Raw_Query::run(
+						$db,
+						'UPDATE ' . Sql::identifier( $options ) . ' SET option_value = ' . Raw_Query::quote( $db, $blog['url'] )
+						. ' WHERE option_name = ' . Raw_Query::quote( $db, $name )
+					);
+				}
+			}
+		}
+	}
 	/**
 	 * "posts: 12, options: 3" for the log.
 	 *

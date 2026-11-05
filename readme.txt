@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.17.0
+Stable tag: 0.18.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -294,6 +294,14 @@ backup made by hand is not kept anywhere. The password of automatic backups is k
 encrypted with a key from the WordPress salts. Safety backups made before a restore are not
 encrypted (they stay on this server). Needs the PHP OpenSSL extension.
 
+= Multisite networks =
+
+On a network, SiteFerry is for super admins, on the main site, and backs up the whole network:
+every site's tables, the network tables and all of wp-content. Such a backup restores into a
+network of the same kind (subfolders or subdomains); every subsite is put under the new network's
+domain and path, and subsites made after the backup are removed with their tables. A single site
+cannot be restored into a network (or the other way round) yet, nor a part of a network.
+
 = Moving a site straight to another server =
 
 "Move" on the new site makes a one-time key (24 hours). Pasted under "Move" on the old site, it
@@ -390,6 +398,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.18.0 =
+* Multisite networks: whole-network backups (every site's tables, the network tables, all media) by super admins on the main site; restoring them into a network of the same kind, with every subsite's address mapped to the new network (subdomains keep their first label) and subsites made after the backup removed with their tables. The network stays network-activated for SiteFerry.
 
 = 0.17.0 =
 * Move a site straight to another server: "Move" makes a one-time key on the new site; pasted on the old site, it sends an encrypted backup straight there (resumable, checked chunks). "Move it here" on the new site restores it without asking for a password. WP-CLI: `wp siteferry receive` and `wp siteferry move <key>`.

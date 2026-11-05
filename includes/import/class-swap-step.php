@@ -71,6 +71,7 @@ final class Swap_Step implements Step {
 		if ( in_array( $temp . 'options', $loaded, true ) ) {
 			$this->keep_own_settings( $wpdb, $temp, $live, (string) $job->option( 'own_plugin' ) );
 		}
+		$this->keep_network_activation( $wpdb, $temp, $loaded, (bool) $job->option( 'own_network', false ) );
 
 		// 2. Tables.
 		$existing = array_flip( Raw_Query::column( $wpdb, 'SHOW TABLES LIKE ' . Raw_Query::quote( $wpdb, addcslashes( $live, '_%\\' ) . '%' ) ) );
@@ -82,6 +83,22 @@ final class Swap_Step implements Step {
 				$renames[] = Sql::identifier( $live . $suffix ) . ' TO ' . Sql::identifier( $old . $suffix );
 			}
 			$renames[] = Sql::identifier( $table ) . ' TO ' . Sql::identifier( $live . $suffix );
+		}
+		// A network: the tables of subsites the backup does not have (made after it) go aside too,
+		// so a subsite made later with the same number starts empty. They come back on a rollback.
+		$state['aside'] = array();
+		if ( ! empty( $inspect['network'] ) ) {
+			$ids = array_column( (array) $inspect['network']['blogs'], 'id' );
+			foreach ( array_keys( $existing ) as $table ) {
+				$suffix = substr( (string) $table, strlen( $live ) );
+				if ( preg_match( '/^(\d+)_/', $suffix, $match ) && ! in_array( (int) $match[1], $ids, true ) && ! isset( $state['tables'][ $suffix ] ) ) {
+					$state['aside'][] = $suffix;
+					$renames[]        = Sql::identifier( $live . $suffix ) . ' TO ' . Sql::identifier( $old . $suffix );
+				}
+			}
+			if ( array() !== $state['aside'] ) {
+				$job->log( 'info', sprintf( '%d tables of subsites that are not in the backup set aside.', count( $state['aside'] ) ) );
+			}
 		}
 		$job->set_state( 'swap', $state );
 		$job->save();
@@ -163,6 +180,38 @@ final class Swap_Step implements Step {
 				Raw_Query::run( $db, "UPDATE $imported SET option_value = " . Raw_Query::quote( $db, $data ) . " WHERE option_name = 'active_plugins'" );
 			} else {
 				Raw_Query::run( $db, "INSERT INTO $imported (option_name, option_value, autoload) VALUES ('active_plugins', " . Raw_Query::quote( $db, $data ) . ", 'yes')" );
+			}
+		}
+	}
+
+	/**
+	 * A network: SiteFerry stays network-activated when it was.
+	 *
+	 * @param \wpdb    $db             Connection.
+	 * @param string   $temp           Temporary prefix.
+	 * @param string[] $loaded         Loaded temporary tables.
+	 * @param bool     $network_active Whether SiteFerry is network-activated here.
+	 */
+	private function keep_network_activation( $db, string $temp, array $loaded, bool $network_active ): void {
+		$plugin = \SiteFerry\Plugin::basename();
+		// A network: SiteFerry stays network-activated if it was.
+		if ( $network_active && in_array( $temp . 'sitemeta', (array) $loaded, true ) ) {
+			$meta    = Sql::identifier( $temp . 'sitemeta' );
+			$value   = Raw_Query::column( $db, "SELECT meta_value FROM $meta WHERE meta_key = 'active_sitewide_plugins'" );
+			$plugins = isset( $value[0] ) ? Io::quiet(
+				static function () use ( $value ) {
+					return unserialize( (string) $value[0], array( 'allowed_classes' => false ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
+				}
+			) : array();
+			$plugins = is_array( $plugins ) ? $plugins : array();
+			if ( '' !== $plugin && ! isset( $plugins[ $plugin ] ) ) {
+				$plugins[ $plugin ] = time();
+				$data               = serialize( $plugins ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
+				if ( isset( $value[0] ) ) {
+					Raw_Query::run( $db, "UPDATE $meta SET meta_value = " . Raw_Query::quote( $db, $data ) . " WHERE meta_key = 'active_sitewide_plugins'" );
+				} else {
+					Raw_Query::run( $db, "INSERT INTO $meta (site_id, meta_key, meta_value) VALUES (1, 'active_sitewide_plugins', " . Raw_Query::quote( $db, $data ) . ')' );
+				}
 			}
 		}
 	}

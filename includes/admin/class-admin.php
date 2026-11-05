@@ -37,10 +37,13 @@ final class Admin {
 	 * Adds the menu page and loads assets only there.
 	 */
 	public static function menu(): void {
+		if ( is_multisite() && ! is_main_site() ) {
+			return; // A network is backed up whole, from its main site.
+		}
 		$hook = add_menu_page(
 			__( 'SiteFerry', 'siteferry' ),
 			__( 'SiteFerry', 'siteferry' ),
-			'manage_options',
+			is_multisite() ? 'manage_network_options' : 'manage_options',
 			self::SLUG,
 			array( self::class, 'render' ),
 			'dashicons-migrate',

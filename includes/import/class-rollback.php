@@ -86,7 +86,7 @@ final class Rollback {
 	 * @param array $state Swap state: tables = suffix => whether a live table was moved aside.
 	 */
 	private static function restore_tables( $db, Job $job, array $state ): void {
-		if ( empty( $state['tables'] ) ) {
+		if ( empty( $state['tables'] ) && empty( $state['aside'] ) ) {
 			return;
 		}
 		$temp = (string) $job->option( 'temp_prefix' );
@@ -103,6 +103,9 @@ final class Rollback {
 			if ( $had_live ) {
 				$renames[] = Sql::identifier( $old . $suffix ) . ' TO ' . Sql::identifier( $live . $suffix );
 			}
+		}
+		foreach ( isset( $state['aside'] ) ? (array) $state['aside'] : array() as $suffix ) {
+			$renames[] = Sql::identifier( $old . $suffix ) . ' TO ' . Sql::identifier( $live . $suffix );
 		}
 		Raw_Query::run( $db, 'RENAME TABLE ' . implode( ', ', $renames ) );
 		$job->log( 'info', sprintf( 'Tables restored (%d).', count( $state['tables'] ) ) );

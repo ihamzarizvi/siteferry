@@ -31,6 +31,7 @@ final class Site_Info {
 			'siteurl'        => untrailingslashit( (string) get_option( 'siteurl' ) ),
 			'name'           => (string) get_option( 'blogname' ),
 			'multisite'      => is_multisite(),
+			'network'        => self::network(),
 			'abspath'        => self::path( ABSPATH ),
 			'wp_content_dir' => self::path( WP_CONTENT_DIR ),
 			'wp_content_url' => untrailingslashit( content_url() ),
@@ -44,7 +45,7 @@ final class Site_Info {
 			'mysql'          => (string) $wpdb->db_server_info(),
 			'charset'        => (string) $wpdb->charset,
 			'collate'        => (string) $wpdb->collate,
-			'prefix'         => (string) $wpdb->prefix,
+			'prefix'         => (string) $wpdb->base_prefix, // A network: every site's tables.
 			'active_plugins' => array_values( (array) get_option( 'active_plugins', array() ) ),
 			'stylesheet'     => (string) get_stylesheet(),
 			'template'       => (string) get_template(),
@@ -52,6 +53,38 @@ final class Site_Info {
 		);
 	}
 
+	/**
+	 * The network: its address, whether subsites are subdomains, and every subsite (id, domain,
+	 * path). Null on a single site.
+	 */
+	public static function network(): ?array {
+		if ( ! is_multisite() ) {
+			return null;
+		}
+		$network = get_network();
+		$blogs   = array();
+		foreach ( get_sites(
+			array(
+				'number'     => 0,
+				'network_id' => (int) $network->id,
+				'orderby'    => 'id',
+			)
+		) as $blog ) {
+			$blogs[] = array(
+				'id'     => (int) $blog->blog_id,
+				'domain' => (string) $blog->domain,
+				'path'   => (string) $blog->path,
+			);
+		}
+		return array(
+			'id'                => (int) $network->id,
+			'domain'            => (string) $network->domain,
+			'path'              => (string) $network->path,
+			'subdomain_install' => is_subdomain_install(),
+			'main_site'         => (int) get_main_site_id( (int) $network->id ),
+			'blogs'             => $blogs,
+		);
+	}
 	/**
 	 * A filesystem path with forward slashes and no trailing slash.
 	 *

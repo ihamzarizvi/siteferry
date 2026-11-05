@@ -61,9 +61,6 @@ final class Import {
 	 * @throws Job_Exception If the import cannot start.
 	 */
 	public static function start( string $archive, array $options = array() ): array {
-		if ( is_multisite() ) {
-			throw new Job_Exception( 'Multisite networks are not supported by this version of SiteFerry.', Job_Exception::STEP );
-		}
 		$real = realpath( $archive );
 		if ( false === $real || ! is_file( $real ) || ! is_readable( $real ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_readable
 			throw new Job_Exception( sprintf( 'Cannot read the backup "%s".', $archive ), Job_Exception::STEP );
@@ -93,6 +90,7 @@ final class Import {
 		$options['old_prefix']  = 'sfo' . $tag . '_';
 		$options['own_plugin']  = in_array( Plugin::basename(), $active, true ) ? Plugin::basename() : '';
 		$options['own_folder']  = Plugin::folder();
+		$options['own_network'] = is_multisite() && array_key_exists( Plugin::basename(), (array) get_site_option( 'active_sitewide_plugins', array() ) );
 
 		$steps   = $wpress ? array_merge( array( \SiteFerry\Wpress\Import_Step::STEP ), self::STEPS ) : self::STEPS; // The safety step skips itself when declined.
 		$created = Job::create( Storage::jobs_dir(), 'import', $steps, $options );

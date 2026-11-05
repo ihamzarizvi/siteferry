@@ -8,7 +8,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.17.0-f97316" alt="Version 0.17.0">
+  <img src="https://img.shields.io/badge/version-0.18.0-f97316" alt="Version 0.18.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -23,7 +23,7 @@ Large sites are no problem: every job runs in short, resumable steps, so the PHP
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.17.0). Multisite support is next; see the
+> SiteFerry is in active development (0.18.0). Translations are next; see the
 > [roadmap](#roadmap).
 
 ## Contents
@@ -274,6 +274,14 @@ wp siteferry export --password            # asks for it (or set SITEFERRY_PASSWO
 wp siteferry import mysite-2026-11-05-1a2b3c4d5e6f.tar.enc --password
 wp siteferry backups check mysite-2026-11-05-1a2b3c4d5e6f.tar.enc --password
 ```
+**Multisite networks.** On a network, SiteFerry is used by super admins on the main site, and
+backs up the whole network: every site's tables, the network tables and all of `wp-content`
+(including each site's media). Such a backup restores into a multisite network of the same kind
+(subfolders or subdomains): every subsite keeps its place under the new network's domain and path
+(`shop.old.example` becomes `shop.new.example`; a subsite on a domain of its own keeps it), and
+subsites made after the backup are removed with their tables. The network address comes from the
+new network's `wp-config.php`. Not yet: restoring a single site into a network, a network into a
+single site, or only part of a network.
 **Move a site straight to another server.** Install SiteFerry on the new site, open **Move** there
 and click **Make a key**. On the old site, open **Move**, paste the key and click **Check the
 key**: it shows the new site's address, versions and free space. **Move this site there** makes a
@@ -536,7 +544,7 @@ before anything is read. Everything inside, including the file names, is encrypt
 | PHP | 7.4 or later (tested on 7.4, 8.2 and 8.5) |
 | PHP extensions | zlib for `.tar.gz`; ftp for FTP storage; sodium or OpenSSL for stored keys; OpenSSL for password-protected backups |
 | Database | MySQL or MariaDB |
-| Multisite | Not supported yet |
+| Multisite | Whole networks, restored into a network of the same kind |
 
 ## FAQ
 
@@ -618,7 +626,7 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] Backups split into parts, for file size limits
 - [ ] More storages: WebDAV (Nextcloud, ownCloud), OneDrive, pCloud
 - [x] Site-to-site move without downloading
-- [ ] Multisite
+- [x] Multisite (whole networks)
 - [ ] Translations
 
 ## Development and tests

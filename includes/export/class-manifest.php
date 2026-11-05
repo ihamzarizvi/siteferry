@@ -67,6 +67,7 @@ final class Manifest {
 				'siteurl'   => $site['siteurl'],
 				'name'      => $site['name'],
 				'multisite' => $site['multisite'],
+				'network'   => isset( $site['network'] ) ? $site['network'] : null,
 			),
 			'paths'          => array(
 				'abspath'        => $site['abspath'],

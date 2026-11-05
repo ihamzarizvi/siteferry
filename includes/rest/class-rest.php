@@ -254,7 +254,8 @@ final class Rest {
 	 * Permission: administrators.
 	 */
 	public static function can_manage(): bool {
-		return current_user_can( 'manage_options' );
+		// A network is backed up and restored whole: by super admins, on its main site.
+		return is_multisite() ? is_main_site() && current_user_can( 'manage_network_options' ) : current_user_can( 'manage_options' );
 	}
 
 	/**

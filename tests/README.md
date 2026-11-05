@@ -32,6 +32,7 @@ A single suite can be run directly, for example `php -n tests\test-tar-roundtrip
 | `test-crypto.php` | Password-protected backups: the password check (right, wrong, a changed header, fewer rounds written in), .tar and .tar.gz written through the encrypting stream in slices with junk from dead requests cut off and read back exactly, reads at any position, nothing in the clear, and tampering refused (a changed byte, a missing final chunk, a cut file, swapped chunks, chunks under another header); sealing twice; an unsealed file refused |
 | `test-space.php` | The space report's sums: parts of wp-content, media by year, plugins and themes with what is inactive, cache, top-level folders and the largest files (also over many files), and plugins kept outside wp-content |
 | `test-parts.php` | Backups in parts: cutting (whole when it fits, numbered parts that add up exactly, at most 999), which stored names count, listings that show each set as one backup (in order, a missing part noticed, a whole file preferred), part sizes from the settings form |
+| `test-network.php` | Multisite: where every subsite of a backed-up network goes in another network (subfolders and subdomains, a new domain and path, a subsite on a domain of its own) |
 | `test-gdrive.php` | Google Drive driver against an in-process fake Google (`lib/class-fake-google.php`): consent URL (drive.file only, offline, PKCE S256), code exchange (reused code, wrong verifier, missing scope, missing refresh token, wrong client secret), token refresh before expiry and after a 401 with the new token saved, revoked grant, folder created/found/re-created, resumable upload with a repeated and a half-stored part, replacing an earlier copy, paged listing, ranged downloads, trash, abort, rate limits retried, a full Drive and a foreign upload host refused, connection test, disconnect revokes; one-click mode through the relay (no client ID or secret on the site, renewal through the relay, an unreachable relay named in the error) |
 | `test-relay.php` | The sign-in relay (`relay/src/class-relay.php`) with a fake Google transport: health check, return addresses that are not a SiteFerry admin page refused, signed state (tampered, changed return address, expired), callback back to the site with its own state or Google's refusal, token requests forwarded with the client secret added, malformed and oversized requests, Google unreachable; Dropbox start (app key, callback, offline access, permissions, PKCE, state within 500 bytes, an address too long refused), callback, `/dropbox/app`, Google and Dropbox states not interchangeable, no token route for Dropbox, a relay set up for only one provider |
 | `test-schedule.php` | Backup schedule without WordPress: settings defaults and every invalid value refused (frequency, time, days, retention, format, storage, email with a header injection), next run daily/weekly/monthly in several time zones, across daylight saving time (including a skipped hour) and month and year ends, retention picking only the scheduled backups beyond the newest N, the export options a schedule makes; backups before updates: settings, which updates get one (not new installs or translations), and options that keep only the plugin or theme being updated (the database only for WordPress) |
@@ -101,6 +102,12 @@ powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-t
 # (cancelled). Removes its backup.
 powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-themes "--exec=define('DISABLE_WP_CRON', true);" eval-file tests/wp/test-move.php
 
+# Multisite (on siteferry-dst converted to a subfolder network with /alpha/ and /beta/): super
+# admins on the main site only; a network backup with every site's tables, the network tables and
+# subsite media; a restore check that maps every subsite (cancelled); a single-site backup refused
+# (pass its path as the argument). Removes its backup.
+powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-themes eval-file tests/wp/test-network.php <single-site-backup.tar>
+
 # Backups before updates: applies WordPress's upgrader_pre_download filter with real upgrader objects
 # (nothing is downloaded or updated). Off by default; a plugin update backs up the database and only
 # that plugin, a theme update only that theme, a WordPress update only the database (the archives are
@@ -145,6 +152,7 @@ powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario rol
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario undo
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario partial
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario encrypted
+powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario network   # dst as a network
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario archive -Archive <backup.tar> -SourceChecksums <list>
 ```
 

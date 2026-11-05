@@ -66,10 +66,6 @@ final class Export {
 	 * @throws Job_Exception If the site cannot be exported.
 	 */
 	public static function start( array $options, ?string $work_dir = null, string $origin = 'admin', string $parent = '', array $then = array() ): array {
-		if ( is_multisite() ) {
-			throw new Job_Exception( 'Multisite networks are not supported by this version of SiteFerry.', Job_Exception::STEP );
-		}
-
 		// The password only gives the key; it is never saved.
 		$password = isset( $options['password'] ) && is_string( $options['password'] ) ? $options['password'] : '';
 		unset( $options['password'] );

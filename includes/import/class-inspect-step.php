@@ -45,8 +45,28 @@ final class Inspect_Step implements Step {
 		if ( (int) $manifest['format_version'] > Manifest::FORMAT_VERSION ) {
 			throw new Job_Exception( 'This backup was made by a newer version of SiteFerry. Update SiteFerry on this site first.', Job_Exception::STEP );
 		}
-		if ( ! empty( $manifest['site']['multisite'] ) ) {
-			throw new Job_Exception( 'This backup comes from a multisite network, which this version of SiteFerry cannot import.', Job_Exception::STEP );
+		// Networks: a whole network goes into a network of the same kind, and nothing else does.
+		$from_network = isset( $manifest['site']['network'] ) && is_array( $manifest['site']['network'] ) ? $manifest['site']['network'] : null;
+		$to_network   = isset( $site['network'] ) && is_array( $site['network'] ) ? $site['network'] : null;
+		if ( ! empty( $manifest['site']['multisite'] ) && null === $from_network ) {
+			throw new Job_Exception( 'This backup comes from a multisite network but was made by an older SiteFerry that does not record the network; it cannot be restored.', Job_Exception::STEP );
+		}
+		if ( null !== $from_network && null === $to_network ) {
+			throw new Job_Exception( 'This backup is of a whole multisite network. Restore it into a multisite network (of the same kind) instead of a single site.', Job_Exception::STEP );
+		}
+		if ( null === $from_network && null !== $to_network ) {
+			throw new Job_Exception( 'This site is a multisite network; it can only take a backup of a whole network. Restoring a single site into a network is not supported yet.', Job_Exception::STEP );
+		}
+		if ( null !== $from_network ) {
+			if ( (bool) $from_network['subdomain_install'] !== (bool) $to_network['subdomain_install'] ) {
+				throw new Job_Exception( sprintf( 'The backup\'s network uses %s for its sites, this network uses %s; they must be the same.', $from_network['subdomain_install'] ? 'subdomains' : 'subfolders', $to_network['subdomain_install'] ? 'subdomains' : 'subfolders' ), Job_Exception::STEP );
+			}
+			if ( '' !== (string) $job->option( 'replace_url' ) ) {
+				throw new Job_Exception( 'A network keeps the address set in wp-config.php; a new address cannot be set for it here.', Job_Exception::STEP );
+			}
+			if ( Import::partial( $job ) ) {
+				throw new Job_Exception( 'A network is restored whole; restoring only parts of it is not supported yet.', Job_Exception::STEP );
+			}
 		}
 		$prefix = (string) $manifest['database']['prefix'];
 		if ( ! preg_match( '/^[A-Za-z0-9_]+$/', $prefix ) ) {
@@ -119,6 +139,14 @@ final class Inspect_Step implements Step {
 			'uploads_dir'    => $manifest['paths']['uploads_dir'],
 		);
 		$pairs  = Replacements::build( $source, $target, $job->option( 'replace', array() ) );
+		$map    = null;
+		if ( null !== $from_network ) {
+			$map = self::network_map( $from_network, $to_network, (string) wp_parse_url( $target['home'], PHP_URL_SCHEME ) );
+			foreach ( $map['blogs'] as $blog ) {
+				// Subsites on other hosts (subdomains) need their own pairs; subfolders are covered above.
+				$pairs += Replacements::build( array( 'home' => $blog['old_url'] ), array( 'home' => $blog['url'] ) );
+			}
+		}
 
 		$job->set_state(
 			'inspect',
@@ -128,6 +156,7 @@ final class Inspect_Step implements Step {
 				'prefix'    => $prefix,
 				'charset'   => (string) $manifest['database']['charset'],
 				'tables'    => $names,
+				'network'   => $map,
 				'rows'      => (int) $manifest['database']['rows'],
 				'table_rows' => array_combine( $names, array_map( 'intval', array_column( $manifest['database']['tables'], 'rows' ) ) ),
 				'rows_exact' => ! empty( $manifest['database']['rows_exact'] ),
@@ -187,6 +216,7 @@ final class Inspect_Step implements Step {
 	 * @param string $replace_url New address, or '' to keep this site's address.
 	 */
 	public static function target( array $site, string $replace_url ): array {
+		// (A network's subsites are mapped by network_map().)
 		$target = array(
 			'home'           => $site['home'],
 			'siteurl'        => $site['siteurl'],
@@ -206,6 +236,47 @@ final class Inspect_Step implements Step {
 		return $target;
 	}
 
+	/**
+	 * Where every subsite of the backup's network goes in this network: the same subsites,
+	 * under this network's domain and path. Subdomains keep their first label
+	 * ("shop.old.example" becomes "shop.new.example"); a subsite on a domain of its own keeps it.
+	 *
+	 * @param array  $from   The backup's network.
+	 * @param array  $to     This network.
+	 * @param string $scheme "http" or "https" (this site's).
+	 * @return array{id:int,domain:string,path:string,url:string,blogs:array}
+	 */
+	public static function network_map( array $from, array $to, string $scheme ): array {
+		$blogs = array();
+		foreach ( (array) $from['blogs'] as $blog ) {
+			$domain = (string) $blog['domain'];
+			$path   = (string) $blog['path'];
+			$rest   = 0 === strpos( $path, (string) $from['path'] ) ? substr( $path, strlen( (string) $from['path'] ) ) : ltrim( $path, '/' );
+			if ( $domain === $from['domain'] ) {
+				$new_domain = (string) $to['domain'];
+			} elseif ( '.' . $from['domain'] === substr( $domain, -strlen( '.' . $from['domain'] ) ) ) {
+				$new_domain = substr( $domain, 0, -strlen( $from['domain'] ) ) . $to['domain'];
+			} else {
+				$new_domain = $domain;
+			}
+			$new_path = (string) $to['path'] . $rest;
+			$blogs[]  = array(
+				'id'      => (int) $blog['id'],
+				'old_url' => $scheme . '://' . $domain . rtrim( $path, '/' ),
+				'domain'  => $new_domain,
+				'path'    => $new_path,
+				'url'     => $scheme . '://' . $new_domain . rtrim( $new_path, '/' ),
+			);
+		}
+		return array(
+			'id'        => (int) $from['id'],
+			'main_site' => (int) $from['main_site'],
+			'domain'    => (string) $to['domain'],
+			'path'      => (string) $to['path'],
+			'url'       => $scheme . '://' . $to['domain'] . $to['path'],
+			'blogs'     => $blogs,
+		);
+	}
 	/**
 	 * What a partial restore restores, in words ('' when it restores everything).
 	 *

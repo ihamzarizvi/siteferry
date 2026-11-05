@@ -25,6 +25,10 @@
                         nothing of it is readable, that a wrong password is refused before anything
                         changes, and that with the password it restores the marker content with every
                         file as before. Does not touch siteferry-src.
+    -Scenario network   siteferry-dst as a subfolder multisite network (subsites /alpha/ and /beta/):
+                        backs up the whole network, changes an /alpha/ post, removes a /beta/ media
+                        file and adds /gamma/, restores, and checks that the post and media are back,
+                        /gamma/ and its tables are gone and every subsite has its address.
     -Scenario archive   Imports an existing backup (-Archive). Checks addresses and leftovers, and with
                         -SourceChecksums (a "table checksum" list of the source site) that every table
                         the search-replace did not change is identical to the source. -VerifyOnly runs
@@ -33,7 +37,7 @@
     Run each scenario only with the site owner's permission: it replaces siteferry-dst's content.
 #>
 param(
-    [ValidateSet('site', 'rollback', 'undo', 'partial', 'encrypted', 'archive')] [string] $Scenario = 'site',
+    [ValidateSet('site', 'rollback', 'undo', 'partial', 'encrypted', 'network', 'archive')] [string] $Scenario = 'site',
     [string] $Archive = '',
     [string] $SourceChecksums = '',
     [switch] $VerifyOnly,
@@ -393,6 +397,64 @@ try {
         finally {
             foreach ($id in (Wp $dst @('post', 'list', '--post_type=post', '--title=SFTEST-UNDO', '--field=ID', '--post_status=any'))) { Wp $dst @('post', 'delete', $id, '--force') | Out-Null }
             Wp $dst @('option', 'delete', 'sftest_undo') -AllowFail | Out-Null
+        }
+    }
+    if ($Scenario -eq 'network') {
+        $alphaUrl = $dst.Url + '/alpha/'
+        $alphaId = ((Wp $dst @("--url=$alphaUrl", 'post', 'list', '--post_type=post', '--title=SFTEST-MS-alpha', '--field=ID')) -join '').Trim()
+        $betaMedia = Get-ChildItem (Join-Path $dst.Public 'wp-content\uploads\sites\3') -Recurse -Filter 'sftest-beta.txt' -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $alphaId -or -not $betaMedia) { throw 'siteferry-dst is not the test network (subsites /alpha/ and /beta/ with their marker post and media).' }
+
+        $file = (Wp $dst @($noCron, 'siteferry', 'export', "--dir=$work", '--porcelain') | Select-Object -Last 1).Trim()
+        Write-Host "Exported the network: $file"
+        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+        $prefix = (Wp $dst @('config', 'get', 'table_prefix') | Select-Object -Last 1).Trim()
+        try {
+            # Changes after the backup: a post on /alpha/, a media file of /beta/, a new subsite /gamma/.
+            Wp $dst @("--url=$alphaUrl", 'post', 'update', $alphaId, '--post_title=SFTEST-MS-CHANGED') | Out-Null
+            Remove-Item -LiteralPath $betaMedia.FullName -Force
+            Wp $dst @('site', 'create', '--slug=gamma', '--title=Gamma') | Out-Null
+            $gamma = "$((Wp $dst @('site', 'list', '--fields=blog_id,path', '--format=csv') -AllowFail) | Where-Object { $_ -match ',/gamma/$' } | ForEach-Object { ($_ -split ',')[0] } | Select-Object -First 1)".Trim()
+
+            $out = Wp $dst @($noCron, 'siteferry', 'import', $file, '--skip-safety-backup', '--yes')
+            Write-Host (($out | Select-Object -Last 2) -join "`n")
+            $after = DbState $dst
+            $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+
+            Check 'the network is as in the backup: the /alpha/ post and the /beta/ media are back' {
+                $title = ((Wp $dst @("--url=$alphaUrl", 'post', 'get', $alphaId, '--field=post_title')) -join '').Trim()
+                Assert ($title -eq 'SFTEST-MS-alpha') "alpha post title: $title"
+                Assert (Test-Path -LiteralPath $betaMedia.FullName) 'beta media missing'
+                Assert ($treeAfter -eq $treeBefore) 'wp-content differs from the backup'
+            }
+            Check '/gamma/ (made after the backup) and its tables are gone' {
+                $paths = @(Wp $dst @('site', 'list', '--field=path'))
+                Assert (-not ($paths -contains '/gamma/')) ('sites: ' + ($paths -join ', '))
+                $left = @($after.checksums.PSObject.Properties.Name | Where-Object { $_ -like ($prefix + $gamma + '_*') })
+                Assert ($left.Count -eq 0) ('gamma tables left: ' + ($left -join ', '))
+            }
+            Check 'every subsite has its address' {
+                foreach ($slug in '', 'alpha/', 'beta/') {
+                    $url = $dst.Url + '/' + $slug
+                    $homeUrl = ((Wp $dst @("--url=$url", 'option', 'get', 'home')) -join '').Trim()
+                    Assert ($homeUrl -eq $url.TrimEnd('/')) "home of /$slug is $homeUrl"
+                }
+                $network = ((Wp $dst @($noCron, 'eval', 'echo get_site_option( "siteurl" );')) -join '').Trim()
+                Assert ($network -eq ($dst.Url + '/')) "network siteurl: $network"
+            }
+            Check 'SiteFerry still active, no leftovers' {
+                Wp $dst @('plugin', 'is-active', 'siteferry') -AllowFail | Out-Null
+                Assert ($script:lastCode -eq 0) 'SiteFerry is not active after the restore'
+                Assert (@($after.import_tables).Count -eq 0) ('import tables left: ' + ($after.import_tables -join ', '))
+                Assert (-not (Test-Path (Join-Path $dst.Public '.maintenance'))) 'maintenance file left behind'
+            }
+        }
+        finally {
+            # If the restore did not run: the changes are undone by hand.
+            if (-not (Test-Path -LiteralPath $betaMedia.FullName)) { Set-Content -LiteralPath $betaMedia.FullName -Value 'media of beta' -NoNewline }
+            Wp $dst @("--url=$alphaUrl", 'post', 'update', $alphaId, '--post_title=SFTEST-MS-alpha') -AllowFail | Out-Null
+            $gammaLeft = ((Wp $dst @('site', 'list', '--fields=blog_id,path', '--format=csv') -AllowFail) | Where-Object { $_ -match ',/gamma/$' } | ForEach-Object { ($_ -split ',')[0] } | Select-Object -First 1)
+            if ("$gammaLeft".Trim()) { Wp $dst @('site', 'delete', "$gammaLeft".Trim(), '--yes') -AllowFail | Out-Null }
         }
     }
     if ($Scenario -eq 'archive') {
