@@ -8,7 +8,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.14.0-f97316" alt="Version 0.14.0">
+  <img src="https://img.shields.io/badge/version-0.15.0-f97316" alt="Version 0.15.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -23,7 +23,7 @@ Large sites are no problem: every job runs in short, resumable steps, so the PHP
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.14.0). A space report before a backup is next; see the
+> SiteFerry is in active development (0.15.0). Backups split into parts are next; see the
 > [roadmap](#roadmap).
 
 ## Contents
@@ -69,6 +69,9 @@ upload limits and dropped connections don't break a backup or a restore.
 - Leave out media, plugins, themes, inactive plugins and themes, cache folders, spam comments,
   post revisions or single database tables (and any folder, from WP-CLI).
 - Optional gzip compression (`.tar.gz`), or a `.wpress` file for All-in-One WP Migration.
+- **Space report**: Options shows about how big the backup will be with the choices made, and
+  what takes the room (media by year, plugins and themes, the largest files and tables), next to
+  the free space on the server.
 - **Password protection**: AES-256-GCM encryption of the whole backup (`.enc`), for backups made by
   hand and automatic ones.
 - Name, note and tags for each backup; search the list and filter it by tag.
@@ -425,6 +428,7 @@ wp siteferry import <file> [--tables=wp_posts,wp_postmeta] [--paths=uploads,plug
 # Backups and storage
 wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]
 wp siteferry backups check <name> [--storage=<id>] [--password]
+wp siteferry space [--fresh] [--format=table|json]
 
 # Password-protected backups (asks for it, or set SITEFERRY_PASSWORD)
 wp siteferry export --password
@@ -580,7 +584,7 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] Check a stored copy (download it and verify its checksums)
 - [x] Encrypted backups with a password
 - [ ] Importing password-protected .wpress backups
-- [ ] Space report before a backup
+- [x] Space report before a backup
 - [ ] Backups split into parts, for file size limits
 - [ ] More storages: WebDAV (Nextcloud, ownCloud), OneDrive, pCloud
 - [ ] Site-to-site move without downloading

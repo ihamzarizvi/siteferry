@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.14.0
+Stable tag: 0.15.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,6 +114,7 @@ and themes are left out, so it is quick. It stays on this server, named "Before 
 * `wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] [--include-mu-plugins] [--include-drop-ins] [--force] [--skip-safety-backup] [--only-database|--only-files] [--tables=...] [--paths=...] [--yes]`
 * `wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]`
 * `wp siteferry backups check <name> [--storage=<id>] [--password]`
+* `wp siteferry space [--fresh] [--format=table|json]`
 * `wp siteferry export --password`, `wp siteferry import <file>.tar.enc --password`
 * `wp siteferry export --send=<id> [--delete-after-send]`
 * `wp siteferry storage test|list <id>`, `wp siteferry storage send <id> <backup>`,
@@ -377,6 +378,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.15.0 =
+* Space report: opening Options measures the site (in short steps; kept for an hour) and shows about how big the backup will be with the choices made, before compression, next to the free space on the server, with a warning when it does not fit. "What takes the room" lists the database, media, plugins and themes (and what of them is inactive), cache and the rest, the largest files, media by year, the largest plugins, themes and tables, post revisions and spam comments. WP-CLI: `wp siteferry space`.
 
 = 0.14.0 =
 * Password-protected backups: AES-256-GCM encryption of the whole backup as it is written (.tar.enc / .tar.gz.enc), for backups made by hand (Options) and automatic ones (Schedule panel, also before updates). Restore, check and "Look inside" ask for the password; a wrong one is refused before anything changes. The key is derived with PBKDF2 (600,000 rounds); no password of a backup made by hand is kept. WP-CLI: `--password` for export, import and backups check (or the SITEFERRY_PASSWORD environment variable).

@@ -81,6 +81,7 @@ final class Rest {
 			array( '/backups/' . self::NAME . '/download', WP_REST_Server::READABLE, 'download', $admin ),
 			array( '/backups/' . self::NAME . '/contents', WP_REST_Server::READABLE, 'contents_of', $admin ),
 			array( '/checks', WP_REST_Server::READABLE, 'checks', $admin ),
+			array( '/space', WP_REST_Server::READABLE, 'space', $admin ),
 			array( '/backups/' . self::NAME . '/unlock', WP_REST_Server::CREATABLE, 'unlock_backup', $admin ),
 			array( '/checks', WP_REST_Server::CREATABLE, 'start_check', $admin ),
 			array( '/backups/' . self::NAME . '/file', WP_REST_Server::READABLE, 'backup_file', $admin ),
@@ -390,6 +391,16 @@ final class Rest {
 		}
 		$key = base64_decode( $key, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
 		return $name === (string) $request['name'] && false !== $key ? $key : null;
+	}
+
+	/**
+	 * The space report ("fresh" measures again). Until the site is measured, "complete" is false
+	 * and the page asks again.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function space( WP_REST_Request $request ): array {
+		return \SiteFerry\Space::report( min( 15.0, self::slice_seconds() ), (bool) $request->get_param( 'fresh' ) );
 	}
 
 	/**

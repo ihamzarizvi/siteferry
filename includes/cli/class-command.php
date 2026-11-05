@@ -343,6 +343,75 @@ final class Command {
 	}
 
 	/**
+	 * Shows what takes the room: the database, media, plugins, themes, cache and the rest of
+	 * wp-content, the largest files and tables, and the free space on this server.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--fresh]
+	 * : Measure again even if the site was measured in the last hour.
+	 *
+	 * [--format=<format>]
+	 * : Output format.
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - json
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp siteferry space
+	 *     wp siteferry space --fresh --format=json
+	 *
+	 * @param string[] $args       Positional arguments (none).
+	 * @param array    $assoc_args Options.
+	 */
+	public function space( $args, $assoc_args ): void {
+		$fresh = (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'fresh', false );
+		do {
+			$result = \SiteFerry\Space::report( self::SLICE_SECONDS, $fresh );
+			$fresh  = false;
+		} while ( ! $result['complete'] );
+		$report = $result['report'];
+		if ( 'json' === \WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'table' ) ) {
+			WP_CLI::line( (string) wp_json_encode( $report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
+			return;
+		}
+		$files = $report['files'];
+		$db    = $report['database'];
+		$rows  = array(
+			array( 'part' => 'Database', 'size' => size_format( $db['bytes'], 1 ), 'note' => count( $db['tables'] ) . ' tables' ),
+			array( 'part' => 'Media (uploads)', 'size' => size_format( $files['parts']['uploads']['bytes'], 1 ), 'note' => $files['parts']['uploads']['files'] . ' files' ),
+			array( 'part' => 'Plugins', 'size' => size_format( $files['parts']['plugins']['bytes'], 1 ), 'note' => size_format( $files['parts']['plugins']['inactive'], 1 ) . ' inactive' ),
+			array( 'part' => 'Themes', 'size' => size_format( $files['parts']['themes']['bytes'], 1 ), 'note' => size_format( $files['parts']['themes']['inactive'], 1 ) . ' inactive' ),
+			array( 'part' => 'Cache', 'size' => size_format( $files['parts']['cache']['bytes'], 1 ), 'note' => 'left out by default' ),
+			array( 'part' => 'Everything else', 'size' => size_format( $files['parts']['other']['bytes'], 1 ), 'note' => $files['parts']['other']['files'] . ' files' ),
+		);
+		\WP_CLI\Utils\format_items( 'table', $rows, array( 'part', 'size', 'note' ) );
+		WP_CLI::log( '' );
+		WP_CLI::log( 'Largest files:' );
+		foreach ( $files['largest'] as $file ) {
+			WP_CLI::log( sprintf( '  %10s  %s', size_format( $file['bytes'], 1 ), $file['path'] ) );
+		}
+		WP_CLI::log( 'Largest tables:' );
+		foreach ( array_slice( $db['tables'], 0, 5 ) as $table ) {
+			WP_CLI::log( sprintf( '  %10s  %s (%d rows)', size_format( $table['bytes'], 1 ), $table['name'], $table['rows'] ) );
+		}
+		WP_CLI::log( sprintf( 'Post revisions: %d (%s). Spam comments: %d (%s).', $db['revisions']['count'], size_format( $db['revisions']['bytes'], 1 ), $db['spam']['count'], size_format( $db['spam']['bytes'], 1 ) ) );
+		WP_CLI::success(
+			sprintf(
+				'The whole site is %s (%s files); %s free on this server; backups here take %s.',
+				size_format( $files['bytes'] + $db['bytes'], 1 ),
+				number_format( $files['files'] ),
+				null === $report['free'] ? 'unknown space' : size_format( $report['free'], 1 ),
+				size_format( $report['backups'], 1 )
+			)
+		);
+	}
+
+	/**
 	 * The --password flag: its value, the SITEFERRY_PASSWORD environment variable, or a prompt.
 	 *
 	 * @param array $assoc_args Options.

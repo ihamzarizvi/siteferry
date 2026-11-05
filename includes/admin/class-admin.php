@@ -205,6 +205,13 @@ final class Admin {
 							<summary><?php esc_html_e( 'Leave out single database tables', 'siteferry' ); ?> <span class="sf-more-count" id="siteferry-tables-count" hidden></span></summary>
 							<div id="siteferry-tables" class="sf-tables"><?php esc_html_e( 'Loading...', 'siteferry' ); ?></div>
 						</details>
+						<div class="sf-space" id="siteferry-space" aria-live="polite">
+							<p class="sf-space-line" id="siteferry-space-line"><?php esc_html_e( 'Measuring the site...', 'siteferry' ); ?></p>
+							<details class="sf-more" id="siteferry-space-details" hidden>
+								<summary><?php esc_html_e( 'What takes the room', 'siteferry' ); ?></summary>
+								<div class="sf-space-body" id="siteferry-space-body"></div>
+							</details>
+						</div>
 						<fieldset class="sf-format">
 							<legend><?php esc_html_e( 'File', 'siteferry' ); ?></legend>
 							<div class="sf-choices" role="radiogroup" aria-label="<?php esc_attr_e( 'Backup file format', 'siteferry' ); ?>">

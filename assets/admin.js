@@ -2009,6 +2009,140 @@
 		return true;
 	}
 
+	// ------------------------------------------------------------ space report
+
+	let space = null;
+	let spaceLoading = false;
+
+	/** Measures the site (in a few requests for a big one), then shows the estimate. */
+	async function loadSpace( fresh ) {
+		if ( spaceLoading ) {
+			return;
+		}
+		spaceLoading = true;
+		const line = $( 'siteferry-space-line' );
+		try {
+			for ( let round = 0; round < 200; round++ ) {
+				const data = await api( 'GET', 'space', { query: fresh && round === 0 ? { fresh: 1 } : {} } );
+				if ( data.complete ) {
+					space = data.report;
+					break;
+				}
+				line.textContent = 'Measuring the site... ' + plural( data.files, 'file', 'files' ) + ', ' + bytes( data.bytes ) + ' so far.';
+			}
+		} catch ( error ) {
+			line.textContent = 'The site could not be measured: ' + error.message;
+		} finally {
+			spaceLoading = false;
+		}
+		renderSpace();
+	}
+
+	/** About how big a backup with the current choices will be (before compression). */
+	function estimate( form ) {
+		const checked = ( name ) => {
+			const input = form.querySelector( 'input[name=' + name + ']' );
+			return !! input && input.checked;
+		};
+		const f = space.files;
+		let files = f.bytes;
+		if ( checked( 'exclude_media' ) ) {
+			files -= f.parts.uploads.bytes;
+		}
+		files -= checked( 'exclude_plugins' ) ? f.parts.plugins.bytes : checked( 'exclude_inactive_plugins' ) ? f.parts.plugins.inactive : 0;
+		files -= checked( 'exclude_themes' ) ? f.parts.themes.bytes : checked( 'exclude_inactive_themes' ) ? f.parts.themes.inactive : 0;
+		if ( checked( 'exclude_cache' ) ) {
+			files -= f.parts.cache.bytes;
+		}
+		const db = space.database;
+		const left = Array.from( form.querySelectorAll( 'input[name=exclude_tables]:checked' ) ).map( ( input ) => input.value );
+		let database = db.bytes - db.tables.filter( ( t ) => left.indexOf( t.name ) !== -1 ).reduce( ( sum, t ) => sum + t.bytes, 0 );
+		if ( checked( 'exclude_revisions' ) ) {
+			database -= db.revisions.bytes;
+		}
+		if ( checked( 'exclude_spam_comments' ) ) {
+			database -= db.spam.bytes;
+		}
+		return { files: Math.max( 0, files ), database: Math.max( 0, database ) };
+	}
+
+	function renderSpace() {
+		const line = $( 'siteferry-space-line' );
+		if ( ! space ) {
+			return;
+		}
+		const form = $( 'siteferry-export-form' );
+		const e = estimate( form );
+		const total = e.files + e.database;
+		const whole = space.files.bytes + space.database.bytes;
+		const format = form.querySelector( 'input[name=format]:checked' );
+		const wpress = !! format && format.value === 'wpress';
+		const compress = form.querySelector( 'input[name=compress]' );
+		// The archive is written next to the backups; a .wpress file is made from a TAR first.
+		const needed = total * ( wpress ? 2 : 1 ) * 1.02;
+		const parts = [
+			el( 'strong', { text: 'This backup: about ' + bytes( total ) } ),
+			' (database ' + bytes( e.database ) + ', files ' + bytes( e.files ) + ( total < whole ? '; the whole site is ' + bytes( whole ) : '' ) + ')' + ( compress && compress.checked && ! wpress ? ', less once compressed.' : '.' ),
+		];
+		if ( null !== space.free ) {
+			parts.push( ' ' + bytes( space.free ) + ' free on this server.' );
+			if ( space.free < needed ) {
+				parts.push( ' ', el( 'strong', { class: 'sf-space-short', text: 'That is not enough room for it.' } ) );
+			}
+		}
+		line.replaceChildren( ...parts );
+		$( 'siteferry-space-details' ).hidden = false;
+		renderSpaceDetails();
+	}
+
+	function renderSpaceDetails() {
+		const f = space.files;
+		const db = space.database;
+		const whole = f.bytes + db.bytes;
+		const bar = ( label, value, note ) =>
+			el( 'div', { class: 'sf-space-row' }, [
+				el( 'span', { class: 'sf-space-label', text: label } ),
+				el( 'span', { class: 'sf-space-bar', 'aria-hidden': 'true' }, [ el( 'span', { style: 'width:' + ( whole ? Math.max( 0.5, ( 100 * value ) / whole ) : 0 ).toFixed( 1 ) + '%' } ) ] ),
+				el( 'span', { class: 'sf-space-size', text: bytes( value ) + ( note ? ' · ' + note : '' ) } ),
+			] );
+		const list = ( title, rows ) =>
+			rows.length
+				? el( 'div', { class: 'sf-space-list' }, [
+						el( 'h4', { text: title } ),
+						el( 'ol', {}, rows.map( ( [ name, value, note ] ) => el( 'li', {}, [ el( 'span', { class: 'sf-space-name', text: name } ), el( 'span', { class: 'sf-space-size', text: bytes( value ) + ( note ? ' · ' + note : '' ) } ) ] ) ) ),
+				  ] )
+				: document.createTextNode( '' );
+		const p = f.parts;
+		const body = [
+			bar( 'Database', db.bytes, plural( db.tables.length, 'table', 'tables' ) ),
+			bar( 'Media (uploads)', p.uploads.bytes, plural( p.uploads.files, 'file', 'files' ) ),
+			bar( 'Plugins', p.plugins.bytes, p.plugins.inactive ? bytes( p.plugins.inactive ) + ' inactive' : '' ),
+			bar( 'Themes', p.themes.bytes, p.themes.inactive ? bytes( p.themes.inactive ) + ' inactive' : '' ),
+			bar( 'Cache', p.cache.bytes, 'left out by default' ),
+			bar( 'Everything else', p.other.bytes, plural( p.other.files, 'file', 'files' ) ),
+			el( 'div', { class: 'sf-space-lists' }, [
+				list( 'Largest files', f.largest.map( ( x ) => [ x.path, x.bytes ] ) ),
+				list( 'Media by year', f.years.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes ] ) ),
+				list( 'Largest plugins', f.plugins.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes, x.active ? '' : 'inactive' ] ) ),
+				list( 'Largest tables', db.tables.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes, plural( x.rows, 'row', 'rows' ) ] ) ),
+				list( 'Largest themes', f.themes.slice( 0, 5 ).map( ( x ) => [ x.name, x.bytes, x.active ? '' : 'inactive' ] ) ),
+				list( 'Largest folders in wp-content', f.items.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes ] ) ),
+			] ),
+			el( 'p', { class: 'description' }, [
+				( db.revisions.count ? plural( db.revisions.count, 'post revision', 'post revisions' ) + ' (' + bytes( db.revisions.bytes ) + ')' : 'No post revisions' ) +
+					' and ' +
+					( db.spam.count ? plural( db.spam.count, 'spam comment', 'spam comments' ) + ' (' + bytes( db.spam.bytes ) + ')' : 'no spam comments' ) +
+					'. Backups on this server take ' +
+					bytes( space.backups ) +
+					'. Sizes are of the files as they are, before any compression. Measured ' +
+					when( space.time, true ) +
+					'. ',
+				button( 'Measure again', () => loadSpace( true ), 'button-link' ),
+			] ),
+		];
+		$( 'siteferry-space-body' ).replaceChildren( ...body );
+	}
+
 	// ------------------------------------------------------------ look inside a backup
 
 	/**
@@ -2658,6 +2792,9 @@
 			$( toggle ).setAttribute( 'aria-expanded', open ? 'true' : 'false' );
 			$( toggle ).classList.toggle( 'is-open', open );
 		} );
+		if ( which === 'options' && ! $( 'siteferry-export-form' ).hidden && ! space ) {
+			loadSpace( false ); // Measured once the options are opened, not on every page load.
+		}
 	}
 
 	/** After a restore with a safety backup: offers to undo it by restoring that backup. */
@@ -2772,6 +2909,7 @@
 			} )
 		);
 		$( 'siteferry-export-form' ).addEventListener( 'submit', startExport );
+		$( 'siteferry-export-form' ).addEventListener( 'change', () => space && renderSpace() );
 		$( 'siteferry-options-toggle' ).addEventListener( 'click', () => toggleDrawer( 'options' ) );
 		$( 'siteferry-options-close' ).addEventListener( 'click', () => {
 			toggleDrawer( 'options', false );

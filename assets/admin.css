@@ -2351,3 +2351,104 @@ details.sf-dest[open] > .sf-dest-head::after {
 	flex-direction: row-reverse;
 	justify-content: flex-start;
 }
+
+/* --------------------------------------------------------- space report */
+
+.sf-space {
+	margin: 14px 0 0;
+	padding: 10px 12px;
+	border: 1px solid var(--sf-fog);
+	border-radius: var(--sf-radius);
+	background: #fbfdff;
+}
+
+.sf-space-line {
+	margin: 0;
+}
+
+.sf-space-short {
+	color: var(--sf-port);
+}
+
+.sf-space .sf-more {
+	margin-top: 10px;
+	padding-top: 8px;
+}
+
+.sf-space-body {
+	margin-top: 10px;
+}
+
+.sf-space-row {
+	display: grid;
+	grid-template-columns: minmax(110px, 9em) 1fr minmax(120px, auto);
+	align-items: center;
+	gap: 10px;
+	margin: 4px 0;
+}
+
+.sf-space-bar {
+	height: 8px;
+	overflow: hidden;
+	border-radius: 4px;
+	background: var(--sf-fog);
+}
+
+.sf-space-bar span {
+	display: block;
+	height: 100%;
+	border-radius: 4px;
+	background: var(--sf-accent);
+}
+
+.sf-space-size {
+	color: var(--sf-ink-soft);
+	font-family: var(--sf-mono);
+	font-size: 12px;
+	white-space: nowrap;
+}
+
+.sf-space-lists {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+	gap: 8px 24px;
+	margin: 12px 0 8px;
+}
+
+.sf-space-list h4 {
+	margin: 6px 0 4px;
+	font-size: 13px;
+}
+
+.sf-space-list ol {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.sf-space-list li {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 2px 0;
+	border-bottom: 1px solid var(--sf-fog);
+}
+
+.sf-space-name {
+	overflow: hidden;
+	font-family: var(--sf-mono);
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+	.sf-space-row {
+		grid-template-columns: 1fr auto;
+	}
+
+	.sf-space-bar {
+		grid-column: 1 / -1;
+		grid-row: 2;
+	}
+}
