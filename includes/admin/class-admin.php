@@ -162,8 +162,10 @@ final class Admin {
 							<button type="submit" form="siteferry-export-form" class="button button-primary button-large" id="siteferry-backup-now"><?php esc_html_e( 'Back up now', 'siteferry' ); ?></button>
 							<button type="button" class="button button-large" id="siteferry-options-toggle" aria-expanded="false" aria-controls="siteferry-export-form"><?php esc_html_e( 'Options', 'siteferry' ); ?></button>
 							<button type="button" class="button button-large" id="siteferry-upload-toggle" aria-expanded="false" aria-controls="siteferry-upload"><?php esc_html_e( 'Upload a backup', 'siteferry' ); ?></button>
+							<button type="button" class="button button-large" id="siteferry-schedule-toggle" aria-expanded="false" aria-controls="siteferry-schedule-form"><?php esc_html_e( 'Schedule', 'siteferry' ); ?></button>
 						</div>
 					</div>
+					<p class="sf-schedule-line" id="siteferry-schedule-line" hidden></p>
 
 					<form id="siteferry-export-form" class="sf-drawer" hidden>
 						<p class="sf-drawer-note"><?php esc_html_e( '"Back up now" uses these choices. Without changes it backs up the whole site to this server.', 'siteferry' ); ?></p>
@@ -255,6 +257,8 @@ final class Admin {
 						<div class="sf-progress" id="siteferry-upload-progress" hidden></div>
 						<p id="siteferry-unfinished-uploads" class="description" hidden></p>
 					</div>
+
+					<?php self::render_schedule( $whole_parts, $clutter ); ?>
 				</div>
 
 				<div class="sf-progress" id="siteferry-job-progress" hidden></div>
@@ -342,6 +346,147 @@ final class Admin {
 				</div>
 			</section>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Prints the schedule drawer: when, what, where, how many to keep, and email. The script fills
+	 * it from GET /schedule and saves it with POST /schedule.
+	 *
+	 * @param array $whole_parts Checkbox name => label: whole parts to leave out.
+	 * @param array $clutter     Checkbox name => [label, checked]: clutter to leave out.
+	 */
+	private static function render_schedule( array $whole_parts, array $clutter ): void {
+		$days = array(
+			1 => __( 'Monday', 'siteferry' ),
+			2 => __( 'Tuesday', 'siteferry' ),
+			3 => __( 'Wednesday', 'siteferry' ),
+			4 => __( 'Thursday', 'siteferry' ),
+			5 => __( 'Friday', 'siteferry' ),
+			6 => __( 'Saturday', 'siteferry' ),
+			0 => __( 'Sunday', 'siteferry' ),
+		);
+		?>
+		<form id="siteferry-schedule-form" class="sf-drawer sf-schedule" hidden novalidate>
+			<p class="sf-drawer-note"><?php esc_html_e( 'Back up this site by itself, at a set time. Nobody needs to be logged in: the backup runs on the server, step by step.', 'siteferry' ); ?></p>
+			<p class="sf-switch"><label><input type="checkbox" name="enabled"> <strong><?php esc_html_e( 'Back up automatically', 'siteferry' ); ?></strong></label></p>
+
+			<div class="sf-schedule-body">
+				<h3 class="sf-sub"><?php esc_html_e( 'When', 'siteferry' ); ?></h3>
+				<div class="sf-when">
+					<p class="sf-field">
+						<label for="siteferry-schedule-frequency"><?php esc_html_e( 'How often', 'siteferry' ); ?></label>
+						<select id="siteferry-schedule-frequency" name="frequency">
+							<option value="daily"><?php esc_html_e( 'Every day', 'siteferry' ); ?></option>
+							<option value="weekly"><?php esc_html_e( 'Every week', 'siteferry' ); ?></option>
+							<option value="monthly"><?php esc_html_e( 'Every month', 'siteferry' ); ?></option>
+						</select>
+					</p>
+					<p class="sf-field" data-when="weekly">
+						<label for="siteferry-schedule-weekday"><?php esc_html_e( 'On', 'siteferry' ); ?></label>
+						<select id="siteferry-schedule-weekday" name="weekday">
+							<?php foreach ( $days as $number => $day ) : ?>
+								<option value="<?php echo esc_attr( (string) $number ); ?>"><?php echo esc_html( $day ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</p>
+					<p class="sf-field" data-when="monthly">
+						<label for="siteferry-schedule-monthday"><?php esc_html_e( 'On day', 'siteferry' ); ?></label>
+						<select id="siteferry-schedule-monthday" name="monthday">
+							<?php for ( $day = 1; $day <= 28; $day++ ) : ?>
+								<option value="<?php echo esc_attr( (string) $day ); ?>"><?php echo esc_html( (string) $day ); ?></option>
+							<?php endfor; ?>
+						</select>
+					</p>
+					<p class="sf-field">
+						<label for="siteferry-schedule-time"><?php esc_html_e( 'At', 'siteferry' ); ?></label>
+						<input type="time" id="siteferry-schedule-time" name="time" step="60" value="03:00">
+					</p>
+				</div>
+				<p class="description" id="siteferry-schedule-zone"></p>
+				<p class="sf-caution" id="siteferry-schedule-cron-off" hidden><?php esc_html_e( 'WP-Cron is turned off on this site (DISABLE_WP_CRON). Scheduled backups only start if a server cron job runs wp-cron.php, or "wp cron event run --due-now", every few minutes.', 'siteferry' ); ?></p>
+
+				<h3 class="sf-sub"><?php esc_html_e( 'What goes into the backup', 'siteferry' ); ?></h3>
+				<div class="sf-groups">
+					<fieldset class="sf-checks">
+						<legend><?php esc_html_e( 'Leave out whole parts', 'siteferry' ); ?></legend>
+						<?php foreach ( $whole_parts as $name => $label ) : ?>
+							<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>"> <?php echo esc_html( $label ); ?></label>
+						<?php endforeach; ?>
+					</fieldset>
+					<fieldset class="sf-checks">
+						<legend><?php esc_html_e( 'Leave out clutter', 'siteferry' ); ?></legend>
+						<?php foreach ( $clutter as $name => list( $label, $checked ) ) : ?>
+							<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>" <?php checked( $checked ); ?>> <?php echo esc_html( $label ); ?></label>
+						<?php endforeach; ?>
+					</fieldset>
+				</div>
+				<fieldset class="sf-format">
+					<legend><?php esc_html_e( 'File', 'siteferry' ); ?></legend>
+					<div class="sf-choices" role="radiogroup" aria-label="<?php esc_attr_e( 'Backup file format', 'siteferry' ); ?>">
+						<label class="sf-choice">
+							<input type="radio" name="format" value="tar" checked>
+							<span class="sf-choice-name"><?php esc_html_e( 'SiteFerry backup (.tar)', 'siteferry' ); ?></span>
+							<span class="sf-choice-note"><?php esc_html_e( 'Every file is checked when it is imported.', 'siteferry' ); ?></span>
+						</label>
+						<label class="sf-choice">
+							<input type="radio" name="format" value="wpress">
+							<span class="sf-choice-name"><?php esc_html_e( '.wpress file', 'siteferry' ); ?></span>
+							<span class="sf-choice-note"><?php esc_html_e( 'For importing with the All-in-One WP Migration plugin.', 'siteferry' ); ?></span>
+						</label>
+					</div>
+					<?php if ( Requirements::can_compress() ) : ?>
+						<p class="sf-compress" data-role="compress"><label><input type="checkbox" name="compress"> <?php esc_html_e( 'Compress the file (.tar.gz): smaller, but takes longer to make', 'siteferry' ); ?></label></p>
+					<?php endif; ?>
+				</fieldset>
+
+				<h3 class="sf-sub"><?php esc_html_e( 'Where it goes', 'siteferry' ); ?></h3>
+				<div class="sf-choices" id="siteferry-schedule-where" role="radiogroup" aria-label="<?php esc_attr_e( 'Where scheduled backups go', 'siteferry' ); ?>">
+					<label class="sf-choice">
+						<input type="radio" name="send_to" value="" checked>
+						<span class="sf-choice-name"><?php esc_html_e( 'This server', 'siteferry' ); ?></span>
+						<span class="sf-choice-note"><?php esc_html_e( 'Kept in SiteFerry\'s protected folder.', 'siteferry' ); ?></span>
+					</label>
+				</div>
+				<p class="sf-delete-after" id="siteferry-schedule-keep-local" hidden><label><input type="checkbox" name="keep_local"> <?php esc_html_e( 'Also keep a copy on this server', 'siteferry' ); ?></label></p>
+				<p class="description" id="siteferry-schedule-no-storage" hidden>
+					<?php esc_html_e( 'To send scheduled backups to S3, an FTP server, Google Drive or Dropbox, set one up first.', 'siteferry' ); ?>
+					<a href="#storage" data-goto="storage"><?php esc_html_e( 'Set up storage', 'siteferry' ); ?></a>
+				</p>
+
+				<h3 class="sf-sub"><?php esc_html_e( 'How many to keep', 'siteferry' ); ?></h3>
+				<p class="sf-field sf-inline-field">
+					<label for="siteferry-schedule-retain"><?php esc_html_e( 'Keep the newest', 'siteferry' ); ?></label>
+					<input type="number" class="small-text" id="siteferry-schedule-retain" name="retain" min="0" max="100" step="1" value="7">
+					<span><?php esc_html_e( 'scheduled backups', 'siteferry' ); ?></span>
+				</p>
+				<p class="description"><?php esc_html_e( 'After a new scheduled backup succeeds, older scheduled backups beyond this number are deleted wherever they are stored. 0 keeps them all. Backups you make yourself are never deleted.', 'siteferry' ); ?></p>
+
+				<h3 class="sf-sub"><?php esc_html_e( 'Email', 'siteferry' ); ?></h3>
+				<div class="sf-when">
+					<p class="sf-field">
+						<label for="siteferry-schedule-notify"><?php esc_html_e( 'Send an email', 'siteferry' ); ?></label>
+						<select id="siteferry-schedule-notify" name="notify">
+							<option value="failure"><?php esc_html_e( 'When a backup fails', 'siteferry' ); ?></option>
+							<option value="always"><?php esc_html_e( 'After every backup', 'siteferry' ); ?></option>
+							<option value="never"><?php esc_html_e( 'Never', 'siteferry' ); ?></option>
+						</select>
+					</p>
+					<p class="sf-field sf-field-grow">
+						<label for="siteferry-schedule-email"><?php esc_html_e( 'To', 'siteferry' ); ?></label>
+						<input type="email" id="siteferry-schedule-email" name="email" maxlength="200" autocomplete="email">
+					</p>
+				</div>
+			</div>
+
+			<p class="sf-schedule-status" id="siteferry-schedule-status"></p>
+			<div class="sf-drawer-actions">
+				<button type="submit" class="button button-primary button-large"><?php esc_html_e( 'Save schedule', 'siteferry' ); ?></button>
+				<button type="button" class="button" id="siteferry-schedule-run"><?php esc_html_e( 'Run it now', 'siteferry' ); ?></button>
+				<button type="button" class="button sf-quiet" id="siteferry-schedule-close"><?php esc_html_e( 'Close', 'siteferry' ); ?></button>
+			</div>
+			<div class="sf-result" id="siteferry-schedule-result" role="status" hidden></div>
+		</form>
 		<?php
 	}
 

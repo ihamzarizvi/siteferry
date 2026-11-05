@@ -812,6 +812,103 @@
 	margin: 0;
 }
 
+/* ------------------------------------------------------------ schedule */
+
+.sf-schedule-line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 4px;
+	margin: 12px 0 0;
+	color: var(--sf-ink-soft);
+}
+
+.sf-schedule-line .sf-chip {
+	margin-right: 4px;
+}
+
+.sf-schedule-line .button {
+	margin-left: 4px;
+}
+
+.sf-schedule-last {
+	flex-basis: 100%;
+	font-size: 12px;
+}
+
+.sf-schedule-last.is-bad {
+	color: var(--sf-port);
+}
+
+.sf-switch {
+	margin: 12px 0 0;
+	font-size: 14px;
+}
+
+.sf-switch input {
+	margin-right: 6px;
+}
+
+/* Off: the choices stay editable, but look like what they are, not in use. */
+.sf-schedule.is-off .sf-schedule-body {
+	opacity: 0.6;
+}
+
+.sf-when {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 0 20px;
+}
+
+.sf-when .sf-field {
+	margin: 0 0 10px;
+}
+
+.sf-when select,
+.sf-when input[type="time"] {
+	min-width: 140px;
+}
+
+.sf-when .sf-field-grow {
+	flex: 1 1 240px;
+}
+
+.sf-when .sf-field-grow input {
+	width: 100%;
+	max-width: 360px;
+}
+
+.sf-inline-field {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+}
+
+.sf-inline-field label {
+	margin: 0;
+}
+
+#siteferry-schedule-keep-local,
+#siteferry-schedule-no-storage {
+	margin: 12px 0 0;
+}
+
+.sf-schedule-status {
+	margin: 16px 0 0;
+	color: var(--sf-ink-soft);
+}
+
+.sf-schedule-status:empty {
+	display: none;
+}
+
+#siteferry-schedule-result {
+	margin-top: 12px;
+}
+
 /* Name, note and tags: in Options and in a row's editor. */
 .sf-label-fields {
 	display: grid;

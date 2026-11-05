@@ -22,3 +22,7 @@ $siteferry_options = $wpdb->get_col(
 foreach ( $siteferry_options as $siteferry_option ) {
 	delete_option( $siteferry_option );
 }
+
+// Scheduled backups (deactivation removes these too).
+wp_unschedule_hook( 'siteferry_scheduled_backup' );
+wp_unschedule_hook( 'siteferry_schedule_watchdog' );

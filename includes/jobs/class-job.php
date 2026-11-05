@@ -130,7 +130,18 @@ final class Job {
 			throw new Job_Exception( 'Unknown job.', Job_Exception::NOT_FOUND );
 		}
 		$dir  = rtrim( $base, '/\\' ) . '/' . $id;
-		$json = is_file( $dir . '/job.json' ) ? file_get_contents( $dir . '/job.json' ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$json = false;
+		// On Windows the file cannot be opened for the moment it is being replaced: try again briefly.
+		for ( $try = 0; false === $json && $try < 20 && is_file( $dir . '/job.json' ); $try++ ) {
+			if ( $try > 0 ) {
+				usleep( 25000 );
+			}
+			$json = Io::quiet(
+				static function () use ( $dir ) {
+					return file_get_contents( $dir . '/job.json' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+				}
+			);
+		}
 		if ( false === $json ) {
 			throw new Job_Exception( 'Unknown job.', Job_Exception::NOT_FOUND );
 		}
@@ -196,6 +207,8 @@ final class Job {
 		return array(
 			'id'       => $this->data['id'],
 			'type'     => $this->data['type'],
+			// "schedule" for a scheduled backup, which runs by itself; the admin screen only watches it.
+			'origin'   => 'schedule' === $this->option( 'origin', '' ) ? 'schedule' : 'admin',
 			'status'   => $this->data['status'],
 			'step'     => array(
 				'index' => $index,
@@ -462,6 +475,10 @@ final class Job {
 	/**
 	 * Writes job.json atomically (temporary file, then rename).
 	 *
+	 * On Windows a file cannot be replaced while another process has it open, which happens
+	 * whenever a page or the watchdog reads the state of a job that runs in the background; the
+	 * rename is then tried again for up to a second (readers hold the file for milliseconds).
+	 *
 	 * @throws Job_Exception If the state cannot be encoded or written.
 	 */
 	public function save(): void {
@@ -470,17 +487,25 @@ final class Job {
 		if ( false === $json ) {
 			throw new Job_Exception( 'Cannot encode the job state: ' . json_last_error_msg(), Job_Exception::INVALID );
 		}
-		$final = $this->path( 'job.json' );
-		$temp  = $this->path( 'job.json.' . bin2hex( random_bytes( 4 ) ) . '.tmp' );
-		if ( false === Io::quiet(
+		$final   = $this->path( 'job.json' );
+		$temp    = $this->path( 'job.json.' . bin2hex( random_bytes( 4 ) ) . '.tmp' );
+		$written = false !== Io::quiet(
 			static function () use ( $temp, $json ) {
 				return file_put_contents( $temp, $json ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 			}
-		) || ! Io::quiet(
-			static function () use ( $temp, $final ) {
-				return rename( $temp, $final ); // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
+		);
+		$renamed = false;
+		for ( $try = 0; $written && ! $renamed && $try < 40; $try++ ) {
+			if ( $try > 0 ) {
+				usleep( 25000 );
 			}
-		) ) {
+			$renamed = (bool) Io::quiet(
+				static function () use ( $temp, $final ) {
+					return rename( $temp, $final ); // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
+				}
+			);
+		}
+		if ( ! $renamed ) {
 			Io::quiet(
 				static function () use ( $temp ) {
 					return unlink( $temp ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink

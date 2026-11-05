@@ -57,10 +57,12 @@ final class Export {
 	 * @param array       $options  Export options (see DEFAULTS).
 	 * @param string|null $work_dir Folder for the backup and job files instead of SiteFerry's
 	 *                              storage folder. When given, nothing is written to the site.
+	 * @param string      $origin   Who started it: "admin" (the admin screen or WP-CLI) or
+	 *                              "schedule" (which adds the schedule's last step).
 	 * @return array{0:Job,1:string} The job and its token.
 	 * @throws Job_Exception If the site cannot be exported.
 	 */
-	public static function start( array $options, ?string $work_dir = null ): array {
+	public static function start( array $options, ?string $work_dir = null, string $origin = 'admin' ): array {
 		if ( is_multisite() ) {
 			throw new Job_Exception( 'Multisite networks are not supported by this version of SiteFerry.', Job_Exception::STEP );
 		}
@@ -88,7 +90,11 @@ final class Export {
 			\SiteFerry\Storage\Destinations::require_ready( $options['send_to'] );
 			$steps[] = self::SEND_STEP;
 		}
+		if ( 'schedule' === $origin ) {
+			$steps[] = \SiteFerry\Schedule\Finish_Step::STEP;
+		}
 
+		$options['origin']      = 'schedule' === $origin ? 'schedule' : 'admin';
 		$options['site']        = $site;
 		$options['exclusions']  = self::exclusions( $options, $site )->to_array();
 		$options['output_dir']  = $output;

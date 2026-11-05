@@ -8,22 +8,23 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.8.0-f97316" alt="Version 0.8.0">
+  <img src="https://img.shields.io/badge/version-0.9.0-f97316" alt="Version 0.9.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
 **SiteFerry backs up a whole WordPress site (database, plugins, themes and media) into one file,
 restores it, and moves it to a new host or domain.** Send backups to **Amazon S3, Backblaze B2,
 Wasabi, Cloudflare R2, DigitalOcean Spaces, any S3-compatible storage, FTP/FTPS, Google Drive or
-Dropbox**, and fetch them back. It also imports and exports **.wpress** backups, so you can move sites from
-the All-in-One WP Migration plugin.
+Dropbox**, and fetch them back. **Schedule** daily, weekly or monthly backups that keep the newest
+few and email you if one fails. It also imports and exports **.wpress** backups, so you can move
+sites from the All-in-One WP Migration plugin.
 
 Large sites are no problem: every job runs in short, resumable steps, so the PHP time limit,
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.8.0). Scheduled backups are next; see the
-> [roadmap](#roadmap).
+> SiteFerry is in active development (0.9.0). A safety backup before every restore, with Undo,
+> is next; see the [roadmap](#roadmap).
 
 ## Contents
 
@@ -32,6 +33,7 @@ upload limits and dropped connections don't break a backup or a restore.
 - [How it works](#how-it-works)
 - [Install](#install)
 - [Back up a WordPress site](#back-up-a-wordpress-site)
+- [Scheduled backups](#scheduled-backups)
 - [Restore a backup, or move a site to a new host](#restore-a-backup-or-move-a-site-to-a-new-host)
 - [Remote storage: S3, FTP, Google Drive and Dropbox](#remote-storage-s3-ftp-google-drive-and-dropbox)
 - [Import .wpress backups (All-in-One WP Migration)](#import-wpress-backups-all-in-one-wp-migration)
@@ -49,6 +51,7 @@ upload limits and dropped connections don't break a backup or a restore.
 | | SiteFerry |
 | --- | --- |
 | One-click backup | "Back up now" saves the whole site; Options holds the rest |
+| Scheduled backups | Daily, weekly or monthly, to any storage, keeping the newest N, with email on failure |
 | Safe restores | Every backup is checked before anything on the site changes; a failed restore puts the old site back |
 | Site migration | Moves a site to a new domain or host, rewriting addresses (also inside serialized data) |
 | Large sites | Resumable jobs and chunked uploads, no matter how short the PHP time limit is |
@@ -70,6 +73,8 @@ upload limits and dropped connections don't break a backup or a restore.
 - Download to your computer when it is ready, or send it straight to remote storage (and delete
   the copy on the server if you like).
 - One list of every backup, on this server and on every storage, with where each copy is.
+- **Scheduled backups**: every day, week or month at a set time; runs on the server without anyone
+  logged in, keeps the newest few, and emails you when one fails.
 
 </details>
 
@@ -170,6 +175,34 @@ wp dist-archive . siteferry.zip
 2. For more control, click **Options** first: name, note and tags, what to leave out, `.tar` or
    `.wpress`, and where the backup goes. **Back up now** at the end of Options starts it.
 3. When it is ready, download it, send it to a storage, or give it a name and tags.
+
+## Scheduled backups
+
+Click **Schedule** on the Backups tab and tick **Back up automatically**:
+
+- **When**: every day, every week (pick the day) or every month (day 1 to 28), at a time in the
+  site's time zone.
+- **What and where**: the same choices as Options (leave out media, plugins or themes; `.tar`,
+  `.tar.gz` or `.wpress`), to this server or a storage, optionally keeping a copy here too.
+- **How many to keep**: after a new scheduled backup succeeds, older scheduled backups beyond that
+  number are deleted wherever they are stored. Backups you make yourself are never touched.
+- **Email**: when a backup fails (default), after every backup, or never.
+
+**Run it now** starts the scheduled backup straight away; you can watch it or leave the page.
+
+```mermaid
+flowchart LR
+    C["WP-Cron<br/>at the set time"] --> S1["Step 1<br/>(in the cron request)"]
+    S1 -->|"asks the site for the next step"| S2["Step 2 … n<br/>(the site's own requests)"]
+    S2 --> K["Keep the newest N<br/>delete older scheduled ones"]
+    K --> M["Email<br/>(on failure, or always)"]
+    W["Check every 5 minutes"] -.->|"if the steps stall"| S2
+```
+
+> [!TIP]
+> WordPress runs scheduled tasks when someone visits the site. On a quiet site, or with
+> `DISABLE_WP_CRON`, add a server cron job that runs `wp cron event run --due-now` (or requests
+> `wp-cron.php`) every few minutes.
 
 ## Restore a backup, or move a site to a new host
 
@@ -312,6 +345,10 @@ wp siteferry storage test|list <id>
 wp siteferry storage send <id> <backup>
 wp siteferry storage fetch <id> <name>
 wp siteferry storage delete <id> <name> [--yes]
+
+# The backup schedule (set on the Backups tab)
+wp siteferry schedule show
+wp siteferry schedule run [--quiet]
 ```
 
 Storage ids: `s3`, `ftp`, `gdrive`, `dropbox`. Settings come from the Storage tab.
@@ -413,6 +450,15 @@ storage, an FTP server, Google Drive or Dropbox. The list on the Backups tab sho
 </details>
 
 <details>
+<summary><b>Can SiteFerry back up my site automatically?</b></summary>
+
+Yes. Click **Schedule** on the Backups tab: every day, week or month at a set time, to this server
+or a storage, keeping the newest few scheduled backups, with an email when one fails. It runs on
+the server by itself; nobody has to be logged in.
+
+</details>
+
+<details>
 <summary><b>Is SiteFerry free?</b></summary>
 
 Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
@@ -426,8 +472,8 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] .wpress import and export
 - [x] Backups home, guided restore, names, notes, tags and search
 - [x] Dropbox (one-click sign-in)
+- [x] Scheduled backups to your chosen storage, with retention and email
 - [ ] Safety backup before a restore, with Undo
-- [ ] Scheduled backups to your chosen storage, with retention
 - [ ] Password-protected .wpress backups
 - [ ] Multisite
 

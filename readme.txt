@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.8.0
+Stable tag: 0.9.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,7 +17,8 @@ imports and writes .wpress files, the backup format of the All-in-One WP Migrati
 ".wpress backups" below).
 
 Work in progress. This version exports and imports sites from the admin screen and from WP-CLI,
-and sends backups to S3-compatible storage, FTP/FTPS servers, Google Drive and Dropbox.
+makes backups on a schedule, and sends backups to S3-compatible storage, FTP/FTPS servers, Google
+Drive and Dropbox.
 
 = Admin screen =
 
@@ -29,7 +30,9 @@ The SiteFerry menu (administrators only) has these tabs:
   optionally compressed, or a .wpress file), where it goes (this server or a storage that is set
   up), and downloading it to your computer when it is ready. "Upload a backup" adds a SiteFerry
   .tar/.tar.gz or a .wpress file to the list; uploads are sent in chunks with a SHA-256 checksum
-  each, and an interrupted upload continues when you choose the same file again.
+  each, and an interrupted upload continues when you choose the same file again. "Schedule" sets
+  up automatic backups (see "Scheduled backups" below); a line under the buttons shows the
+  schedule, the next run and how the last one went.
   Below, one list of every backup on this server and on each storage, newest first, with where
   each copy is, its name, note and tags, a search box and a tag filter. Each backup's menu
   downloads it (through an authenticated PHP stream with Range support), sends it to a storage,
@@ -50,6 +53,34 @@ drawn as the legs of a route, with the current step and how far it is.
 Exports and imports run as a series of short requests from the open page. Closing the page pauses the
 job; opening SiteFerry again offers to resume or cancel it. Only one job runs at a time.
 
+= Scheduled backups =
+
+"Schedule" on the Backups tab: every day, every week (on a chosen day) or every month (on a day
+from 1 to 28), at a time in the site's time zone (Settings, General). The same choices as a backup
+made by hand: what to leave out, the file, and where it goes (this server, or a storage that is
+set up, optionally keeping a copy on this server too). Then how many scheduled backups to keep,
+and when to send an email.
+
+* WP-Cron starts the backup. WordPress runs its scheduled tasks when the site gets a visit, so on a
+  quiet site a backup can start a little late; with `DISABLE_WP_CRON`, a server cron job must run
+  wp-cron.php (or `wp cron event run --due-now`), and the Schedule panel says so.
+* Nobody has to be logged in or keep a page open. The backup runs in short steps: each step ends
+  by asking the site itself (a non-blocking request to its own REST API, authenticated with that
+  job's one-time token) for the next one. Where a host blocks such requests, a check every five
+  minutes carries the job on, and stops one that has made no progress for an hour.
+* While another backup, restore or transfer runs, a scheduled backup waits and tries again every
+  15 minutes; after two hours it is skipped (and reported).
+* Scheduled backups get the tag "scheduled". After a new one succeeds, the scheduled backups
+  beyond the number to keep are deleted everywhere they are stored (this server and the storage).
+  Only backups the schedule made are ever deleted, never ones you made yourself; 0 keeps them all.
+* Email (with wp_mail): when a backup fails (the default), after every backup, or never; to the
+  site's admin email unless another address is given. A backup that you stop yourself sends none.
+* "Run it now" starts the scheduled backup at once, in the background; the page shows its progress
+  and can stop it, and leaving the page does not stop it.
+* An import replaces the cron table along with the database; the next scheduled run is put back
+  the next time an administrator opens the dashboard. Deactivating SiteFerry removes its scheduled
+  events (the settings stay); deleting it removes the settings too.
+
 = WP-CLI =
 
 * `wp siteferry export [--format=tar|wpress] [--compress] [--exclude=media,plugins,themes,inactive-plugins,inactive-themes,spam-comments,revisions] [--include-cache] [--exclude-tables=...] [--exclude-paths=...] [--dir=...] [--porcelain]`
@@ -60,6 +91,8 @@ job; opening SiteFerry again offers to resume or cancel it. Only one job runs at
   `wp siteferry storage fetch <id> <name>`, `wp siteferry storage delete <id> <name> [--yes]`
   (storage id: s3, ftp, gdrive or dropbox; settings come from the Storage tab, where Google Drive
   and Dropbox are also connected)
+* `wp siteferry schedule show`, `wp siteferry schedule run [--quiet]` (the scheduled backup now,
+  in this process, with its retention and email; the schedule itself is set on the Backups tab)
 
 = S3-compatible storage =
 
@@ -277,6 +310,13 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.9.0 =
+* Scheduled backups: every day, week or month at a set time in the site's time zone, with the same choices as a backup made by hand, to this server or a storage (optionally keeping a local copy). Runs without anyone logged in: WP-Cron starts it and each step asks the site for the next one, with a five-minute check as a fallback that also stops a backup stuck for an hour.
+* Retention: keep the newest N scheduled backups; older ones are deleted everywhere, only after a new one succeeded, and never backups made by hand.
+* Email on failure (default), after every backup, or never. "Run it now", a status line with the next and last run, `wp siteferry schedule show|run`.
+* A scheduled backup waits for another job (retrying every 15 minutes for two hours) instead of failing.
+* On Windows servers, saving a job's state no longer fails while a page or the watchdog reads it at the same moment.
 
 = 0.8.0 =
 * Dropbox storage: one-click "Sign in with Dropbox" through SiteFerry's sign-in service, or your own Dropbox app; PKCE without any app secret, so tokens go straight between the site and Dropbox; App folder access; encrypted tokens renewed automatically; upload sessions in 8 MB parts that continue after an interruption; ranged downloads; connection test; revoke on disconnect.

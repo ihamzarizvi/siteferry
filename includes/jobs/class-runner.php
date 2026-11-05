@@ -41,6 +41,7 @@ final class Runner {
 		'import.replace'  => \SiteFerry\Import\Replace_Step::class,
 		'import.swap'     => \SiteFerry\Import\Swap_Step::class,
 		'import.finish'   => \SiteFerry\Import\Finish_Step::class,
+		'schedule.finish' => \SiteFerry\Schedule\Finish_Step::class,
 	);
 
 	/**
@@ -109,10 +110,11 @@ final class Runner {
 	/**
 	 * Stops an unfinished job and undoes its work, as a failure would.
 	 *
-	 * @param Job $job The job.
+	 * @param Job    $job    The job.
+	 * @param string $reason Recorded as the job's error ("Cancelled." when a person cancels it).
 	 * @throws Job_Exception If a slice of the job is running right now.
 	 */
-	public static function cancel( Job $job ): void {
+	public static function cancel( Job $job, string $reason = 'Cancelled.' ): void {
 		if ( $job->finished() ) {
 			return;
 		}
@@ -120,7 +122,7 @@ final class Runner {
 			throw new Job_Exception( 'This job is running right now; try again in a moment.', Job_Exception::BUSY );
 		}
 		try {
-			$job->fail( 'Cancelled.' );
+			$job->fail( $reason );
 			self::cleanup( $job );
 		} finally {
 			$job->save();

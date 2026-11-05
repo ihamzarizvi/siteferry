@@ -81,6 +81,11 @@ Sf_Test::run(
 			array( 'POST', '/storage/gdrive/authorize' ),
 			array( 'POST', '/storage/gdrive/connect' ),
 			array( 'POST', '/storage/gdrive/disconnect' ),
+			array( 'POST', '/storage/dropbox/authorize' ),
+			array( 'POST', '/storage/dropbox/connect' ),
+			array( 'GET', '/schedule' ),
+			array( 'POST', '/schedule' ),
+			array( 'POST', '/schedule/run' ),
 		);
 		foreach ( $routes as list( $method, $route ) ) {
 			list( $status ) = sf_rest( $method, $route, 0 );

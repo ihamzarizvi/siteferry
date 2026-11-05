@@ -20,6 +20,7 @@ use SiteFerry\Jobs\Job_Exception;
 use SiteFerry\Jobs\Runner;
 use SiteFerry\Jobs\Slice_Budget;
 use SiteFerry\Requirements;
+use SiteFerry\Schedule\Schedule;
 use SiteFerry\Security\Storage;
 use SiteFerry\Storage\Destinations;
 use SiteFerry\Storage\Storage_Exception;
@@ -101,6 +102,9 @@ final class Rest {
 			array( '/storage/' . self::DEST . '/authorize', WP_REST_Server::CREATABLE, 'authorize_storage', $admin ),
 			array( '/storage/' . self::DEST . '/connect', WP_REST_Server::CREATABLE, 'connect_storage', $admin ),
 			array( '/storage/' . self::DEST . '/disconnect', WP_REST_Server::CREATABLE, 'disconnect_storage', $admin ),
+			array( '/schedule', WP_REST_Server::READABLE, 'schedule', $admin ),
+			array( '/schedule', WP_REST_Server::CREATABLE, 'save_schedule', $admin ),
+			array( '/schedule/run', WP_REST_Server::CREATABLE, 'run_schedule', $admin ),
 		);
 
 		// Several methods on one path become several endpoints of one route.
@@ -358,7 +362,34 @@ final class Rest {
 		}
 		ignore_user_abort( true );
 		Runner::run_slice( $job, new Slice_Budget( $seconds ) );
+		Schedule::after_slice( $job ); // A scheduled backup asks for its next slice itself.
 		return $job->summary();
+	}
+
+	/**
+	 * The backup schedule: settings, next and last run, the running scheduled backup.
+	 */
+	public static function schedule(): array {
+		return Schedule::overview();
+	}
+
+	/**
+	 * Saves the backup schedule and plans its next run.
+	 *
+	 * @param WP_REST_Request $request Request with the settings as JSON.
+	 */
+	public static function save_schedule( WP_REST_Request $request ): array {
+		Schedule::save( array_intersect_key( (array) $request->get_json_params(), Schedule::DEFAULTS ) );
+		return Schedule::overview();
+	}
+
+	/**
+	 * Starts the scheduled backup now, in the background (the page only watches it).
+	 */
+	public static function run_schedule(): array {
+		$job = Schedule::start_job();
+		Schedule::after_slice( $job ); // Hands it to the site's own next request.
+		return Schedule::overview() + array( 'job' => $job->summary() );
 	}
 
 	/**

@@ -38,8 +38,10 @@
 		'import.finish': 'Clean up',
 		'import.wpress': 'Read .wpress',
 		'export.wpress': 'Make .wpress',
+		'schedule.finish': 'Wrap up',
 		upload: 'Upload',
 	};
+	const WEEKDAYS = [ 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' ];
 	const TABS = [ 'backups', 'storage', 'activity' ];
 	// Older links to the page still land somewhere sensible.
 	const OLD_TABS = { export: 'backups', import: 'backups', log: 'activity' };
@@ -52,6 +54,8 @@
 	let editing = '';
 	let restore = null;
 	let noticeTimer = null;
+	let schedule = null;
+	let watching = '';
 
 	// ---------------------------------------------------------------- helpers
 
@@ -425,6 +429,32 @@
 		return inSentence ? text.charAt( 0 ).toLowerCase() + text.slice( 1 ) : text;
 	}
 
+	/** A time to come: "today, 9:00 AM", "tomorrow, 3:00 AM" or "Monday, Nov 9, 9:00 AM". */
+	function upcoming( seconds ) {
+		if ( ! seconds ) {
+			return '';
+		}
+		const d = new Date( seconds * 1000 );
+		const time = d.toLocaleTimeString( undefined, { hour: 'numeric', minute: '2-digit' } );
+		const start = new Date();
+		start.setHours( 0, 0, 0, 0 );
+		const days = Math.floor( ( new Date( d ).setHours( 0, 0, 0, 0 ) - start.getTime() ) / DAY );
+		if ( days === 0 ) {
+			return 'today, ' + time;
+		}
+		if ( days === 1 ) {
+			return 'tomorrow, ' + time;
+		}
+		return d.toLocaleDateString( undefined, { weekday: 'long', month: 'short', day: 'numeric' } ) + ', ' + time;
+	}
+
+	/** The next scheduled run; with the site's own time when the viewer's time zone differs. */
+	function nextRun() {
+		const text = upcoming( schedule.next );
+		const viewer = -new Date( schedule.next * 1000 ).getTimezoneOffset() * 60;
+		return schedule.next_site && viewer !== schedule.next_offset ? text + ' your time (' + schedule.next_site + ' site time)' : text;
+	}
+
 	/** A site address without scheme, "www." or trailing slash, for comparing sites. */
 	function siteKey( address ) {
 		return String( address || '' ).toLowerCase().replace( /^[a-z]+:\/\//, '' ).replace( /^www\./, '' ).replace( /\/+$/, '' );
@@ -612,6 +642,10 @@
 			notice( 'Cannot read the storage settings: ' + error.message, 'error' );
 		}
 		renderSendOptions();
+		if ( schedule ) {
+			renderScheduleWhere( false );
+			renderScheduleLine();
+		}
 		document.querySelectorAll( '.siteferry-storage-form' ).forEach( ( form ) => fillStorageForm( form ) );
 		updateFacts();
 		return destinations.filter( ( d ) => d.ready );
@@ -1765,6 +1799,273 @@
 		return true;
 	}
 
+	// ------------------------------------------------------------ schedule
+
+	async function loadSchedule() {
+		try {
+			schedule = await api( 'GET', 'schedule' );
+		} catch ( error ) {
+			$( 'siteferry-schedule-line' ).hidden = true;
+			return;
+		}
+		fillScheduleForm();
+		renderScheduleLine();
+		if ( schedule.running ) {
+			watchScheduled( schedule.running );
+		}
+	}
+
+	/** Puts the saved schedule into the form. */
+	function fillScheduleForm() {
+		const form = $( 'siteferry-schedule-form' );
+		const s = schedule.settings;
+		Array.from( form.elements ).forEach( ( input ) => {
+			if ( ! input.name || ! ( input.name in s ) ) {
+				return;
+			}
+			if ( input.type === 'checkbox' ) {
+				input.checked = !! s[ input.name ];
+			} else if ( input.type === 'radio' ) {
+				input.checked = input.value === String( s[ input.name ] );
+			} else {
+				input.value = String( s[ input.name ] );
+			}
+		} );
+		form.elements.email.placeholder = schedule.admin_email ? schedule.admin_email + ' (the site\'s admin email)' : '';
+		// WordPress names a plain offset "+05:00"; show it as UTC+05:00 (and "+00:00" as UTC).
+		const zone = /^[+-]\d{2}:\d{2}$/.test( schedule.timezone ) ? 'UTC' + ( schedule.timezone === '+00:00' ? '' : schedule.timezone ) : schedule.timezone;
+		$( 'siteferry-schedule-zone' ).textContent = 'In the site\'s time zone (' + zone + ', set under Settings, General). WordPress starts scheduled tasks when the site gets a visit, so on a quiet site a backup can start a little late.';
+		$( 'siteferry-schedule-cron-off' ).hidden = ! schedule.cron_disabled;
+		renderScheduleWhere( true );
+		syncScheduleForm();
+		renderScheduleStatus();
+	}
+
+	/** "Where it goes": this server, or a storage that is ready. */
+	function renderScheduleWhere( fromSaved ) {
+		const box = $( 'siteferry-schedule-where' );
+		const checked = box.querySelector( 'input:checked' );
+		const current = fromSaved || ! checked ? schedule.settings.send_to : checked.value;
+		const ready = destinations.filter( ( d ) => d.ready );
+		box.replaceChildren(
+			box.querySelector( '.sf-choice' ),
+			...ready.map( ( d ) =>
+				el( 'label', { class: 'sf-choice' }, [
+					el( 'input', { type: 'radio', name: 'send_to', value: d.id } ),
+					el( 'span', { class: 'sf-choice-name', text: d.label } ),
+					el( 'span', { class: 'sf-choice-note', text: d.description } ),
+				] )
+			)
+		);
+		const pick = Array.from( box.querySelectorAll( 'input' ) ).find( ( input ) => input.value === current ) || box.querySelector( 'input' );
+		pick.checked = true;
+		$( 'siteferry-schedule-no-storage' ).hidden = ready.length > 0;
+		syncScheduleForm();
+	}
+
+	/** Shows the fields that apply: the day for weekly or monthly, keeping a copy, compression. */
+	function syncScheduleForm() {
+		const form = $( 'siteferry-schedule-form' );
+		const frequency = form.elements.frequency.value;
+		form.querySelectorAll( '[data-when]' ).forEach( ( field ) => {
+			field.hidden = field.dataset.when !== frequency;
+		} );
+		const where = form.querySelector( 'input[name=send_to]:checked' );
+		$( 'siteferry-schedule-keep-local' ).hidden = ! where || ! where.value;
+		const format = form.querySelector( 'input[name=format]:checked' );
+		const compress = form.querySelector( '[data-role=compress]' );
+		if ( compress ) {
+			compress.hidden = !! format && format.value === 'wpress';
+		}
+		form.classList.toggle( 'is-off', ! form.elements.enabled.checked );
+	}
+
+	/** The form's values, as POST /schedule takes them. */
+	function collectSchedule() {
+		const form = $( 'siteferry-schedule-form' );
+		const data = {};
+		Array.from( form.elements ).forEach( ( input ) => {
+			if ( ! input.name ) {
+				return;
+			}
+			if ( input.type === 'checkbox' ) {
+				data[ input.name ] = input.checked;
+			} else if ( input.type === 'radio' ) {
+				if ( input.checked ) {
+					data[ input.name ] = input.value;
+				}
+			} else {
+				data[ input.name ] = input.value.trim();
+			}
+		} );
+		[ 'weekday', 'monthday', 'retain' ].forEach( ( key ) => {
+			data[ key ] = data[ key ] === '' ? NaN : Number( data[ key ] );
+		} );
+		return data;
+	}
+
+	/** "every Monday at 03:00, to Dropbox, keeping the newest 7". */
+	function describeSchedule( s ) {
+		const at = ' at ' + s.time;
+		const when = s.frequency === 'weekly' ? 'every ' + WEEKDAYS[ s.weekday ] + at : s.frequency === 'monthly' ? 'on day ' + s.monthday + ' of every month' + at : 'every day' + at;
+		const target = s.send_to ? destination( s.send_to ) : null;
+		const where = s.send_to ? 'to ' + ( target ? target.short : s.send_to ) + ( s.keep_local ? ' and this server' : '' ) : 'on this server';
+		const keep = s.retain > 0 ? 'keeping the newest ' + s.retain : 'keeping them all';
+		return when + ', ' + where + ', ' + keep;
+	}
+
+	/** The line under "Back up now": the schedule, the next and the last run. */
+	function renderScheduleLine() {
+		const line = $( 'siteferry-schedule-line' );
+		const s = schedule.settings;
+		const open = () => toggleDrawer( 'schedule', true );
+		const parts = [];
+		if ( ! s.enabled ) {
+			parts.push( el( 'span', { class: 'sf-chip', text: 'Automatic backups off' } ), ' ', button( 'Set up a schedule', open, 'button sf-quiet sf-quiet-small' ) );
+		} else {
+			parts.push( el( 'span', { class: 'sf-chip is-good', text: 'Automatic backups on' } ), ' ' + describeSchedule( s ) + '.' );
+			if ( schedule.next ) {
+				parts.push( ' Next: ' + nextRun() + '.' );
+			}
+			if ( schedule.retry ) {
+				parts.push( ' Waiting for another job to finish; trying again ' + upcoming( schedule.retry ) + '.' );
+			}
+			parts.push( ' ', button( 'Change', open, 'button sf-quiet sf-quiet-small' ) );
+		}
+		const last = schedule.last;
+		if ( last ) {
+			const failed = last.status !== 'done';
+			parts.push(
+				el( 'span', { class: 'sf-schedule-last' + ( failed ? ' is-bad' : '' ), text: 'Last scheduled backup ' + when( last.time, true ) + ': ' + ( failed ? ( last.status === 'skipped' ? 'skipped. ' : 'failed. ' ) + last.message : 'done' + ( last.where ? ', stored on ' + last.where : '' ) + '.' ) } )
+			);
+		}
+		line.replaceChildren( ...parts );
+		line.hidden = false;
+	}
+
+	/** Next and last run inside the drawer. */
+	function renderScheduleStatus() {
+		const box = $( 'siteferry-schedule-status' );
+		const s = schedule.settings;
+		const bits = [];
+		if ( s.enabled && schedule.next ) {
+			bits.push( 'Next backup: ' + nextRun() + '.' );
+		}
+		if ( schedule.kept ) {
+			bits.push( plural( schedule.kept, 'scheduled backup', 'scheduled backups' ) + ' kept so far.' );
+		}
+		box.textContent = bits.join( ' ' );
+	}
+
+	function scheduleResult( ok, text ) {
+		const box = $( 'siteferry-schedule-result' );
+		box.className = 'sf-result' + ( ok === true ? ' is-done' : ok === false ? ' is-failed' : '' );
+		box.replaceChildren( el( 'p', { text } ) );
+		box.hidden = false;
+	}
+
+	async function saveSchedule( event ) {
+		if ( event ) {
+			event.preventDefault();
+		}
+		const form = $( 'siteferry-schedule-form' );
+		const submit = form.querySelector( 'button[type=submit]' );
+		submit.disabled = true;
+		try {
+			schedule = await api( 'POST', 'schedule', { json: collectSchedule() } );
+			fillScheduleForm();
+			renderScheduleLine();
+			scheduleResult( true, schedule.settings.enabled ? 'Saved. Next backup: ' + nextRun() + '.' : 'Saved. Automatic backups are off.' );
+			return true;
+		} catch ( error ) {
+			scheduleResult( false, 'Not saved: ' + error.message );
+			return false;
+		} finally {
+			submit.disabled = false;
+		}
+	}
+
+	/** Saves the form, then starts the scheduled backup now; it runs by itself, the page watches. */
+	async function runScheduleNow() {
+		const run = $( 'siteferry-schedule-run' );
+		run.disabled = true;
+		try {
+			if ( ! ( await saveSchedule() ) ) {
+				return;
+			}
+			const result = await api( 'POST', 'schedule/run' );
+			schedule = result;
+			toggleDrawer( 'schedule', false );
+			watchScheduled( result.job );
+		} catch ( error ) {
+			scheduleResult( false, 'Not started: ' + error.message );
+		} finally {
+			run.disabled = false;
+		}
+	}
+
+	/**
+	 * Shows a scheduled backup that runs by itself on the server: its route, live, and a way to stop
+	 * it. The page only reads its state; leaving the page does not stop it.
+	 */
+	async function watchScheduled( job ) {
+		if ( watching === job.id ) {
+			return;
+		}
+		watching = job.id;
+		const s = schedule ? schedule.settings : { send_to: '' };
+		const target = destination( s.send_to );
+		const view = progressView( 'siteferry-job-progress', [ 'This site', target ? target.short : 'This server' ] );
+		view.start( 'Scheduled backup running...' );
+		const banner = $( 'siteferry-active' );
+		$( 'siteferry-active-resume' ).hidden = true;
+		$( 'siteferry-active-cancel' ).textContent = 'Stop it';
+		$( 'siteferry-active-cancel' ).onclick = async () => {
+			// eslint-disable-next-line no-alert
+			if ( window.confirm( 'Stop the scheduled backup? What it has done so far is removed; earlier backups stay.' ) && ( await cancelJob( job.id, null ) ) ) {
+				notice( 'The scheduled backup was stopped.', 'success' );
+			}
+		};
+		let failures = 0;
+		while ( watching === job.id ) {
+			$( 'siteferry-active-text' ).textContent = 'A scheduled backup is running (' + ( ( job.progress && job.progress.message ) || 'starting' ) + '). It runs by itself on the server; you can leave this page.';
+			banner.hidden = false;
+			view.job( job );
+			if ( job.status === 'done' || job.status === 'failed' ) {
+				break;
+			}
+			await sleep( 3000 );
+			try {
+				job = await api( 'GET', 'jobs/' + job.id );
+				failures = 0;
+			} catch ( error ) {
+				if ( ++failures > 5 ) {
+					view.finish( false, 'Lost track of the scheduled backup', [ el( 'p', { text: error.message + ' It may still be running; reload the page to check.' } ) ] );
+					watching = '';
+					banner.hidden = true;
+					return;
+				}
+			}
+		}
+		watching = '';
+		banner.hidden = true;
+		$( 'siteferry-active-cancel' ).textContent = 'Cancel it';
+		if ( job.status === 'done' ) {
+			const r = job.result;
+			const where = r.sent ? ( r.deleted_local ? 'on ' + r.sent.where : 'on this server and on ' + r.sent.where ) : 'on this server';
+			const deleted = r.schedule && r.schedule.deleted ? r.schedule.deleted.length : 0;
+			view.finish( true, 'Scheduled backup ready', [
+				el( 'p', { text: bytes( r.size ) + ' · stored ' + where + '.' + ( deleted ? ' ' + plural( deleted, 'older scheduled backup was', 'older scheduled backups were' ) + ' deleted.' : '' ) } ),
+				el( 'p', {}, [ el( 'span', { class: 'sf-result-name', text: r.name } ) ] ),
+				...warningList( job ),
+			] );
+		} else {
+			view.finish( false, /^cancel/i.test( job.error || '' ) ? 'The scheduled backup was stopped' : 'The scheduled backup failed', [ el( 'p', { text: job.error } ), ...warningList( job ) ] );
+		}
+		loadBackups();
+		loadSchedule();
+	}
+
 	// ------------------------------------------------------------ activity
 
 	async function loadJobs() {
@@ -1789,7 +2090,7 @@
 				row.append(
 					el( 'span', { class: 'sf-job-when', text: date( job.created ) } ),
 					el( 'div', { class: 'sf-job-what' }, [
-						el( 'span', { class: 'sf-job-type', text: JOB_TYPES[ job.type ] || job.type } ),
+						el( 'span', { class: 'sf-job-type', text: job.origin === 'schedule' ? 'Scheduled backup' : JOB_TYPES[ job.type ] || job.type } ),
 						el( 'span', { class: 'sf-chip ' + tone, text: label } ),
 						el( 'span', { class: 'sf-job-detail', text: job.error || ( job.progress && job.progress.message ) || '' } ),
 					] ),
@@ -1846,7 +2147,11 @@
 
 	/** Opens or closes Options or Upload a backup (one at a time). */
 	function toggleDrawer( which, force ) {
-		const drawers = { options: [ 'siteferry-export-form', 'siteferry-options-toggle' ], upload: [ 'siteferry-upload', 'siteferry-upload-toggle' ] };
+		const drawers = {
+			options: [ 'siteferry-export-form', 'siteferry-options-toggle' ],
+			upload: [ 'siteferry-upload', 'siteferry-upload-toggle' ],
+			schedule: [ 'siteferry-schedule-form', 'siteferry-schedule-toggle' ],
+		};
 		Object.keys( drawers ).forEach( ( key ) => {
 			const [ panel, toggle ] = drawers[ key ];
 			const open = key === which ? ( force === undefined ? $( panel ).hidden : force ) : false;
@@ -1874,6 +2179,10 @@
 		const active = status.active;
 		if ( ! active ) {
 			store.remove( JOB_KEY );
+			return;
+		}
+		if ( active.origin === 'schedule' ) {
+			watchScheduled( active ); // It runs by itself; the page only shows it.
 			return;
 		}
 		const saved = store.get( JOB_KEY );
@@ -1931,6 +2240,14 @@
 			$( 'siteferry-options-toggle' ).focus();
 		} );
 		$( 'siteferry-upload-toggle' ).addEventListener( 'click', () => toggleDrawer( 'upload' ) );
+		$( 'siteferry-schedule-toggle' ).addEventListener( 'click', () => toggleDrawer( 'schedule' ) );
+		$( 'siteferry-schedule-close' ).addEventListener( 'click', () => {
+			toggleDrawer( 'schedule', false );
+			$( 'siteferry-schedule-toggle' ).focus();
+		} );
+		$( 'siteferry-schedule-form' ).addEventListener( 'submit', saveSchedule );
+		$( 'siteferry-schedule-form' ).addEventListener( 'change', syncScheduleForm );
+		$( 'siteferry-schedule-run' ).addEventListener( 'click', runScheduleNow );
 		$( 'siteferry-send-options' ).addEventListener( 'change', syncDeleteAfter );
 		$( 'siteferry-export-form' ).querySelectorAll( 'input[name=format]' ).forEach( ( input ) => input.addEventListener( 'change', syncFormat ) );
 		$( 'siteferry-tables' ).addEventListener( 'change', countLeftOutTables );
@@ -2022,6 +2339,7 @@
 		const hash = window.location.hash.replace( '#', '' );
 		const asked = OLD_TABS[ hash ] || hash;
 		loadDestinations()
+			.then( () => loadSchedule() )
 			.then( () => finishOauth() )
 			.then( ( fromOauth ) => {
 				const first = fromOauth ? 'storage' : TABS.indexOf( asked ) === -1 ? 'backups' : asked;

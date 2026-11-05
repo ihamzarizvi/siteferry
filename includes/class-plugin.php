@@ -23,6 +23,7 @@ final class Plugin {
 	 */
 	public static function boot(): void {
 		Rest\Rest::register();
+		Schedule\Schedule::register();
 		if ( is_admin() ) {
 			Admin\Admin::init();
 		}
@@ -51,9 +52,12 @@ final class Plugin {
 	}
 
 	/**
-	 * Runs on deactivation. Settings and backups are kept until uninstall.
+	 * Runs on deactivation: no scheduled backup starts while SiteFerry is off. Settings and backups
+	 * are kept until uninstall; the schedule comes back when SiteFerry is activated and an
+	 * administrator opens the dashboard.
 	 */
 	public static function deactivate(): void {
+		Schedule\Schedule::unschedule_all();
 	}
 
 	/**
