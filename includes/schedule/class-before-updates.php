@@ -172,7 +172,7 @@ final class Before_Updates {
 			self::relative( (string) $site['plugins_dir'], $content, 'plugins' ),
 			self::relative( (string) $site['themes_dir'], $content, 'themes' )
 		);
-		list( $job ) = Export::start( $options, null, 'update' );
+		list( $job ) = Export::start( Schedule::with_password( $options ), null, 'update' );
 		$job->log( 'info', sprintf( 'Started before updating %s %s.', $item['name'], $item['version'] ) );
 
 		$raised  = (bool) Io::quiet(

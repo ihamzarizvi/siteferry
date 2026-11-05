@@ -23,13 +23,13 @@ final class Backups {
 	const MAX_MANIFEST_BYTES = 4194304;
 
 	/** Names SiteFerry gives backups: <site>-<YYYY-MM-DD>-<12 hex>.tar[.gz] or .wpress. */
-	const NAME_PATTERN = '/^[a-z0-9][a-z0-9-]{0,80}-\d{4}-\d{2}-\d{2}-[a-f0-9]{12}\.(tar(\.gz)?|wpress)$/';
+	const NAME_PATTERN = '/^[a-z0-9][a-z0-9-]{0,80}-\d{4}-\d{2}-\d{2}-[a-f0-9]{12}\.(tar(\.gz)?(\.enc)?|wpress)$/';
 
 	/** Any backup file name the admin screen may refer to (no paths, no "..", .tar, .tar.gz or .wpress). */
-	const SAFE_NAME = '/^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*\.(tar(\.gz)?|wpress)$/';
+	const SAFE_NAME = '/^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*\.(tar(\.gz)?(\.enc)?|wpress)$/';
 
 	/** Backup files in a folder: SiteFerry backups and .wpress backups. */
-	const FILE_PATTERN = '/\.(tar(\.gz)?|wpress)$/';
+	const FILE_PATTERN = '/\.(tar(\.gz)?(\.enc)?|wpress)$/';
 
 	/**
 	 * Full path of a backup in a folder, by file name.
@@ -58,21 +58,24 @@ final class Backups {
 	 * @throws \SiteFerry\Jobs\Job_Exception If it cannot be moved.
 	 */
 	public static function adopt( string $file, string $name, string $dir ): string {
-		$wpress = Wpress\Wpress::is_name( $name );
+		$wpress    = Wpress\Wpress::is_name( $name );
+		$encrypted = ! $wpress && Archive\Crypto::is_encrypted( $file );
 		if ( $wpress ) {
 			Wpress\Wpress::describe( $file );
+		} elseif ( $encrypted ) {
+			Archive\Crypto::header( $file ); // Its contents are checked when it is restored, with the password.
 		} else {
 			self::manifest( $file );
 		}
-		if ( preg_match( self::NAME_PATTERN, $name ) ) {
+		if ( preg_match( self::NAME_PATTERN, $name ) && $encrypted === self::encrypted_name( $name ) ) {
 			// A second copy of a SiteFerry backup keeps its site and date; only the random part changes.
 			while ( file_exists( $dir . '/' . $name ) ) {
-				$name = (string) preg_replace( '/-[a-f0-9]{12}(\.(tar(\.gz)?|wpress))$/', '-' . Security\Storage::random_hex( 6 ) . '$1', $name );
+				$name = (string) preg_replace( '/-[a-f0-9]{12}(\.(tar(\.gz)?(\.enc)?|wpress))$/', '-' . Security\Storage::random_hex( 6 ) . '$1', $name );
 			}
 		} else {
-			$compressed = (bool) preg_match( '/\.(tar\.gz|tgz)$/i', $name );
-			$base       = trim( (string) preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) preg_replace( '/\.(tar\.gz|tgz|tar|wpress)$/i', '', $name ) ) ), '-' );
-			$extension  = $wpress ? 'wpress' : ( $compressed ? 'tar.gz' : 'tar' );
+			$compressed = (bool) preg_match( '/\.(tar\.gz|tgz)(\.enc)?$/i', $name );
+			$base       = trim( (string) preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) preg_replace( '/\.(tar\.gz|tgz|tar|wpress)(\.enc)?$/i', '', $name ) ) ), '-' );
+			$extension  = $wpress ? 'wpress' : ( $compressed ? 'tar.gz' : 'tar' ) . ( $encrypted ? Archive\Crypto::SUFFIX : '' );
 			$name       = sprintf( '%s-%s-%s.%s', '' === $base ? 'upload' : substr( $base, 0, 40 ), gmdate( 'Y-m-d' ), Security\Storage::random_hex( 6 ), $extension );
 		}
 		$target = $dir . '/' . $name;
@@ -179,11 +182,16 @@ final class Backups {
 			if ( ! preg_match( self::FILE_PATTERN, $name ) || ! is_file( $dir . '/' . $name ) ) {
 				continue;
 			}
-			$path     = $dir . '/' . $name;
-			$manifest = null;
-			$error    = null;
+			$path      = $dir . '/' . $name;
+			$manifest  = null;
+			$error     = null;
+			$encrypted = self::encrypted_name( $name );
 			try {
-				$manifest = Wpress\Wpress::is_name( $name ) ? Wpress\Wpress::describe( $path ) : self::manifest( $path );
+				if ( $encrypted ) {
+					Archive\Crypto::header( $path ); // What is inside shows once the password is given.
+				} else {
+					$manifest = Wpress\Wpress::is_name( $name ) ? Wpress\Wpress::describe( $path ) : self::manifest( $path );
+				}
 				if ( ! empty( $manifest['encrypted'] ) ) {
 					$error = 'Protected with a password; SiteFerry cannot open password-protected .wpress backups yet.';
 				}
@@ -195,8 +203,9 @@ final class Backups {
 				'name'     => $name,
 				'size'     => (int) filesize( $path ),
 				'modified' => (int) filemtime( $path ),
-				'manifest' => $manifest,
-				'error'    => $error,
+				'manifest'  => $manifest,
+				'error'     => $error,
+				'encrypted' => $encrypted,
 			);
 		}
 
@@ -210,13 +219,32 @@ final class Backups {
 	}
 
 	/**
+	 * Whether a backup's name says it is encrypted.
+	 *
+	 * @param string $name File name.
+	 */
+	public static function encrypted_name( string $name ): bool {
+		return Archive\Crypto::SUFFIX === substr( $name, -strlen( Archive\Crypto::SUFFIX ) );
+	}
+
+	/**
 	 * Reads the manifest, which is the first entry of a SiteFerry backup.
 	 *
 	 * @param string $path Backup file.
 	 * @return array
 	 * @throws Archive_Exception If the file is not a SiteFerry backup.
 	 */
-	public static function manifest( string $path ): array {
+	public static function manifest(
+		string $path,
+		#[\SensitiveParameter]
+		?string $key = null
+	): array {
+		if ( Archive\Crypto::is_encrypted( $path ) ) {
+			if ( null === $key ) {
+				throw new Archive_Exception( 'This backup is protected with a password.', Archive_Exception::LOCKED );
+			}
+			$path = Archive\Crypto::url( $path, $key );
+		}
 		$reader = Tar_Reader::open( $path );
 		try {
 			$entry = $reader->next();

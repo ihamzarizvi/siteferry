@@ -91,6 +91,11 @@ final class Backups_Command {
 	 * [--storage=<id>]
 	 * : Check the copy on this storage (s3, ftp, gdrive, dropbox) instead of the one on this server.
 	 *
+	 * [--password[=<password>]]
+	 * : Password of a protected backup (.enc). Without a value it is taken from the
+	 * SITEFERRY_PASSWORD environment variable, or asked for.
+	 *
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry backups check mysite-2026-11-05-1a2b3c4d5e6f.tar
@@ -102,7 +107,7 @@ final class Backups_Command {
 	public function check( $args, $assoc_args ): void {
 		$place = (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'storage', Check::LOCAL );
 		try {
-			list( $job ) = Check::start( (string) $args[0], $place );
+			list( $job ) = Check::start( (string) $args[0], $place, Command::password( $assoc_args ) );
 		} catch ( \Throwable $e ) {
 			WP_CLI::error( $e->getMessage() );
 			return;

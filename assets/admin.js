@@ -122,6 +122,7 @@
 		if ( ! response.ok ) {
 			const error = new Error( ( data && data.message ) || 'Request failed (HTTP ' + response.status + ').' );
 			error.status = response.status;
+			error.code = data && data.code ? data.code : '';
 			throw error;
 		}
 		return data;
@@ -140,6 +141,35 @@
 		} );
 		( children || [] ).forEach( ( child ) => node.appendChild( typeof child === 'string' ? document.createTextNode( child ) : child ) );
 		return node;
+	}
+
+	/** Whether a backup is protected with a password. */
+	const isEncrypted = ( item ) => !! item && ( !! item.encrypted || /\.enc$/i.test( item.name || '' ) );
+
+	/**
+	 * Asks for the password of a protected backup in a dialog. Resolves to the password, or null
+	 * when cancelled. The password stays in this page only for the action it is asked for.
+	 */
+	function askPassword( title, text, error ) {
+		const dialog = $( 'siteferry-password-dialog' );
+		const input = $( 'siteferry-password-dialog-input' );
+		$( 'siteferry-password-dialog-title' ).textContent = title;
+		$( 'siteferry-password-dialog-text' ).textContent = text;
+		$( 'siteferry-password-dialog-error' ).textContent = error || '';
+		$( 'siteferry-password-dialog-error' ).hidden = ! error;
+		input.value = '';
+		return new Promise( ( resolve ) => {
+			const done = () => {
+				dialog.removeEventListener( 'close', done );
+				const value = dialog.returnValue === 'ok' && input.value !== '' ? input.value : null;
+				input.value = '';
+				resolve( value );
+			};
+			dialog.addEventListener( 'close', done );
+			dialog.returnValue = '';
+			dialog.showModal();
+			input.focus();
+		} );
 	}
 
 	function button( text, onclick, className ) {
@@ -548,9 +578,15 @@
 	/** Compression applies to SiteFerry's own format only. */
 	function syncFormat() {
 		const format = $( 'siteferry-export-form' ).querySelector( 'input[name=format]:checked' );
+		const wpress = !! format && format.value === 'wpress';
 		const row = $( 'siteferry-compress-row' );
 		if ( row ) {
-			row.hidden = !! format && format.value === 'wpress';
+			row.hidden = wpress;
+		}
+		// SiteFerry protects only its own format with a password.
+		if ( $( 'siteferry-encrypt-row' ) ) {
+			$( 'siteferry-encrypt-row' ).hidden = wpress;
+			$( 'siteferry-encrypt-fields' ).hidden = wpress || ! $( 'siteferry-encrypt' ).checked;
 		}
 	}
 
@@ -584,6 +620,17 @@
 		options.title = form.elements.title.value;
 		options.note = form.elements.note.value;
 		options.tags = form.elements.tags.value;
+		if ( $( 'siteferry-encrypt' ) && $( 'siteferry-encrypt' ).checked && options.format !== 'wpress' ) {
+			const password = $( 'siteferry-password' ).value;
+			const problem = password.length < 8 ? 'The password needs at least 8 characters.' : password !== $( 'siteferry-password-again' ).value ? 'The two passwords are not the same.' : '';
+			if ( problem ) {
+				toggleDrawer( 'options', true );
+				notice( problem, 'error' );
+				$( 'siteferry-password' ).focus();
+				return;
+			}
+			options.password = password;
+		}
 		const target = destination( options.send_to );
 		const view = progressView( 'siteferry-job-progress', [ 'This site', target ? target.short : 'This server' ] );
 		const starters = [ $( 'siteferry-backup-now' ), ...form.querySelectorAll( 'button[type=submit]' ) ];
@@ -949,12 +996,15 @@
 		return job;
 	}
 
-	async function startTransfer( path, body, message, ends ) {
+	async function startTransfer( path, body, message, ends, onLocked ) {
 		try {
 			const started = await api( 'POST', path, { json: body } );
 			remember( started.job, started.token );
 			return await runTransfer( started.job.id, started.token, message, ends );
 		} catch ( error ) {
+			if ( onLocked && error.code === 'siteferry_locked' ) {
+				return onLocked( error.message ); // Asks for the password again.
+			}
 			const view = progressView( 'siteferry-job-progress' );
 			view.start( message );
 			view.finish( false, 'Could not start', [ el( 'p', { text: error.message } ) ] );
@@ -967,13 +1017,22 @@
 	}
 
 	/** Reads one copy of a backup from start to end and compares it with its checksums. */
-	function checkCopy( item, place ) {
+	async function checkCopy( item, place, error ) {
 		const d = place === 'local' ? null : destination( place );
+		const body = { name: item.name, place };
+		if ( isEncrypted( item ) ) {
+			const password = await askPassword( 'Check ' + called( item ), 'This backup is protected with a password. The check needs it to compare every file with its checksums.', error );
+			if ( null === password ) {
+				return null;
+			}
+			body.password = password;
+		}
 		return startTransfer(
 			'checks',
-			{ name: item.name, place },
+			body,
 			'Checking the copy of ' + called( item ) + ' on ' + ( d ? d.label : 'this server' ) + '; nothing changes...',
-			d ? [ d.short, 'Checked' ] : [ 'Backup', 'Checked' ]
+			d ? [ d.short, 'Checked' ] : [ 'Backup', 'Checked' ],
+			( message ) => checkCopy( item, place, message )
 		);
 	}
 
@@ -1056,6 +1115,7 @@
 				format: b.format,
 				contents: b.contents,
 				error: b.error,
+				encrypted: !! b.encrypted,
 				title: b.title || '',
 				note: b.note || '',
 				tags: b.tags || [],
@@ -1209,6 +1269,12 @@
 
 	/** The file format from the name: SiteFerry .tar or .tar.gz, or .wpress. */
 	function formatOf( name ) {
+		if ( /\.tar\.gz\.enc$/i.test( name ) ) {
+			return { ext: '.tar.gz.enc', note: 'SiteFerry, compressed, password' };
+		}
+		if ( /\.tar\.enc$/i.test( name ) ) {
+			return { ext: '.tar.enc', note: 'SiteFerry, password' };
+		}
 		if ( /\.tar\.gz$/i.test( name ) ) {
 			return { ext: '.tar.gz', note: 'SiteFerry, compressed' };
 		}
@@ -1262,6 +1328,9 @@
 		}
 		if ( item.error ) {
 			flags.push( badge( 'Cannot be restored', 'is-bad' ) );
+		}
+		if ( isEncrypted( item ) ) {
+			flags.push( badge( 'Password', 'is-lock' ) );
 		}
 
 		const places = [];
@@ -1623,7 +1692,7 @@
 			cancelJob( restore.job.id, restore.job.token );
 		}
 		closeMenus();
-		restore = { item, mine: ours( item ), host: hostOf( item.source ), name: item.local ? item.name : null, job: null, phase: 'open', seq: 0, partial: partial || null };
+		restore = { item, mine: ours( item ), host: hostOf( item.source ), name: item.local ? item.name : null, job: null, phase: 'open', seq: 0, partial: partial || null, password: null };
 		const paths = partial ? partial.options.restore_paths || [] : [];
 		$( 'siteferry-safety' ).checked = true;
 		$( 'siteferry-replace-url' ).value = '';
@@ -1735,11 +1804,23 @@
 		if ( previous ) {
 			await cancelJob( previous.id, previous.token );
 		}
+		if ( isEncrypted( { name: restore.name || '' } ) && ! restore.password ) {
+			const password = await askPassword( 'Password of the backup', 'This backup is protected with a password. Enter it to check and restore the backup.', restore.locked || '' );
+			if ( ! restore || seq !== restore.seq ) {
+				return;
+			}
+			if ( null === password ) {
+				closeRestore();
+				return;
+			}
+			restore.password = password;
+		}
 		const view = progressView( 'siteferry-import-progress', [ 'Backup', 'This site' ] );
 		view.start( 'Checking the backup; nothing on this site changes yet...' );
 		try {
 			const started = await api( 'POST', 'imports', {
 				json: {
+					...( restore.password ? { password: restore.password } : {} ),
 					backup: restore.name,
 					replace_url: $( 'siteferry-replace-url' ).value.trim(),
 					include_mu_plugins: $( 'siteferry-include-mu' ).checked,
@@ -1756,6 +1837,14 @@
 			remember( started.job, started.token );
 			await continueImport( view, seq );
 		} catch ( error ) {
+			if ( restore && seq === restore.seq && error.code === 'siteferry_locked' ) {
+				// No password, or a wrong one: ask (again).
+				restore.password = null;
+				restore.locked = error.message;
+				$( 'siteferry-import-progress' ).hidden = true;
+				startCheck();
+				return;
+			}
 			if ( restore && seq === restore.seq ) {
 				restore.phase = 'failed';
 				view.finish( false, 'This backup cannot be restored here', [ el( 'p', { text: error.message } ) ] );
@@ -1929,9 +2018,26 @@
 	 */
 	let inside = null;
 
-	function openContents( item ) {
+	async function openContents( item, error ) {
 		closeMenus();
-		inside = { item, dir: '', seq: 0, tables: null, hasDatabase: false, picks: new Map() };
+		let unlock = '';
+		if ( isEncrypted( item ) ) {
+			const password = await askPassword( 'Look inside ' + called( item ), 'This backup is protected with a password. Enter it to see what is inside.', error );
+			if ( null === password ) {
+				return;
+			}
+			try {
+				unlock = ( await api( 'POST', 'backups/' + encodeURIComponent( item.name ) + '/unlock', { json: { password } } ) ).unlock;
+			} catch ( failure ) {
+				if ( failure.code === 'siteferry_locked' ) {
+					openContents( item, failure.message );
+				} else {
+					notice( failure.message, 'error' );
+				}
+				return;
+			}
+		}
+		inside = { item, dir: '', seq: 0, tables: null, hasDatabase: false, picks: new Map(), unlock };
 		$( 'siteferry-contents-title' ).textContent = 'Inside ' + called( item );
 		$( 'siteferry-contents-crumbs' ).replaceChildren();
 		$( 'siteferry-contents-body' ).replaceChildren( el( 'p', { class: 'sf-contents-wait', text: 'Reading the list of files in the backup...' } ) );
@@ -1958,7 +2064,7 @@
 		let data;
 		for ( ;; ) {
 			try {
-				data = await api( 'GET', 'backups/' + encodeURIComponent( inside.item.name ) + '/contents', { query: { dir } } );
+				data = await api( 'GET', 'backups/' + encodeURIComponent( inside.item.name ) + '/contents', { query: inside.unlock ? { dir, unlock: inside.unlock } : { dir } } );
 			} catch ( error ) {
 				if ( inside && seq === inside.seq ) {
 					body.replaceChildren( el( 'p', { class: 'sf-row-error', text: 'The backup cannot be read: ' + error.message } ) );
@@ -2034,7 +2140,11 @@
 	}
 
 	function fileUrl( name, path ) {
-		return url( 'backups/' + encodeURIComponent( name ) + '/file', { path, _wpnonce: cfg.nonce } );
+		const query = { path, _wpnonce: cfg.nonce };
+		if ( inside && inside.unlock ) {
+			query.unlock = inside.unlock; // Stands for the key for 15 minutes; not the password.
+		}
+		return url( 'backups/' + encodeURIComponent( name ) + '/file', query );
 	}
 
 	function entryRow( entry ) {
@@ -2197,6 +2307,10 @@
 			}
 		} );
 		form.elements.email.placeholder = schedule.admin_email ? schedule.admin_email + ' (the site\'s admin email)' : '';
+		if ( form.elements.password ) {
+			form.elements.password.value = '';
+			form.elements.password.placeholder = schedule.has_password ? 'Saved; leave empty to keep it' : '';
+		}
 		// WordPress names a plain offset "+05:00"; show it as UTC+05:00 (and "+00:00" as UTC).
 		const zone = /^[+-]\d{2}:\d{2}$/.test( schedule.timezone ) ? 'UTC' + ( schedule.timezone === '+00:00' ? '' : schedule.timezone ) : schedule.timezone;
 		$( 'siteferry-schedule-zone' ).textContent = 'In the site\'s time zone (' + zone + ', set under Settings, General). WordPress starts scheduled tasks when the site gets a visit, so on a quiet site a backup can start a little late.';
@@ -2239,6 +2353,11 @@
 		$( 'siteferry-schedule-keep-local' ).hidden = ! where || ! where.value;
 		const format = form.querySelector( 'input[name=format]:checked' );
 		const compress = form.querySelector( '[data-role=compress]' );
+		const encrypt = form.querySelector( '[data-role=encrypt]' );
+		if ( encrypt ) {
+			encrypt.hidden = !! format && format.value === 'wpress';
+			form.querySelector( '[data-role=encrypt-password]' ).hidden = encrypt.hidden || ! form.elements.encrypt.checked;
+		}
 		if ( compress ) {
 			compress.hidden = !! format && format.value === 'wpress';
 		}
@@ -2258,6 +2377,10 @@
 			} else if ( input.type === 'radio' ) {
 				if ( input.checked ) {
 					data[ input.name ] = input.value;
+				}
+			} else if ( input.type === 'password' ) {
+				if ( input.value !== '' ) {
+					data[ input.name ] = input.value; // Empty: the saved password stays.
 				}
 			} else {
 				data[ input.name ] = input.value.trim();
@@ -2666,6 +2789,9 @@
 		$( 'siteferry-send-options' ).addEventListener( 'change', syncDeleteAfter );
 		$( 'siteferry-export-form' ).querySelectorAll( 'input[name=format]' ).forEach( ( input ) => input.addEventListener( 'change', syncFormat ) );
 		$( 'siteferry-tables' ).addEventListener( 'change', countLeftOutTables );
+		if ( $( 'siteferry-encrypt' ) ) {
+			$( 'siteferry-encrypt' ).addEventListener( 'change', syncFormat );
+		}
 		$( 'siteferry-file' ).addEventListener( 'change', onFileChosen );
 		setUpDropZone();
 		$( 'siteferry-backups-refresh' ).addEventListener( 'click', loadBackups );

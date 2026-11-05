@@ -56,7 +56,7 @@ final class Extract_Step implements Step {
 					'skip'   => array( Wpress::class, 'skipped' ),
 				)
 			)
-			: Tar_Reader::open( $job->option( 'archive' ), $saved );
+			: Tar_Reader::open( \SiteFerry\Security\Archive_Keys::path( $job, (string) $job->option( 'archive' ) ), $saved );
 		$extractor = new Tar_Extractor(
 			$reader,
 			$staging,

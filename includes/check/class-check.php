@@ -41,18 +41,30 @@ final class Check {
 	/**
 	 * Starts checking one copy of a backup.
 	 *
-	 * @param string $name  Backup file name.
-	 * @param string $place "local" for the copy on this server, or a storage id.
+	 * @param string $name     Backup file name.
+	 * @param string $place    "local" for the copy on this server, or a storage id.
+	 * @param string $password Password of an encrypted backup.
 	 * @return array{0:Job,1:string} The job and its token.
 	 * @throws Job_Exception If there is no such copy, or no room to download it.
+	 * @throws \SiteFerry\Archive\Archive_Exception If the backup is encrypted and the password is missing or wrong.
 	 */
-	public static function start( string $name, string $place ): array {
+	public static function start(
+		string $name,
+		string $place,
+		#[\SensitiveParameter]
+		string $password = ''
+	): array {
+		$encrypted = Backups::encrypted_name( $name );
+		if ( $encrypted && '' === $password ) {
+			throw new \SiteFerry\Archive\Archive_Exception( 'This backup is protected with a password; enter it to check the backup.', \SiteFerry\Archive\Archive_Exception::LOCKED );
+		}
 		if ( ! preg_match( Backups::SAFE_NAME, $name ) ) {
 			throw new Job_Exception( 'Unknown backup.', Job_Exception::NOT_FOUND );
 		}
 		if ( self::LOCAL === $place || '' === $place ) {
-			$file = Backups::path( Storage::backups_dir(), $name );
-			return Job::create(
+			$file    = Backups::path( Storage::backups_dir(), $name );
+			$key     = $encrypted ? \SiteFerry\Archive\Crypto::unlock( $file, $password ) : null;
+			$created = Job::create(
 				Storage::jobs_dir(),
 				'check',
 				self::LOCAL_STEPS,
@@ -63,6 +75,11 @@ final class Check {
 					'size'  => (int) filesize( $file ),
 				)
 			);
+			if ( null !== $key ) {
+				\SiteFerry\Security\Archive_Keys::store( $created[0], $key );
+				$created[0]->save();
+			}
+			return $created;
 		}
 
 		Destinations::require_ready( $place );
@@ -81,7 +98,7 @@ final class Check {
 		if ( false !== $free && $free < $found['size'] + Transfer::SPARE_BYTES ) {
 			throw new Job_Exception( sprintf( 'Not enough disk space to download the copy for the check: it needs %s, %s is free.', size_format( $found['size'], 1 ), size_format( $free, 1 ) ), Job_Exception::STEP );
 		}
-		return Job::create(
+		$created = Job::create(
 			$dir,
 			'check',
 			self::REMOTE_STEPS,
@@ -93,6 +110,12 @@ final class Check {
 				'adopt'  => false,
 			)
 		);
+		if ( $encrypted ) {
+			// The key needs the copy's header: the password is kept (encrypted) until it is downloaded.
+			\SiteFerry\Security\Archive_Keys::store_password( $created[0], $password );
+			$created[0]->save();
+		}
+		return $created;
 	}
 
 	/**

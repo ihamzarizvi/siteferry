@@ -102,6 +102,11 @@ final class Command {
 	 * [--delete-after-send]
 	 * : With --send: delete the copy on this server once the upload is complete.
 	 *
+	 * [--password[=<password>]]
+	 * : Protect the backup with a password (AES-256-GCM; the file name ends in .enc). Without a
+	 * value the password is taken from the SITEFERRY_PASSWORD environment variable, or asked for.
+	 * It is not saved anywhere: without it the backup cannot be restored.
+	 *
 	 * [--porcelain]
 	 * : Print only the path of the backup file.
 	 *
@@ -112,6 +117,7 @@ final class Command {
 	 *     wp siteferry export --dir=/home/me/backups --porcelain
 	 *     wp siteferry export --send=s3 --delete-after-send
 	 *     wp siteferry export --format=wpress
+	 *     wp siteferry export --password
 	 *
 	 * @param string[] $args       Positional arguments (none).
 	 * @param array    $assoc_args Options.
@@ -127,6 +133,7 @@ final class Command {
 			'snapshot'          => true,
 			'send_to'           => (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'send', '' ),
 			'delete_after_send' => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'delete-after-send', false ),
+			'password'          => self::password( $assoc_args, true ),
 		);
 		foreach ( self::csv( $assoc_args, 'exclude' ) as $item ) {
 			if ( ! isset( self::EXCLUDE_ITEMS[ $item ] ) ) {
@@ -216,6 +223,10 @@ final class Command {
 	 * : Do not make a safety backup of this site first. (By default SiteFerry backs up the whole
 	 * site as it is before anything changes, so the import can be undone by restoring that backup.)
 	 *
+	 * [--password[=<password>]]
+	 * : Password of a protected backup (.enc). Without a value it is taken from the
+	 * SITEFERRY_PASSWORD environment variable, or asked for.
+	 *
 	 * [--only-database]
 	 * : Restore only the database; the files on this site stay as they are.
 	 *
@@ -260,6 +271,7 @@ final class Command {
 			'include_drop_ins'   => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'include-drop-ins', false ),
 			'force'              => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'force', false ),
 			'safety'             => ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-safety-backup', false ),
+			'password'           => self::password( $assoc_args ),
 		) + self::restore_parts( $assoc_args );
 
 		try {
@@ -328,6 +340,31 @@ final class Command {
 			WP_CLI::warning( $warning );
 		}
 		WP_CLI::log( '' );
+	}
+
+	/**
+	 * The --password flag: its value, the SITEFERRY_PASSWORD environment variable, or a prompt.
+	 *
+	 * @param array $assoc_args Options.
+	 * @param bool  $confirm    Ask twice (for a new backup).
+	 */
+	public static function password( array $assoc_args, bool $confirm = false ): string {
+		$value = \WP_CLI\Utils\get_flag_value( $assoc_args, 'password', null );
+		if ( null === $value || false === $value ) {
+			return '';
+		}
+		if ( true !== $value ) {
+			return (string) $value;
+		}
+		$env = getenv( 'SITEFERRY_PASSWORD' );
+		if ( is_string( $env ) && '' !== $env ) {
+			return $env;
+		}
+		$value = (string) \cli\prompt( 'Password', false, ': ', true );
+		if ( $confirm && (string) \cli\prompt( 'The same password again', false, ': ', true ) !== $value ) {
+			WP_CLI::error( 'The passwords do not match.' );
+		}
+		return $value;
 	}
 
 	/**

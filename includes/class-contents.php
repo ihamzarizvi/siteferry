@@ -39,14 +39,21 @@ final class Contents {
 	/**
 	 * The index of a backup, built (or continued) for at most $seconds.
 	 *
-	 * @param string $file    Backup file.
-	 * @param float  $seconds Time to spend now.
+	 * @param string      $file    Backup file.
+	 * @param float       $seconds Time to spend now.
+	 * @param string|null $key     Key of an encrypted backup.
 	 * @return array{complete:bool,entries:array,read:int,size:int} Entries: [path, type (d, f or l), size, mtime].
-	 * @throws Archive_Exception If the backup cannot be read.
+	 * @throws Archive_Exception If the backup cannot be read, or it is encrypted and no key is given.
 	 */
-	public static function index( string $file, float $seconds = self::SECONDS ): array {
-		$cache = self::cache_file( $file );
-		$saved = is_file( $cache ) ? json_decode( (string) file_get_contents( $cache ), true ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+	public static function index(
+		string $file,
+		float $seconds = self::SECONDS,
+		#[\SensitiveParameter]
+		?string $key = null
+	): array {
+		$source = self::source( $file, $key );
+		$cache  = self::cache_file( $file );
+		$saved  = self::load( $cache, $source !== $file );
 		$size  = (int) filesize( $file );
 		if ( is_array( $saved ) && ! empty( $saved['complete'] ) ) {
 			return array(
@@ -57,8 +64,8 @@ final class Contents {
 			);
 		}
 		$entries = is_array( $saved ) && isset( $saved['entries'] ) ? (array) $saved['entries'] : array();
-		$wpress  = Wpress\Wpress::is_name( $file ) || Wpress\Reader::is_wpress( $file );
-		$reader  = self::open( $file, $wpress, is_array( $saved ) && isset( $saved['state'] ) ? (array) $saved['state'] : null );
+		$wpress  = $source === $file && ( Wpress\Wpress::is_name( $file ) || Wpress\Reader::is_wpress( $file ) );
+		$reader  = self::open( $source, $wpress, is_array( $saved ) && isset( $saved['state'] ) ? (array) $saved['state'] : null );
 		$until   = microtime( true ) + $seconds;
 		$done    = false;
 		try {
@@ -78,7 +85,7 @@ final class Contents {
 		} finally {
 			$reader->close();
 		}
-		self::save( $cache, $file, $done, $entries, $state );
+		self::save( $cache, $file, $done, $entries, $state, $source !== $file );
 		return array(
 			'complete' => $done,
 			'entries'  => $entries,
@@ -149,12 +156,18 @@ final class Contents {
 	 * @param string $inner Path inside the backup, as in the index.
 	 * @throws Job_Exception If there is no such file, or the backup is password-protected.
 	 */
-	public static function stream( string $file, string $inner ): void {
-		$wpress = Wpress\Wpress::is_name( $file ) || Wpress\Reader::is_wpress( $file );
+	public static function stream(
+		string $file,
+		string $inner,
+		#[\SensitiveParameter]
+		?string $key = null
+	): void {
+		$source = self::source( $file, $key );
+		$wpress = $source === $file && ( Wpress\Wpress::is_name( $file ) || Wpress\Reader::is_wpress( $file ) );
 		if ( $wpress && ! empty( Wpress\Wpress::describe( $file )['encrypted'] ) ) {
 			throw new Job_Exception( 'This .wpress backup is protected with a password; its files cannot be read.', Job_Exception::STEP );
 		}
-		$reader = self::open( $file, $wpress, null );
+		$reader = self::open( $source, $wpress, null );
 		try {
 			while ( null !== ( $entry = $reader->next() ) ) { // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition
 				if ( self::name( $entry, $wpress ) !== $inner ) {
@@ -256,6 +269,49 @@ final class Contents {
 	}
 
 	/**
+	 * The path to read a backup through: its decrypting stream when it is encrypted.
+	 *
+	 * @param string      $file Backup file.
+	 * @param string|null $key  Key of an encrypted backup.
+	 * @throws Archive_Exception If it is encrypted and no key is given.
+	 */
+	private static function source(
+		string $file,
+		#[\SensitiveParameter]
+		?string $key
+	): string {
+		if ( ! Archive\Crypto::is_encrypted( $file ) ) {
+			return $file;
+		}
+		if ( null === $key ) {
+			throw new Archive_Exception( 'This backup is protected with a password.', Archive_Exception::LOCKED );
+		}
+		return Archive\Crypto::url( $file, $key );
+	}
+
+	/**
+	 * A saved index, or null.
+	 *
+	 * @param string $cache  Index file.
+	 * @param bool   $sealed Whether it is kept encrypted.
+	 */
+	private static function load( string $cache, bool $sealed ): ?array {
+		if ( ! is_file( $cache ) ) {
+			return null;
+		}
+		$raw = (string) file_get_contents( $cache ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( $sealed ) {
+			try {
+				$raw = Security\Secrets::site()->decrypt( $raw );
+			} catch ( \Throwable $e ) {
+				return null; // Made with other salts: read the backup again.
+			}
+		}
+		$data = json_decode( $raw, true );
+		return is_array( $data ) ? $data : null;
+	}
+
+	/**
 	 * Index file of a backup: named after its name, size and time.
 	 *
 	 * @param string $file Backup file.
@@ -274,7 +330,7 @@ final class Contents {
 	 * @param array      $entries  Entries so far.
 	 * @param array|null $state    Reader state, to continue.
 	 */
-	private static function save( string $cache, string $file, bool $complete, array $entries, ?array $state ): void {
+	private static function save( string $cache, string $file, bool $complete, array $entries, ?array $state, bool $sealed = false ): void {
 		foreach ( (array) glob( dirname( $cache ) . '/idx-' . substr( sha1( basename( $file ) ), 0, 16 ) . '-*.json' ) as $old ) {
 			if ( $old !== $cache ) {
 				Io::quiet(
@@ -291,6 +347,8 @@ final class Contents {
 		if ( ! $complete ) {
 			$data['state'] = $state;
 		}
-		file_put_contents( $cache, (string) json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		$json = (string) json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		// The file list of an encrypted backup is kept encrypted with the site's key.
+		file_put_contents( $cache, $sealed ? Security\Secrets::site()->encrypt( $json ) : $json ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 	}
 }

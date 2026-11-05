@@ -69,6 +69,17 @@ final class Import {
 			throw new Job_Exception( sprintf( 'Cannot read the backup "%s".', $archive ), Job_Exception::STEP );
 		}
 
+		// A password-protected backup: the password must open it now; only the key is kept.
+		$password = isset( $options['password'] ) && is_string( $options['password'] ) ? $options['password'] : '';
+		unset( $options['password'] );
+		$key = null;
+		if ( \SiteFerry\Archive\Crypto::is_encrypted( $real ) ) {
+			if ( '' === $password ) {
+				throw new \SiteFerry\Archive\Archive_Exception( 'This backup is protected with a password; enter it to restore the backup.', \SiteFerry\Archive\Archive_Exception::LOCKED );
+			}
+			$key = \SiteFerry\Archive\Crypto::unlock( $real, $password );
+		}
+
 		$options = self::normalize( $options );
 		$tag     = Storage::random_hex( 3 );
 		$active  = (array) get_option( 'active_plugins', array() );
@@ -83,8 +94,13 @@ final class Import {
 		$options['own_plugin']  = in_array( Plugin::basename(), $active, true ) ? Plugin::basename() : '';
 		$options['own_folder']  = Plugin::folder();
 
-		$steps = $wpress ? array_merge( array( \SiteFerry\Wpress\Import_Step::STEP ), self::STEPS ) : self::STEPS; // The safety step skips itself when declined.
-		return Job::create( Storage::jobs_dir(), 'import', $steps, $options );
+		$steps   = $wpress ? array_merge( array( \SiteFerry\Wpress\Import_Step::STEP ), self::STEPS ) : self::STEPS; // The safety step skips itself when declined.
+		$created = Job::create( Storage::jobs_dir(), 'import', $steps, $options );
+		if ( null !== $key ) {
+			\SiteFerry\Security\Archive_Keys::store( $created[0], $key );
+			$created[0]->save();
+		}
+		return $created;
 	}
 
 	/**

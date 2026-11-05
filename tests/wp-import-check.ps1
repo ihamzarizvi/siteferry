@@ -21,6 +21,10 @@
                         and an option. Checks that the marker post and the plugin are back, and that
                         every other table, the options and every other file are exactly as before.
                         Does not touch siteferry-src.
+    -Scenario encrypted A password-protected backup of siteferry-dst (with marker content): checks that
+                        nothing of it is readable, that a wrong password is refused before anything
+                        changes, and that with the password it restores the marker content with every
+                        file as before. Does not touch siteferry-src.
     -Scenario archive   Imports an existing backup (-Archive). Checks addresses and leftovers, and with
                         -SourceChecksums (a "table checksum" list of the source site) that every table
                         the search-replace did not change is identical to the source. -VerifyOnly runs
@@ -29,7 +33,7 @@
     Run each scenario only with the site owner's permission: it replaces siteferry-dst's content.
 #>
 param(
-    [ValidateSet('site', 'rollback', 'undo', 'partial', 'archive')] [string] $Scenario = 'site',
+    [ValidateSet('site', 'rollback', 'undo', 'partial', 'encrypted', 'archive')] [string] $Scenario = 'site',
     [string] $Archive = '',
     [string] $SourceChecksums = '',
     [switch] $VerifyOnly,
@@ -98,10 +102,12 @@ function Export-Source {
 # A backup of siteferry-dst itself with marker content (written to the test folder, not to dst's
 # backup list); the marker is removed again afterwards, so importing the backup brings it back.
 # Leaves siteferry-src alone.
-function Export-Self {
+function Export-Self([string] $Password = '') {
     $id = (Wp $dst @('post', 'create', '--post_type=post', '--post_status=publish', '--post_title=SFTEST-UNDO', '--post_content=undo marker', '--porcelain') | Select-Object -Last 1).Trim()
     Wp $dst @('option', 'update', 'sftest_undo', 'marker') | Out-Null
-    $made = (Wp $dst @($noCron, 'siteferry', 'export', "--dir=$work", '--porcelain') | Select-Object -Last 1).Trim()
+    $exportArgs = @($noCron, 'siteferry', 'export', "--dir=$work", '--porcelain')
+    if ($Password) { $exportArgs += "--password=$Password" }
+    $made = (Wp $dst $exportArgs | Select-Object -Last 1).Trim()
     Wp $dst @('post', 'delete', $id, '--force') | Out-Null
     Wp $dst @('option', 'delete', 'sftest_undo') | Out-Null
     return $made
@@ -337,6 +343,58 @@ try {
         }
     }
 
+    if ($Scenario -eq 'encrypted') {
+        $password = 'sf-import-' + [guid]::NewGuid().ToString('N').Substring(0, 10)
+        $file = Export-Self $password
+        Write-Host "Exported $file (protected with a password)"
+        $before = DbState $dst
+        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+        try {
+            Check 'the backup is protected: named .enc, nothing readable in it' {
+                Assert ($file -match '\.tar\.enc$') "name: $file"
+                # The first 16 MB hold the manifest and the database dump.
+                $stream = [IO.File]::OpenRead($file)
+                $bytes = New-Object byte[] 16777216
+                $count = $stream.Read($bytes, 0, $bytes.Length)
+                $stream.Close()
+                Assert ([Text.Encoding]::ASCII.GetString($bytes, 0, 5) -eq 'SFENC') 'no SFENC header'
+                $text = [Text.Encoding]::ASCII.GetString($bytes, 0, $count)
+                Assert (-not $text.Contains('CREATE TABLE') -and -not $text.Contains('SFTEST-UNDO')) 'plain text found in the file'
+            }
+
+            $out = Wp $dst @($noCron, 'siteferry', 'import', $file, '--password=not-the-password', '--skip-safety-backup', '--yes') -AllowFail
+            Check 'a wrong password is refused before anything changes' {
+                Assert ($script:lastCode -ne 0) 'the import with a wrong password did not fail'
+                Assert ((($out -join ' ') + $script:lastErr) -match 'password is wrong') ('message: ' + ($out -join ' ') + $script:lastErr)
+                $now = DbState $dst
+                $diff = Compare-Object @($before.checksums.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" }) @($now.checksums.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" })
+                Assert ($null -eq $diff) 'tables changed'
+            }
+
+            $out = Wp $dst @($noCron, 'siteferry', 'import', $file, "--password=$password", '--skip-safety-backup', '--yes')
+            Write-Host (($out | Select-Object -Last 2) -join "`n")
+            $after = DbState $dst
+            $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+            Check 'with the password it is restored: the marker post and option are back' {
+                $ids = (Wp $dst @('post', 'list', '--post_type=post', '--title=SFTEST-UNDO', '--field=ID', '--post_status=any')) -join ''
+                Assert ($ids.Trim() -ne '') 'marker post missing after the import'
+                $marker = (Wp $dst @($noCron, 'option', 'get', 'sftest_undo') -AllowFail | Select-Object -Last 1)
+                Assert ($script:lastCode -eq 0 -and "$marker".Trim() -eq 'marker') 'marker option missing after the import'
+                Assert ($after.home -eq $dst.Url -and $after.siteurl -eq $dst.Url) "home=$($after.home) siteurl=$($after.siteurl)"
+            }
+            Check 'every file in wp-content is as before; no leftovers' {
+                Assert ($treeAfter -eq $treeBefore) 'wp-content differs'
+                Assert (@($after.import_tables).Count -eq 0) ('import tables left: ' + ($after.import_tables -join ', '))
+                Assert (-not (Test-Path (Join-Path $dst.Public '.maintenance'))) 'maintenance file left behind'
+                Wp $dst @('plugin', 'is-active', 'siteferry') -AllowFail | Out-Null
+                Assert ($script:lastCode -eq 0) 'SiteFerry is not active after the import'
+            }
+        }
+        finally {
+            foreach ($id in (Wp $dst @('post', 'list', '--post_type=post', '--title=SFTEST-UNDO', '--field=ID', '--post_status=any'))) { Wp $dst @('post', 'delete', $id, '--force') | Out-Null }
+            Wp $dst @('option', 'delete', 'sftest_undo') -AllowFail | Out-Null
+        }
+    }
     if ($Scenario -eq 'archive') {
         if (-not (Test-Path $Archive)) { throw "Backup not found: $Archive" }
         if (-not $VerifyOnly) {

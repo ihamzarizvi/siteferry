@@ -222,6 +222,22 @@ final class Admin {
 							<?php if ( Requirements::can_compress() ) : ?>
 								<p class="sf-compress" id="siteferry-compress-row"><label><input type="checkbox" name="compress"> <?php esc_html_e( 'Compress the file (.tar.gz): smaller, but takes longer to make', 'siteferry' ); ?></label></p>
 							<?php endif; ?>
+							<?php if ( \SiteFerry\Archive\Crypto::available() ) : ?>
+								<div class="sf-encrypt" id="siteferry-encrypt-row">
+									<p><label><input type="checkbox" id="siteferry-encrypt"> <?php esc_html_e( 'Protect the backup with a password', 'siteferry' ); ?></label></p>
+									<div class="sf-encrypt-fields" id="siteferry-encrypt-fields" hidden>
+										<p class="sf-field">
+											<label for="siteferry-password"><?php esc_html_e( 'Password', 'siteferry' ); ?></label>
+											<input type="password" id="siteferry-password" autocomplete="new-password" minlength="8">
+										</p>
+										<p class="sf-field">
+											<label for="siteferry-password-again"><?php esc_html_e( 'The same password again', 'siteferry' ); ?></label>
+											<input type="password" id="siteferry-password-again" autocomplete="new-password" minlength="8">
+										</p>
+										<p class="description sf-field-wide"><?php esc_html_e( 'The backup is encrypted with AES-256 (the file name ends in .enc). SiteFerry does not keep this password: without it, nobody can restore the backup, not even you.', 'siteferry' ); ?></p>
+									</div>
+								</div>
+							<?php endif; ?>
 						</fieldset>
 
 						<h3 class="sf-sub"><?php esc_html_e( 'Where it goes', 'siteferry' ); ?></h3>
@@ -248,7 +264,7 @@ final class Admin {
 
 					<div id="siteferry-upload" class="sf-drawer" hidden>
 						<p class="sf-drawer-note"><?php esc_html_e( 'Upload a backup to restore it here, or to move another site here. It is added to the list below; nothing changes until you choose to restore it.', 'siteferry' ); ?></p>
-						<input type="file" id="siteferry-file" class="sf-file-input" accept=".tar,.gz,.tgz,.wpress">
+						<input type="file" id="siteferry-file" class="sf-file-input" accept=".tar,.gz,.tgz,.enc,.wpress">
 						<label for="siteferry-file" class="sf-drop" id="siteferry-drop">
 							<span class="dashicons dashicons-upload" aria-hidden="true"></span>
 							<span class="sf-drop-main"><?php esc_html_e( 'Drop a backup file here, or choose one', 'siteferry' ); ?></span>
@@ -260,6 +276,22 @@ final class Admin {
 
 					<?php self::render_schedule( $whole_parts, $clutter ); ?>
 				</div>
+
+				<dialog class="sf-dialog" id="siteferry-password-dialog" aria-labelledby="siteferry-password-dialog-title">
+					<form method="dialog" class="sf-dialog-form">
+						<h2 class="sf-card-title" id="siteferry-password-dialog-title"></h2>
+						<p id="siteferry-password-dialog-text"></p>
+						<p class="sf-field">
+							<label for="siteferry-password-dialog-input"><?php esc_html_e( 'Password', 'siteferry' ); ?></label>
+							<input type="password" id="siteferry-password-dialog-input" autocomplete="current-password">
+						</p>
+						<p class="sf-row-error" id="siteferry-password-dialog-error" role="alert" hidden></p>
+						<p class="sf-actions">
+							<button type="submit" class="button button-primary" value="ok"><?php esc_html_e( 'Continue', 'siteferry' ); ?></button>
+							<button type="submit" class="button sf-quiet" value="cancel" formnovalidate><?php esc_html_e( 'Cancel', 'siteferry' ); ?></button>
+						</p>
+					</form>
+				</dialog>
 
 				<div class="sf-undo" id="siteferry-undo" role="status" hidden></div>
 
@@ -468,6 +500,16 @@ final class Admin {
 					</div>
 					<?php if ( Requirements::can_compress() ) : ?>
 						<p class="sf-compress" data-role="compress"><label><input type="checkbox" name="compress"> <?php esc_html_e( 'Compress the file (.tar.gz): smaller, but takes longer to make', 'siteferry' ); ?></label></p>
+					<?php endif; ?>
+					<?php if ( \SiteFerry\Archive\Crypto::available() ) : ?>
+						<div class="sf-encrypt" data-role="encrypt">
+							<p><label><input type="checkbox" name="encrypt"> <?php esc_html_e( 'Protect automatic backups with a password (also those made before updates)', 'siteferry' ); ?></label></p>
+							<p class="sf-field" data-role="encrypt-password" hidden>
+								<label for="siteferry-schedule-password"><?php esc_html_e( 'Password', 'siteferry' ); ?></label>
+								<input type="password" id="siteferry-schedule-password" name="password" autocomplete="new-password" minlength="8">
+								<span class="description"><?php esc_html_e( 'Kept on this site, encrypted, so backups can run by themselves. Write it down somewhere safe: a backup cannot be restored without it, for example on a new server.', 'siteferry' ); ?></span>
+							</p>
+						</div>
 					<?php endif; ?>
 				</fieldset>
 

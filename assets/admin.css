@@ -2292,3 +2292,62 @@ details.sf-dest[open] > .sf-dest-head::after {
 		flex-basis: 100%;
 	}
 }
+
+/* ---------------------------------------------------------- passwords */
+
+.sf-badge.is-lock {
+	background: #efeaf8;
+	color: #4f3a85;
+}
+
+.sf-encrypt {
+	margin: 14px 0 0;
+	padding-top: 12px;
+	border-top: 1px solid var(--sf-fog);
+}
+
+.sf-encrypt p {
+	margin: 0 0 8px;
+}
+
+.sf-encrypt-fields {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+	gap: 0 16px;
+}
+
+.sf-encrypt-fields .sf-field-wide {
+	grid-column: 1 / -1;
+}
+
+.sf-encrypt input[type="password"] {
+	width: 100%;
+	max-width: 320px;
+}
+
+.sf-dialog {
+	width: min(440px, calc(100vw - 32px));
+	padding: 20px 22px;
+	border: 1px solid var(--sf-rope);
+	border-radius: var(--sf-radius);
+	color: var(--sf-text);
+	box-shadow: 0 12px 40px rgba(18, 53, 91, 0.25);
+}
+
+.sf-dialog::backdrop {
+	background: rgba(18, 53, 91, 0.35);
+}
+
+.siteferry .sf-dialog .sf-card-title {
+	margin-top: 0;
+	font-size: 17px;
+}
+
+.sf-dialog input[type="password"] {
+	width: 100%;
+}
+
+.sf-dialog .sf-actions {
+	flex-direction: row-reverse;
+	justify-content: flex-start;
+}

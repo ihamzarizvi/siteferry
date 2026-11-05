@@ -29,6 +29,7 @@ A single suite can be run directly, for example `php -n tests\test-tar-roundtrip
 | `test-ftp.php` | FTP driver through PHP's real ftp extension against `tools/fake-ftp-server.php` (started on 127.0.0.1 for each case): settings, line breaks refused, explicit FTPS on control and data connections, plain FTP, FTPS against a server without TLS, wrong password, upload in parts with a repeated part and a stale `.part` file, rename on finish, listing, ranged downloads, retry after a dropped connection, no retry for refusals, abort, the PASV address ignored, absolute and login folders |
 | `test-contents.php` | Looking inside a backup: the index of a .tar, a .tar.gz (built over several calls when time runs out) and a .wpress, cached under the backup's name, size and time and forgotten on delete; folder listings (folders first, natural order, file counts and sizes); the partial-restore options (table names and paths checked, cleaned and deduplicated, `..`, drive letters and deeper paths refused) and which paths and tables an import then takes |
 | `test-check.php` | Checking a copy of a backup: an intact .tar, .tar.gz and .wpress (also in one-chunk slices, with files cut by a slice continued, by saved hash state on PHP 8 and by reading again on 7.4); a changed byte, a cut archive, a missing file, an incomplete dump, a dump of the wrong size, a missing manifest or checksum list and an entry an import refuses, each named; the working files removed; outcomes kept per place, newest first, forgotten per place or per backup |
+| `test-crypto.php` | Password-protected backups: the password check (right, wrong, a changed header, fewer rounds written in), .tar and .tar.gz written through the encrypting stream in slices with junk from dead requests cut off and read back exactly, reads at any position, nothing in the clear, and tampering refused (a changed byte, a missing final chunk, a cut file, swapped chunks, chunks under another header); sealing twice; an unsealed file refused |
 | `test-gdrive.php` | Google Drive driver against an in-process fake Google (`lib/class-fake-google.php`): consent URL (drive.file only, offline, PKCE S256), code exchange (reused code, wrong verifier, missing scope, missing refresh token, wrong client secret), token refresh before expiry and after a 401 with the new token saved, revoked grant, folder created/found/re-created, resumable upload with a repeated and a half-stored part, replacing an earlier copy, paged listing, ranged downloads, trash, abort, rate limits retried, a full Drive and a foreign upload host refused, connection test, disconnect revokes; one-click mode through the relay (no client ID or secret on the site, renewal through the relay, an unreachable relay named in the error) |
 | `test-relay.php` | The sign-in relay (`relay/src/class-relay.php`) with a fake Google transport: health check, return addresses that are not a SiteFerry admin page refused, signed state (tampered, changed return address, expired), callback back to the site with its own state or Google's refusal, token requests forwarded with the client secret added, malformed and oversized requests, Google unreachable; Dropbox start (app key, callback, offline access, permissions, PKCE, state within 500 bytes, an address too long refused), callback, `/dropbox/app`, Google and Dropbox states not interchangeable, no token route for Dropbox, a relay set up for only one provider |
 | `test-schedule.php` | Backup schedule without WordPress: settings defaults and every invalid value refused (frequency, time, days, retention, format, storage, email with a header injection), next run daily/weekly/monthly in several time zones, across daylight saving time (including a skipped hour) and month and year ends, retention picking only the scheduled backups beyond the newest N, the export options a schedule makes; backups before updates: settings, which updates get one (not new installs or translations), and options that keep only the plugin or theme being updated (the database only for WordPress) |
@@ -79,6 +80,13 @@ powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-t
 # the outcomes listed, and forgotten when the backups are deleted. Removes its backups.
 powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-themes "--exec=define('DISABLE_WP_CRON', true);" eval-file tests/wp/test-check.php
 
+# Password-protected backups: a small protected backup (the database only) with nothing readable in
+# it; .wpress and short passwords refused; listed as protected; check, "Look inside" (unlock token,
+# encrypted file list) and a restore check each refuse a missing or wrong password and work with the
+# right one (the restore check is cancelled); jobs keep no key once they end; the schedule's password
+# kept encrypted and never sent back (the schedule settings are put back). Removes its backup.
+powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-themes "--exec=define('DISABLE_WP_CRON', true);" eval-file tests/wp/test-encrypted.php
+
 # Backups before updates: applies WordPress's upgrader_pre_download filter with real upgrader objects
 # (nothing is downloaded or updated). Off by default; a plugin update backs up the database and only
 # that plugin, a theme update only that theme, a WordPress update only the database (the archives are
@@ -112,12 +120,15 @@ powershell -ExecutionPolicy Bypass -File tests\wp-storage-check.ps1 -Site sitefe
 #   partial:  the same backup, restoring only the posts and postmeta tables and the smallest
 #             plugin after changing that plugin, uploads and an option; only the chosen parts may
 #             change (every other table, the options and every other file stay as they are)
+#   encrypted: a password-protected backup of siteferry-dst: unreadable, a wrong password refused
+#             before anything changes, restored with the password (marker content back, files as before)
 #   archive:  import an existing backup; tables not touched by search-replace must match the source
-# rollback, undo and partial do not touch siteferry-src.
+# rollback, undo, partial and encrypted do not touch siteferry-src.
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario site
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario rollback
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario undo
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario partial
+powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario encrypted
 powershell -ExecutionPolicy Bypass -File tests\wp-import-check.ps1 -Scenario archive -Archive <backup.tar> -SourceChecksums <list>
 ```
 

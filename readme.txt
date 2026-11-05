@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.13.0
+Stable tag: 0.14.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -113,7 +113,8 @@ and themes are left out, so it is quick. It stays on this server, named "Before 
 * `wp siteferry export [--format=tar|wpress] [--compress] [--exclude=media,plugins,themes,inactive-plugins,inactive-themes,spam-comments,revisions] [--include-cache] [--exclude-tables=...] [--exclude-paths=...] [--dir=...] [--porcelain]`
 * `wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] [--include-mu-plugins] [--include-drop-ins] [--force] [--skip-safety-backup] [--only-database|--only-files] [--tables=...] [--paths=...] [--yes]`
 * `wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]`
-* `wp siteferry backups check <name> [--storage=<id>]`
+* `wp siteferry backups check <name> [--storage=<id>] [--password]`
+* `wp siteferry export --password`, `wp siteferry import <file>.tar.enc --password`
 * `wp siteferry export --send=<id> [--delete-after-send]`
 * `wp siteferry storage test|list <id>`, `wp siteferry storage send <id> <backup>`,
   `wp siteferry storage fetch <id> <name>`, `wp siteferry storage delete <id> <name> [--yes]`
@@ -280,6 +281,17 @@ least 32 random characters) in wp-config.php before saving the settings.
 If anything fails after step 5 starts, the previous tables and files are put back. After an import,
 log in with the imported site's users.
 
+= Password-protected backups =
+
+"Protect the backup with a password" in Options (and, for automatic backups, in the Schedule
+panel) encrypts the whole backup with AES-256-GCM as it is written; the file name ends in .enc. The
+key comes from the password (PBKDF2-HMAC-SHA256, 600,000 rounds, and HKDF); every 2 MB chunk is
+authenticated, so a changed, reordered or cut-off file is refused. Restoring, checking or looking
+inside asks for the password; a wrong one is refused before anything changes. The password of a
+backup made by hand is not kept anywhere. The password of automatic backups is kept on the site,
+encrypted with a key from the WordPress salts. Safety backups made before a restore are not
+encrypted (they stay on this server). Needs the PHP OpenSSL extension.
+
 = Checking a copy =
 
 "Check the copy on ..." in a backup's menu reads that copy from start to end without unpacking
@@ -365,6 +377,10 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.14.0 =
+* Password-protected backups: AES-256-GCM encryption of the whole backup as it is written (.tar.enc / .tar.gz.enc), for backups made by hand (Options) and automatic ones (Schedule panel, also before updates). Restore, check and "Look inside" ask for the password; a wrong one is refused before anything changes. The key is derived with PBKDF2 (600,000 rounds); no password of a backup made by hand is kept. WP-CLI: `--password` for export, import and backups check (or the SITEFERRY_PASSWORD environment variable).
+* Uploads accept .enc files.
 
 = 0.13.0 =
 * Check a copy of a backup: "Check the copy on this server" and "Check the copy on <storage>" in a backup's menu read it from start to end and compare every file with its checksums, without unpacking anything; a copy on a storage is downloaded for the check and deleted again. The place badges show the outcome. WP-CLI: `wp siteferry backups check <name> [--storage=<id>]`.

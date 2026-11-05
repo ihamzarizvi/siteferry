@@ -54,15 +54,16 @@ final class Pack_Step implements Step {
 		}
 
 		$part   = self::part_path( $job );
+		$target = \SiteFerry\Security\Archive_Keys::path( $job, $part ); // Through the encrypting stream for a password-protected backup.
 		$writer = null === $state['writer']
 			? Tar_Writer::create(
-				$part,
+				$target,
 				array(
 					'compress' => (bool) $job->option( 'compress' ),
 					'level'    => (int) $job->option( 'level' ),
 				)
 			)
-			: Tar_Writer::resume( $part, $state['writer'] );
+			: Tar_Writer::resume( $target, $state['writer'] );
 		$sums   = Io::open_or_fail( $job->path( 'checksums.tmp' ), 'c+b' );
 
 		try {
@@ -84,6 +85,9 @@ final class Pack_Step implements Step {
 			// Always release the archive, so a failed job can delete it (Windows cannot delete open files).
 			$writer->close();
 			fclose( $sums ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		}
+		if ( $done && $target !== $part ) {
+			\SiteFerry\Archive\Crypto::seal( $part, (string) \SiteFerry\Security\Archive_Keys::key( $job ) );
 		}
 		$job->set_state( 'pack', $state );
 

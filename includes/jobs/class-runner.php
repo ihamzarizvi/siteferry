@@ -105,6 +105,9 @@ final class Runner {
 			$job->fail( $e->getMessage() );
 			self::cleanup( $job );
 		} finally {
+			if ( $job->finished() ) {
+				\SiteFerry\Security\Archive_Keys::forget( $job ); // A finished job keeps no key.
+			}
 			$job->save();
 			$job->unlock();
 		}
@@ -128,6 +131,7 @@ final class Runner {
 			$job->fail( $reason );
 			self::cleanup( $job );
 		} finally {
+			\SiteFerry\Security\Archive_Keys::forget( $job );
 			$job->save();
 			$job->unlock();
 		}

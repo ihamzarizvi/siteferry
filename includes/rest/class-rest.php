@@ -81,6 +81,7 @@ final class Rest {
 			array( '/backups/' . self::NAME . '/download', WP_REST_Server::READABLE, 'download', $admin ),
 			array( '/backups/' . self::NAME . '/contents', WP_REST_Server::READABLE, 'contents_of', $admin ),
 			array( '/checks', WP_REST_Server::READABLE, 'checks', $admin ),
+			array( '/backups/' . self::NAME . '/unlock', WP_REST_Server::CREATABLE, 'unlock_backup', $admin ),
 			array( '/checks', WP_REST_Server::CREATABLE, 'start_check', $admin ),
 			array( '/backups/' . self::NAME . '/file', WP_REST_Server::READABLE, 'backup_file', $admin ),
 			array( '/exports', WP_REST_Server::CREATABLE, 'start_export', $admin ),
@@ -208,6 +209,7 @@ final class Rest {
 				'format'    => \SiteFerry\Wpress\Wpress::is_name( $backup['name'] ) ? 'wpress' : 'siteferry',
 				'contents'  => null === $manifest ? null : self::contents( $manifest ),
 				'error'     => $backup['error'],
+				'encrypted' => $backup['encrypted'],
 			);
 		}
 		return $list;
@@ -310,7 +312,8 @@ final class Rest {
 	 */
 	public static function contents_of( WP_REST_Request $request ): array {
 		$path  = Backups::path( Storage::backups_dir(), (string) $request['name'] );
-		$index = Contents::index( $path, min( Contents::SECONDS, self::slice_seconds() ) );
+		$key   = self::unlocked( $request );
+		$index = Contents::index( $path, min( Contents::SECONDS, self::slice_seconds() ), $key );
 		$out   = array(
 			'name'     => (string) $request['name'],
 			'complete' => $index['complete'],
@@ -328,7 +331,7 @@ final class Rest {
 		$out['entries'] = Contents::listing( $index['entries'], $out['dir'] );
 		if ( '' === $out['dir'] ) {
 			try {
-				$manifest      = Backups::manifest( $path );
+				$manifest      = Backups::manifest( $path, $key );
 				$out['tables'] = array_map(
 					static function ( array $table ): array {
 						return array(
@@ -344,6 +347,49 @@ final class Rest {
 			}
 		}
 		return $out;
+	}
+
+	/**
+	 * Opens a password-protected backup on this server for "Look inside": checks the password and
+	 * returns a token that stands for the key for 15 minutes (the key is kept encrypted with the
+	 * site's key; the password is not kept).
+	 *
+	 * @param WP_REST_Request $request Request with "password".
+	 */
+	public static function unlock_backup( WP_REST_Request $request ): array {
+		$name   = (string) $request['name'];
+		$path   = Backups::path( Storage::backups_dir(), $name );
+		$params = (array) $request->get_json_params();
+		$key    = \SiteFerry\Archive\Crypto::unlock( $path, isset( $params['password'] ) && is_string( $params['password'] ) ? $params['password'] : '' );
+		$token  = Storage::random_hex( 16 );
+		set_transient( 'siteferry_unlock_' . $token, \SiteFerry\Security\Secrets::site()->encrypt( $name . "\n" . base64_encode( $key ) ), 15 * MINUTE_IN_SECONDS ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		return array(
+			'unlock'  => $token,
+			'minutes' => 15,
+		);
+	}
+
+	/**
+	 * The key an "unlock" token stands for, if it was made for the backup in the route.
+	 *
+	 * @param WP_REST_Request $request Request with "unlock".
+	 */
+	private static function unlocked( WP_REST_Request $request ): ?string {
+		$token = (string) $request->get_param( 'unlock' );
+		if ( ! preg_match( '/^[a-f0-9]{32}$/', $token ) ) {
+			return null;
+		}
+		$sealed = get_transient( 'siteferry_unlock_' . $token );
+		if ( ! is_string( $sealed ) ) {
+			return null;
+		}
+		try {
+			list( $name, $key ) = array_pad( explode( "\n", \SiteFerry\Security\Secrets::site()->decrypt( $sealed ), 2 ), 2, '' );
+		} catch ( \Throwable $e ) {
+			return null;
+		}
+		$key = base64_decode( $key, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+		return $name === (string) $request['name'] && false !== $key ? $key : null;
 	}
 
 	/**
@@ -364,7 +410,11 @@ final class Rest {
 	public static function start_check( WP_REST_Request $request ): array {
 		self::assert_idle();
 		$params = (array) $request->get_json_params();
-		list( $job, $token ) = Check::start( isset( $params['name'] ) ? (string) $params['name'] : '', isset( $params['place'] ) ? (string) $params['place'] : Check::LOCAL );
+		list( $job, $token ) = Check::start(
+			isset( $params['name'] ) ? (string) $params['name'] : '',
+			isset( $params['place'] ) ? (string) $params['place'] : Check::LOCAL,
+			isset( $params['password'] ) && is_string( $params['password'] ) ? $params['password'] : ''
+		);
 		return array(
 			'job'   => $job->summary(),
 			'token' => $token,
@@ -383,7 +433,7 @@ final class Rest {
 		if ( '' === $inner || strlen( $inner ) > 4096 ) {
 			throw new Job_Exception( 'That file is not in the backup.', Job_Exception::NOT_FOUND );
 		}
-		Contents::stream( $path, $inner );
+		Contents::stream( $path, $inner, self::unlocked( $request ) );
 	}
 
 	/**
@@ -394,7 +444,7 @@ final class Rest {
 	public static function start_export( WP_REST_Request $request ): array {
 		self::assert_idle();
 		$params  = (array) $request->get_json_params();
-		$options = array_intersect_key( $params, array_flip( array( 'title', 'note', 'tags', 'format', 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables', 'send_to', 'delete_after_send' ) ) );
+		$options = array_intersect_key( $params, array_flip( array( 'title', 'note', 'tags', 'format', 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables', 'send_to', 'delete_after_send', 'password' ) ) );
 		list( $job, $token ) = Export::start( $options );
 		return array(
 			'job'   => $job->summary(),
@@ -411,7 +461,7 @@ final class Rest {
 		self::assert_idle();
 		$params  = (array) $request->get_json_params();
 		$path    = Backups::path( Storage::backups_dir(), isset( $params['backup'] ) ? (string) $params['backup'] : '' );
-		$options = array_intersect_key( $params, array_flip( array( 'replace_url', 'include_mu_plugins', 'include_drop_ins', 'force', 'safety', 'restore_database', 'restore_tables', 'restore_files', 'restore_paths' ) ) );
+		$options = array_intersect_key( $params, array_flip( array( 'replace_url', 'include_mu_plugins', 'include_drop_ins', 'force', 'safety', 'restore_database', 'restore_tables', 'restore_files', 'restore_paths', 'password' ) ) );
 		list( $job, $token ) = Import::start( $path, $options );
 		return array(
 			'job'   => $job->summary(),
@@ -474,7 +524,8 @@ final class Rest {
 	 * @param WP_REST_Request $request Request with the settings as JSON.
 	 */
 	public static function save_schedule( WP_REST_Request $request ): array {
-		Schedule::save( array_intersect_key( (array) $request->get_json_params(), Schedule::DEFAULTS ) );
+		$params = (array) $request->get_json_params();
+		Schedule::save( array_intersect_key( $params, Schedule::DEFAULTS ), isset( $params['password'] ) && is_string( $params['password'] ) ? $params['password'] : null );
 		return Schedule::overview();
 	}
 
@@ -772,7 +823,8 @@ final class Rest {
 				);
 				return new WP_Error( 'siteferry_error', $e->getMessage(), array( 'status' => isset( $status[ $e->getCode() ] ) ? $status[ $e->getCode() ] : 400 ) );
 			} catch ( Archive_Exception $e ) {
-				return new WP_Error( 'siteferry_error', $e->getMessage(), array( 'status' => 400 ) );
+				// A password is needed (or was wrong): the admin screen asks for it.
+				return new WP_Error( Archive_Exception::LOCKED === $e->getCode() ? 'siteferry_locked' : 'siteferry_error', $e->getMessage(), array( 'status' => 400 ) );
 			} catch ( Storage_Exception $e ) {
 				// Never 401/403 here: those would read as "your login expired" to the admin screen.
 				$status = Storage_Exception::NOT_FOUND === $e->getCode() ? 404 : ( Storage_Exception::TRANSIENT === $e->getCode() ? 502 : 400 );

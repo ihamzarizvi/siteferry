@@ -694,6 +694,51 @@ Sf_Test::run(
 );
 
 Sf_Test::run(
+	'a password-protected backup on the storage: stored as it is, checked there with its password',
+	static function () use ( $sf_b, $sf_id, $sf_admin, &$sf_local ) {
+		$exclude = array();
+		foreach ( array_diff( (array) scandir( WP_CONTENT_DIR ), array( '.', '..', 'plugins', 'themes', 'uploads' ) ) as $name ) {
+			if ( 0 !== strpos( $name, 'siteferry-' ) ) {
+				$exclude[] = $name;
+			}
+		}
+		list( $job, $token ) = \SiteFerry\Export\Export::start(
+			array(
+				'exclude_media'   => true,
+				'exclude_plugins' => true,
+				'exclude_themes'  => true,
+				'exclude_paths'   => $exclude,
+				'send_to'         => $sf_id,
+				'password'        => 'storage test password',
+			)
+		);
+		$done = sf_rest_drive( $job->id(), $token );
+		if ( isset( $done['result']['name'] ) ) {
+			$sf_local[] = $done['result']['name'];
+		}
+		Sf_Test::same( 'done', $done['status'], 'export: ' . (string) $done['error'] );
+		$name = (string) $done['result']['name'];
+		Sf_Test::ok( (bool) preg_match( '/\.tar\.enc$/', $name ), 'name: ' . $name );
+		Sf_Test::same( sf_local_hash( $name ), $sf_b['hash']( $name ), 'stored bytes (encrypted as they are):' );
+
+		list( $status, $remote ) = sf_rest( 'GET', "/storage/$sf_id/backups", $sf_admin );
+		Sf_Test::ok( in_array( $name, array_column( $remote['backups'], 'name' ), true ), 'listed on the storage' );
+
+		list( $status, $data ) = sf_rest( 'POST', '/checks', $sf_admin, array(), array( 'name' => $name, 'place' => $sf_id ) );
+		Sf_Test::same( array( 400, 'siteferry_locked' ), array( $status, $data['code'] ), 'no password:' );
+		list( $id, $token ) = sf_start( $sf_admin, '/checks', array( 'name' => $name, 'place' => $sf_id, 'password' => 'not the password' ) );
+		$job                = sf_rest_drive( $id, $token );
+		Sf_Test::same( array( 'failed', 'The password is wrong.' ), array( $job['status'], $job['error'] ), 'a wrong password is found once the copy is downloaded:' );
+		Sf_Test::ok( ! isset( Check::all()[ $name ][ $sf_id ] ), 'a wrong password is not recorded as damage' );
+		list( $id, $token ) = sf_start( $sf_admin, '/checks', array( 'name' => $name, 'place' => $sf_id, 'password' => 'storage test password' ) );
+		$job                = sf_rest_drive( $id, $token );
+		Sf_Test::same( 'done', $job['status'], 'check: ' . (string) $job['error'] );
+		Sf_Test::same( true, Check::all()[ $name ][ $sf_id ]['ok'] );
+		Sf_Test::same( array(), \SiteFerry\Jobs\Job::load( Storage::jobs_dir(), $id )->state( 'crypto' ), 'nothing of the password or key left in the job:' );
+	}
+);
+
+Sf_Test::run(
 	'remote delete, then removing the settings',
 	static function () use ( $sf_b, $sf_id, $sf_admin ) {
 		foreach ( array( '..%2Fx.tar', 'x.php' ) as $bad ) {

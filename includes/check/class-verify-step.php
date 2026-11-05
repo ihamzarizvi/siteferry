@@ -84,7 +84,8 @@ final class Verify_Step implements Step {
 		}
 
 		try {
-			$done = $this->read( $job, $file, $state, $budget );
+			// An encrypted copy is read through its decrypting stream (a wrong password stops here).
+			$done = $this->read( $job, $state['wpress'] ? $file : \SiteFerry\Security\Archive_Keys::path( $job, $file ), $state, $budget );
 		} catch ( Archive_Exception $e ) {
 			if ( in_array( $e->getCode(), array( Archive_Exception::CORRUPT, Archive_Exception::TRUNCATED, Archive_Exception::UNSUPPORTED, Archive_Exception::UNSAFE_PATH ), true ) ) {
 				$this->damaged( $job, 'it cannot be read to its end: ' . $e->getMessage() );

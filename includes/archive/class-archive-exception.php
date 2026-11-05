@@ -32,4 +32,7 @@ class Archive_Exception extends \RuntimeException {
 
 	/** The caller used the API in the wrong order or passed a bad saved state. */
 	const BAD_STATE = 6;
+
+	/** The backup is protected with a password, and none (or a wrong one) was given. */
+	const LOCKED = 7;
 }

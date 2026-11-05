@@ -67,8 +67,8 @@ final class Upload {
 	 */
 	public static function create( string $base, string $name, int $size ): self {
 		$name = self::clean_name( $name );
-		if ( ! preg_match( '/\.(tar|tar\.gz|tgz|wpress)$/i', $name ) ) {
-			throw new Job_Exception( 'Only SiteFerry backups (.tar or .tar.gz) and All-in-One WP Migration backups (.wpress) can be uploaded.', Job_Exception::STEP );
+		if ( ! preg_match( '/\.((tar|tar\.gz|tgz)(\.enc)?|wpress)$/i', $name ) ) {
+			throw new Job_Exception( 'Only SiteFerry backups (.tar, .tar.gz, or .enc when protected with a password) and All-in-One WP Migration backups (.wpress) can be uploaded.', Job_Exception::STEP );
 		}
 		if ( $size <= 0 ) {
 			throw new Job_Exception( 'The file is empty.', Job_Exception::STEP );

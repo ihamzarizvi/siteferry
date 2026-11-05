@@ -75,6 +75,9 @@ final class Schedule {
 	const TAG = 'scheduled';
 
 	/** Settings and their defaults. */
+	/** The password of the automatic backups, encrypted with the site's key. Never sent to the page. */
+	const PASSWORD = 'siteferry_schedule_password';
+
 	const DEFAULTS = array(
 		'enabled'                  => false,
 		'frequency'                => 'daily',
@@ -91,6 +94,7 @@ final class Schedule {
 		'exclude_revisions'        => false,
 		'format'                   => 'tar',
 		'compress'                 => false,
+		'encrypt'                  => false,
 		'send_to'                  => '',
 		'keep_local'               => false,
 		'retain'                   => 7,
@@ -169,6 +173,7 @@ final class Schedule {
 		}
 		if ( 'wpress' === $out['format'] ) {
 			$out['compress'] = false;
+			$out['encrypt']  = false; // SiteFerry encrypts only its own format.
 		}
 		if ( '' !== $out['send_to'] && ! in_array( $out['send_to'], $ready, true ) ) {
 			throw new Job_Exception( 'That storage is not set up (or not connected) yet. Set it up on the Storage tab, or keep the backups on this server.', Job_Exception::STEP );
@@ -205,7 +210,17 @@ final class Schedule {
 	 * @param array $input Raw input.
 	 * @throws Job_Exception On invalid input.
 	 */
-	public static function save( array $input ): array {
+	public static function save(
+		array $input,
+		#[\SensitiveParameter]
+		?string $password = null
+	): array {
+		if ( null !== $password && '' !== $password ) {
+			if ( strlen( $password ) < \SiteFerry\Archive\Crypto::MIN_PASSWORD ) {
+				throw new Job_Exception( sprintf( 'The password needs at least %d characters.', \SiteFerry\Archive\Crypto::MIN_PASSWORD ), Job_Exception::STEP );
+			}
+			update_option( self::PASSWORD, Secrets::site()->encrypt( $password ), false );
+		}
 		$ready = array();
 		foreach ( Destinations::overview() as $entry ) {
 			if ( $entry['ready'] ) {
@@ -213,6 +228,12 @@ final class Schedule {
 			}
 		}
 		$settings = self::normalize( $input + self::settings(), $ready );
+		if ( $settings['encrypt'] && null === self::password() ) {
+			throw new Job_Exception( 'Enter a password for the automatic backups, or untick the encryption.', Job_Exception::STEP );
+		}
+		if ( $settings['encrypt'] && ! \SiteFerry\Archive\Crypto::available() ) {
+			throw new Job_Exception( 'Encrypted backups need the PHP OpenSSL extension with AES-256-GCM, which this server does not have.', Job_Exception::STEP );
+		}
 		update_option( self::OPTION, $settings, false );
 		self::reschedule( $settings );
 		return $settings;
@@ -329,7 +350,7 @@ final class Schedule {
 		if ( null !== $active ) {
 			throw new Job_Exception( sprintf( 'Another %s is still in progress (job %s). Finish or cancel it first.', $active->type(), $active->id() ), Job_Exception::BUSY );
 		}
-		list( $job, $token ) = Export::start( self::export_options( self::settings() ), null, 'schedule' );
+		list( $job, $token ) = Export::start( self::with_password( self::export_options( self::settings() ) ), null, 'schedule' );
 		$job->log( 'info', 'Started by the backup schedule.' );
 
 		$state                = self::state();
@@ -686,7 +707,40 @@ final class Schedule {
 			'scheduled_runs' => array_values( array_column( $state['runs'], 'name' ) ),
 			'last_update'    => $state['last_update'],
 			'update_kept'    => count( $state['update_runs'] ),
+			'has_password'   => null !== self::password(),
 		);
+	}
+
+	/**
+	 * The password of the automatic backups, or null.
+	 */
+	public static function password(): ?string {
+		$stored = get_option( self::PASSWORD );
+		if ( ! is_string( $stored ) || '' === $stored ) {
+			return null;
+		}
+		try {
+			return Secrets::site()->decrypt( $stored );
+		} catch ( \Throwable $e ) {
+			return null; // Saved with other salts: it has to be entered again.
+		}
+	}
+
+	/**
+	 * Export options of an automatic backup, with the password when they are encrypted.
+	 *
+	 * @param array $options Export options.
+	 * @throws Job_Exception If they should be encrypted and the password is gone.
+	 */
+	public static function with_password( array $options ): array {
+		if ( ! self::settings()['encrypt'] || ( isset( $options['format'] ) && 'tar' !== $options['format'] ) ) {
+			return $options;
+		}
+		$password = self::password();
+		if ( null === $password ) {
+			throw new Job_Exception( 'Automatic backups are set to be encrypted, but their password cannot be read (were the WordPress salts changed?). Enter it again in the Schedule panel.', Job_Exception::STEP );
+		}
+		return $options + array( 'password' => $password );
 	}
 
 	/**

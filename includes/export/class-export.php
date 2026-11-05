@@ -70,8 +70,15 @@ final class Export {
 			throw new Job_Exception( 'Multisite networks are not supported by this version of SiteFerry.', Job_Exception::STEP );
 		}
 
+		// The password only gives the key; it is never saved.
+		$password = isset( $options['password'] ) && is_string( $options['password'] ) ? $options['password'] : '';
+		unset( $options['password'] );
 		$options = self::normalize( $options );
 		$site    = Site_Info::collect();
+		$sealed  = null;
+		if ( '' !== $password ) {
+			$sealed = self::encryption( $password, $options );
+		}
 
 		if ( null === $work_dir ) {
 			$jobs   = Storage::jobs_dir();
@@ -103,9 +110,41 @@ final class Export {
 		$options['exclusions']  = self::exclusions( $options, $site )->to_array();
 		$options['output_dir']  = $output;
 		$options['save_labels'] = null === $work_dir; // Exports to another folder write nothing to the site.
-		$options['archive']    = self::archive_name( $site['home'], $options['compress'] );
+		$options['archive']    = self::archive_name( $site['home'], $options['compress'] ) . ( null === $sealed ? '' : \SiteFerry\Archive\Crypto::SUFFIX );
+		$options['encrypted']  = null !== $sealed;
 
-		return Job::create( $jobs, 'export', $steps, $options );
+		$created = Job::create( $jobs, 'export', $steps, $options );
+		if ( null !== $sealed ) {
+			\SiteFerry\Security\Archive_Keys::store( $created[0], $sealed[1], $sealed[0] );
+			$created[0]->save();
+		}
+		return $created;
+	}
+
+	/**
+	 * Header and key for a backup protected with a password.
+	 *
+	 * @param string $password Password.
+	 * @param array  $options  Normalized options.
+	 * @return array{0:string,1:string}
+	 * @throws Job_Exception If the password is too short, the format cannot be encrypted, or this
+	 *                       server cannot encrypt.
+	 */
+	private static function encryption(
+		#[\SensitiveParameter]
+		string $password,
+		array $options
+	): array {
+		if ( 'tar' !== $options['format'] ) {
+			throw new Job_Exception( 'A .wpress file cannot be protected with a password by SiteFerry; choose the SiteFerry format.', Job_Exception::STEP );
+		}
+		if ( strlen( $password ) < \SiteFerry\Archive\Crypto::MIN_PASSWORD ) {
+			throw new Job_Exception( sprintf( 'The password needs at least %d characters.', \SiteFerry\Archive\Crypto::MIN_PASSWORD ), Job_Exception::STEP );
+		}
+		if ( ! \SiteFerry\Archive\Crypto::available() ) {
+			throw new Job_Exception( 'Encrypted backups need the PHP OpenSSL extension with AES-256-GCM, which this server does not have.', Job_Exception::STEP );
+		}
+		return \SiteFerry\Archive\Crypto::create( $password );
 	}
 
 	/**

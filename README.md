@@ -8,7 +8,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.13.0-f97316" alt="Version 0.13.0">
+  <img src="https://img.shields.io/badge/version-0.14.0-f97316" alt="Version 0.14.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -23,7 +23,7 @@ Large sites are no problem: every job runs in short, resumable steps, so the PHP
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.13.0). Encrypted backups are next; see the
+> SiteFerry is in active development (0.14.0). A space report before a backup is next; see the
 > [roadmap](#roadmap).
 
 ## Contents
@@ -69,6 +69,8 @@ upload limits and dropped connections don't break a backup or a restore.
 - Leave out media, plugins, themes, inactive plugins and themes, cache folders, spam comments,
   post revisions or single database tables (and any folder, from WP-CLI).
 - Optional gzip compression (`.tar.gz`), or a `.wpress` file for All-in-One WP Migration.
+- **Password protection**: AES-256-GCM encryption of the whole backup (`.enc`), for backups made by
+  hand and automatic ones.
 - Name, note and tags for each backup; search the list and filter it by tag.
 - Download to your computer when it is ready, or send it straight to remote storage (and delete
   the copy on the server if you like).
@@ -249,6 +251,22 @@ flowchart LR
 > Different address after the move? Open **Advanced** in the restore panel and enter it.
 > Must-use plugins and server-specific drop-ins are only copied if you tick them there.
 
+**Password-protected backups.** Tick **Protect the backup with a password** in Options (or for
+automatic backups in the Schedule panel) and enter a password of at least 8 characters. The backup
+is encrypted with AES-256-GCM before it is written, so the copy on this server and every copy on a
+storage are unreadable without the password; the file name ends in `.enc`. Restoring, checking or
+looking inside such a backup asks for the password first, and a wrong one is refused before
+anything happens. SiteFerry keeps no password for backups made by hand: without it, the backup
+cannot be restored. The password of automatic backups is kept on the site, encrypted with a key
+from the WordPress salts, so they can run by themselves; write it down too, because a new server
+needs it. Safety backups made before a restore stay on this server and are not encrypted, so
+"Undo" never needs a password.
+
+```bash
+wp siteferry export --password            # asks for it (or set SITEFERRY_PASSWORD)
+wp siteferry import mysite-2026-11-05-1a2b3c4d5e6f.tar.enc --password
+wp siteferry backups check mysite-2026-11-05-1a2b3c4d5e6f.tar.enc --password
+```
 **Look inside a backup, and restore only part of it.** **Look inside** in a backup's **...** menu
 lists its folders and files (with sizes and dates) and its database tables; **Download** gets one
 file out of it. Tick what you want back — the whole database or single tables, all files, a
@@ -406,7 +424,11 @@ wp siteferry import <file> [--tables=wp_posts,wp_postmeta] [--paths=uploads,plug
 
 # Backups and storage
 wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]
-wp siteferry backups check <name> [--storage=<id>]
+wp siteferry backups check <name> [--storage=<id>] [--password]
+
+# Password-protected backups (asks for it, or set SITEFERRY_PASSWORD)
+wp siteferry export --password
+wp siteferry import <file>.tar.enc --password
 wp siteferry storage test|list <id>
 wp siteferry storage send <id> <backup>
 wp siteferry storage fetch <id> <name>
@@ -460,13 +482,25 @@ A SiteFerry backup is a plain POSIX TAR file (ustar with pax headers):
 `.tar.gz` backups are a series of independent gzip members of about 8 MB, so an interrupted job
 resumes at a member boundary and the file stays a valid gzip archive.
 
+A **password-protected** backup (`.tar.enc` or `.tar.gz.enc`) is that same file, encrypted:
+
+| Part | Contents |
+| --- | --- |
+| Header (44 bytes) | `SFENC` and version 1, cipher (AES-256-GCM), key derivation (PBKDF2-HMAC-SHA256), its rounds (600,000), a random 16-byte salt, and a 16-byte password check |
+| Chunks, to the end | Each: plaintext length, a "final" flag, a random 12-byte nonce, up to 2 MB of ciphertext, a 16-byte tag |
+
+The key comes from the password with PBKDF2 and HKDF. Every chunk is bound to the header, its
+number, its length and the final flag, so chunks cannot be changed, reordered, moved to another
+backup or cut off without the restore noticing. A wrong password is reported from the header,
+before anything is read. Everything inside, including the file names, is encrypted.
+
 ## Requirements
 
 | | |
 | --- | --- |
 | WordPress | 5.8 or later (tested up to 7.1) |
 | PHP | 7.4 or later (tested on 7.4, 8.2 and 8.5) |
-| PHP extensions | zlib for `.tar.gz`; ftp for FTP storage; sodium or OpenSSL for stored keys |
+| PHP extensions | zlib for `.tar.gz`; ftp for FTP storage; sodium or OpenSSL for stored keys; OpenSSL for password-protected backups |
 | Database | MySQL or MariaDB |
 | Multisite | Not supported yet |
 
@@ -544,7 +578,8 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] A quick backup before WordPress, plugin and theme updates
 - [x] Look inside a backup (list and download single files); restore only parts of it
 - [x] Check a stored copy (download it and verify its checksums)
-- [ ] Encrypted backups with a password (and password-protected .wpress backups)
+- [x] Encrypted backups with a password
+- [ ] Importing password-protected .wpress backups
 - [ ] Space report before a backup
 - [ ] Backups split into parts, for file size limits
 - [ ] More storages: WebDAV (Nextcloud, ownCloud), OneDrive, pCloud

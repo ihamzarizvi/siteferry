@@ -38,7 +38,7 @@ final class Inspect_Step implements Step {
 	public function run( Job $job, Slice_Budget $budget ): bool {
 		$manifest = 'wpress' === $job->option( 'format' )
 			? \SiteFerry\Wpress\Import_Step::manifest( $job )
-			: Backups::manifest( $job->option( 'archive' ) );
+			: Backups::manifest( $job->option( 'archive' ), \SiteFerry\Security\Archive_Keys::key( $job ) );
 		$site     = $job->option( 'site' );
 		$warnings = array();
 
