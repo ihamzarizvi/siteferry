@@ -24,6 +24,7 @@ final class Plugin {
 	public static function boot(): void {
 		Rest\Rest::register();
 		Schedule\Schedule::register();
+		Schedule\Before_Updates::register();
 		if ( is_admin() ) {
 			Admin\Admin::init();
 		}

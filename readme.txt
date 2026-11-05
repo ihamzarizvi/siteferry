@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.10.0
+Stable tag: 0.11.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -83,6 +83,25 @@ and when to send an email.
 * An import replaces the cron table along with the database; the next scheduled run is put back
   the next time an administrator opens the dashboard. Deactivating SiteFerry removes its scheduled
   events (the settings stay); deleting it removes the settings too.
+
+= Backups before updates =
+
+"Back up before WordPress, a plugin or a theme updates" (in the Schedule panel, independent of the
+schedule itself; off by default). Just before WordPress downloads an update (the filter
+upgrader_pre_download, when nothing has changed yet), SiteFerry backs up the database and the plugin
+or theme being updated; for an update of WordPress itself, the database only. Media, other plugins
+and themes are left out, so it is quick. It stays on this server, named "Before updating <name>
+<version>" with the tag "before-update".
+
+* Restoring it puts back the database and that plugin or theme as they were. A restore replaces
+  only what a backup contains, so everything else on the site stays as it is. (The database goes
+  back as a whole, including anything changed since.)
+* It runs in the update's own request: when the time limit can be raised it may take two minutes,
+  otherwise half of the limit. If it cannot be finished in time, or another backup, restore or
+  transfer is running, it is skipped and the update goes ahead. An update is never blocked.
+* One backup per plugin, theme or WordPress update; translations and new installs get none. Only
+  the newest few (3 by default) are kept; older ones are deleted after a new one is made.
+* The Schedule panel shows how the last one went.
 
 = WP-CLI =
 
@@ -330,6 +349,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.11.0 =
+* Backups before updates: just before WordPress, a plugin or a theme updates, a quick backup of the database and that plugin or theme (the database only for WordPress), tagged "before-update", keeping the newest 3. Off by default (Schedule panel). Made within a time allowance; when it cannot be made in time, or another job runs, the update goes ahead without it.
 
 = 0.10.0 =
 * Safety backup before every restore: after you confirm, SiteFerry backs up the whole site as it is (an ordinary backup tagged "before-restore") before anything changes. Untick it to skip; WP-CLI `--skip-safety-backup`.

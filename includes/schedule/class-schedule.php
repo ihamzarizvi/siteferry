@@ -96,6 +96,9 @@ final class Schedule {
 		'retain'                   => 7,
 		'notify'                   => 'failure',
 		'email'                    => '',
+		// Independent of the schedule: a quick backup before updates (see Before_Updates).
+		'before_updates'           => false,
+		'update_retain'            => 3,
 	);
 
 	/**
@@ -181,6 +184,9 @@ final class Schedule {
 		}
 		if ( '' !== $out['email'] && ( strlen( $out['email'] ) > 200 || false === filter_var( $out['email'], FILTER_VALIDATE_EMAIL ) ) ) {
 			throw new Job_Exception( 'Enter one email address, or leave it empty for the site\'s admin email.', Job_Exception::STEP );
+		}
+		if ( $out['update_retain'] < 1 || $out['update_retain'] > 50 ) {
+			throw new Job_Exception( 'Keep between 1 and 50 backups made before updates.', Job_Exception::STEP );
 		}
 		return $out;
 	}
@@ -542,12 +548,12 @@ final class Schedule {
 	}
 
 	/**
-	 * Deletes every copy of one scheduled backup.
+	 * Deletes every copy of one scheduled backup (or of one made before an update).
 	 *
 	 * @param array $run Run: name, local, destination.
 	 * @return string|null What went wrong, or null.
 	 */
-	private static function delete_run( array $run ): ?string {
+	public static function delete_run( array $run ): ?string {
 		$name = (string) $run['name'];
 		try {
 			$path = Backups::path( Storage::backups_dir(), $name );
@@ -675,6 +681,8 @@ final class Schedule {
 			'admin_email'    => (string) get_option( 'admin_email' ),
 			'cron_disabled'  => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON,
 			'scheduled_runs' => array_values( array_column( $state['runs'], 'name' ) ),
+			'last_update'    => $state['last_update'],
+			'update_kept'    => count( $state['update_runs'] ),
 		);
 	}
 
@@ -701,12 +709,15 @@ final class Schedule {
 	public static function state(): array {
 		$saved = get_option( self::STATE, array() );
 		$state = ( is_array( $saved ) ? $saved : array() ) + array(
-			'last'       => null,
-			'current'    => null,
-			'runs'       => array(),
-			'last_start' => 0,
+			'last'        => null,
+			'current'     => null,
+			'runs'        => array(),
+			'last_start'  => 0,
+			'update_runs' => array(),
+			'last_update' => null,
 		);
-		$state['runs'] = is_array( $state['runs'] ) ? $state['runs'] : array();
+		$state['runs']        = is_array( $state['runs'] ) ? $state['runs'] : array();
+		$state['update_runs'] = is_array( $state['update_runs'] ) ? $state['update_runs'] : array();
 		return $state;
 	}
 
@@ -715,7 +726,7 @@ final class Schedule {
 	 *
 	 * @param array $state State.
 	 */
-	private static function save_state( array $state ): void {
+	public static function save_state( array $state ): void {
 		update_option( self::STATE, $state, false );
 	}
 }

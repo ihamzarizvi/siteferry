@@ -59,7 +59,8 @@ final class Export {
 	 *                              storage folder. When given, nothing is written to the site.
 	 * @param string      $origin   Who started it: "admin" (the admin screen or WP-CLI),
 	 *                              "schedule" (which adds the schedule's last step) or "safety" (the
-	 *                              safety backup an import makes first, inside its own job).
+	 *                              safety backup an import makes first, inside its own job) or
+	 *                              "update" (the quick backup before an update).
 	 * @param string      $parent   For "safety": the import job it runs in.
 	 * @return array{0:Job,1:string} The job and its token.
 	 * @throws Job_Exception If the site cannot be exported.
@@ -96,7 +97,7 @@ final class Export {
 			$steps[] = \SiteFerry\Schedule\Finish_Step::STEP;
 		}
 
-		$options['origin']      = in_array( $origin, array( 'schedule', 'safety' ), true ) ? $origin : 'admin';
+		$options['origin']      = in_array( $origin, array( 'schedule', 'safety', 'update' ), true ) ? $origin : 'admin';
 		$options['parent']      = $parent; // A job that runs inside another one never counts as the active job.
 		$options['site']        = $site;
 		$options['exclusions']  = self::exclusions( $options, $site )->to_array();

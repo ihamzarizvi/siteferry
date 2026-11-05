@@ -208,8 +208,9 @@ final class Job {
 			'id'       => $this->data['id'],
 			'type'     => $this->data['type'],
 			// "schedule" for a scheduled backup, which runs by itself (the admin screen only watches
-			// it); "safety" for the backup an import makes first, inside the import's job.
-			'origin'   => in_array( $this->option( 'origin', '' ), array( 'schedule', 'safety' ), true ) ? $this->option( 'origin' ) : 'admin',
+			// it); "safety" for the backup an import makes first, inside the import's job; "update"
+			// for the quick backup before an update.
+			'origin'   => in_array( $this->option( 'origin', '' ), array( 'schedule', 'safety', 'update' ), true ) ? $this->option( 'origin' ) : 'admin',
 			'status'   => $this->data['status'],
 			'step'     => array(
 				'index' => $index,

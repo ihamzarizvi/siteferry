@@ -8,7 +8,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.10.0-f97316" alt="Version 0.10.0">
+  <img src="https://img.shields.io/badge/version-0.11.0-f97316" alt="Version 0.11.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -23,8 +23,8 @@ Large sites are no problem: every job runs in short, resumable steps, so the PHP
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.10.0). A quick backup before WordPress, plugin and theme
-> updates is next; see the [roadmap](#roadmap).
+> SiteFerry is in active development (0.11.0). Looking inside a backup, and restoring only part of
+> it, is next; see the [roadmap](#roadmap).
 
 ## Contents
 
@@ -75,6 +75,8 @@ upload limits and dropped connections don't break a backup or a restore.
 - One list of every backup, on this server and on every storage, with where each copy is.
 - **Scheduled backups**: every day, week or month at a set time; runs on the server without anyone
   logged in, keeps the newest few, and emails you when one fails.
+- **Backups before updates**: just before WordPress, a plugin or a theme updates, a quick backup
+  of the database and that plugin or theme, so a bad update can be rolled back.
 
 </details>
 
@@ -205,6 +207,15 @@ flowchart LR
 > WordPress runs scheduled tasks when someone visits the site. On a quiet site, or with
 > `DISABLE_WP_CRON`, add a server cron job that runs `wp cron event run --due-now` (or requests
 > `wp-cron.php`) every few minutes.
+
+### Backups before updates
+
+Tick **Back up before WordPress, a plugin or a theme updates** in the same panel. Just before an
+update starts, SiteFerry backs up the database and the plugin or theme being updated (only the
+database for WordPress itself), tagged `before-update`. If an update breaks something, restore
+that backup: the database and that plugin or theme go back, and the rest of the site is not
+touched. The newest few are kept. If the backup cannot be made within its time allowance, the
+update still goes ahead; an update is never blocked.
 
 ## Restore a backup, or move a site to a new host
 
@@ -490,7 +501,7 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] Dropbox (one-click sign-in)
 - [x] Scheduled backups to your chosen storage, with retention and email
 - [x] Safety backup before a restore, with Undo
-- [ ] A quick backup before WordPress, plugin and theme updates
+- [x] A quick backup before WordPress, plugin and theme updates
 - [ ] Look inside a backup (list and download single files); restore only parts of it
 - [ ] Check a stored copy (download it and verify its checksums)
 - [ ] Encrypted backups with a password (and password-protected .wpress backups)

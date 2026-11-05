@@ -1906,7 +1906,7 @@
 				data[ input.name ] = input.value.trim();
 			}
 		} );
-		[ 'weekday', 'monthday', 'retain' ].forEach( ( key ) => {
+		[ 'weekday', 'monthday', 'retain', 'update_retain' ].forEach( ( key ) => {
 			data[ key ] = data[ key ] === '' ? NaN : Number( data[ key ] );
 		} );
 		return data;
@@ -1940,6 +1940,9 @@
 			}
 			parts.push( ' ', button( 'Change', open, 'button sf-quiet sf-quiet-small' ) );
 		}
+		if ( s.before_updates ) {
+			parts.push( el( 'span', { class: 'sf-schedule-last', text: 'A backup is also made before WordPress, a plugin or a theme updates.' } ) );
+		}
 		const last = schedule.last;
 		if ( last ) {
 			const failed = last.status !== 'done';
@@ -1963,6 +1966,14 @@
 			bits.push( plural( schedule.kept, 'scheduled backup', 'scheduled backups' ) + ' kept so far.' );
 		}
 		box.textContent = bits.join( ' ' );
+
+		const update = schedule.last_update;
+		const line = $( 'siteferry-update-last' );
+		line.hidden = ! update;
+		if ( update ) {
+			const outcome = update.status === 'done' ? 'made (' + bytes( update.size ) + ')' : update.status === 'skipped' ? 'skipped: ' + update.message : 'failed: ' + update.message;
+			line.textContent = 'Last backup before an update: ' + update.what + ', ' + when( update.time, true ) + ', ' + outcome + '.' + ( schedule.update_kept ? ' ' + plural( schedule.update_kept, 'backup made before updates is', 'backups made before updates are' ) + ' kept.' : '' );
+		}
 	}
 
 	function scheduleResult( ok, text ) {
@@ -2098,7 +2109,7 @@
 				row.append(
 					el( 'span', { class: 'sf-job-when', text: date( job.created ) } ),
 					el( 'div', { class: 'sf-job-what' }, [
-						el( 'span', { class: 'sf-job-type', text: { schedule: 'Scheduled backup', safety: 'Safety backup' }[ job.origin ] || JOB_TYPES[ job.type ] || job.type } ),
+						el( 'span', { class: 'sf-job-type', text: { schedule: 'Scheduled backup', safety: 'Safety backup', update: 'Backup before update' }[ job.origin ] || JOB_TYPES[ job.type ] || job.type } ),
 						el( 'span', { class: 'sf-chip ' + tone, text: label } ),
 						el( 'span', { class: 'sf-job-detail', text: job.error || ( job.progress && job.progress.message ) || '' } ),
 					] ),

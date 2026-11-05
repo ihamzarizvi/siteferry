@@ -924,6 +924,12 @@
 	margin: 12px 0 0;
 }
 
+.sf-before-updates {
+	margin: 18px 0 0;
+	padding-top: 4px;
+	border-top: 1px solid var(--sf-fog);
+}
+
 .sf-schedule-status {
 	margin: 16px 0 0;
 	color: var(--sf-ink-soft);

@@ -187,4 +187,68 @@ Sf_Test::run(
 	}
 );
 
+// Stand-ins for WordPress's upgrader classes (only their names matter to Before_Updates::item()).
+foreach ( array( 'Plugin_Upgrader', 'Theme_Upgrader', 'Core_Upgrader', 'Language_Pack_Upgrader' ) as $sf_class ) {
+	if ( ! class_exists( $sf_class, false ) ) {
+		eval( 'final class ' . $sf_class . ' {}' ); // phpcs:ignore Squiz.PHP.Eval.Discouraged -- test stand-ins only.
+	}
+}
+
+Sf_Test::run(
+	'before updates: settings, and which updates get a backup (not new installs or translations)',
+	static function () {
+		$off = sf_sched();
+		Sf_Test::same( false, $off['before_updates'], 'off by default:' );
+		Sf_Test::same( 3, $off['update_retain'] );
+		Sf_Test::same( true, sf_sched( array( 'before_updates' => 'on', 'update_retain' => '10' ) )['before_updates'] );
+		foreach ( array( 0, 51, 'many' ) as $bad ) {
+			try {
+				sf_sched( array( 'update_retain' => $bad ) );
+			} catch ( Job_Exception $e ) {
+				continue;
+			}
+			throw new RuntimeException( 'accepted update_retain ' . json_encode( $bad ) );
+		}
+
+		$plugin = \SiteFerry\Schedule\Before_Updates::item( new Plugin_Upgrader(), array( 'plugin' => 'akismet/akismet.php', 'type' => 'plugin', 'action' => 'update' ) );
+		Sf_Test::same( array( 'plugin', 'akismet', 'plugin:akismet/akismet.php' ), array( $plugin['type'], $plugin['folder'], $plugin['key'] ) );
+		$single = \SiteFerry\Schedule\Before_Updates::item( new Plugin_Upgrader(), array( 'plugin' => 'hello.php' ) );
+		Sf_Test::same( 'hello.php', $single['folder'], 'a single-file plugin:' );
+		$theme = \SiteFerry\Schedule\Before_Updates::item( new Theme_Upgrader(), array( 'theme' => 'twentytwentyfive', 'type' => 'theme', 'action' => 'update' ) );
+		Sf_Test::same( array( 'theme', 'twentytwentyfive' ), array( $theme['type'], $theme['folder'] ) );
+		Sf_Test::same( 'core', \SiteFerry\Schedule\Before_Updates::item( new Core_Upgrader(), array() )['type'] );
+		Sf_Test::same( null, \SiteFerry\Schedule\Before_Updates::item( new Plugin_Upgrader(), array( 'type' => 'plugin', 'action' => 'install' ) ), 'a new install:' );
+		Sf_Test::same( null, \SiteFerry\Schedule\Before_Updates::item( new Language_Pack_Upgrader(), array( 'language_update' => 'x' ) ), 'translations:' );
+		Sf_Test::same( null, \SiteFerry\Schedule\Before_Updates::item( null, array( 'plugin' => 'x/x.php' ) ), 'no upgrader:' );
+	}
+);
+
+Sf_Test::run(
+	'before updates: the backup holds the database and only the plugin or theme being updated',
+	static function () {
+		$content = array( 'plugins', 'themes', 'uploads', 'languages', 'mu-plugins', 'index.php', 'upgrade' );
+		$plugins = array( 'akismet', 'hello.php', 'woocommerce', 'index.php' );
+		$themes  = array( 'twentytwentyfive', 'twentytwentyfour' );
+		$item    = array( 'type' => 'plugin', 'folder' => 'akismet', 'name' => 'Akismet Anti-spam', 'version' => '5.3' );
+		$options = \SiteFerry\Schedule\Before_Updates::export_options( $item, $content, $plugins, $themes );
+		Sf_Test::same( 'Before updating Akismet Anti-spam 5.3', $options['title'] );
+		Sf_Test::same( array( 'before-update' ), $options['tags'] );
+		Sf_Test::same( array( true, false, true ), array( $options['exclude_media'], $options['exclude_plugins'], $options['exclude_themes'] ) );
+		Sf_Test::same( array( 'uploads', 'languages', 'mu-plugins', 'index.php', 'upgrade', 'plugins/hello.php', 'plugins/woocommerce', 'plugins/index.php' ), $options['exclude_paths'] );
+		Sf_Test::ok( ! in_array( 'plugins/akismet', $options['exclude_paths'], true ), 'the plugin itself stays in' );
+
+		$theme = \SiteFerry\Schedule\Before_Updates::export_options( array( 'type' => 'theme', 'folder' => 'twentytwentyfive', 'name' => 'Twenty Twenty-Five', 'version' => '1.2' ), $content, $plugins, $themes );
+		Sf_Test::same( array( true, true, false ), array( $theme['exclude_media'], $theme['exclude_plugins'], $theme['exclude_themes'] ) );
+		Sf_Test::same( array( 'uploads', 'languages', 'mu-plugins', 'index.php', 'upgrade', 'themes/twentytwentyfour' ), $theme['exclude_paths'] );
+
+		$core = \SiteFerry\Schedule\Before_Updates::export_options( array( 'type' => 'core', 'folder' => '', 'name' => 'WordPress', 'version' => '6.9' ), $content, $plugins, $themes );
+		Sf_Test::same( array( true, true, true ), array( $core['exclude_media'], $core['exclude_plugins'], $core['exclude_themes'] ), 'the database only:' );
+		Sf_Test::same( 'Before updating WordPress 6.9', $core['title'] );
+
+		$moved = \SiteFerry\Schedule\Before_Updates::export_options( $item, array( 'apps', 'stuff' ), array( 'akismet', 'other' ), array(), 'apps', 'skins' );
+		Sf_Test::same( array( 'stuff', 'apps/other' ), $moved['exclude_paths'], 'a plugins folder with another name:' );
+		\SiteFerry\Export\Export::normalize( $options ); // The options are valid export options.
+	}
+);
+
 exit( Sf_Test::finish( 'test-schedule' ) );
