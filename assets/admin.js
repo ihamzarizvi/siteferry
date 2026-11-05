@@ -144,7 +144,7 @@
 	}
 
 	/** Whether a backup is protected with a password. */
-	const isEncrypted = ( item ) => !! item && ( !! item.encrypted || /\.enc$/i.test( item.name || '' ) );
+	const isEncrypted = ( item ) => !! item && ! item.unlocked && ( !! item.encrypted || /\.enc$/i.test( item.name || '' ) );
 
 	/**
 	 * Asks for the password of a protected backup in a dialog. Resolves to the password, or null
@@ -661,6 +661,15 @@
 			return;
 		}
 		const r = job.result;
+		if ( r.moved ) {
+			view.finish( true, 'Sent to ' + hostOf( r.moved.to ), [
+				el( 'p', { text: 'This site (' + bytes( r.moved.size ) + ', encrypted with the key) is now on ' + r.moved.to + '. Nothing on that site has changed yet.' } ),
+				el( 'p', { text: 'To finish, open SiteFerry there and click "Move it here" under Move.' } ),
+				el( 'p', { class: 'sf-actions' }, [ el( 'a', { class: 'button button-primary', href: r.moved.to + '/wp-admin/tools.php?page=siteferry', target: '_blank', rel: 'noopener', text: 'Open SiteFerry there' } ) ] ),
+			] );
+			loadBackups();
+			return;
+		}
 		const where = r.sent ? ( r.deleted_local ? 'on ' + r.sent.where : 'on this server and on ' + r.sent.where ) : 'on this server';
 		const nodes = [
 			el( 'p', { text: bytes( r.size ) + ' · ' + plural( r.files, 'file', 'files' ) + ', stored ' + where + '.' } ),
@@ -1116,6 +1125,7 @@
 				contents: b.contents,
 				error: b.error,
 				encrypted: !! b.encrypted,
+				unlocked: !! b.unlocked,
 				title: b.title || '',
 				note: b.note || '',
 				tags: b.tags || [],
@@ -1865,7 +1875,7 @@
 		if ( previous ) {
 			await cancelJob( previous.id, previous.token );
 		}
-		if ( isEncrypted( { name: restore.name || '' } ) && ! restore.password ) {
+		if ( isEncrypted( { ...( restore.item || {} ), name: restore.name || '' } ) && ! restore.password ) {
 			const password = await askPassword( 'Password of the backup', 'This backup is protected with a password. Enter it to check and restore the backup.', restore.locked || '' );
 			if ( ! restore || seq !== restore.seq ) {
 				return;
@@ -2202,6 +2212,119 @@
 			] ),
 		];
 		$( 'siteferry-space-body' ).replaceChildren( ...body );
+	}
+
+	// ------------------------------------------------------------ move to another server
+
+	let receivePoll = null;
+
+	/** Receiving: the key (when just made), and what has arrived. */
+	async function loadReceive( made ) {
+		const box = $( 'siteferry-receive' );
+		let data = made;
+		if ( ! data ) {
+			try {
+				data = await api( 'GET', 'receive' );
+			} catch ( error ) {
+				box.replaceChildren( el( 'p', { class: 'sf-row-error', text: error.message } ) );
+				return;
+			}
+		}
+		clearTimeout( receivePoll );
+		const make = button( data.state === 'none' || data.state === 'expired' ? 'Make a key' : 'Make a new key', makeKey, 'button button-primary' );
+		const nodes = [];
+		if ( data.key ) {
+			const field = el( 'textarea', { class: 'sf-move-key', rows: '3', readonly: 'readonly', spellcheck: 'false' } );
+			field.value = data.key;
+			nodes.push( field, el( 'p', { class: 'sf-actions' }, [
+				button( 'Copy the key', async () => {
+					field.select();
+					try {
+						await navigator.clipboard.writeText( data.key );
+						notice( 'The key is copied. Paste it on the old site, under Move.', 'success' );
+					} catch ( e ) {
+						document.execCommand( 'copy' );
+					}
+				}, 'button button-primary' ),
+			] ) );
+		}
+		if ( data.state === 'waiting' ) {
+			nodes.push( el( 'p', { text: 'Waiting for the old site. The key works until ' + date( data.expires ) + '.' } ) );
+		} else if ( data.state === 'receiving' ) {
+			nodes.push( el( 'p', { text: 'Arriving: ' + bytes( data.progress.offset ) + ' of ' + bytes( data.progress.size ) + '.' } ) );
+		} else if ( data.state === 'expired' ) {
+			nodes.push( el( 'p', { text: 'The last key has expired.' } ) );
+		} else if ( data.state === 'received' ) {
+			const name = data.received.name;
+			nodes.push(
+				el( 'p', { text: 'The site from ' + hostOf( data.received.from ) + ' has arrived (' + bytes( data.received.size ) + '). Nothing on this site has changed yet.' } ),
+				el( 'p', { class: 'sf-actions' }, [ button( 'Move it here', () => {
+					const item = items().find( ( entry ) => entry.name === name );
+					if ( item ) {
+						toggleDrawer( 'move', false );
+						openRestore( item );
+					}
+				}, 'button button-primary' ) ] )
+			);
+			loadBackups();
+		}
+		if ( data.state === 'waiting' || data.state === 'receiving' ) {
+			nodes.push( el( 'p', { class: 'sf-actions' }, [ button( 'Cancel the key', async () => loadReceive( await api( 'DELETE', 'receive' ) ), 'button sf-quiet' ) ] ) );
+			receivePoll = setTimeout( () => ! $( 'siteferry-move' ).hidden && loadReceive( data.key ? { ...data, key: data.key } : null ), 5000 );
+		} else {
+			nodes.push( el( 'p', { class: 'sf-actions' }, [ make ] ) );
+		}
+		box.replaceChildren( ...nodes );
+	}
+
+	async function makeKey() {
+		try {
+			loadReceive( await api( 'POST', 'receive', { json: {} } ) );
+		} catch ( error ) {
+			notice( 'No key was made: ' + error.message, 'error' );
+		}
+	}
+
+	/** Sending: what the key's site says, then the move. */
+	async function checkMoveKey() {
+		const target = $( 'siteferry-move-target' );
+		const key = $( 'siteferry-move-key' ).value.trim();
+		target.hidden = false;
+		target.replaceChildren( el( 'p', { text: 'Asking the other site...' } ) );
+		let hello;
+		try {
+			hello = await api( 'POST', 'move/check', { json: { key } } );
+		} catch ( error ) {
+			target.replaceChildren( el( 'p', { class: 'sf-row-error', text: error.message } ) );
+			return;
+		}
+		const keep = el( 'input', { type: 'checkbox' } );
+		target.replaceChildren(
+			el( 'table', { class: 'sf-facts-table' }, [
+				el( 'tbody', {}, [
+					[ 'Moving to', hello.site + ( hello.name ? ' (' + hello.name + ')' : '' ) ],
+					[ 'Runs', 'WordPress ' + hello.wordpress + ', PHP ' + hello.php + ', SiteFerry ' + hello.siteferry ],
+					[ 'Free there', null === hello.free ? 'unknown' : bytes( hello.free ) ],
+				].map( ( [ k, v ] ) => el( 'tr', {}, [ el( 'th', { scope: 'row', text: k } ), el( 'td', { text: v } ) ] ) ) ),
+			] ),
+			el( 'p', {}, [ el( 'label', {}, [ keep, ' Also keep the backup on this server' ] ) ] ),
+			el( 'p', { class: 'sf-actions' }, [ button( 'Move this site there', () => startMove( key, keep.checked, hello.site ), 'button button-primary' ) ] )
+		);
+	}
+
+	async function startMove( key, keepLocal, site ) {
+		toggleDrawer( 'move', false );
+		const view = progressView( 'siteferry-job-progress', [ 'This site', hostOf( site ) ] );
+		view.start( 'Backing up this site for the move...' );
+		try {
+			const started = await api( 'POST', 'move/send', { json: { key, keep_local: keepLocal } } );
+			remember( started.job, started.token );
+			$( 'siteferry-move-key' ).value = '';
+			$( 'siteferry-move-target' ).hidden = true;
+			await finishExport( started.job.id, started.token, view, false );
+		} catch ( error ) {
+			view.finish( false, 'The site was not moved', [ el( 'p', { text: error.message } ) ] );
+		}
 	}
 
 	// ------------------------------------------------------------ look inside a backup
@@ -2845,6 +2968,7 @@
 			options: [ 'siteferry-export-form', 'siteferry-options-toggle' ],
 			upload: [ 'siteferry-upload', 'siteferry-upload-toggle' ],
 			schedule: [ 'siteferry-schedule-form', 'siteferry-schedule-toggle' ],
+			move: [ 'siteferry-move', 'siteferry-move-toggle' ],
 		};
 		Object.keys( drawers ).forEach( ( key ) => {
 			const [ panel, toggle ] = drawers[ key ];
@@ -2853,6 +2977,9 @@
 			$( toggle ).setAttribute( 'aria-expanded', open ? 'true' : 'false' );
 			$( toggle ).classList.toggle( 'is-open', open );
 		} );
+		if ( which === 'move' && ! $( 'siteferry-move' ).hidden ) {
+			loadReceive();
+		}
 		if ( which === 'options' && ! $( 'siteferry-export-form' ).hidden && ! space ) {
 			loadSpace( false ); // Measured once the options are opened, not on every page load.
 		}
@@ -2978,6 +3105,8 @@
 		} );
 		$( 'siteferry-upload-toggle' ).addEventListener( 'click', () => toggleDrawer( 'upload' ) );
 		$( 'siteferry-schedule-toggle' ).addEventListener( 'click', () => toggleDrawer( 'schedule' ) );
+		$( 'siteferry-move-toggle' ).addEventListener( 'click', () => toggleDrawer( 'move' ) );
+		$( 'siteferry-move-check' ).addEventListener( 'click', checkMoveKey );
 		$( 'siteferry-schedule-close' ).addEventListener( 'click', () => {
 			toggleDrawer( 'schedule', false );
 			$( 'siteferry-schedule-toggle' ).focus();

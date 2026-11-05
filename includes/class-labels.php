@@ -62,7 +62,9 @@ final class Labels {
 			throw new Jobs\Job_Exception( 'Unknown backup.', Jobs\Job_Exception::NOT_FOUND );
 		}
 		$label = self::normalize( $title, $note, $tags );
-		$all   = self::all();
+		// Read again: a long-running process (WP-CLI, a job) may hold a copy older than another request's change.
+		wp_cache_delete( self::OPTION, 'options' );
+		$all = self::all();
 		if ( '' === $label['title'] && '' === $label['note'] && array() === $label['tags'] ) {
 			unset( $all[ $name ] );
 			$label = null;

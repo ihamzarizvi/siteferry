@@ -343,6 +343,83 @@ final class Command {
 	}
 
 	/**
+	 * Makes a key that lets another site move itself here (it works once, for 24 hours), or shows
+	 * or cancels the current one.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--hours=<hours>]
+	 * : How long the key works (1 to 168). Default: 24.
+	 *
+	 * [--status]
+	 * : Show whether a key waits and what has arrived, without making a key.
+	 *
+	 * [--cancel]
+	 * : Cancel the key (and anything half-received).
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp siteferry receive
+	 *     wp siteferry receive --status
+	 *
+	 * @param string[] $args       Positional arguments (none).
+	 * @param array    $assoc_args Options.
+	 */
+	public function receive( $args, $assoc_args ): void {
+		if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'cancel', false ) ) {
+			\SiteFerry\Move\Receiver::cancel();
+			WP_CLI::success( 'The key is cancelled.' );
+			return;
+		}
+		if ( ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'status', false ) ) {
+			$made = \SiteFerry\Move\Receiver::create( (int) \WP_CLI\Utils\get_flag_value( $assoc_args, 'hours', \SiteFerry\Move\Receiver::HOURS ) );
+			WP_CLI::line( $made['key'] );
+			WP_CLI::log( sprintf( 'Run on the old site: wp siteferry move <key>   (valid until %s)', wp_date( 'Y-m-d H:i', $made['expires'] ) ) );
+			return;
+		}
+		$status = \SiteFerry\Move\Receiver::status();
+		WP_CLI::log( 'Key: ' . $status['state'] );
+		if ( 'received' === $status['state'] ) {
+			WP_CLI::log( sprintf( 'Arrived from %s: %s. Restore it with: wp siteferry import %s', $status['received']['from'], $status['received']['name'], $status['received']['name'] ) );
+		}
+	}
+
+	/**
+	 * Moves this site to another server: backs it up, encrypted with the key, and sends it straight
+	 * to the site that made the key ("wp siteferry receive" or Move on its SiteFerry page).
+	 *
+	 * ## OPTIONS
+	 *
+	 * <key>
+	 * : The key from the new site.
+	 *
+	 * [--keep-local]
+	 * : Keep the backup on this server too.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp siteferry move SFMOVE1.eyJ1Ijoi...
+	 *
+	 * @param string[] $args       Positional arguments: the key.
+	 * @param array    $assoc_args Options.
+	 */
+	public function move( $args, $assoc_args ): void {
+		try {
+			$hello = \SiteFerry\Move\Sender::hello( \SiteFerry\Move\Sender::parse( (string) $args[0] ) );
+			WP_CLI::log( sprintf( 'Moving to %s (WordPress %s).', $hello['site'], $hello['wordpress'] ) );
+			list( $job ) = \SiteFerry\Move\Sender::start( (string) $args[0], (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'keep-local', false ) );
+		} catch ( \Throwable $e ) {
+			WP_CLI::error( $e->getMessage() );
+			return;
+		}
+		self::drive( $job, false );
+		if ( Job::STATUS_FAILED === $job->status() ) {
+			WP_CLI::error( sprintf( 'The move stopped: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
+		}
+		$moved = $job->result()['moved'];
+		WP_CLI::success( sprintf( 'Sent to %s as %s. Finish the move there: "Move it here" on its SiteFerry page, or wp siteferry import %s.', $moved['to'], $moved['name'], $moved['name'] ) );
+	}
+	/**
 	 * Shows what takes the room: the database, media, plugins, themes, cache and the rest of
 	 * wp-content, the largest files and tables, and the free space on this server.
 	 *

@@ -65,7 +65,7 @@ final class Export {
 	 * @return array{0:Job,1:string} The job and its token.
 	 * @throws Job_Exception If the site cannot be exported.
 	 */
-	public static function start( array $options, ?string $work_dir = null, string $origin = 'admin', string $parent = '' ): array {
+	public static function start( array $options, ?string $work_dir = null, string $origin = 'admin', string $parent = '', array $then = array() ): array {
 		if ( is_multisite() ) {
 			throw new Job_Exception( 'Multisite networks are not supported by this version of SiteFerry.', Job_Exception::STEP );
 		}
@@ -103,6 +103,7 @@ final class Export {
 		if ( 'schedule' === $origin ) {
 			$steps[] = \SiteFerry\Schedule\Finish_Step::STEP;
 		}
+		$steps = array_merge( $steps, $then ); // Steps that use the finished backup (sending it to another site).
 
 		$options['origin']      = in_array( $origin, array( 'schedule', 'safety', 'update' ), true ) ? $origin : 'admin';
 		$options['parent']      = $parent; // A job that runs inside another one never counts as the active job.

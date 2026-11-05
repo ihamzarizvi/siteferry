@@ -94,6 +94,13 @@ powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-t
 # measures again. Changes nothing but the kept report.
 powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-themes "--exec=define('DISABLE_WP_CRON', true);" eval-file tests/wp/test-space.php
 
+# Site-to-site move: the site moves a small backup (the database only) to itself over HTTP. The key
+# (administrators make it; the move routes answer to it alone; wrong keys drop it; it works once),
+# the encrypted backup sent in chunks with the local copy removed, a chunk at the wrong offset
+# (409), and the backup that arrived opening without a password for a check and a restore check
+# (cancelled). Removes its backup.
+powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-themes "--exec=define('DISABLE_WP_CRON', true);" eval-file tests/wp/test-move.php
+
 # Backups before updates: applies WordPress's upgrader_pre_download filter with real upgrader objects
 # (nothing is downloaded or updated). Off by default; a plugin update backs up the database and only
 # that plugin, a theme update only that theme, a WordPress update only the database (the archives are

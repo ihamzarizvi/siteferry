@@ -163,6 +163,7 @@ final class Admin {
 							<button type="button" class="button button-large" id="siteferry-options-toggle" aria-expanded="false" aria-controls="siteferry-export-form"><?php esc_html_e( 'Options', 'siteferry' ); ?></button>
 							<button type="button" class="button button-large" id="siteferry-upload-toggle" aria-expanded="false" aria-controls="siteferry-upload"><?php esc_html_e( 'Upload a backup', 'siteferry' ); ?></button>
 							<button type="button" class="button button-large" id="siteferry-schedule-toggle" aria-expanded="false" aria-controls="siteferry-schedule-form"><?php esc_html_e( 'Schedule', 'siteferry' ); ?></button>
+							<button type="button" class="button button-large" id="siteferry-move-toggle" aria-expanded="false" aria-controls="siteferry-move"><?php esc_html_e( 'Move', 'siteferry' ); ?></button>
 						</div>
 					</div>
 					<p class="sf-schedule-line" id="siteferry-schedule-line" hidden></p>
@@ -282,6 +283,24 @@ final class Admin {
 					</div>
 
 					<?php self::render_schedule( $whole_parts, $clutter ); ?>
+
+					<div id="siteferry-move" class="sf-drawer sf-move" hidden>
+						<div class="sf-move-half">
+							<h3 class="sf-sub"><?php esc_html_e( 'Move this site to another server', 'siteferry' ); ?></h3>
+							<p class="description"><?php esc_html_e( 'On the new site (with SiteFerry installed), open Move and click "Make a key"; paste the key here. This site is then backed up, encrypted with the key, and sent straight there; nothing passes through your computer.', 'siteferry' ); ?></p>
+							<p class="sf-field">
+								<label for="siteferry-move-key"><?php esc_html_e( 'Key from the new site', 'siteferry' ); ?></label>
+								<textarea id="siteferry-move-key" rows="3" spellcheck="false" autocomplete="off"></textarea>
+							</p>
+							<p class="sf-actions"><button type="button" class="button" id="siteferry-move-check"><?php esc_html_e( 'Check the key', 'siteferry' ); ?></button></p>
+							<div id="siteferry-move-target" class="sf-move-target" hidden></div>
+						</div>
+						<div class="sf-move-half">
+							<h3 class="sf-sub"><?php esc_html_e( 'Receive a site here', 'siteferry' ); ?></h3>
+							<p class="description"><?php esc_html_e( 'Make a key and paste it on the old site. It works once, for 24 hours. The site that arrives waits in the list until you restore it here.', 'siteferry' ); ?></p>
+							<div id="siteferry-receive" class="sf-receive"></div>
+						</div>
+					</div>
 				</div>
 
 				<dialog class="sf-dialog" id="siteferry-parts-dialog" aria-labelledby="siteferry-parts-dialog-title">

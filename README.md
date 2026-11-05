@@ -8,7 +8,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.16.0-f97316" alt="Version 0.16.0">
+  <img src="https://img.shields.io/badge/version-0.17.0-f97316" alt="Version 0.17.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -23,8 +23,8 @@ Large sites are no problem: every job runs in short, resumable steps, so the PHP
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.16.0). Moving a site directly to another server is next;
-> see the [roadmap](#roadmap).
+> SiteFerry is in active development (0.17.0). Multisite support is next; see the
+> [roadmap](#roadmap).
 
 ## Contents
 
@@ -88,6 +88,7 @@ upload limits and dropped connections don't break a backup or a restore.
 <details>
 <summary><b>Restore and migration</b></summary>
 
+- **Move a site straight to another server** with a one-time key: no download, no upload.
 - **Restore** a backup of this site, or **Move here** a backup of another site: the panel says
   which, in plain words, before anything happens.
 - The backup is checked first: WordPress, PHP and MySQL versions, free disk space and every
@@ -273,6 +274,22 @@ wp siteferry export --password            # asks for it (or set SITEFERRY_PASSWO
 wp siteferry import mysite-2026-11-05-1a2b3c4d5e6f.tar.enc --password
 wp siteferry backups check mysite-2026-11-05-1a2b3c4d5e6f.tar.enc --password
 ```
+**Move a site straight to another server.** Install SiteFerry on the new site, open **Move** there
+and click **Make a key**. On the old site, open **Move**, paste the key and click **Check the
+key**: it shows the new site's address, versions and free space. **Move this site there** makes a
+backup, encrypted with the key (AES-256, so it is unreadable on the way even over plain http), and
+sends it straight to the new site in checked, resumable chunks; nothing passes through your
+computer, and the copy on the old server is removed afterwards unless you keep it. On the new site
+the backup waits in the list: **Move it here** restores it, without asking for a password, after
+the usual check and your confirmation.
+
+The key works once and for 24 hours, opens only the routes that receive the backup, and is dropped
+after 20 wrong tries; making a new key ends the old one.
+
+```bash
+wp siteferry receive                 # on the new site: prints a key
+wp siteferry move SFMOVE1.eyJ1Ijoi... # on the old site
+```
 **Backups in parts.** A storage with a size limit gets larger backups as numbered parts:
 set **Largest file on this storage** in its settings. **Download in parts** in a backup's menu
 gives the parts of the copy on this server, for a disk or service with a limit; to put such a
@@ -439,6 +456,10 @@ wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]
 wp siteferry backups check <name> [--storage=<id>] [--password]
 wp siteferry space [--fresh] [--format=table|json]
 
+# Move a site straight to another server
+wp siteferry receive [--hours=<n>] [--status] [--cancel]   # on the new site
+wp siteferry move <key> [--keep-local]                      # on the old site
+
 # Password-protected backups (asks for it, or set SITEFERRY_PASSWORD)
 wp siteferry export --password
 wp siteferry import <file>.tar.enc --password
@@ -596,7 +617,7 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] Space report before a backup
 - [x] Backups split into parts, for file size limits
 - [ ] More storages: WebDAV (Nextcloud, ownCloud), OneDrive, pCloud
-- [ ] Site-to-site move without downloading
+- [x] Site-to-site move without downloading
 - [ ] Multisite
 - [ ] Translations
 

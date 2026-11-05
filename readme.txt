@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.16.0
+Stable tag: 0.17.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -115,6 +115,7 @@ and themes are left out, so it is quick. It stays on this server, named "Before 
 * `wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]`
 * `wp siteferry backups check <name> [--storage=<id>] [--password]`
 * `wp siteferry space [--fresh] [--format=table|json]`
+* `wp siteferry receive [--hours=<n>] [--status] [--cancel]`, `wp siteferry move <key> [--keep-local]`
 * `wp siteferry export --password`, `wp siteferry import <file>.tar.enc --password`
 * `wp siteferry export --send=<id> [--delete-after-send]`
 * `wp siteferry storage test|list <id>`, `wp siteferry storage send <id> <backup>`,
@@ -293,6 +294,17 @@ backup made by hand is not kept anywhere. The password of automatic backups is k
 encrypted with a key from the WordPress salts. Safety backups made before a restore are not
 encrypted (they stay on this server). Needs the PHP OpenSSL extension.
 
+= Moving a site straight to another server =
+
+"Move" on the new site makes a one-time key (24 hours). Pasted under "Move" on the old site, it
+shows the new site and then moves the old one there: a fresh backup, encrypted with the key's
+256-bit secret (AES-256-GCM), sent straight from server to server in chunks with their SHA-256;
+an interrupted transfer continues where it stopped. The routes that receive it answer only to the
+key, which works once and is dropped after 20 wrong tries. On the new site the backup waits in the
+list; "Move it here" restores it after the usual check and confirmation, with the key's secret as
+its password (kept, encrypted, until the backup is deleted). Only the address in the key is
+contacted.
+
 = Checking a copy =
 
 "Check the copy on ..." in a backup's menu reads that copy from start to end without unpacking
@@ -378,6 +390,10 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.17.0 =
+* Move a site straight to another server: "Move" makes a one-time key on the new site; pasted on the old site, it sends an encrypted backup straight there (resumable, checked chunks). "Move it here" on the new site restores it without asking for a password. WP-CLI: `wp siteferry receive` and `wp siteferry move <key>`.
+* Backup names, notes and tags are read fresh before each change, so a long-running process cannot undo another request's change.
 
 = 0.16.0 =
 * Backups in parts: "Largest file on this storage" in a storage's settings (100 MB to 4 GB) stores larger backups there as numbered parts (.001, .002, ...). The list shows them as one backup ("Dropbox · 3 parts"; a missing part is shown); downloading, checking, restoring and deleting handle all parts, and a cancelled send removes the parts already stored.

@@ -2480,3 +2480,26 @@ details.sf-dest[open] > .sf-dest-head::after {
 	font-family: var(--sf-mono);
 	font-size: 12px;
 }
+
+/* ---------------------------------------------------------------- move */
+
+.sf-move {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+	gap: 16px 32px;
+}
+
+.sf-move[hidden] {
+	display: none;
+}
+
+.sf-move textarea {
+	width: 100%;
+	font-family: var(--sf-mono);
+	font-size: 12px;
+	word-break: break-all;
+}
+
+.sf-move-target {
+	margin-top: 10px;
+}

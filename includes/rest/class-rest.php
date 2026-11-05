@@ -70,6 +70,7 @@ final class Rest {
 		$admin   = array( self::class, 'can_manage' );
 		$job     = array( self::class, 'can_drive_job' );
 		$confirm = array( self::class, 'can_confirm' );
+		$key     = array( self::class, 'can_receive' );
 
 		$routes = array(
 			array( '/status', WP_REST_Server::READABLE, 'status', $admin ),
@@ -114,6 +115,16 @@ final class Rest {
 			array( '/schedule', WP_REST_Server::CREATABLE, 'save_schedule', $admin ),
 			array( '/schedule/run', WP_REST_Server::CREATABLE, 'run_schedule', $admin ),
 			array( '/undo/dismiss', WP_REST_Server::CREATABLE, 'dismiss_undo', $admin ),
+			array( '/receive', WP_REST_Server::READABLE, 'receive_status', $admin ),
+			array( '/receive', WP_REST_Server::CREATABLE, 'receive_key', $admin ),
+			array( '/receive', WP_REST_Server::DELETABLE, 'receive_cancel', $admin ),
+			array( '/move/check', WP_REST_Server::CREATABLE, 'move_check', $admin ),
+			array( '/move/send', WP_REST_Server::CREATABLE, 'move_send', $admin ),
+			// The site being moved here, with the key only (no login on this site).
+			array( '/move/hello', WP_REST_Server::READABLE, 'move_hello', $key ),
+			array( '/move/start', WP_REST_Server::CREATABLE, 'move_start', $key ),
+			array( '/move/chunk', WP_REST_Server::CREATABLE, 'move_chunk', $key ),
+			array( '/move/finish', WP_REST_Server::CREATABLE, 'move_finish', $key ),
 		);
 
 		// Several methods on one path become several endpoints of one route.
@@ -130,6 +141,115 @@ final class Rest {
 		}
 	}
 
+	/**
+	 * Receiving a site: whether a key waits, how far a backup has arrived, what arrived.
+	 */
+	public static function receive_status(): array {
+		return \SiteFerry\Move\Receiver::status();
+	}
+
+	/**
+	 * Makes a new key for receiving a site (any earlier one stops working).
+	 *
+	 * @param WP_REST_Request $request Request with "hours" (optional).
+	 */
+	public static function receive_key( WP_REST_Request $request ): array {
+		$params = (array) $request->get_json_params();
+		return \SiteFerry\Move\Receiver::create( isset( $params['hours'] ) ? (int) $params['hours'] : \SiteFerry\Move\Receiver::HOURS ) + \SiteFerry\Move\Receiver::status();
+	}
+
+	/**
+	 * Drops the key and anything half-received.
+	 */
+	public static function receive_cancel(): array {
+		\SiteFerry\Move\Receiver::cancel();
+		return \SiteFerry\Move\Receiver::status();
+	}
+
+	/**
+	 * Moving this site: what the key's site says about itself.
+	 *
+	 * @param WP_REST_Request $request Request with "key".
+	 */
+	public static function move_check( WP_REST_Request $request ): array {
+		$params = (array) $request->get_json_params();
+		return \SiteFerry\Move\Sender::hello( \SiteFerry\Move\Sender::parse( isset( $params['key'] ) ? (string) $params['key'] : '' ) );
+	}
+
+	/**
+	 * Moving this site: starts the backup that is then sent to the key's site.
+	 *
+	 * @param WP_REST_Request $request Request with "key" and "keep_local".
+	 */
+	public static function move_send( WP_REST_Request $request ): array {
+		self::assert_idle();
+		$params = (array) $request->get_json_params();
+		list( $job, $token ) = \SiteFerry\Move\Sender::start( isset( $params['key'] ) ? (string) $params['key'] : '', ! empty( $params['keep_local'] ) );
+		return array(
+			'job'   => $job->summary(),
+			'token' => $token,
+		);
+	}
+
+	/**
+	 * For the sending site (with the key): about this site.
+	 */
+	public static function move_hello(): array {
+		return \SiteFerry\Move\Receiver::hello();
+	}
+
+	/**
+	 * For the sending site: starts (or resumes) receiving its backup.
+	 *
+	 * @param WP_REST_Request $request Request with "name", "size" and "from".
+	 */
+	public static function move_start( WP_REST_Request $request ): array {
+		$params = (array) $request->get_json_params();
+		return \SiteFerry\Move\Receiver::start( isset( $params['name'] ) ? (string) $params['name'] : '', isset( $params['size'] ) ? (int) $params['size'] : 0, isset( $params['from'] ) ? (string) $params['from'] : '' );
+	}
+
+	/**
+	 * For the sending site: one chunk (raw body; X-SiteFerry-Offset and X-SiteFerry-Sha256).
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @throws Job_Exception On a missing offset.
+	 */
+	public static function move_chunk( WP_REST_Request $request ): array {
+		$offset = (string) $request->get_header( 'x_siteferry_offset' );
+		if ( ! preg_match( '/^[0-9]{1,18}$/', $offset ) ) {
+			throw new Job_Exception( 'Missing or invalid chunk offset.', Job_Exception::STEP );
+		}
+		return \SiteFerry\Move\Receiver::chunk( (int) $offset, $request->get_body(), (string) $request->get_header( 'x_siteferry_sha256' ) );
+	}
+
+	/**
+	 * For the sending site: the backup is complete; it joins the list.
+	 */
+	public static function move_finish(): array {
+		return \SiteFerry\Move\Receiver::finish();
+	}
+
+	/**
+	 * Permission for the move routes: the key that "Receive a site" made, and nothing else.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function can_receive( WP_REST_Request $request ): bool {
+		return \SiteFerry\Move\Receiver::accepts( (string) $request->get_header( 'x_siteferry_move' ) );
+	}
+
+	/**
+	 * The password given, or the one kept for a backup that arrived with a move key.
+	 *
+	 * @param array  $params Request parameters.
+	 * @param string $name   Backup name.
+	 */
+	private static function password( array $params, string $name ): string {
+		if ( isset( $params['password'] ) && is_string( $params['password'] ) && '' !== $params['password'] ) {
+			return $params['password'];
+		}
+		return (string) \SiteFerry\Move\Receiver::password_for( $name );
+	}
 	/**
 	 * Permission: administrators.
 	 */
@@ -211,6 +331,8 @@ final class Rest {
 				'contents'  => null === $manifest ? null : self::contents( $manifest ),
 				'error'     => $backup['error'],
 				'encrypted' => $backup['encrypted'],
+				// A backup moved here with a key opens without asking for a password.
+				'unlocked'  => $backup['encrypted'] && null !== \SiteFerry\Move\Receiver::password_for( $backup['name'] ),
 			);
 		}
 		return $list;
@@ -291,6 +413,7 @@ final class Rest {
 		}
 		Contents::forget( (string) $request['name'] );
 		Check::forget( (string) $request['name'], Check::LOCAL );
+		\SiteFerry\Move\Receiver::forget_backup( (string) $request['name'] );
 		return array( 'deleted' => (string) $request['name'] );
 	}
 
@@ -371,7 +494,7 @@ final class Rest {
 		$name   = (string) $request['name'];
 		$path   = Backups::path( Storage::backups_dir(), $name );
 		$params = (array) $request->get_json_params();
-		$key    = \SiteFerry\Archive\Crypto::unlock( $path, isset( $params['password'] ) && is_string( $params['password'] ) ? $params['password'] : '' );
+		$key    = \SiteFerry\Archive\Crypto::unlock( $path, self::password( $params, $name ) );
 		$token  = Storage::random_hex( 16 );
 		set_transient( 'siteferry_unlock_' . $token, \SiteFerry\Security\Secrets::site()->encrypt( $name . "\n" . base64_encode( $key ) ), 15 * MINUTE_IN_SECONDS ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 		return array(
@@ -434,7 +557,7 @@ final class Rest {
 		list( $job, $token ) = Check::start(
 			isset( $params['name'] ) ? (string) $params['name'] : '',
 			isset( $params['place'] ) ? (string) $params['place'] : Check::LOCAL,
-			isset( $params['password'] ) && is_string( $params['password'] ) ? $params['password'] : ''
+			self::password( $params, isset( $params['name'] ) ? (string) $params['name'] : '' )
 		);
 		return array(
 			'job'   => $job->summary(),
@@ -483,6 +606,7 @@ final class Rest {
 		$params  = (array) $request->get_json_params();
 		$path    = Backups::path( Storage::backups_dir(), isset( $params['backup'] ) ? (string) $params['backup'] : '' );
 		$options = array_intersect_key( $params, array_flip( array( 'replace_url', 'include_mu_plugins', 'include_drop_ins', 'force', 'safety', 'restore_database', 'restore_tables', 'restore_files', 'restore_paths', 'password' ) ) );
+		$options['password'] = self::password( $params, basename( $path ) );
 		list( $job, $token ) = Import::start( $path, $options );
 		return array(
 			'job'   => $job->summary(),
