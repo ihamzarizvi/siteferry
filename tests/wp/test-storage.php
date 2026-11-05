@@ -20,6 +20,7 @@
 
 use SiteFerry\Archive\Tar_Writer;
 use SiteFerry\Backups;
+use SiteFerry\Check\Check;
 use SiteFerry\Export\Manifest;
 use SiteFerry\Security\Storage;
 use SiteFerry\Storage\Destinations;
@@ -75,6 +76,9 @@ if ( 's3' === $sf_kind ) {
 		'hash'        => static function ( string $name ) use ( $sf_fake ) {
 			return $sf_fake->hash( 'wp-test/' . $name );
 		},
+		'blob'        => static function ( string $name ) use ( $sf_fake ) {
+			return $sf_fake->blob( 'wp-test/' . $name );
+		},
 		'names'       => static function () use ( $sf_fake ): array {
 			return $sf_fake->keys();
 		},
@@ -115,6 +119,9 @@ if ( 's3' === $sf_kind ) {
 		'wrong_says'  => array( 'refused the login', 'Check the user name and password' ),
 		'hash'        => static function ( string $name ) use ( $sf_folder ) {
 			return is_file( $sf_folder . '/' . $name ) ? hash_file( 'sha256', $sf_folder . '/' . $name ) : null;
+		},
+		'blob'        => static function ( string $name ) use ( $sf_folder ) {
+			return is_file( $sf_folder . '/' . $name ) ? $sf_folder . '/' . $name : null;
 		},
 		'names'       => static function () use ( $sf_folder ): array {
 			return is_dir( $sf_folder ) ? array_values( array_diff( scandir( $sf_folder ), array( '.', '..' ) ) ) : array();
@@ -197,6 +204,9 @@ if ( 's3' === $sf_kind ) {
 		'wrong_says'  => $sf_relayed ? array() : array( 'invalid_client', 'Check them on the Storage tab' ),
 		'hash'        => static function ( string $name ) use ( $sf_fake ) {
 			return $sf_fake->hash( $name );
+		},
+		'blob'        => static function ( string $name ) use ( $sf_fake ) {
+			return $sf_fake->blob( $name );
 		},
 		'names'       => $sf_names,
 		'pending'     => static function () use ( $sf_fake ): int {
@@ -321,6 +331,9 @@ if ( 's3' === $sf_kind ) {
 		'wrong_says'        => array(),
 		'hash'              => static function ( string $name ) use ( $sf_fake ) {
 			return $sf_fake->hash( $name );
+		},
+		'blob'              => static function ( string $name ) use ( $sf_fake ) {
+			return $sf_fake->blob( $name );
 		},
 		'names'             => static function () use ( $sf_fake ): array {
 			return $sf_fake->names();
@@ -545,6 +558,44 @@ Sf_Test::run(
 
 		list( $status, $missing ) = sf_rest( 'POST', "/storage/$sf_id/fetch", $sf_admin, array(), array( 'name' => 'none-2026-01-01-000000000000.tar' ) );
 		Sf_Test::same( 404, $status, 'fetching a missing backup: ' . wp_json_encode( $missing ) );
+	}
+);
+
+Sf_Test::run(
+	'checking the stored copy: intact, the download removed; a byte changed there is found',
+	static function () use ( $sf_b, $sf_id, $sf_admin, &$sf_local ) {
+		$name = (string) reset( $sf_local );
+		list( $id, $token ) = sf_start( $sf_admin, '/checks', array( 'name' => $name, 'place' => $sf_id ) );
+		$job                = sf_rest_drive( $id, $token );
+		Sf_Test::same( 'done', $job['status'], 'check: ' . (string) $job['error'] );
+		Sf_Test::same( true, $job['result']['checked']['ok'] );
+		Sf_Test::same( 2, $job['step']['count'], 'download, then verify:' );
+		Sf_Test::same( true, Check::all()[ $name ][ $sf_id ]['ok'], 'recorded:' );
+		Sf_Test::same( array( 'job.json', 'job.log', 'lock' ), array_values( array_diff( (array) scandir( Storage::jobs_dir() . '/' . $id ), array( '.', '..' ) ) ), 'the download is removed:' );
+		Sf_Test::same( array( $name ), array_values( array_intersect( array( $name ), array_column( Backups::in( Storage::backups_dir() ), 'name' ) ) ), 'the backups list did not change:' );
+
+		// One byte of the stored database dump changed (the size stays the same).
+		$blob   = (string) $sf_b['blob']( $name );
+		$handle = fopen( $blob, 'r+b' );
+		$head   = (string) fread( $handle, 8388608 );
+		$at     = strpos( $head, 'INSERT INTO' );
+		Sf_Test::ok( false !== $at, 'the dump is near the start of the stored file' );
+		fseek( $handle, $at + 1 );
+		fwrite( $handle, 'X' );
+		fclose( $handle );
+		list( $id, $token ) = sf_start( $sf_admin, '/checks', array( 'name' => $name, 'place' => $sf_id ) );
+		$job                = sf_rest_drive( $id, $token );
+		Sf_Test::same( 'failed', $job['status'] );
+		Sf_Test::ok( false !== strpos( (string) $job['error'], 'is damaged: 1 files do not match their checksums: database.sql' ), 'named: ' . $job['error'] );
+		Sf_Test::same( false, Check::all()[ $name ][ $sf_id ]['ok'], 'recorded:' );
+		$handle = fopen( $blob, 'r+b' );
+		fseek( $handle, $at + 1 );
+		fwrite( $handle, 'N' );
+		fclose( $handle );
+		Sf_Test::same( sf_local_hash( $name ), $sf_b['hash']( $name ), 'the stored copy put back:' );
+
+		list( $status ) = sf_rest( 'POST', '/checks', $sf_admin, array(), array( 'name' => 'none-2026-01-01-000000000000.tar', 'place' => $sf_id ) );
+		Sf_Test::same( 404, $status, 'checking a copy that is not there:' );
 	}
 );
 

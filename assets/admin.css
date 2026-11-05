@@ -1744,6 +1744,17 @@
 	color: var(--sf-port);
 }
 
+/* A copy whose last check found it intact. */
+.sf-badge.is-checked {
+	background: var(--sf-starboard-wash);
+	color: var(--sf-starboard);
+}
+
+.sf-check-mark {
+	margin-right: 4px;
+	font-weight: 700;
+}
+
 /* The "..." menu of a row. */
 .sf-menu {
 	position: relative;

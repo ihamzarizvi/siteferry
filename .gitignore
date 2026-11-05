@@ -13,3 +13,6 @@
 
 # The relay's live settings (Google client secret); only config.sample.php is committed.
 /relay/config.php
+
+# Plugin zips built for installing.
+/dist/

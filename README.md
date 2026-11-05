@@ -8,7 +8,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.12.0-f97316" alt="Version 0.12.0">
+  <img src="https://img.shields.io/badge/version-0.13.0-f97316" alt="Version 0.13.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -23,7 +23,7 @@ Large sites are no problem: every job runs in short, resumable steps, so the PHP
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.12.0). Checking a stored copy of a backup is next; see the
+> SiteFerry is in active development (0.13.0). Encrypted backups are next; see the
 > [roadmap](#roadmap).
 
 ## Contents
@@ -114,6 +114,8 @@ upload limits and dropped connections don't break a backup or a restore.
 - **Dropbox**: one-click "Sign in with Dropbox", or your own Dropbox app. App folder access only,
   no app secret anywhere (PKCE), and the tokens never leave your site and Dropbox.
 - Connection tests that write, read, list and delete a small file.
+- **Check a stored copy**: SiteFerry downloads it, compares every file with the backup's own
+  checksums and deletes the download again. The list shows which copies were checked and how.
 
 </details>
 
@@ -351,6 +353,20 @@ sequenceDiagram
 
 </details>
 
+**Check a copy.** A backup's **...** menu has **Check the copy on this server** and **Check the
+copy on** each storage that holds it. The copy is read from start to end without unpacking
+anything: every file is compared with the backup's own SHA-256 checksum list, the database dump
+must be complete, and anything an import would refuse counts as damage. A copy on a storage is
+downloaded into SiteFerry's protected folder first and deleted afterwards; the backups list does
+not change. The place badges then show a tick for an intact copy and a warning for a damaged one
+(hover for the date and details). A `.wpress` file has no checksums, so for it the check only
+makes sure it reads to its end.
+
+```bash
+wp siteferry backups check mysite-2026-11-05-1a2b3c4d5e6f.tar
+wp siteferry backups check mysite-2026-11-05-1a2b3c4d5e6f.tar --storage=dropbox
+```
+
 ## Import .wpress backups (All-in-One WP Migration)
 
 SiteFerry reads and writes `.wpress` files, the backup format of the All-in-One WP Migration
@@ -390,6 +406,7 @@ wp siteferry import <file> [--tables=wp_posts,wp_postmeta] [--paths=uploads,plug
 
 # Backups and storage
 wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]
+wp siteferry backups check <name> [--storage=<id>]
 wp siteferry storage test|list <id>
 wp siteferry storage send <id> <backup>
 wp siteferry storage fetch <id> <name>
@@ -526,7 +543,7 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] Safety backup before a restore, with Undo
 - [x] A quick backup before WordPress, plugin and theme updates
 - [x] Look inside a backup (list and download single files); restore only parts of it
-- [ ] Check a stored copy (download it and verify its checksums)
+- [x] Check a stored copy (download it and verify its checksums)
 - [ ] Encrypted backups with a password (and password-protected .wpress backups)
 - [ ] Space report before a backup
 - [ ] Backups split into parts, for file size limits

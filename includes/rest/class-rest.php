@@ -11,6 +11,7 @@ namespace SiteFerry\Rest;
 use SiteFerry\Archive\Archive_Exception;
 use SiteFerry\Archive\Io;
 use SiteFerry\Backups;
+use SiteFerry\Check\Check;
 use SiteFerry\Contents;
 use SiteFerry\Database\Dumper;
 use SiteFerry\Export\Export;
@@ -79,6 +80,8 @@ final class Rest {
 			array( '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_backup', $admin ),
 			array( '/backups/' . self::NAME . '/download', WP_REST_Server::READABLE, 'download', $admin ),
 			array( '/backups/' . self::NAME . '/contents', WP_REST_Server::READABLE, 'contents_of', $admin ),
+			array( '/checks', WP_REST_Server::READABLE, 'checks', $admin ),
+			array( '/checks', WP_REST_Server::CREATABLE, 'start_check', $admin ),
 			array( '/backups/' . self::NAME . '/file', WP_REST_Server::READABLE, 'backup_file', $admin ),
 			array( '/exports', WP_REST_Server::CREATABLE, 'start_export', $admin ),
 			array( '/imports', WP_REST_Server::CREATABLE, 'start_import', $admin ),
@@ -284,6 +287,7 @@ final class Rest {
 			throw new Job_Exception( 'The backup could not be deleted.', Job_Exception::STEP );
 		}
 		Contents::forget( (string) $request['name'] );
+		Check::forget( (string) $request['name'], Check::LOCAL );
 		return array( 'deleted' => (string) $request['name'] );
 	}
 
@@ -340,6 +344,31 @@ final class Rest {
 			}
 		}
 		return $out;
+	}
+
+	/**
+	 * Outcomes of the checks of backup copies: name => place => { time, ok, size, summary }.
+	 *
+	 * @param WP_REST_Request $request Request (unused).
+	 */
+	public static function checks( WP_REST_Request $request ): array {
+		unset( $request );
+		return Check::all();
+	}
+
+	/**
+	 * Starts checking one copy of a backup: "name", and "place" ("local" or a storage id).
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function start_check( WP_REST_Request $request ): array {
+		self::assert_idle();
+		$params = (array) $request->get_json_params();
+		list( $job, $token ) = Check::start( isset( $params['name'] ) ? (string) $params['name'] : '', isset( $params['place'] ) ? (string) $params['place'] : Check::LOCAL );
+		return array(
+			'job'   => $job->summary(),
+			'token' => $token,
+		);
 	}
 
 	/**
@@ -642,6 +671,7 @@ final class Rest {
 			throw new Job_Exception( 'Unknown backup.', Job_Exception::NOT_FOUND );
 		}
 		Destinations::driver( (string) $request['dest'] )->delete( $name );
+		Check::forget( $name, (string) $request['dest'] );
 		return array( 'deleted' => $name );
 	}
 

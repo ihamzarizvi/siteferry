@@ -182,6 +182,7 @@ final class Storage_Command {
 		WP_CLI::confirm( sprintf( 'Delete %s from the storage? This cannot be undone.', $name ), $assoc_args );
 		try {
 			Destinations::driver( (string) $args[0] )->delete( $name );
+			\SiteFerry\Check\Check::forget( $name, (string) $args[0] );
 		} catch ( \Throwable $e ) {
 			WP_CLI::error( $e->getMessage() );
 		}

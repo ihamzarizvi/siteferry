@@ -10,8 +10,8 @@
 	const cfg = window.SiteFerryConfig || {};
 	const $ = ( id ) => document.getElementById( id );
 	const JOB_KEY = 'siteferry.job';
-	const JOB_NAMES = { export: 'A backup', import: 'A restore', send: 'A transfer to storage', fetch: 'A download from storage' };
-	const JOB_TYPES = { export: 'Backup', import: 'Restore', send: 'Send to storage', fetch: 'Download from storage' };
+	const JOB_NAMES = { export: 'A backup', import: 'A restore', send: 'A transfer to storage', fetch: 'A download from storage', check: 'A check of a backup' };
+	const JOB_TYPES = { export: 'Backup', import: 'Restore', send: 'Send to storage', fetch: 'Download from storage', check: 'Check a copy' };
 	const JOB_STATES = {
 		pending: [ 'Not started', 'is-busy' ],
 		running: [ 'Not finished', 'is-busy' ],
@@ -40,6 +40,8 @@
 		'export.wpress': 'Make .wpress',
 		'schedule.finish': 'Wrap up',
 		'import.safety': 'Safety backup',
+		'check.download': 'Download',
+		'check.verify': 'Verify',
 		upload: 'Upload',
 	};
 	const DROP_INS = [ 'advanced-cache.php', 'object-cache.php', 'db.php', 'db-error.php' ];
@@ -52,6 +54,7 @@
 	let localBackups = null;
 	let remote = {};
 	let labels = {};
+	let checks = {};
 	let filter = { text: '', tag: '' };
 	let editing = '';
 	let restore = null;
@@ -925,7 +928,17 @@
 			return null;
 		}
 		store.remove( JOB_KEY );
-		if ( job.status !== 'done' ) {
+		if ( job.type === 'check' ) {
+			const checked = job.result && job.result.checked;
+			if ( job.status === 'done' ) {
+				view.finish( true, 'Intact', [ el( 'p', { text: 'The copy on ' + checked.where + ' is intact. ' + checked.summary } ) ] );
+			} else {
+				view.finish( false, checked && checked.ok === false ? 'Damaged' : 'Not checked', [
+					el( 'p', { text: job.error } ),
+					...( checked && checked.ok === false ? [ el( 'p', { text: 'Do not rely on this copy: make a new backup, or use another copy of this one.' } ) ] : [] ),
+				] );
+			}
+		} else if ( job.status !== 'done' ) {
 			view.finish( false, job.type === 'send' ? 'Not sent' : 'Not downloaded', [ el( 'p', { text: job.error } ), ...warningList( job ) ] );
 		} else if ( job.type === 'send' ) {
 			view.finish( true, 'Sent', [ el( 'p', {}, [ el( 'span', { class: 'sf-result-name', text: job.result.sent.name } ), ' is now on ' + job.result.sent.where + '.' ] ) ] );
@@ -953,6 +966,17 @@
 		return startTransfer( 'storage/' + d.id + '/send', { backup: name }, 'Sending ' + name + ' to ' + d.label + '...', [ 'This server', d.short ] );
 	}
 
+	/** Reads one copy of a backup from start to end and compares it with its checksums. */
+	function checkCopy( item, place ) {
+		const d = place === 'local' ? null : destination( place );
+		return startTransfer(
+			'checks',
+			{ name: item.name, place },
+			'Checking the copy of ' + called( item ) + ' on ' + ( d ? d.label : 'this server' ) + '; nothing changes...',
+			d ? [ d.short, 'Checked' ] : [ 'Backup', 'Checked' ]
+		);
+	}
+
 	function fetchFrom( d, name ) {
 		return startTransfer( 'storage/' + d.id + '/fetch', { name }, 'Downloading ' + name + ' from ' + d.label + '...', [ d.short, 'This server' ] );
 	}
@@ -967,6 +991,18 @@
 		loadLocalBackups();
 		loadRemote();
 		loadLabels();
+		loadChecks();
+	}
+
+	/** Outcomes of the checks of backup copies: name => place => { time, ok, size, summary }. */
+	async function loadChecks() {
+		try {
+			const data = await api( 'GET', 'checks' );
+			checks = data && ! Array.isArray( data ) ? data : {};
+		} catch ( error ) {
+			checks = {};
+		}
+		renderList();
 	}
 
 	/** Names, notes and tags by file name (also for backups that are only on a storage). */
@@ -1025,6 +1061,7 @@
 				tags: b.tags || [],
 				local: true,
 				places: [],
+				sizes: { local: b.size },
 			} );
 		} );
 		Object.keys( remote ).forEach( ( id ) => {
@@ -1042,10 +1079,12 @@
 						tags: label.tags || [],
 						local: false,
 						places: [],
+						sizes: {},
 					};
 					map.set( b.name, item );
 				}
 				item.places.push( id );
+				item.sizes[ id ] = b.size;
 			} );
 		} );
 		return Array.from( map.values() ).sort( ( a, b ) => ( b.time || 0 ) - ( a.time || 0 ) );
@@ -1183,6 +1222,20 @@
 		return el( 'span', { class: 'sf-badge' + ( tone ? ' ' + tone : '' ), text } );
 	}
 
+	/** Where a copy is, with the outcome of its last check (if it is about this very copy). */
+	function placeBadge( item, place, text ) {
+		const outcome = checks[ item.name ] && checks[ item.name ][ place ];
+		if ( ! outcome || ( item.sizes && item.sizes[ place ] !== undefined && item.sizes[ place ] !== outcome.size ) ) {
+			return badge( text, 'is-place' );
+		}
+		const when = 'Checked ' + date( outcome.time ) + ': ' + outcome.summary;
+		return el( 'span', { class: 'sf-badge is-place ' + ( outcome.ok ? 'is-checked' : 'is-bad' ), title: when }, [
+			el( 'span', { class: 'sf-check-mark', 'aria-hidden': 'true', text: outcome.ok ? '✓' : '!' } ),
+			text,
+			el( 'span', { class: 'screen-reader-text', text: outcome.ok ? ', checked: intact' : ', checked: damaged' } ),
+		] );
+	}
+
 	function row( item ) {
 		const mine = ours( item );
 		const title = item.title || ( mine ? when( item.time ) : hostOf( item.source ) || 'Another site' );
@@ -1213,9 +1266,9 @@
 
 		const places = [];
 		if ( item.local ) {
-			places.push( badge( 'This server', 'is-place' ) );
+			places.push( placeBadge( item, 'local', 'This server' ) );
 		}
-		item.places.forEach( ( id ) => places.push( badge( ( destination( id ) || { short: id } ).short, 'is-place' ) ) );
+		item.places.forEach( ( id ) => places.push( placeBadge( item, id, ( destination( id ) || { short: id } ).short ) ) );
 
 		const actions = [];
 		if ( ! item.error ) {
@@ -1323,7 +1376,7 @@
 		title.focus();
 	}
 
-	/** The "..." menu of a row: look inside, download, send, delete. */
+	/** The "..." menu of a row: look inside, download, send, check, delete. */
 	function menu( item ) {
 		const entries = [ menuItem( 'Name, note and tags', () => openEditor( item ) ) ];
 		const ready = destinations.filter( ( d ) => d.ready );
@@ -1338,6 +1391,15 @@
 			const d = destination( id );
 			if ( d && ! item.local ) {
 				entries.push( menuItem( 'Download to this server', () => fetchFrom( d, item.name ) ) );
+			}
+		} );
+		if ( item.local ) {
+			entries.push( menuItem( 'Check the copy on this server', () => checkCopy( item, 'local' ) ) );
+		}
+		item.places.forEach( ( id ) => {
+			const d = destination( id );
+			if ( d && d.ready ) {
+				entries.push( menuItem( 'Check the copy on ' + d.short, () => checkCopy( item, id ) ) );
 			}
 		} );
 		if ( item.local ) {
@@ -2547,7 +2609,7 @@
 		$( 'siteferry-active-resume' ).onclick = async () => {
 			$( 'siteferry-active' ).hidden = true;
 			showTab( 'backups' );
-			if ( active.type === 'send' || active.type === 'fetch' ) {
+			if ( active.type === 'send' || active.type === 'fetch' || active.type === 'check' ) {
 				await runTransfer( active.id, token, 'Resuming...' );
 			} else if ( active.type === 'export' ) {
 				const view = progressView( 'siteferry-job-progress' );

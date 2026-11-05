@@ -402,6 +402,17 @@ final class Fake_S3 {
 	}
 
 	/**
+	 * File that holds the stored bytes, or null.
+	 *
+	 * @param string $key    Key.
+	 * @param string $bucket Bucket.
+	 */
+	public function blob( string $key, string $bucket = 'sftest' ): ?string {
+		$file = $this->object_file( $bucket, $key );
+		return is_file( $file ) ? $file : null;
+	}
+
+	/**
 	 * SHA-256 of a stored object, or null.
 	 *
 	 * @param string $key    Key.

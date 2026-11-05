@@ -77,6 +77,11 @@ final class Fetch_Step implements Step {
 			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		}
 
+		if ( false === $job->option( 'adopt', true ) ) {
+			// A check reads the download where it is and deletes it afterwards.
+			$job->log( 'info', sprintf( 'Downloaded %s from %s for the check.', $name, $driver->describe() ) );
+			return true;
+		}
 		try {
 			$final = Backups::adopt( $part, $name, (string) $job->option( 'output_dir' ) );
 		} catch ( Archive_Exception $e ) {

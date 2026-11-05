@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.12.0
+Stable tag: 0.13.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -36,7 +36,8 @@ The SiteFerry menu (administrators only) has these tabs:
   Below, one list of every backup on this server and on each storage, newest first, with where
   each copy is, its name, note and tags, a search box and a tag filter. Each backup's menu
   downloads it (through an authenticated PHP stream with Range support), sends it to a storage,
-  edits its name, note and tags (the file name stays), or deletes a copy.
+  edits its name, note and tags (the file name stays), checks a copy (see "Checking a copy"
+  below), or deletes a copy.
   "Restore" (a backup of this site) or "Move here" (a backup of another site) opens a panel that
   checks the backup first (versions, disk space, files) without changing anything, says what will
   happen, and only then offers to go ahead. A backup that is only on a storage is downloaded to
@@ -112,6 +113,7 @@ and themes are left out, so it is quick. It stays on this server, named "Before 
 * `wp siteferry export [--format=tar|wpress] [--compress] [--exclude=media,plugins,themes,inactive-plugins,inactive-themes,spam-comments,revisions] [--include-cache] [--exclude-tables=...] [--exclude-paths=...] [--dir=...] [--porcelain]`
 * `wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] [--include-mu-plugins] [--include-drop-ins] [--force] [--skip-safety-backup] [--only-database|--only-files] [--tables=...] [--paths=...] [--yes]`
 * `wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]`
+* `wp siteferry backups check <name> [--storage=<id>]`
 * `wp siteferry export --send=<id> [--delete-after-send]`
 * `wp siteferry storage test|list <id>`, `wp siteferry storage send <id> <backup>`,
   `wp siteferry storage fetch <id> <name>`, `wp siteferry storage delete <id> <name> [--yes]`
@@ -278,6 +280,16 @@ least 32 random characters) in wp-config.php before saving the settings.
 If anything fails after step 5 starts, the previous tables and files are put back. After an import,
 log in with the imported site's users.
 
+= Checking a copy =
+
+"Check the copy on ..." in a backup's menu reads that copy from start to end without unpacking
+anything. Every file is compared with the backup's own SHA-256 checksum list; the manifest must be
+there, the database dump complete and of the size the manifest gives, and entries an import would
+refuse count as damage. A copy on a storage is downloaded into SiteFerry's protected folder first
+and deleted afterwards. The outcome shows on the copy's place badge (a tick, or a warning) and
+stays until the copy is deleted. A .wpress file has no checksums: its check only makes sure it
+reads to its end.
+
 = Safety backup and Undo =
 
 Rolling back on failure protects against a restore that breaks halfway; the safety backup protects
@@ -353,6 +365,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.13.0 =
+* Check a copy of a backup: "Check the copy on this server" and "Check the copy on <storage>" in a backup's menu read it from start to end and compare every file with its checksums, without unpacking anything; a copy on a storage is downloaded for the check and deleted again. The place badges show the outcome. WP-CLI: `wp siteferry backups check <name> [--storage=<id>]`.
 
 = 0.12.0 =
 * Look inside a backup: "Look inside" in a backup's menu lists its folders and files (sizes, dates) and its database tables, and downloads single files from it. A .tar.gz is read in short steps the first time; the list is kept until the backup changes or is deleted.

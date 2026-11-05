@@ -707,6 +707,20 @@ final class Fake_Dropbox {
 	}
 
 	/**
+	 * File that holds the stored bytes, or null.
+	 *
+	 * @param string $name File name.
+	 */
+	public function blob( string $name ): ?string {
+		foreach ( $this->files() as $file ) {
+			if ( $file['name'] === $name ) {
+				return $this->dir . '/blobs/' . $file['blob'];
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * SHA-256 of the file with a name (at any depth), or null.
 	 *
 	 * @param string $name File name.

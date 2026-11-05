@@ -561,12 +561,14 @@ final class Schedule {
 				return sprintf( '%s could not be deleted on this server.', $name );
 			}
 			\SiteFerry\Contents::forget( $name );
+			\SiteFerry\Check\Check::forget( $name, \SiteFerry\Check\Check::LOCAL );
 		} catch ( \Throwable $e ) {
 			unset( $e ); // Not a backup name any more, or gone: nothing to delete here.
 		}
 		if ( '' !== (string) $run['destination'] ) {
 			try {
 				Destinations::driver( (string) $run['destination'] )->delete( $name );
+				\SiteFerry\Check\Check::forget( $name, (string) $run['destination'] );
 			} catch ( \Throwable $e ) {
 				return sprintf( '%s could not be deleted on %s: %s', $name, Destinations::short_label( (string) $run['destination'] ), $e->getMessage() );
 			}

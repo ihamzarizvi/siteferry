@@ -135,6 +135,7 @@ final class Safety_Step implements Step {
 			return;
 		}
 		\SiteFerry\Contents::forget( $name );
+		\SiteFerry\Check\Check::forget( $name );
 		try {
 			Labels::set( $name, '', '', array() );
 		} catch ( Job_Exception $e ) {

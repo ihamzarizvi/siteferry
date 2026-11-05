@@ -171,7 +171,21 @@ final class Fake_Google {
 	}
 
 	/**
-	 * SHA-256 of the newest untrashed file with a name, or null.
+	 * File that holds the stored bytes, or null.
+	 *
+	 * @param string $name File name.
+	 */
+	public function blob( string $name ): ?string {
+		foreach ( array_reverse( $this->files(), true ) as $id => $file ) {
+			if ( $file['name'] === $name ) {
+				return $this->dir . '/blobs/' . $id;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * SHA-256 of the newest file with a name, or null.
 	 *
 	 * @param string $name File name.
 	 */
