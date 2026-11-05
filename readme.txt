@@ -1,4 +1,5 @@
 === SiteFerry ===
+Contributors: hamzarizvi
 Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
