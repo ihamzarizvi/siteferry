@@ -149,8 +149,9 @@ final class Package {
 				'charset' => '' !== $facts['charset'] ? $facts['charset'] : self::text( $database, 'Charset' ),
 				'collate' => '' !== $facts['collate'] ? $facts['collate'] : self::text( $database, 'Collate' ),
 				'size'    => (int) $facts['size'],
-				'rows'    => $rows,
-				'tables'  => $tables,
+				'rows'       => $rows,
+				'rows_exact' => true, // Counted while the dump was converted.
+				'tables'     => $tables,
 			),
 			'files'          => array(
 				'root'       => 'wp-content',

@@ -16,6 +16,11 @@
                         and the undo point exist after the first import, and that after the undo every
                         table but the options table (CHECKSUM TABLE) and every file in wp-content is
                         exactly as before, the marker content is gone and the undo point is cleared.
+    -Scenario partial   Imports such a backup of siteferry-dst restoring only the posts and postmeta
+                        tables and the smallest plugin, after changing that plugin, a file in uploads
+                        and an option. Checks that the marker post and the plugin are back, and that
+                        every other table, the options and every other file are exactly as before.
+                        Does not touch siteferry-src.
     -Scenario archive   Imports an existing backup (-Archive). Checks addresses and leftovers, and with
                         -SourceChecksums (a "table checksum" list of the source site) that every table
                         the search-replace did not change is identical to the source. -VerifyOnly runs
@@ -24,7 +29,7 @@
     Run each scenario only with the site owner's permission: it replaces siteferry-dst's content.
 #>
 param(
-    [ValidateSet('site', 'rollback', 'undo', 'archive')] [string] $Scenario = 'site',
+    [ValidateSet('site', 'rollback', 'undo', 'partial', 'archive')] [string] $Scenario = 'site',
     [string] $Archive = '',
     [string] $SourceChecksums = '',
     [switch] $VerifyOnly,
@@ -253,6 +258,83 @@ try {
         # The safety backup is test data now: remove it and its label.
         Remove-Item -LiteralPath (Join-Path $backups $safety) -Force -ErrorAction SilentlyContinue
         Wp $dst @($noCron, 'eval', "SiteFerry\Labels::set( '$safety', '', '', array() );") | Out-Null
+    }
+
+    if ($Scenario -eq 'partial') {
+        # The smallest plugin besides SiteFerry is the one restored on its own.
+        $pluginsDir = Join-Path $dst.Public 'wp-content\plugins'
+        $plugin = Get-ChildItem $pluginsDir -Directory | Where-Object { $_.Name -ne 'siteferry' } |
+            Sort-Object { (Get-ChildItem $_.FullName -Recurse -File | Measure-Object Length -Sum).Sum } | Select-Object -First 1
+        if (-not $plugin) { throw 'siteferry-dst needs one plugin besides SiteFerry for this scenario.' }
+        $pluginTree = Tree $plugin.FullName ''
+        $prefix = (Wp $dst @('config', 'get', 'table_prefix') | Select-Object -Last 1).Trim()
+
+        $file = Export-Self
+        Write-Host "Exported $file; restoring only ${prefix}posts, ${prefix}postmeta and plugins/$($plugin.Name)"
+
+        # Changes after the backup: the chosen plugin (one file changed, one added), a file in
+        # uploads and an option. Only the plugin's changes are undone by the partial restore.
+        $changed = Get-ChildItem $plugin.FullName -File -Recurse | Sort-Object FullName | Select-Object -First 1
+        $original = [IO.File]::ReadAllBytes($changed.FullName)
+        $added = Join-Path $plugin.FullName 'sftest-added.txt'
+        $uploadsMarker = Join-Path $dst.Public 'wp-content\uploads\sftest-partial.txt'
+        try {
+            Add-Content -LiteralPath $changed.FullName -Value "`n/* sftest partial */"
+            Set-Content -LiteralPath $added -Value 'added after the backup'
+            Set-Content -LiteralPath $uploadsMarker -Value 'stays'
+            Wp $dst @('option', 'update', 'sftest_partial', 'after') | Out-Null
+            $before = DbState $dst
+            $treeBefore = Tree (Join-Path $dst.Public 'wp-content') ('siteferry-*,plugins/siteferry,plugins/' + $plugin.Name)
+
+            $out = Wp $dst @($noCron, 'siteferry', 'import', $file, "--tables=${prefix}posts,${prefix}postmeta", ('--paths=plugins/' + $plugin.Name), '--skip-safety-backup', '--yes')
+            Write-Host (($out | Select-Object -Last 3) -join "`n")
+            $after = DbState $dst
+            $treeAfter = Tree (Join-Path $dst.Public 'wp-content') ('siteferry-*,plugins/siteferry,plugins/' + $plugin.Name)
+
+            Check 'the check said what is restored, and the import reported a partial restore' {
+                $text = $out -join "`n"
+                Assert ($text -match 'Restores:\s+Only 2 of \d+ tables') ('no "Restores" line: ' + $text)
+                Assert ($text -match ('wp-content/plugins/' + [regex]::Escape($plugin.Name))) 'the plugin is not named'
+                Assert ($text -match 'everything else on this site stayed as it was') 'no partial success line'
+            }
+            Check 'the chosen tables were replaced: the marker post is back' {
+                $ids = (Wp $dst @('post', 'list', '--post_type=post', '--title=SFTEST-UNDO', '--field=ID', '--post_status=any')) -join ''
+                Assert ($ids.Trim() -ne '') 'marker post missing after the import'
+            }
+            Check 'every other table is exactly as before (CHECKSUM TABLE; the options table by its markers)' {
+                $skip = @(($prefix + 'posts'), ($prefix + 'postmeta'), ($prefix + 'options'))
+                $diff = Compare-Object @($before.checksums.PSObject.Properties | Where-Object { $skip -notcontains $_.Name } | ForEach-Object { "$($_.Name)=$($_.Value)" }) @($after.checksums.PSObject.Properties | Where-Object { $skip -notcontains $_.Name } | ForEach-Object { "$($_.Name)=$($_.Value)" })
+                Assert ($null -eq $diff) ('tables differ: ' + (($diff | ForEach-Object { $_.SideIndicator + $_.InputObject }) -join ', '))
+                $kept = (Wp $dst @($noCron, 'option', 'get', 'sftest_partial') | Select-Object -Last 1).Trim()
+                Assert ($kept -eq 'after') "an option changed after the backup is now '$kept'"
+                Wp $dst @($noCron, 'option', 'get', 'sftest_undo') -AllowFail | Out-Null
+                Assert ($script:lastCode -ne 0) 'the backup''s marker option came back although the options were not restored'
+                Assert ($after.home -eq $dst.Url -and $after.siteurl -eq $dst.Url) "home=$($after.home) siteurl=$($after.siteurl)"
+            }
+            Check 'the chosen plugin is exactly as in the backup' {
+                Assert ((Tree $plugin.FullName '') -eq $pluginTree) ('plugins/' + $plugin.Name + ' differs from the backup')
+            }
+            Check 'every other file in wp-content was left alone' {
+                Assert ($treeAfter -eq $treeBefore) 'wp-content outside the chosen plugin differs'
+                Assert (Test-Path -LiteralPath $uploadsMarker) 'a file added to uploads after the backup is gone'
+            }
+            Check 'no leftovers' {
+                Assert (@($after.import_tables).Count -eq 0) ('import tables left: ' + ($after.import_tables -join ', '))
+                Assert (-not (Test-Path (Join-Path $dst.Public '.maintenance'))) 'maintenance file left behind'
+                Wp $dst @('plugin', 'is-active', 'siteferry') -AllowFail | Out-Null
+                Assert ($script:lastCode -eq 0) 'SiteFerry is not active after the import'
+            }
+
+        }
+        finally {
+            # Back to how dst was before the scenario, whatever happened: the plugin file as it was, the
+            # added files, the marker post and both options gone.
+            [IO.File]::WriteAllBytes($changed.FullName, $original)
+            Remove-Item -LiteralPath $added, $uploadsMarker -Force -ErrorAction SilentlyContinue
+            foreach ($id in (Wp $dst @('post', 'list', '--post_type=post', '--title=SFTEST-UNDO', '--field=ID', '--post_status=any'))) { Wp $dst @('post', 'delete', $id, '--force') | Out-Null }
+            Wp $dst @('option', 'delete', 'sftest_partial') -AllowFail | Out-Null
+            Wp $dst @('option', 'delete', 'sftest_undo') -AllowFail | Out-Null
+        }
     }
 
     if ($Scenario -eq 'archive') {

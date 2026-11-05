@@ -51,6 +51,14 @@ final class Tar_Extractor {
 	private $allow;
 
 	/**
+	 * Optional filter: function( string $path, Tar_Entry $entry ): bool, true passes over an entry
+	 * (after it was checked like any other) without writing it.
+	 *
+	 * @var callable|null
+	 */
+	private $skip;
+
+	/**
 	 * Save hash state directly when PHP allows it.
 	 *
 	 * @var bool
@@ -86,7 +94,10 @@ final class Tar_Extractor {
 	 * @param array        $options {
 	 *     Optional settings.
 	 *
-	 *     @type callable $allow          function( string $path, Tar_Entry $entry ): bool.
+	 *     @type callable $allow          function( string $path, Tar_Entry $entry ): bool; false refuses
+	 *                                    the archive.
+	 *     @type callable $skip           function( string $path, Tar_Entry $entry ): bool; true leaves
+	 *                                    an allowed entry out.
 	 *     @type bool     $windows        Force Windows name rules on or off (default: this server's OS).
 	 *     @type bool     $serialize_hash Save hash state directly when possible. Default true.
 	 * }
@@ -103,6 +114,7 @@ final class Tar_Extractor {
 		$this->root           = rtrim( $real, '/\\' );
 		$this->windows        = isset( $options['windows'] ) ? (bool) $options['windows'] : null;
 		$this->allow          = isset( $options['allow'] ) ? $options['allow'] : null;
+		$this->skip           = isset( $options['skip'] ) ? $options['skip'] : null;
 		$this->serialize_hash = ! isset( $options['serialize_hash'] ) || (bool) $options['serialize_hash'];
 
 		if ( null !== $state && ! empty( $state['current'] ) ) {
@@ -149,6 +161,13 @@ final class Tar_Extractor {
 					sprintf( 'The archive contains "%s", which is outside the allowed folders.', Path_Guard::printable( $path ) ),
 					Archive_Exception::UNSAFE_PATH
 				);
+			}
+			if ( null !== $this->skip && true === call_user_func( $this->skip, $path, $entry ) ) {
+				// Its data is passed over by the next call to next(), in this slice or the next one.
+				if ( null !== $budget && $budget->exhausted() ) {
+					return false;
+				}
+				continue;
 			}
 
 			if ( $entry->is_dir() ) {

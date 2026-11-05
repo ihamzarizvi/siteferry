@@ -656,7 +656,10 @@
 	overflow: auto;
 	border: 1px solid var(--sf-fog);
 	border-radius: var(--sf-radius);
-	columns: 2 300px;
+	/* A grid, not CSS columns: columns in a box of limited height overflow sideways. */
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+	align-content: start;
 	column-gap: 24px;
 }
 
@@ -1293,6 +1296,183 @@
 
 .sf-restore-actions {
 	justify-content: flex-end;
+}
+
+.sf-restore-what {
+	margin: 14px 0 4px;
+}
+
+.sf-restore-what legend {
+	margin-bottom: 6px;
+	font-weight: 600;
+}
+
+/* ---------------------------------------------------------- look inside */
+
+.sf-contents {
+	border-color: var(--sf-ink-soft);
+	box-shadow: inset 4px 0 0 var(--sf-ink);
+}
+
+.sf-contents:focus {
+	outline: none;
+}
+
+.siteferry .sf-contents .sf-card-title {
+	font-size: 17px;
+	overflow-wrap: anywhere;
+}
+
+.sf-crumbs {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 6px;
+	margin: 4px 0 10px;
+	font-family: var(--sf-mono);
+	font-size: 13px;
+}
+
+.sf-crumb {
+	padding: 2px 4px;
+	border: 0;
+	border-radius: 3px;
+	background: none;
+	color: var(--sf-accent);
+	font: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.sf-crumb:focus-visible,
+.sf-tree-open:focus-visible {
+	outline: 2px solid var(--sf-focus);
+	outline-offset: 1px;
+}
+
+.sf-crumb.is-current {
+	color: var(--sf-text);
+	font-weight: 600;
+	text-decoration: none;
+	cursor: default;
+}
+
+.sf-crumb-sep {
+	color: var(--sf-ink-soft);
+}
+
+.sf-contents-wait {
+	color: var(--sf-ink-soft);
+}
+
+.sf-contents-body {
+	max-height: 520px;
+	overflow: auto;
+}
+
+.sf-contents-db {
+	margin: 0 0 12px;
+	padding: 10px 12px;
+	border: 1px solid var(--sf-fog);
+	border-radius: var(--sf-radius);
+}
+
+.sf-contents-db .sf-more {
+	margin-top: 10px;
+	padding-top: 8px;
+}
+
+.sf-contents-db-all {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 8px;
+}
+
+.sf-contents-db-all .dashicons {
+	color: var(--sf-accent);
+}
+
+.sf-tree {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.sf-tree td {
+	padding: 5px 8px 5px 0;
+	border-bottom: 1px solid var(--sf-fog);
+	vertical-align: middle;
+}
+
+.sf-tree-pick {
+	width: 24px;
+}
+
+.sf-tree-name {
+	overflow-wrap: anywhere;
+	font-family: var(--sf-mono);
+	font-size: 13px;
+}
+
+.sf-tree-name .dashicons {
+	margin-right: 6px;
+	color: var(--sf-ink-soft);
+	font-size: 18px;
+	vertical-align: -4px;
+}
+
+.sf-tree .is-dir .sf-tree-name .dashicons {
+	color: var(--sf-accent);
+}
+
+.sf-tree-open {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--sf-accent);
+	font: inherit;
+	text-align: left;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.sf-tree-what,
+.sf-tree-size {
+	color: var(--sf-ink-soft);
+	font-family: var(--sf-mono);
+	font-size: 12px;
+	white-space: nowrap;
+}
+
+.sf-tree-size {
+	text-align: right;
+}
+
+.sf-tree-action {
+	width: 1%;
+	white-space: nowrap;
+	text-align: right;
+}
+
+.sf-contents-foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px 16px;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid var(--sf-rope);
+}
+
+.sf-contents-picked {
+	flex: 1 1 280px;
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.sf-contents-foot .sf-actions {
+	margin: 0;
 }
 
 .siteferry .button-primary.sf-danger {
@@ -2088,5 +2268,16 @@ details.sf-dest[open] > .sf-dest-head::after {
 
 	.sf-progress.is-running .sf-ferry svg {
 		animation: none;
+	}
+}
+
+/* Look inside on a phone: the date and file count make way for the name. */
+@media (max-width: 600px) {
+	.sf-tree .sf-tree-what {
+		display: none;
+	}
+
+	.sf-contents-db-all .sf-tree-what {
+		flex-basis: 100%;
 	}
 }

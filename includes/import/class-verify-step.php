@@ -44,6 +44,10 @@ final class Verify_Step implements Step {
 		$missing = array();
 		$changed = array();
 		foreach ( $expected as $path => $hash ) {
+			if ( ! Import::wanted_path( $job, $path ) ) {
+				unset( $expected[ $path ] );
+				continue; // Not unpacked: a partial restore leaves it out.
+			}
 			if ( ! isset( $actual[ $path ] ) ) {
 				$missing[] = $path;
 				continue;

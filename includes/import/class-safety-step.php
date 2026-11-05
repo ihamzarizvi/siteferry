@@ -134,6 +134,7 @@ final class Safety_Step implements Step {
 		if ( is_file( $file ) && ! @unlink( $file ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 			return;
 		}
+		\SiteFerry\Contents::forget( $name );
 		try {
 			Labels::set( $name, '', '', array() );
 		} catch ( Job_Exception $e ) {

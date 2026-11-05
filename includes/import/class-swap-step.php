@@ -65,12 +65,17 @@ final class Swap_Step implements Step {
 		$job->save();
 		$job->log( 'info', 'Maintenance mode on; swapping tables and files.' );
 
-		$this->keep_own_settings( $wpdb, $temp, $live, (string) $job->option( 'own_plugin' ) );
+		// SiteFerry's settings travel into the imported options table, when there is one (a partial
+		// restore may leave the options, or the whole database, as they are).
+		$loaded = (array) $job->state( 'database' )['tables'];
+		if ( in_array( $temp . 'options', $loaded, true ) ) {
+			$this->keep_own_settings( $wpdb, $temp, $live, (string) $job->option( 'own_plugin' ) );
+		}
 
 		// 2. Tables.
 		$existing = array_flip( Raw_Query::column( $wpdb, 'SHOW TABLES LIKE ' . Raw_Query::quote( $wpdb, addcslashes( $live, '_%\\' ) . '%' ) ) );
 		$renames  = array();
-		foreach ( $job->state( 'database' )['tables'] as $table ) {
+		foreach ( $loaded as $table ) {
 			$suffix                     = substr( $table, strlen( $temp ) );
 			$state['tables'][ $suffix ] = isset( $existing[ $live . $suffix ] );
 			if ( $state['tables'][ $suffix ] ) {
@@ -80,8 +85,10 @@ final class Swap_Step implements Step {
 		}
 		$job->set_state( 'swap', $state );
 		$job->save();
-		Raw_Query::run( $wpdb, 'RENAME TABLE ' . implode( ', ', $renames ) );
-		wp_cache_flush();
+		if ( array() !== $renames ) {
+			Raw_Query::run( $wpdb, 'RENAME TABLE ' . implode( ', ', $renames ) );
+			wp_cache_flush();
+		}
 		$job->log( 'info', sprintf( 'Tables swapped (%d).', count( $state['tables'] ) ) );
 
 		// 3. Files.

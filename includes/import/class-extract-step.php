@@ -60,7 +60,13 @@ final class Extract_Step implements Step {
 		$extractor = new Tar_Extractor(
 			$reader,
 			$staging,
-			array( 'allow' => array( self::class, 'allowed' ) ),
+			array(
+				'allow' => array( self::class, 'allowed' ),
+				// A partial restore unpacks only what it restores.
+				'skip'  => static function ( string $path ) use ( $job ): bool {
+					return ! Import::wanted_path( $job, $path );
+				},
+			),
 			isset( $state['extractor'] ) ? $state['extractor'] : null
 		);
 		$sums      = Io::open_or_fail( $job->path( 'extracted.sha256' ), 'c+b' );

@@ -8,7 +8,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.11.0-f97316" alt="Version 0.11.0">
+  <img src="https://img.shields.io/badge/version-0.12.0-f97316" alt="Version 0.12.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -23,8 +23,8 @@ Large sites are no problem: every job runs in short, resumable steps, so the PHP
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.11.0). Looking inside a backup, and restoring only part of
-> it, is next; see the [roadmap](#roadmap).
+> SiteFerry is in active development (0.12.0). Checking a stored copy of a backup is next; see the
+> [roadmap](#roadmap).
 
 ## Contents
 
@@ -94,6 +94,9 @@ upload limits and dropped connections don't break a backup or a restore.
 - If anything fails after the swap starts, the previous site is put back.
 - **Safety backup and Undo**: before anything changes, SiteFerry backs up the site as it is; after
   the restore, **Undo this restore** brings it back if it was the wrong backup.
+- **Look inside a backup**: browse its folders, download single files, see its database tables.
+- **Restore only part of it**: the database, the files, single tables, or one plugin, theme or
+  folder of `wp-content`; everything else on the site stays as it is.
 - Collations a new database server lacks are mapped to close equivalents.
 - SiteFerry itself, its settings and its stored backups stay on the site you restore into.
 
@@ -244,6 +247,22 @@ flowchart LR
 > Different address after the move? Open **Advanced** in the restore panel and enter it.
 > Must-use plugins and server-specific drop-ins are only copied if you tick them there.
 
+**Look inside a backup, and restore only part of it.** **Look inside** in a backup's **...** menu
+lists its folders and files (with sizes and dates) and its database tables; **Download** gets one
+file out of it. Tick what you want back — the whole database or single tables, all files, a
+folder of `wp-content` (such as `uploads`), or one plugin or theme — and click **Restore only
+these**. The restore panel then says what it restores, checks the backup as usual, and leaves
+everything else on the site as it is. **Advanced** in the restore panel also offers **Only the
+database** and **Only the files**. A new site address can only be set when the options table is
+restored too; a safety backup is still a backup of the whole site.
+
+```bash
+# The same from WP-CLI
+wp siteferry import mysite-2026-11-05-1a2b3c4d5e6f.tar --paths=plugins/akismet
+wp siteferry import mysite-2026-11-05-1a2b3c4d5e6f.tar --tables=wp_posts,wp_postmeta
+wp siteferry import mysite-2026-11-05-1a2b3c4d5e6f.tar --only-database
+```
+
 ## Remote storage: S3, FTP, Google Drive and Dropbox
 
 <details>
@@ -364,6 +383,10 @@ wp siteferry export --send=<id> [--delete-after-send]
 # Restore or migrate
 wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] \
   [--include-mu-plugins] [--include-drop-ins] [--force] [--skip-safety-backup] [--yes]
+
+# Restore only part of a backup
+wp siteferry import <file> --only-database | --only-files
+wp siteferry import <file> [--tables=wp_posts,wp_postmeta] [--paths=uploads,plugins/akismet]
 
 # Backups and storage
 wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]
@@ -502,7 +525,7 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] Scheduled backups to your chosen storage, with retention and email
 - [x] Safety backup before a restore, with Undo
 - [x] A quick backup before WordPress, plugin and theme updates
-- [ ] Look inside a backup (list and download single files); restore only parts of it
+- [x] Look inside a backup (list and download single files); restore only parts of it
 - [ ] Check a stored copy (download it and verify its checksums)
 - [ ] Encrypted backups with a password (and password-protected .wpress backups)
 - [ ] Space report before a backup

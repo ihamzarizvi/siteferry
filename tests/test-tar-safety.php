@@ -290,4 +290,94 @@ Sf_Test::run(
 	}
 );
 
+Sf_Test::run(
+	'skip: left-out entries are not written, also across slices; they are still checked first',
+	static function () use ( $dir ) {
+		$archive = $dir . '/skip.tar';
+		$writer  = SiteFerry\Archive\Tar_Writer::create( $archive );
+		$writer->add_string( 'siteferry.json', '{}', 1700000000 );
+		$writer->add_directory( 'wp-content/', 1700000000 );
+		$writer->add_string( 'wp-content/plugins/a/a.php', str_repeat( 'a', 5000 ), 1700000000 );
+		$writer->add_string( 'wp-content/plugins/b/b.php', str_repeat( 'b', 7000 ), 1700000000 );
+		$writer->add_string( 'wp-content/uploads/big.bin', random_bytes( 20000 ), 1700000000 );
+		$writer->add_string( 'wp-content/plugins/a/readme.txt', 'readme', 1700000000 );
+		$writer->finish();
+		$writer->close();
+
+		$skip = static function ( string $path ): bool {
+			return 0 === strpos( $path, 'wp-content/uploads' ) || 0 === strpos( $path, 'wp-content/plugins/b' );
+		};
+		foreach ( array( null, 512 ) as $slice ) {
+			$dest = $dir . '/skip-' . ( null === $slice ? 'whole' : 'slices' );
+			mkdir( $dest );
+			$result = sf_unpack( $archive, $dest, array( 'skip' => $skip ), $slice );
+			Sf_Test::same( array( 'siteferry.json', 'wp-content', 'wp-content/plugins/a/a.php', 'wp-content/plugins/a/readme.txt' ), array_keys( $result['entries'] ), ( null === $slice ? 'one pass' : 'slices' ) . ':' );
+			Sf_Test::same( str_repeat( 'a', 5000 ), file_get_contents( $dest . '/wp-content/plugins/a/a.php' ) );
+			Sf_Test::same( false, file_exists( $dest . '/wp-content/plugins/b' ), 'nothing of a skipped folder:' );
+			Sf_Test::same( false, file_exists( $dest . '/wp-content/uploads' ) );
+			if ( null !== $slice ) {
+				Sf_Test::ok( $result['slices'] > 1, 'several slices (' . $result['slices'] . ')' );
+			}
+		}
+
+		// A slice that ends right after an entry was skipped continues past its data.
+		$dest = $dir . '/skip-each';
+		mkdir( $dest );
+		$state  = null;
+		$slices = 0;
+		do {
+			$reader    = SiteFerry\Archive\Tar_Reader::open( $archive, null === $state ? null : $state['reader'] );
+			$extractor = new SiteFerry\Archive\Tar_Extractor( $reader, $dest, array( 'skip' => $skip ), $state );
+			$done      = $extractor->run( new SiteFerry\Jobs\Slice_Budget( 0.0 ) );
+			$state     = json_decode( (string) json_encode( $extractor->state() ), true );
+			$reader->close();
+			++$slices;
+		} while ( ! $done && $slices < 50 );
+		Sf_Test::ok( $done && $slices >= 6, 'one entry per slice (' . $slices . ' slices)' );
+		Sf_Test::same( 'readme', file_get_contents( $dest . '/wp-content/plugins/a/readme.txt' ), 'the entry after two skipped ones:' );
+		Sf_Test::same( false, file_exists( $dest . '/wp-content/uploads' ) );
+
+		// Skipping never lets an entry through that would be refused.
+		$bad = $dir . '/skip-bad.tar';
+		sf_write_raw_archive( $bad, array( sf_raw_entry( 'wp-content/ok.txt', '0', 'ok' ), sf_raw_entry( '../outside.txt', '0', 'x' ) ) );
+		mkdir( $dir . '/skip-bad' );
+		Sf_Test::throws(
+			Archive_Exception::UNSAFE_PATH,
+			static function () use ( $bad, $dir ) {
+				sf_unpack(
+					$bad,
+					$dir . '/skip-bad',
+					array(
+						'skip' => static function (): bool {
+							return true;
+						},
+					)
+				);
+			},
+			'an unsafe path is refused even when it would be skipped'
+		);
+		$refused = $dir . '/skip-refused.tar';
+		sf_write_raw_archive( $refused, array( sf_raw_entry( 'wp-config.php', '0', 'x' ) ) );
+		mkdir( $dir . '/skip-refused' );
+		Sf_Test::throws(
+			Archive_Exception::UNSAFE_PATH,
+			static function () use ( $refused, $dir ) {
+				sf_unpack(
+					$refused,
+					$dir . '/skip-refused',
+					array(
+						'allow' => static function ( string $path ): bool {
+							return 0 === strpos( $path, 'wp-content/' );
+						},
+						'skip'  => static function (): bool {
+							return true;
+						},
+					)
+				);
+			},
+			'an entry outside the allowed folders is refused even when it would be skipped'
+		);
+	}
+);
+
 exit( Sf_Test::finish( 'test-tar-safety' ) );

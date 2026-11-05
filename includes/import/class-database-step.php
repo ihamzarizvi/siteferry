@@ -48,6 +48,16 @@ final class Database_Step implements Step {
 			$job->state( 'database' )
 		);
 
+		// A partial restore loads only the chosen tables (or none).
+		$only = Import::table_suffixes( $job );
+		if ( array() === $only ) {
+			$state['done'] = true;
+			$job->set_state( 'database', $state );
+			$job->log( 'info', 'The database is not restored, as chosen.' );
+			return true;
+		}
+		$temp = (string) $job->option( 'temp_prefix' );
+
 		$rewriter = new Statement_Rewriter(
 			$inspect['prefix'],
 			$job->option( 'temp_prefix' ),
@@ -61,6 +71,9 @@ final class Database_Step implements Step {
 			$this->prepare_session( $wpdb, $inspect['charset'] );
 			while ( null !== ( $statement = $reader->next() ) ) { // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition
 				$rewritten = $rewriter->rewrite( $statement );
+				if ( null !== $only && null !== $rewritten['table'] && ! in_array( substr( (string) $rewritten['table'], strlen( $temp ) ), $only, true ) ) {
+					$rewritten['type'] = 'skip'; // A table that is not restored.
+				}
 				if ( 'skip' !== $rewritten['type'] ) {
 					Raw_Query::run( $wpdb, $rewritten['sql'] );
 				}
@@ -171,17 +184,34 @@ final class Database_Step implements Step {
 	 * @throws Job_Exception On a mismatch.
 	 */
 	private function check_counts( $db, Job $job, array $tables ): void {
-		$inspect = $job->state( 'inspect' );
-		if ( count( $tables ) !== count( $inspect['tables'] ) ) {
-			throw new Job_Exception( sprintf( 'The backup lists %d tables, but the dump created %d.', count( $inspect['tables'] ), count( $tables ) ), Job_Exception::STEP );
+		$inspect  = $job->state( 'inspect' );
+		$expected = count( $inspect['tables'] );
+		$want     = (int) $inspect['rows'];
+		$chosen   = (array) $job->option( 'restore_tables', array() );
+		if ( array() !== $chosen ) {
+			// Only the chosen tables were loaded: compare with their counts in the manifest.
+			$expected = count( $chosen );
+			$want     = 0;
+			foreach ( $chosen as $table ) {
+				$want += isset( $inspect['table_rows'][ $table ] ) ? (int) $inspect['table_rows'][ $table ] : 0;
+			}
+		}
+		if ( count( $tables ) !== $expected ) {
+			throw new Job_Exception( sprintf( 'The backup lists %d tables to load, but the dump created %d.', $expected, count( $tables ) ), Job_Exception::STEP );
+		}
+		if ( array() !== $chosen && empty( $inspect['rows_exact'] ) ) {
+			// Backups from SiteFerry before 0.12 list estimated rows per table; the dump itself was
+			// verified by its checksum.
+			$job->log( 'info', 'This backup lists only estimated row counts per table, so the rows of the chosen tables are not counted.' );
+			return;
 		}
 		$rows = 0;
 		foreach ( $tables as $table ) {
 			$count = Raw_Query::column( $db, 'SELECT COUNT(*) FROM ' . Sql::identifier( $table ) );
 			$rows += (int) $count[0];
 		}
-		if ( $rows !== (int) $inspect['rows'] ) {
-			throw new Job_Exception( sprintf( 'The backup has %d rows, but %d were loaded.', $inspect['rows'], $rows ), Job_Exception::STEP );
+		if ( $rows !== $want ) {
+			throw new Job_Exception( sprintf( 'The backup has %d rows, but %d were loaded.', $want, $rows ), Job_Exception::STEP );
 		}
 	}
 }

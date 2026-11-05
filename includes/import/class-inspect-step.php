@@ -78,6 +78,25 @@ final class Inspect_Step implements Step {
 			}
 		}
 
+		// A partial restore: the chosen tables must be in the backup; something must be chosen; a
+		// new address needs the options table (where it is stored).
+		$names         = array_column( $manifest['database']['tables'], 'name' );
+		$chosen_tables = (array) $job->option( 'restore_tables', array() );
+		foreach ( $chosen_tables as $table ) {
+			if ( ! in_array( $table, $names, true ) ) {
+				throw new Job_Exception( sprintf( 'The backup has no table "%s".', $table ), Job_Exception::STEP );
+			}
+		}
+		$restore_db    = (bool) $job->option( 'restore_database', true );
+		$restore_files = (bool) $job->option( 'restore_files', true );
+		if ( ! $restore_db && ! $restore_files ) {
+			throw new Job_Exception( 'Choose something to restore: the database, the files, or both.', Job_Exception::STEP );
+		}
+		$options_restored = $restore_db && ( array() === $chosen_tables || in_array( $prefix . 'options', $chosen_tables, true ) );
+		if ( ! $options_restored && '' !== (string) $job->option( 'replace_url' ) ) {
+			throw new Job_Exception( 'A new site address can only be set when the options table is restored too.', Job_Exception::STEP );
+		}
+
 		$needed = (int) $manifest['files']['bytes'] + 2 * (int) $manifest['database']['size'] + self::SPACE_MARGIN;
 		$root   = Storage::root();
 		$free   = function_exists( 'disk_free_space' ) ? Io::quiet(
@@ -108,8 +127,10 @@ final class Inspect_Step implements Step {
 				'target'    => $target,
 				'prefix'    => $prefix,
 				'charset'   => (string) $manifest['database']['charset'],
-				'tables'    => array_column( $manifest['database']['tables'], 'name' ),
+				'tables'    => $names,
 				'rows'      => (int) $manifest['database']['rows'],
+				'table_rows' => array_combine( $names, array_map( 'intval', array_column( $manifest['database']['tables'], 'rows' ) ) ),
+				'rows_exact' => ! empty( $manifest['database']['rows_exact'] ),
 				'files'     => (int) $manifest['files']['files'],
 				'bytes'     => (int) $manifest['files']['bytes'],
 				'db_size'   => (int) $manifest['database']['size'],
@@ -139,6 +160,7 @@ final class Inspect_Step implements Step {
 					'bytes'        => (int) $manifest['files']['bytes'],
 					'replacements' => count( $pairs ),
 					'prefix'       => $prefix . ( $prefix === $site['prefix'] ? '' : ' (becomes ' . $site['prefix'] . ')' ),
+					'restores'     => self::restores( $job, count( $names ) ),
 					'warnings'     => $warnings,
 				),
 			)
@@ -182,6 +204,40 @@ final class Inspect_Step implements Step {
 			}
 		}
 		return $target;
+	}
+
+	/**
+	 * What a partial restore restores, in words ('' when it restores everything).
+	 *
+	 * @param Job $job    The job.
+	 * @param int $tables Tables in the backup.
+	 */
+	private static function restores( Job $job, int $tables ): string {
+		if ( ! Import::partial( $job ) ) {
+			return '';
+		}
+		$what   = array();
+		$chosen = (array) $job->option( 'restore_tables', array() );
+		if ( $job->option( 'restore_database', true ) ) {
+			$what[] = array() === $chosen
+				? 'the database'
+				: sprintf( '%d of %d tables (%s%s)', count( $chosen ), $tables, implode( ', ', array_slice( $chosen, 0, 5 ) ), count( $chosen ) > 5 ? ', ...' : '' );
+		}
+		if ( $job->option( 'restore_files', true ) ) {
+			$paths  = (array) $job->option( 'restore_paths', array() );
+			$what[] = array() === $paths
+				? 'the files'
+				: implode(
+					', ',
+					array_map(
+						static function ( string $path ): string {
+							return 'wp-content/' . $path;
+						},
+						array_slice( $paths, 0, 8 )
+					)
+				) . ( count( $paths ) > 8 ? ', ...' : '' );
+		}
+		return 'Only ' . implode( ' and ', $what );
 	}
 
 	/**

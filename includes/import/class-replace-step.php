@@ -89,7 +89,9 @@ final class Replace_Step implements Step {
 
 		$done = $state['index'] >= count( $state['tables'] );
 		if ( $done ) {
-			$this->set_addresses( $wpdb, $temp, $inspect['target'] );
+			if ( in_array( $temp . 'options', $state['tables'], true ) ) {
+				$this->set_addresses( $wpdb, $temp, $inspect['target'] ); // Unless a partial restore leaves the options as they are.
+			}
 			if ( $state['stats']['broken'] > 0 ) {
 				$job->warn( sprintf( '%d values looked serialized but were already damaged in the backup; they were updated as plain text.', $state['stats']['broken'] ) );
 			}

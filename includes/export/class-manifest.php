@@ -38,11 +38,14 @@ final class Manifest {
 		$scan     = $job->state( 'scan' );
 		$database = $job->state( 'database' );
 
+		// Rows written per table; a job begun by an older version only has the server's estimates.
 		$tables = array();
+		$exact  = true;
 		foreach ( $database['tables'] as $table ) {
+			$exact   = $exact && isset( $table['dumped'] );
 			$tables[] = array(
 				'name' => $table['name'],
-				'rows' => $table['rows'],
+				'rows' => isset( $table['dumped'] ) ? (int) $table['dumped'] : (int) $table['rows'],
 			);
 		}
 
@@ -89,8 +92,9 @@ final class Manifest {
 				'charset' => $site['charset'],
 				'collate' => $site['collate'],
 				'size'    => $database['size'],
-				'rows'    => $database['rows_done'],
-				'tables'  => $tables,
+				'rows'       => $database['rows_done'],
+				'rows_exact' => $exact,
+				'tables'     => $tables,
 			),
 			'files'          => array(
 				'root'       => 'wp-content',

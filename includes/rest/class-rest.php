@@ -11,6 +11,7 @@ namespace SiteFerry\Rest;
 use SiteFerry\Archive\Archive_Exception;
 use SiteFerry\Archive\Io;
 use SiteFerry\Backups;
+use SiteFerry\Contents;
 use SiteFerry\Database\Dumper;
 use SiteFerry\Export\Export;
 use SiteFerry\Import\Import;
@@ -77,6 +78,8 @@ final class Rest {
 			array( '/labels/' . self::NAME, WP_REST_Server::CREATABLE, 'save_label', $admin ),
 			array( '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_backup', $admin ),
 			array( '/backups/' . self::NAME . '/download', WP_REST_Server::READABLE, 'download', $admin ),
+			array( '/backups/' . self::NAME . '/contents', WP_REST_Server::READABLE, 'contents_of', $admin ),
+			array( '/backups/' . self::NAME . '/file', WP_REST_Server::READABLE, 'backup_file', $admin ),
 			array( '/exports', WP_REST_Server::CREATABLE, 'start_export', $admin ),
 			array( '/imports', WP_REST_Server::CREATABLE, 'start_import', $admin ),
 			array( '/jobs', WP_REST_Server::READABLE, 'jobs', $admin ),
@@ -280,6 +283,7 @@ final class Rest {
 		) ) {
 			throw new Job_Exception( 'The backup could not be deleted.', Job_Exception::STEP );
 		}
+		Contents::forget( (string) $request['name'] );
 		return array( 'deleted' => (string) $request['name'] );
 	}
 
@@ -291,6 +295,66 @@ final class Rest {
 	public static function download( WP_REST_Request $request ): void {
 		$path = Backups::path( Storage::backups_dir(), (string) $request['name'] );
 		Backups::stream( $path, $request->get_header( 'range' ) );
+	}
+
+	/**
+	 * What is inside a backup on this server: one folder of it ("dir", '' for the top), and at the
+	 * top the database's tables. The first calls read the backup's headers (a .tar.gz is
+	 * decompressed); until that is done, "complete" is false and the page asks again.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function contents_of( WP_REST_Request $request ): array {
+		$path  = Backups::path( Storage::backups_dir(), (string) $request['name'] );
+		$index = Contents::index( $path, min( Contents::SECONDS, self::slice_seconds() ) );
+		$out   = array(
+			'name'     => (string) $request['name'],
+			'complete' => $index['complete'],
+			'read'     => $index['read'],
+			'size'     => $index['size'],
+			'count'    => count( $index['entries'] ),
+			'dir'      => '',
+			'entries'  => array(),
+			'tables'   => null,
+		);
+		if ( ! $index['complete'] ) {
+			return $out;
+		}
+		$out['dir']     = trim( (string) $request->get_param( 'dir' ), '/' );
+		$out['entries'] = Contents::listing( $index['entries'], $out['dir'] );
+		if ( '' === $out['dir'] ) {
+			try {
+				$manifest      = Backups::manifest( $path );
+				$out['tables'] = array_map(
+					static function ( array $table ): array {
+						return array(
+							'name' => (string) $table['name'],
+							'rows' => (int) $table['rows'],
+						);
+					},
+					(array) $manifest['database']['tables']
+				);
+				$out['prefix'] = (string) $manifest['database']['prefix'];
+			} catch ( \Throwable $e ) {
+				$out['tables'] = null; // A .wpress backup lists its tables only once it is imported.
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Sends one file from inside a backup on this server ("path" as listed) and ends the request.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @throws Job_Exception If there is no such file.
+	 */
+	public static function backup_file( WP_REST_Request $request ): void {
+		$path  = Backups::path( Storage::backups_dir(), (string) $request['name'] );
+		$inner = trim( (string) $request->get_param( 'path' ), '/' );
+		if ( '' === $inner || strlen( $inner ) > 4096 ) {
+			throw new Job_Exception( 'That file is not in the backup.', Job_Exception::NOT_FOUND );
+		}
+		Contents::stream( $path, $inner );
 	}
 
 	/**
@@ -318,7 +382,7 @@ final class Rest {
 		self::assert_idle();
 		$params  = (array) $request->get_json_params();
 		$path    = Backups::path( Storage::backups_dir(), isset( $params['backup'] ) ? (string) $params['backup'] : '' );
-		$options = array_intersect_key( $params, array_flip( array( 'replace_url', 'include_mu_plugins', 'include_drop_ins', 'force', 'safety' ) ) );
+		$options = array_intersect_key( $params, array_flip( array( 'replace_url', 'include_mu_plugins', 'include_drop_ins', 'force', 'safety', 'restore_database', 'restore_tables', 'restore_files', 'restore_paths' ) ) );
 		list( $job, $token ) = Import::start( $path, $options );
 		return array(
 			'job'   => $job->summary(),

@@ -216,6 +216,21 @@ final class Command {
 	 * : Do not make a safety backup of this site first. (By default SiteFerry backs up the whole
 	 * site as it is before anything changes, so the import can be undone by restoring that backup.)
 	 *
+	 * [--only-database]
+	 * : Restore only the database; the files on this site stay as they are.
+	 *
+	 * [--only-files]
+	 * : Restore only the files in wp-content; the database stays as it is.
+	 *
+	 * [--tables=<tables>]
+	 * : Restore only these tables, comma-separated, named as in the backup (e.g. wp_posts,wp_postmeta).
+	 * Unless --paths is given too, no files are restored.
+	 *
+	 * [--paths=<paths>]
+	 * : Restore only these items of wp-content, comma-separated: a top-level item (uploads,
+	 * languages), or one plugin or theme (plugins/akismet, themes/twentytwentyfive). Unless
+	 * --tables is given too, the database is not restored.
+	 *
 	 * [--yes]
 	 * : Do not ask for confirmation.
 	 *
@@ -223,6 +238,8 @@ final class Command {
 	 *
 	 *     wp siteferry import mysite-2026-11-03-1a2b3c4d5e6f.tar
 	 *     wp siteferry import backup.tar.gz --replace-url=https://staging.example.com --yes
+	 *     wp siteferry import mysite-2026-11-03-1a2b3c4d5e6f.tar --paths=plugins/akismet
+	 *     wp siteferry import mysite-2026-11-03-1a2b3c4d5e6f.tar --tables=wp_posts,wp_postmeta
 	 *
 	 * @param string[] $args       Positional arguments: the backup file.
 	 * @param array    $assoc_args Options.
@@ -243,7 +260,7 @@ final class Command {
 			'include_drop_ins'   => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'include-drop-ins', false ),
 			'force'              => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'force', false ),
 			'safety'             => ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-safety-backup', false ),
-		);
+		) + self::restore_parts( $assoc_args );
 
 		try {
 			list( $job ) = Import::start( (string) $args[0], $options );
@@ -257,8 +274,9 @@ final class Command {
 			WP_CLI::error( sprintf( 'Import stopped before any change to this site: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
 		}
 
-		$this->print_inspection( $job->result()['inspection'] );
-		WP_CLI::confirm( 'Replace this site\'s database and files with the backup?', $assoc_args );
+		$inspection = $job->result()['inspection'];
+		$this->print_inspection( $inspection );
+		WP_CLI::confirm( '' !== (string) $inspection['restores'] ? 'Replace these parts of this site with the backup\'s?' : 'Replace this site\'s database and files with the backup?', $assoc_args );
 		Import::confirm( $job );
 
 		self::drive( $job, false );
@@ -274,6 +292,10 @@ final class Command {
 			WP_CLI::log( sprintf( 'Safety backup of the site as it was: %s. Restore it to undo this import.', $result['safety']['name'] ) );
 		}
 		$imported = $result['imported'];
+		if ( '' !== (string) $imported['partial'] ) {
+			WP_CLI::success( sprintf( 'Restored %s from %s (%s); everything else on this site stayed as it was.', lcfirst( (string) $imported['partial'] ), $imported['from'], human_time_diff( 0, max( 1, $imported['seconds'] ) ) ) );
+			return;
+		}
 		WP_CLI::success(
 			sprintf(
 				'Imported %s into %s: %d tables, %s files, %s rows updated for the new address (%s). Log in with the imported site\'s users.',
@@ -298,6 +320,9 @@ final class Command {
 		WP_CLI::log( sprintf( 'From site:   %s (WordPress %s, PHP %s, MySQL %s)', $inspection['from'], $inspection['wordpress'], $inspection['php'], $inspection['mysql'] ) );
 		WP_CLI::log( sprintf( 'Into site:   %s', $inspection['to'] ) );
 		WP_CLI::log( sprintf( 'Contents:    %d tables (prefix %s), %s files, %s', $inspection['tables'], $inspection['prefix'], number_format( $inspection['files'] ), size_format( $inspection['bytes'], 1 ) ) );
+		if ( '' !== (string) $inspection['restores'] ) {
+			WP_CLI::log( sprintf( 'Restores:    %s', $inspection['restores'] ) );
+		}
 		WP_CLI::log( sprintf( 'Addresses:   %d search/replace pairs', $inspection['replacements'] ) );
 		foreach ( $inspection['warnings'] as $warning ) {
 			WP_CLI::warning( $warning );
@@ -366,6 +391,30 @@ final class Command {
 			WP_CLI::error( sprintf( 'The folder "%s" is not writable.', $dir ) );
 		}
 		return $real;
+	}
+
+	/**
+	 * Import options for --only-database, --only-files, --tables and --paths.
+	 *
+	 * @param array $assoc_args Options.
+	 */
+	private static function restore_parts( array $assoc_args ): array {
+		$only_db    = (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'only-database', false );
+		$only_files = (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'only-files', false );
+		$tables     = self::csv( $assoc_args, 'tables' );
+		$paths      = self::csv( $assoc_args, 'paths' );
+		if ( $only_db && $only_files ) {
+			WP_CLI::error( 'Use --only-database or --only-files, not both.' );
+		}
+		if ( ( $only_db && array() !== $paths ) || ( $only_files && array() !== $tables ) ) {
+			WP_CLI::error( '--only-database cannot be used with --paths, nor --only-files with --tables.' );
+		}
+		return array(
+			'restore_database' => ! $only_files && ( array() === $paths || array() !== $tables ),
+			'restore_tables'   => $tables,
+			'restore_files'    => ! $only_db && ( array() === $tables || array() !== $paths ),
+			'restore_paths'    => $paths,
+		);
 	}
 
 	/**

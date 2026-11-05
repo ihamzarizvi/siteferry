@@ -42,6 +42,7 @@
 		'import.safety': 'Safety backup',
 		upload: 'Upload',
 	};
+	const DROP_INS = [ 'advanced-cache.php', 'object-cache.php', 'db.php', 'db-error.php' ];
 	const WEEKDAYS = [ 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' ];
 	const TABS = [ 'backups', 'storage', 'activity' ];
 	// Older links to the page still land somewhere sensible.
@@ -110,7 +111,7 @@
 			headers[ 'Content-Type' ] = 'application/octet-stream';
 			body = options.raw;
 		}
-		const response = await fetch( url( path ), { method, headers, body, credentials: 'same-origin' } );
+		const response = await fetch( url( path, options.query ), { method, headers, body, credentials: 'same-origin' } );
 		let data = null;
 		try {
 			data = await response.json();
@@ -1322,11 +1323,12 @@
 		title.focus();
 	}
 
-	/** The "..." menu of a row: download, send, delete. */
+	/** The "..." menu of a row: look inside, download, send, delete. */
 	function menu( item ) {
 		const entries = [ menuItem( 'Name, note and tags', () => openEditor( item ) ) ];
 		const ready = destinations.filter( ( d ) => d.ready );
 		if ( item.local ) {
+			entries.push( menuItem( 'Look inside', () => openContents( item ) ) );
 			entries.push( el( 'a', { class: 'sf-menu-item', href: downloadUrl( item.name ), text: 'Download to your computer', role: 'menuitem' } ) );
 			if ( ! item.error ) {
 				ready.filter( ( d ) => item.places.indexOf( d.id ) === -1 ).forEach( ( d ) => entries.push( menuItem( 'Send to ' + d.short, () => sendTo( d, item.name ) ) ) );
@@ -1545,7 +1547,11 @@
 	 * Opens the restore panel for a backup and checks it straight away (nothing on the site changes
 	 * until "Restore now"). A backup that is only on a storage is downloaded to this server first.
 	 */
-	function openRestore( item ) {
+	/**
+	 * Opens the restore dialog for a backup. `partial` ({ options, label }) restores only the parts
+	 * ticked in "Look inside".
+	 */
+	function openRestore( item, partial ) {
 		if ( restore && ( restore.phase === 'running' || restore.phase === 'fetch' ) ) {
 			notice( 'A restore is already under way.', 'error' );
 			$( 'siteferry-restore' ).scrollIntoView( { block: 'nearest' } );
@@ -1555,19 +1561,24 @@
 			cancelJob( restore.job.id, restore.job.token );
 		}
 		closeMenus();
-		restore = { item, mine: ours( item ), name: item.local ? item.name : null, job: null, phase: 'open', seq: 0 };
+		restore = { item, mine: ours( item ), host: hostOf( item.source ), name: item.local ? item.name : null, job: null, phase: 'open', seq: 0, partial: partial || null };
+		const paths = partial ? partial.options.restore_paths || [] : [];
 		$( 'siteferry-safety' ).checked = true;
 		$( 'siteferry-replace-url' ).value = '';
-		$( 'siteferry-include-mu' ).checked = false;
-		$( 'siteferry-include-dropins' ).checked = false;
-		$( 'siteferry-restore-advanced' ).open = false;
+		// Must-use plugins and drop-ins ticked on purpose are copied.
+		$( 'siteferry-include-mu' ).checked = paths.indexOf( 'mu-plugins' ) !== -1;
+		$( 'siteferry-include-dropins' ).checked = paths.some( ( path ) => DROP_INS.indexOf( path ) !== -1 );
+		$( 'siteferry-restore-what-chosen' ).hidden = ! partial;
+		$( 'siteferry-restore-what-label' ).textContent = partial ? 'Only what was ticked: ' + partial.label : '';
+		document.querySelector( 'input[name=siteferry_restore_what][value=' + ( partial ? 'chosen' : 'all' ) + ']' ).checked = true;
+		$( 'siteferry-restore-advanced' ).open = !! partial;
 		$( 'siteferry-restore-advanced' ).hidden = false;
 		$( 'siteferry-inspection' ).hidden = true;
 		$( 'siteferry-inspection-warnings' ).replaceChildren();
 		$( 'siteferry-crossing' ).hidden = true;
 		$( 'siteferry-import-cancel' ).hidden = false;
 		$( 'siteferry-import-cancel' ).textContent = 'Cancel';
-		setWording( restore.mine, hostOf( item.source ) );
+		setWording( restore.mine, restore.host );
 		setConfirm( false );
 		const panel = $( 'siteferry-restore' );
 		panel.hidden = false;
@@ -1584,12 +1595,26 @@
 	function setWording( mine, host ) {
 		const item = restore.item;
 		const fromStorage = item && ! item.local && item.places.length ? ' It is downloaded from ' + ( destination( item.places[ 0 ] ) || { label: 'the storage' } ).label + ' to this server first.' : '';
-		if ( mine ) {
-			$( 'siteferry-restore-title' ).textContent = item ? 'Restore this site to ' + ( item.title ? '“' + item.title + '” (' + when( item.time, true ) + ')' : when( item.time, true ) ) : 'Restore a backup';
+		const part = restoreWhat().label;
+		const then = item ? ( item.title ? '“' + item.title + '” (' + when( item.time, true ) + ')' : when( item.time, true ) ) : '';
+		if ( mine && part ) {
+			$( 'siteferry-restore-title' ).textContent = item ? 'Restore part of this site from ' + then : 'Restore part of a backup';
+			$( 'siteferry-restore-lead' ).textContent = 'This restores only ' + part + ', as it was then; everything else on this site stays as it is now.' + fromStorage;
+			$( 'siteferry-confirm' ).textContent = 'Restore now';
+			$( 'siteferry-confirm-text' ).textContent = 'I understand that this replaces ' + part + ' on this site with the backup’s.';
+		} else if ( mine ) {
+			$( 'siteferry-restore-title' ).textContent = item ? 'Restore this site to ' + then : 'Restore a backup';
 			$( 'siteferry-restore-lead' ).textContent =
 				'Posts, pages, settings, users, plugins, themes and media go back to how they were then; anything added or changed since is lost. SiteFerry and its storage settings stay as they are.' + fromStorage;
 			$( 'siteferry-confirm' ).textContent = 'Restore now';
 			$( 'siteferry-confirm-text' ).textContent = 'I understand that this replaces this site’s content with the backup.';
+		} else if ( part ) {
+			const name = host || 'the other site';
+			$( 'siteferry-restore-title' ).textContent = 'Copy part of ' + name + ' here';
+			$( 'siteferry-restore-lead' ).textContent =
+				'This copies only ' + part + ' from ' + name + ', replacing what this site has; everything else here stays as it is. Addresses in what is copied are changed to this site’s (' + hostOf( cfg.home ) + ').' + fromStorage;
+			$( 'siteferry-confirm' ).textContent = 'Copy here now';
+			$( 'siteferry-confirm-text' ).textContent = 'I understand that this replaces ' + part + ' on this site with ' + name + '’s.';
 		} else {
 			const name = host || 'the other site';
 			$( 'siteferry-restore-title' ).textContent = 'Move ' + name + ' here';
@@ -1657,6 +1682,7 @@
 					replace_url: $( 'siteferry-replace-url' ).value.trim(),
 					include_mu_plugins: $( 'siteferry-include-mu' ).checked,
 					include_drop_ins: $( 'siteferry-include-dropins' ).checked,
+					...restoreWhat().options,
 				},
 			} );
 			if ( ! restore || seq !== restore.seq ) {
@@ -1715,8 +1741,13 @@
 			const safety = job.result.safety;
 			restore.phase = 'done';
 			const moved = siteKey( r.from ) !== siteKey( r.to );
-			view.finish( true, moved ? 'Moved ' + hostOf( r.from ) + ' here' : 'Restored', [
-				el( 'p', { text: moved ? 'This site now has the content of ' + hostOf( r.from ) + ', at ' + hostOf( r.to ) + '.' : 'This site is back to how it was when the backup was made.' } ),
+			const done = r.partial
+				? ( moved ? 'Copied ' : 'Restored ' ) + r.partial.replace( /^Only /, 'only ' ) + ( moved ? ' from ' + hostOf( r.from ) : '' ) + '; everything else on this site stayed as it was.'
+				: moved
+				? 'This site now has the content of ' + hostOf( r.from ) + ', at ' + hostOf( r.to ) + '.'
+				: 'This site is back to how it was when the backup was made.';
+			view.finish( true, r.partial ? ( moved ? 'Copied part of ' + hostOf( r.from ) + ' here' : 'Restored part of the site' ) : moved ? 'Moved ' + hostOf( r.from ) + ' here' : 'Restored', [
+				el( 'p', { text: done } ),
 				...( safety ? [ el( 'p', { text: 'A safety backup of the site as it was before (' + bytes( safety.size ) + ') is in the list. To undo, use "Undo this restore" on the Backups tab, or restore that backup.' } ) ] : [] ),
 				el( 'p', { text: moved ? 'Log in with one of that site’s users.' : 'You may need to log in again.' } ),
 				el( 'p', { class: 'sf-actions' }, [ el( 'a', { class: 'button button-primary', href: cfg.loginUrl, text: 'Log in' } ) ] ),
@@ -1736,9 +1767,10 @@
 	/** The check's findings, and whether this is the same site or a move (decided by the backup itself). */
 	function showInspection( info ) {
 		const mine = siteKey( info.from ) === siteKey( info.to );
+		restore.host = hostOf( info.from );
 		if ( mine !== restore.mine ) {
 			restore.mine = mine;
-			setWording( mine, hostOf( info.from ) );
+			setWording( mine, restore.host );
 		}
 		const end = ( label, value ) => el( 'div', { class: 'sf-crossing-end' }, [ el( 'small', { text: label } ), el( 'code', { text: value } ) ] );
 		$( 'siteferry-crossing' ).replaceChildren( end( 'From', info.from ), el( 'span', { class: 'sf-crossing-line', 'aria-hidden': 'true' } ), end( 'Into', info.to ) );
@@ -1751,6 +1783,9 @@
 		];
 		if ( ! mine ) {
 			rows.splice( 3, 0, [ 'Address changes', plural( info.replacements, 'search/replace pair', 'search/replace pairs' ) ] );
+		}
+		if ( info.restores ) {
+			rows.unshift( [ 'Restores', info.restores ] );
 		}
 		$( 'siteferry-inspection-rows' ).replaceChildren( ...rows.map( ( [ k, v ] ) => el( 'tr', {}, [ el( 'th', { scope: 'row', text: k } ), el( 'td', { text: v } ) ] ) ) );
 		$( 'siteferry-inspection' ).hidden = false;
@@ -1780,6 +1815,22 @@
 		}
 	}
 
+	/** The parts to restore, from "What to restore": import options and words for them ('' for everything). */
+	function restoreWhat() {
+		const checked = document.querySelector( 'input[name=siteferry_restore_what]:checked' );
+		const what = checked ? checked.value : 'all';
+		if ( what === 'database' ) {
+			return { options: { restore_files: false }, label: 'the database' };
+		}
+		if ( what === 'files' ) {
+			return { options: { restore_database: false }, label: 'the files' };
+		}
+		if ( what === 'chosen' && restore && restore.partial ) {
+			return restore.partial;
+		}
+		return { options: {}, label: '' };
+	}
+
 	/** Cancel (before anything changed) or Close (afterwards). */
 	async function closeRestore() {
 		if ( restore && restore.phase === 'running' ) {
@@ -1805,6 +1856,250 @@
 		}
 		store.remove( JOB_KEY );
 		return true;
+	}
+
+	// ------------------------------------------------------------ look inside a backup
+
+	/**
+	 * The contents panel: one folder of a backup at a time, single files to download, and ticks for
+	 * the parts a partial restore can bring back on their own: the whole database or single tables;
+	 * all files, a top-level item of wp-content, or one plugin or theme.
+	 */
+	let inside = null;
+
+	function openContents( item ) {
+		closeMenus();
+		inside = { item, dir: '', seq: 0, tables: null, hasDatabase: false, picks: new Map() };
+		$( 'siteferry-contents-title' ).textContent = 'Inside ' + called( item );
+		$( 'siteferry-contents-crumbs' ).replaceChildren();
+		$( 'siteferry-contents-body' ).replaceChildren( el( 'p', { class: 'sf-contents-wait', text: 'Reading the list of files in the backup...' } ) );
+		renderPicks();
+		const panel = $( 'siteferry-contents' );
+		panel.hidden = false;
+		panel.scrollIntoView( { block: 'start' } );
+		panel.focus( { preventScroll: true } );
+		browse( '' );
+	}
+
+	function closeContents() {
+		inside = null;
+		$( 'siteferry-contents' ).hidden = true;
+	}
+
+	/** Shows one folder; the first call may need several requests while the backup is read. */
+	async function browse( dir ) {
+		if ( ! inside ) {
+			return;
+		}
+		const seq = ++inside.seq;
+		const body = $( 'siteferry-contents-body' );
+		let data;
+		for ( ;; ) {
+			try {
+				data = await api( 'GET', 'backups/' + encodeURIComponent( inside.item.name ) + '/contents', { query: { dir } } );
+			} catch ( error ) {
+				if ( inside && seq === inside.seq ) {
+					body.replaceChildren( el( 'p', { class: 'sf-row-error', text: 'The backup cannot be read: ' + error.message } ) );
+				}
+				return;
+			}
+			if ( ! inside || seq !== inside.seq ) {
+				return;
+			}
+			if ( data.complete ) {
+				break;
+			}
+			const share = data.size ? Math.min( 99, Math.floor( ( 100 * data.read ) / data.size ) ) : 0;
+			body.replaceChildren( el( 'p', { class: 'sf-contents-wait', text: 'Reading the list of files in the backup... ' + share + '% (' + plural( data.count, 'entry', 'entries' ) + ' so far)' } ) );
+		}
+		inside.dir = data.dir;
+		if ( data.dir === '' ) {
+			inside.tables = data.tables;
+			inside.hasDatabase = data.tables !== null || data.entries.some( ( entry ) => entry.path === 'database.sql' );
+		}
+		renderCrumbs( data.dir );
+		renderFolder( data );
+	}
+
+	function renderCrumbs( dir ) {
+		const parts = dir ? dir.split( '/' ) : [];
+		const crumb = ( text, target, current ) =>
+			current ? el( 'span', { class: 'sf-crumb is-current', 'aria-current': 'location', text } ) : el( 'button', { type: 'button', class: 'sf-crumb', text, onclick: () => browse( target ) } );
+		const nodes = [ crumb( 'Backup', '', ! parts.length ) ];
+		parts.forEach( ( part, i ) => {
+			nodes.push( el( 'span', { class: 'sf-crumb-sep', 'aria-hidden': 'true', text: '/' } ), crumb( part, parts.slice( 0, i + 1 ).join( '/' ), i === parts.length - 1 ) );
+		} );
+		$( 'siteferry-contents-crumbs' ).replaceChildren( ...nodes );
+	}
+
+	function renderFolder( data ) {
+		const nodes = [];
+		if ( data.dir === '' && inside.hasDatabase ) {
+			nodes.push( databaseBlock() );
+		}
+		if ( data.entries.length ) {
+			nodes.push( el( 'table', { class: 'sf-tree' }, [ el( 'tbody', {}, data.entries.map( entryRow ) ) ] ) );
+		} else {
+			nodes.push( el( 'p', { class: 'description', text: 'This folder is empty.' } ) );
+		}
+		$( 'siteferry-contents-body' ).replaceChildren( ...nodes );
+	}
+
+	function databaseBlock() {
+		const tables = inside.tables;
+		const rows = tables ? tables.reduce( ( n, t ) => n + t.rows, 0 ) : 0;
+		const block = el( 'div', { class: 'sf-contents-db' }, [
+			el( 'label', { class: 'sf-contents-db-all' }, [
+				pickBox( 'db', 'the whole database' ),
+				el( 'span', { class: 'dashicons dashicons-database', 'aria-hidden': 'true' } ),
+				el( 'strong', { text: 'Database' } ),
+				el( 'span', { class: 'sf-tree-what', text: tables ? plural( tables.length, 'table', 'tables' ) + ', ' + plural( rows, 'row', 'rows' ) : 'its tables are listed when the backup is checked for restoring' } ),
+			] ),
+		] );
+		if ( tables && tables.length ) {
+			block.appendChild(
+				el( 'details', { class: 'sf-more' }, [
+					el( 'summary', { text: 'Single tables' } ),
+					el(
+						'div',
+						{ class: 'sf-tables' },
+						tables.map( ( t ) => el( 'label', {}, [ pickBox( 't:' + t.name, 'table ' + t.name ), ' ' + t.name + ' ', el( 'span', { class: 'sf-table-size', text: plural( t.rows, 'row', 'rows' ) } ) ] ) )
+					),
+				] )
+			);
+		}
+		return block;
+	}
+
+	function fileUrl( name, path ) {
+		return url( 'backups/' + encodeURIComponent( name ) + '/file', { path, _wpnonce: cfg.nonce } );
+	}
+
+	function entryRow( entry ) {
+		const dir = entry.type === 'dir';
+		const key = pickKey( entry.path );
+		const name = dir
+			? el( 'button', { type: 'button', class: 'sf-tree-open', text: entry.name, onclick: () => browse( entry.path ) } )
+			: el( 'span', { class: 'sf-tree-file', text: entry.name } );
+		const action =
+			entry.type === 'file' ? el( 'a', { class: 'sf-tree-download', href: fileUrl( inside.item.name, entry.path ), text: 'Download', 'aria-label': 'Download ' + entry.name } ) : document.createTextNode( '' );
+		return el( 'tr', { class: dir ? 'is-dir' : 'is-file' }, [
+			el( 'td', { class: 'sf-tree-pick' }, [ key ? pickBox( key, key === 'files' ? 'all files' : entry.path ) : document.createTextNode( '' ) ] ),
+			el( 'td', { class: 'sf-tree-name' }, [ el( 'span', { class: 'dashicons ' + ( dir ? 'dashicons-category' : 'dashicons-media-default' ), 'aria-hidden': 'true' } ), name ] ),
+			el( 'td', { class: 'sf-tree-what', text: dir ? plural( entry.files, 'file', 'files' ) : entry.type === 'link' ? 'link' : date( entry.mtime ) } ),
+			el( 'td', { class: 'sf-tree-size', text: bytes( entry.size ) } ),
+			el( 'td', { class: 'sf-tree-action' }, [ action ] ),
+		] );
+	}
+
+	/** The pick a path in the backup stands for on its own ('files' or 'p:<path in wp-content>'), or ''. */
+	function pickKey( path ) {
+		if ( path === 'wp-content' ) {
+			return 'files';
+		}
+		if ( path.indexOf( 'wp-content/' ) !== 0 ) {
+			return '';
+		}
+		const rel = path.slice( 'wp-content/'.length );
+		const parts = rel.split( '/' );
+		if ( rel === 'plugins/siteferry' || parts[ 0 ].indexOf( 'siteferry-' ) === 0 ) {
+			return ''; // SiteFerry itself and its storage folder are never replaced.
+		}
+		return parts.length === 1 || ( parts.length === 2 && ( parts[ 0 ] === 'plugins' || parts[ 0 ] === 'themes' ) ) ? 'p:' + rel : '';
+	}
+
+	/** The wider pick that already includes this one (the whole database, all files, a whole folder), or ''. */
+	function coveredBy( key ) {
+		const picks = inside.picks;
+		if ( key.indexOf( 't:' ) === 0 ) {
+			return picks.has( 'db' ) ? 'db' : '';
+		}
+		if ( key.indexOf( 'p:' ) === 0 ) {
+			if ( picks.has( 'files' ) ) {
+				return 'files';
+			}
+			const top = 'p:' + key.slice( 2 ).split( '/' )[ 0 ];
+			return top !== key && picks.has( top ) ? top : '';
+		}
+		return '';
+	}
+
+	function pickBox( key, label ) {
+		const box = el( 'input', { type: 'checkbox', 'data-key': key, 'aria-label': 'Restore ' + label } );
+		box.addEventListener( 'change', () => setPick( key, box.checked, label ) );
+		syncBox( box );
+		return box;
+	}
+
+	function syncBox( box ) {
+		const wider = coveredBy( box.dataset.key );
+		box.checked = wider !== '' || inside.picks.has( box.dataset.key );
+		box.disabled = wider !== '';
+		box.title = wider ? 'Included in ' + inside.picks.get( wider ) : '';
+	}
+
+	function setPick( key, on, label ) {
+		const picks = inside.picks;
+		if ( on ) {
+			picks.set( key, label );
+			// A wider pick replaces the narrower ones it includes.
+			[ ...picks.keys() ].forEach( ( other ) => {
+				const narrower =
+					( key === 'db' && other.indexOf( 't:' ) === 0 ) || ( key === 'files' && other.indexOf( 'p:' ) === 0 ) || ( key.indexOf( 'p:' ) === 0 && other.indexOf( key + '/' ) === 0 );
+				if ( narrower ) {
+					picks.delete( other );
+				}
+			} );
+		} else {
+			picks.delete( key );
+		}
+		document.querySelectorAll( '#siteferry-contents-body input[data-key]' ).forEach( syncBox );
+		renderPicks();
+	}
+
+	function clearPicks() {
+		if ( inside ) {
+			inside.picks.clear();
+			document.querySelectorAll( '#siteferry-contents-body input[data-key]' ).forEach( syncBox );
+			renderPicks();
+		}
+	}
+
+	/** "the whole database, wp-content/plugins/akismet and 2 more". */
+	function describePicks( picks ) {
+		const names = [ ...picks.values() ];
+		const shown = names.slice( 0, 6 );
+		const more = names.length - shown.length;
+		return shown.join( ', ' ) + ( more > 0 ? ' and ' + more + ' more' : '' );
+	}
+
+	function renderPicks() {
+		const count = inside ? inside.picks.size : 0;
+		$( 'siteferry-contents-foot' ).hidden = ! count;
+		$( 'siteferry-contents-picked' ).textContent = count ? 'To restore: ' + describePicks( inside.picks ) + '.' : '';
+	}
+
+	/** The import options for the picks. */
+	function partialOptions( picks ) {
+		const keys = [ ...picks.keys() ];
+		const tables = keys.filter( ( k ) => k.indexOf( 't:' ) === 0 ).map( ( k ) => k.slice( 2 ) );
+		const paths = keys.filter( ( k ) => k.indexOf( 'p:' ) === 0 ).map( ( k ) => k.slice( 2 ) );
+		return {
+			restore_database: picks.has( 'db' ) || tables.length > 0,
+			restore_tables: picks.has( 'db' ) ? [] : tables,
+			restore_files: picks.has( 'files' ) || paths.length > 0,
+			restore_paths: picks.has( 'files' ) ? [] : paths,
+		};
+	}
+
+	function restorePicked() {
+		if ( ! inside || ! inside.picks.size ) {
+			return;
+		}
+		const item = inside.item;
+		const partial = { options: partialOptions( inside.picks ), label: describePicks( inside.picks ) };
+		closeContents();
+		openRestore( item, partial );
 	}
 
 	// ------------------------------------------------------------ schedule
@@ -2326,6 +2621,15 @@
 		[ 'siteferry-replace-url', 'siteferry-include-mu', 'siteferry-include-dropins' ].forEach( ( id ) => {
 			$( id ).addEventListener( 'change', recheckSoon );
 		} );
+		$( 'siteferry-restore-what' ).addEventListener( 'change', () => {
+			if ( restore ) {
+				setWording( restore.mine, restore.host );
+				recheckSoon();
+			}
+		} );
+		$( 'siteferry-contents-close' ).addEventListener( 'click', closeContents );
+		$( 'siteferry-contents-clear' ).addEventListener( 'click', clearPicks );
+		$( 'siteferry-contents-restore' ).addEventListener( 'click', restorePicked );
 		$( 'siteferry-jobs-refresh' ).addEventListener( 'click', loadJobs );
 
 		// A restore check nobody confirmed would block the next backup: leaving the page cancels it.

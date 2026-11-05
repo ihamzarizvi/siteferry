@@ -560,6 +560,7 @@ final class Schedule {
 			if ( is_file( $path ) && ! @unlink( $path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 				return sprintf( '%s could not be deleted on this server.', $name );
 			}
+			\SiteFerry\Contents::forget( $name );
 		} catch ( \Throwable $e ) {
 			unset( $e ); // Not a backup name any more, or gone: nothing to delete here.
 		}

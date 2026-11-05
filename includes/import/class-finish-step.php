@@ -37,6 +37,8 @@ final class Finish_Step implements Step {
 
 		$inspect = $job->state( 'inspect' );
 		$replace = $job->state( 'replace' );
+		$loaded  = (array) $job->state( 'database' )['tables'];
+		$partial = Import::partial( $job );
 		$job->set_result(
 			array_merge(
 				$job->result(),
@@ -44,10 +46,11 @@ final class Finish_Step implements Step {
 					'imported' => array(
 						'from'         => $inspect['source']['home'],
 						'to'           => $inspect['target']['home'],
-						'tables'       => count( $inspect['tables'] ),
+						'tables'       => count( $loaded ),
 						'rows'         => $inspect['rows'],
 						'files'        => $inspect['files'],
-						'rows_changed' => $replace['rows'],
+						'partial'      => $partial ? (string) $job->result()['inspection']['restores'] : '',
+						'rows_changed' => isset( $replace['rows'] ) ? $replace['rows'] : 0,
 						'warnings'     => $job->warning_count(),
 						'seconds'      => time() - $job->created(),
 					),

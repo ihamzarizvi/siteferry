@@ -54,6 +54,8 @@ Sf_Test::run(
 			array( 'GET', '/backups' ),
 			array( 'DELETE', '/backups/x-2026-01-01-0123456789ab.tar' ),
 			array( 'GET', '/backups/x-2026-01-01-0123456789ab.tar/download' ),
+			array( 'GET', '/backups/x-2026-01-01-0123456789ab.tar/contents' ),
+			array( 'GET', '/backups/x-2026-01-01-0123456789ab.tar/file' ),
 			array( 'GET', '/labels' ),
 			array( 'POST', '/labels/x-2026-01-01-0123456789ab.tar' ),
 			array( 'POST', '/exports' ),

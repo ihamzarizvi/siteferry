@@ -265,6 +265,23 @@ final class Admin {
 
 				<div class="sf-progress" id="siteferry-job-progress" hidden></div>
 
+				<div class="sf-card sf-contents" id="siteferry-contents" hidden tabindex="-1" aria-labelledby="siteferry-contents-title">
+					<div class="sf-restore-head">
+						<h2 class="sf-card-title" id="siteferry-contents-title"></h2>
+						<button type="button" class="sf-notice-close" id="siteferry-contents-close" aria-label="<?php esc_attr_e( 'Close', 'siteferry' ); ?>">&times;</button>
+					</div>
+					<p class="sf-lead"><?php esc_html_e( 'Browse the backup and download single files from it, or tick parts of it to restore only those. Nothing on this site changes until you confirm a restore.', 'siteferry' ); ?></p>
+					<nav class="sf-crumbs" id="siteferry-contents-crumbs" aria-label="<?php esc_attr_e( 'Folder in the backup', 'siteferry' ); ?>"></nav>
+					<div class="sf-contents-body" id="siteferry-contents-body" aria-live="polite"></div>
+					<div class="sf-contents-foot" id="siteferry-contents-foot" hidden>
+						<p class="sf-contents-picked" id="siteferry-contents-picked"></p>
+						<p class="sf-actions">
+							<button type="button" class="button sf-quiet" id="siteferry-contents-clear"><?php esc_html_e( 'Clear', 'siteferry' ); ?></button>
+							<button type="button" class="button button-primary" id="siteferry-contents-restore"><?php esc_html_e( 'Restore only these', 'siteferry' ); ?></button>
+						</p>
+					</div>
+				</div>
+
 				<div class="sf-card sf-restore" id="siteferry-restore" hidden tabindex="-1" aria-labelledby="siteferry-restore-title">
 					<div class="sf-restore-head">
 						<h2 class="sf-card-title" id="siteferry-restore-title"></h2>
@@ -277,6 +294,14 @@ final class Admin {
 					<ul id="siteferry-inspection-warnings" class="sf-warnings"></ul>
 					<details class="sf-more" id="siteferry-restore-advanced">
 						<summary><?php esc_html_e( 'Advanced', 'siteferry' ); ?></summary>
+						<fieldset class="sf-checks sf-restore-what" id="siteferry-restore-what">
+							<legend><?php esc_html_e( 'What to restore', 'siteferry' ); ?></legend>
+							<label><input type="radio" name="siteferry_restore_what" value="all" checked> <?php esc_html_e( 'Everything', 'siteferry' ); ?></label>
+							<label><input type="radio" name="siteferry_restore_what" value="database"> <?php esc_html_e( 'Only the database (posts, pages, settings, users)', 'siteferry' ); ?></label>
+							<label><input type="radio" name="siteferry_restore_what" value="files"> <?php esc_html_e( 'Only the files (plugins, themes, media and the rest of wp-content)', 'siteferry' ); ?></label>
+							<label id="siteferry-restore-what-chosen" hidden><input type="radio" name="siteferry_restore_what" value="chosen"> <span id="siteferry-restore-what-label"></span></label>
+							<span class="description"><?php esc_html_e( 'To restore single plugins, themes, folders or tables, use "Look inside" in the backup\'s menu.', 'siteferry' ); ?></span>
+						</fieldset>
 						<p class="sf-field">
 							<label for="siteferry-replace-url"><?php esc_html_e( 'Site address after restoring', 'siteferry' ); ?></label>
 							<input type="url" class="regular-text" id="siteferry-replace-url" placeholder="<?php echo esc_attr( home_url() ); ?>">

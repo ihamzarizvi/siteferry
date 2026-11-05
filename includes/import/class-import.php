@@ -41,6 +41,12 @@ final class Import {
 		'force'              => false,
 		'confirmed'          => false,
 		'safety'             => true,
+		// Partial restore: the database (all tables, or only these) and the files (all, or only
+		// these paths in wp-content: a top-level item, or one plugin or theme).
+		'restore_database'   => true,
+		'restore_tables'     => array(),
+		'restore_files'      => true,
+		'restore_paths'      => array(),
 	);
 
 	/** Drop-ins tied to a server's own services; not copied unless asked for. */
@@ -140,6 +146,43 @@ final class Import {
 			$pairs[] = array( (string) $pair[0], (string) $pair[1] );
 		}
 
+		$tables = array();
+		foreach ( (array) $options['restore_tables'] as $table ) {
+			$table = trim( (string) $table );
+			if ( ! preg_match( '/^[A-Za-z0-9_$]{1,64}$/', $table ) ) {
+				throw new Job_Exception( sprintf( 'Invalid table name to restore: "%s".', substr( $table, 0, 80 ) ), Job_Exception::STEP );
+			}
+			$tables[] = $table;
+		}
+		$paths = array();
+		$whole = false;
+		foreach ( (array) $options['restore_paths'] as $path ) {
+			$path = trim( str_replace( '\\', '/', (string) $path ), '/' );
+			if ( 'wp-content' === $path ) {
+				$whole = true; // All of wp-content: the same as choosing no single paths.
+				continue;
+			}
+			if ( 0 === strpos( $path, 'wp-content/' ) ) {
+				$path = substr( $path, strlen( 'wp-content/' ) );
+			}
+			try {
+				$path = \SiteFerry\Archive\Path_Guard::check( $path, false );
+			} catch ( \SiteFerry\Archive\Archive_Exception $e ) {
+				throw new Job_Exception( sprintf( 'Invalid path to restore: "%s".', \SiteFerry\Archive\Path_Guard::printable( $path ) ), Job_Exception::STEP );
+			}
+			$parts = explode( '/', $path );
+			// Folders outside plugins and themes are replaced as a whole, so only their top level can be chosen.
+			if ( count( $parts ) > 2 || ( 2 === count( $parts ) && ! in_array( $parts[0], array( 'plugins', 'themes' ), true ) ) ) {
+				throw new Job_Exception( sprintf( 'Only a whole folder in wp-content, or one plugin or theme, can be restored on its own; not "%s".', \SiteFerry\Archive\Path_Guard::printable( $path ) ), Job_Exception::STEP );
+			}
+			$paths[] = $path;
+		}
+		$tables = array_values( array_unique( $tables ) );
+		$paths  = $whole ? array() : array_values( array_unique( $paths ) );
+		if ( count( $tables ) > 2000 || count( $paths ) > 500 ) {
+			throw new Job_Exception( 'Too many items chosen to restore.', Job_Exception::STEP );
+		}
+
 		return array(
 			'replace_url'        => untrailingslashit( $url ),
 			'replace'            => $pairs,
@@ -148,6 +191,72 @@ final class Import {
 			'force'              => (bool) $options['force'],
 			'confirmed'          => (bool) $options['confirmed'],
 			'safety'             => (bool) $options['safety'],
+			'restore_database'   => (bool) $options['restore_database'],
+			'restore_tables'     => $tables,
+			'restore_files'      => (bool) $options['restore_files'],
+			'restore_paths'      => $paths,
+		);
+	}
+
+	/**
+	 * Whether an import restores only some of the backup.
+	 *
+	 * @param Job $job Import job.
+	 */
+	public static function partial( Job $job ): bool {
+		return ! $job->option( 'restore_database', true ) || array() !== (array) $job->option( 'restore_tables', array() )
+			|| ! $job->option( 'restore_files', true ) || array() !== (array) $job->option( 'restore_paths', array() );
+	}
+
+	/**
+	 * Whether a path in the backup is unpacked and checked: the manifest, the dump and the checksum
+	 * list always; files in wp-content when the files are restored and the path is chosen (or a
+	 * folder above a chosen one).
+	 *
+	 * @param Job    $job  Import job.
+	 * @param string $path Path in the backup ("wp-content/plugins/x/x.php").
+	 */
+	public static function wanted_path( Job $job, string $path ): bool {
+		$path = trim( $path, '/' );
+		if ( 'wp-content' !== $path && 0 !== strpos( $path, 'wp-content/' ) ) {
+			return true; // Not files of the site: the extractor's own rules decide.
+		}
+		if ( ! $job->option( 'restore_files', true ) ) {
+			return false;
+		}
+		$chosen = (array) $job->option( 'restore_paths', array() );
+		if ( array() === $chosen || 'wp-content' === $path ) {
+			return true;
+		}
+		$relative = substr( $path, strlen( 'wp-content/' ) );
+		foreach ( $chosen as $item ) {
+			if ( $relative === $item || 0 === strpos( $relative, $item . '/' ) || 0 === strpos( $item . '/', $relative . '/' ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * The tables to load, as suffixes after the backup's prefix; null for all of them.
+	 *
+	 * @param Job $job Import job.
+	 * @return string[]|null
+	 */
+	public static function table_suffixes( Job $job ): ?array {
+		if ( ! $job->option( 'restore_database', true ) ) {
+			return array();
+		}
+		$chosen = (array) $job->option( 'restore_tables', array() );
+		if ( array() === $chosen ) {
+			return null;
+		}
+		$prefix = (string) $job->state( 'inspect' )['prefix'];
+		return array_map(
+			static function ( string $table ) use ( $prefix ): string {
+				return 0 === strpos( $table, $prefix ) ? substr( $table, strlen( $prefix ) ) : $table;
+			},
+			$chosen
 		);
 	}
 }

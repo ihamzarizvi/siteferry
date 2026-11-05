@@ -108,6 +108,7 @@ final class Dumper {
 		$rows = 0;
 		foreach ( $tables as $index => $table ) {
 			$tables[ $index ]['filter'] = isset( $filters[ $table['name'] ] ) ? $filters[ $table['name'] ] : null;
+			$tables[ $index ]['dumped'] = 0; // Rows written so far ("rows" is the server's estimate).
 			$rows                      += $table['rows'];
 		}
 		return array(
@@ -301,6 +302,9 @@ final class Dumper {
 			$batch['offset'] += $count;
 		}
 		$state['rows_done'] += $count;
+		if ( isset( $state['tables'][ $state['index'] ]['dumped'] ) ) {
+			$state['tables'][ $state['index'] ]['dumped'] += $count;
+		}
 
 		return $count >= $batch['batch'];
 	}
