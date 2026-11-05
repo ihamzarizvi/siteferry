@@ -4,9 +4,10 @@
  * through the WordPress HTTP API) or FTPS (tests/tools/fake-ftp-server.php, through PHP's ftp
  * extension). Run it with the wrapper, which starts and stops the servers:
  *
- *     powershell -File tests\wp-storage-check.ps1 -Site siteferry-src [-Driver s3|ftp|all]
+ *     powershell -File tests\wp-storage-check.ps1 -Site siteferry-src [-Driver s3|ftp|gdrive|dropbox|all]
  *
- * The environment variable SITEFERRY_TEST_STORAGE says which one (s3 or ftp).
+ * The environment variable SITEFERRY_TEST_STORAGE says which one (s3, ftp, gdrive, gdrive-relay,
+ * dropbox or dropbox-relay); the Google Drive and Dropbox fakes run under "php -S".
  *
  * Covers: settings saved encrypted and never sent back, the connection test, an export sent to
  * storage, fetching it back, sending in slices, cancelling (the unfinished upload is removed),
@@ -258,8 +259,134 @@ if ( 's3' === $sf_kind ) {
 			Sf_Test::same( true, $entry['oauth']['connected'], 'still connected after saving again:' );
 		},
 	);
+} elseif ( 'dropbox' === $sf_kind || 'dropbox-relay' === $sf_kind ) {
+	require dirname( __DIR__ ) . '/lib/class-fake-dropbox.php';
+	$sf_dir = (string) getenv( 'SITEFERRY_FAKE_DROPBOX_DIR' );
+	if ( ! is_file( $sf_dir . '/config.json' ) ) {
+		echo "Start the fake Dropbox server first (tests\\wp-storage-check.ps1 does that).\n";
+		exit( 1 );
+	}
+	$sf_config = json_decode( (string) file_get_contents( $sf_dir . '/config.json' ), true );
+	$sf_fake   = new Fake_Dropbox( $sf_dir . '/data', $sf_config );
+	$sf_base   = $sf_config['base'];
+	add_filter(
+		'siteferry_dropbox_endpoints',
+		static function () use ( $sf_base ): array {
+			return array(
+				'auth'    => $sf_base . '/oauth2/authorize',
+				'token'   => $sf_base . '/oauth2/token',
+				'api'     => $sf_base . '/2',
+				'content' => $sf_base . '/2',
+			);
+		}
+	);
+	$sf_relayed = 'dropbox-relay' === $sf_kind;
+	if ( $sf_relayed ) {
+		// One-click mode: the real relay (relay/public/index.php under "php -S") passes the browser through.
+		$sf_relay_url = (string) getenv( 'SITEFERRY_FAKE_RELAY_URL' );
+		add_filter(
+			'siteferry_relay_url',
+			static function () use ( $sf_relay_url ): string {
+				return $sf_relay_url;
+			}
+		);
+		$sf_dinput = array(
+			'mode'   => 'relay',
+			'folder' => 'wp-test',
+		);
+	} else {
+		$sf_dinput = array(
+			'mode'    => 'own',
+			'app_key' => $sf_config['app_key'],
+			'folder'  => 'wp-test',
+		);
+	}
+	$sf_follow = static function ( string $url ) use ( $sf_relayed ): array {
+		$hop   = static function ( string $to ): string {
+			return (string) wp_remote_retrieve_header( wp_remote_get( $to, array( 'redirection' => 0 ) ), 'location' );
+		};
+		$back  = $sf_relayed ? $hop( $hop( $hop( $url ) . '&decision=allow' ) ) : $hop( $url . '&decision=allow' );
+		$query = array();
+		parse_str( (string) wp_parse_url( $back, PHP_URL_QUERY ), $query );
+		return $query;
+	};
+	$sf_b = array(
+		'id'                => 'dropbox',
+		'where'             => $sf_relayed ? $sf_relay_url . ' and ' . $sf_base : $sf_base,
+		'input'             => $sf_dinput,
+		'secret'            => null,
+		'invalid'           => array( 'folder' => 'a/../b' ),
+		'kept'              => array( 'folder', 'wp-test' ),
+		'test_lines'        => 6,
+		'wrong_says'        => array(),
+		'hash'              => static function ( string $name ) use ( $sf_fake ) {
+			return $sf_fake->hash( $name );
+		},
+		'names'             => static function () use ( $sf_fake ): array {
+			return $sf_fake->names();
+		},
+		'pending'           => static function () use ( $sf_fake ): int {
+			return $sf_fake->open_sessions();
+		},
+		'left_after_cancel' => 1,
+		'fault'             => static function () use ( $sf_dir ) {
+			file_put_contents( $sf_dir . '/data/faults.json', '[503,503]' );
+		},
+		'faults_used'       => static function () use ( $sf_dir ): bool {
+			return '[]' === (string) file_get_contents( $sf_dir . '/data/faults.json' );
+		},
+		// The sign-in: authorize, the authorization page's "Allow", then connect with the code and state.
+		'after_save'        => static function ( int $admin ) use ( $sf_fake, $sf_config, $sf_dinput, $sf_follow, $sf_relayed ) {
+			list( $status, $start ) = sf_rest( 'POST', '/storage/dropbox/authorize', $admin );
+			Sf_Test::same( 200, $status, 'authorize: ' . wp_json_encode( $start ) );
+			Sf_Test::ok( false !== strpos( $start['redirect_uri'], 'admin.php?page=siteferry&oauth=dropbox' ), $start['redirect_uri'] );
+			Sf_Test::ok( ! Destinations::ready( 'dropbox' ), 'not ready before connecting' );
+			if ( $sf_relayed ) {
+				Sf_Test::ok( false !== strpos( $start['url'], '/dropbox/start?' ), 'one-click sign-in starts at the relay: ' . $start['url'] );
+			}
+			$back = $sf_follow( $start['url'] );
+			Sf_Test::ok( isset( $back['code'], $back['state'] ), 'the authorization page sent a code and the state back: ' . wp_json_encode( $back ) );
+
+			list( $status, $wrong ) = sf_rest( 'POST', '/storage/dropbox/connect', $admin, array(), array( 'code' => $back['code'], 'state' => str_repeat( 'a', 48 ) ) );
+			Sf_Test::same( 400, $status, 'a wrong state is refused: ' . wp_json_encode( $wrong ) );
+			list( $status ) = sf_rest( 'POST', '/storage/dropbox/connect', $admin, array(), array( 'code' => $back['code'], 'state' => $back['state'] ) );
+			Sf_Test::same( 400, $status, 'the state is used up by any answer, even a wrong one:' );
+
+			list( , $start ) = sf_rest( 'POST', '/storage/dropbox/authorize', $admin );
+			$back           = $sf_follow( $start['url'] );
+			list( $status ) = sf_rest( 'POST', '/storage/dropbox/connect', 0, array(), array( 'code' => $back['code'], 'state' => $back['state'] ) );
+			Sf_Test::ok( in_array( $status, array( 401, 403 ), true ), 'connect needs the administrator: ' . $status );
+			list( , $start ) = sf_rest( 'POST', '/storage/dropbox/authorize', $admin );
+			$back           = $sf_follow( $start['url'] );
+			list( $status, $entry ) = sf_rest( 'POST', '/storage/dropbox/connect', $admin, array(), array( 'code' => $back['code'], 'state' => $back['state'] ) );
+			Sf_Test::same( 200, $status, 'connect: ' . wp_json_encode( $entry ) );
+			Sf_Test::same( true, $entry['oauth']['connected'] );
+			Sf_Test::same( 'tester@example.com', $entry['oauth']['account'] );
+			Sf_Test::ok( Destinations::ready( 'dropbox' ), 'ready after connecting' );
+			Sf_Test::same( 0, $sf_fake->secrets_sent(), 'no app secret was ever sent:' );
+
+			$stored = get_option( Destinations::OPTION );
+			Sf_Test::same( array(), $stored['dropbox']['secrets'], 'no secret on the site:' );
+			Sf_Test::same( $sf_config['app_key'], $stored['dropbox']['auth']['app_key'], 'the app the tokens belong to:' );
+			if ( $sf_relayed ) {
+				Sf_Test::same( '', $stored['dropbox']['settings']['app_key'], 'one-click mode: the app key comes from the relay, not the settings' );
+			}
+
+			global $wpdb;
+			$raw                = (string) $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", Destinations::OPTION ) );
+			list( , $overview ) = sf_rest( 'GET', '/storage', $admin );
+			Sf_Test::ok( array() !== $sf_fake->refresh_tokens(), 'Dropbox handed out a refresh token' );
+			foreach ( $sf_fake->refresh_tokens() as $token ) {
+				Sf_Test::ok( false === strpos( $raw, $token ), 'the refresh token is stored encrypted' );
+				Sf_Test::ok( false === strpos( wp_json_encode( $overview ), $token ), 'the refresh token is not sent to the browser' );
+			}
+
+			list( $status, $entry ) = sf_rest( 'POST', '/storage/dropbox', $admin, array(), $sf_dinput );
+			Sf_Test::same( true, $entry['oauth']['connected'], 'still connected after saving again:' );
+		},
+	);
 } else {
-	echo "Set SITEFERRY_TEST_STORAGE to s3, ftp or gdrive (tests\\wp-storage-check.ps1 does that).\n";
+	echo "Set SITEFERRY_TEST_STORAGE to s3, ftp, gdrive or dropbox (tests\\wp-storage-check.ps1 does that).\n";
 	exit( 1 );
 }
 
@@ -342,7 +469,7 @@ Sf_Test::run(
 			Sf_Test::ok( false === strpos( wp_json_encode( $list ), $secret ), 'GET /storage does not contain the secret' );
 			Sf_Test::ok( ! isset( sf_overview( $sf_id )['settings'][ $sf_b['secret'] ] ), 'no secret in the settings sent to the browser' );
 		} else {
-			Sf_Test::same( false, sf_overview( $sf_id )['secrets_set']['client_secret'], 'no secret stored for one-click sign-in:' );
+			Sf_Test::same( array(), array_filter( sf_overview( $sf_id )['secrets_set'] ), 'no secret stored:' );
 		}
 
 		// Saving again without the secret keeps it; invalid input changes nothing.
@@ -452,7 +579,8 @@ Sf_Test::run(
 		list( $status, $job ) = sf_rest( 'POST', "/jobs/$id/cancel", 0, array( 'X-SiteFerry-Job' => $token ) );
 		Sf_Test::same( 200, $status );
 		Sf_Test::same( 'failed', $job['status'] );
-		Sf_Test::same( 0, $sf_b['pending'](), 'unfinished upload removed:' );
+		// Dropbox has no way to remove an unfinished upload session; it never becomes a file and Dropbox discards it.
+		Sf_Test::same( isset( $sf_b['left_after_cancel'] ) ? $sf_b['left_after_cancel'] : 0, $sf_b['pending'](), 'unfinished upload removed (or left for the storage to discard):' );
 		Sf_Test::ok( null === $sf_b['hash']( $name ), 'nothing stored' );
 		Sf_Test::ok( is_file( $file ), 'the local backup is kept' );
 

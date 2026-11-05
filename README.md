@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/assets/siteferry-banner.svg" alt="SiteFerry: WordPress backup, restore and migration plugin with Amazon S3, FTP, Google Drive and .wpress support" width="100%">
+  <img src=".github/assets/siteferry-banner.svg" alt="SiteFerry: WordPress backup, restore and migration plugin with Amazon S3, FTP, Google Drive, Dropbox and .wpress support" width="100%">
 </p>
 
 <h1 align="center">SiteFerry: WordPress backup, restore and migration plugin</h1>
@@ -8,21 +8,21 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.7.0-f97316" alt="Version 0.7.0">
+  <img src="https://img.shields.io/badge/version-0.8.0-f97316" alt="Version 0.8.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
 **SiteFerry backs up a whole WordPress site (database, plugins, themes and media) into one file,
 restores it, and moves it to a new host or domain.** Send backups to **Amazon S3, Backblaze B2,
-Wasabi, Cloudflare R2, DigitalOcean Spaces, any S3-compatible storage, FTP/FTPS or Google Drive**,
-and fetch them back. It also imports and exports **.wpress** backups, so you can move sites from
+Wasabi, Cloudflare R2, DigitalOcean Spaces, any S3-compatible storage, FTP/FTPS, Google Drive or
+Dropbox**, and fetch them back. It also imports and exports **.wpress** backups, so you can move sites from
 the All-in-One WP Migration plugin.
 
 Large sites are no problem: every job runs in short, resumable steps, so the PHP time limit,
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.7.0). Dropbox and scheduled backups are next; see the
+> SiteFerry is in active development (0.8.0). Scheduled backups are next; see the
 > [roadmap](#roadmap).
 
 ## Contents
@@ -33,7 +33,7 @@ upload limits and dropped connections don't break a backup or a restore.
 - [Install](#install)
 - [Back up a WordPress site](#back-up-a-wordpress-site)
 - [Restore a backup, or move a site to a new host](#restore-a-backup-or-move-a-site-to-a-new-host)
-- [Remote storage: S3, FTP and Google Drive](#remote-storage-s3-ftp-and-google-drive)
+- [Remote storage: S3, FTP, Google Drive and Dropbox](#remote-storage-s3-ftp-google-drive-and-dropbox)
 - [Import .wpress backups (All-in-One WP Migration)](#import-wpress-backups-all-in-one-wp-migration)
 - [WP-CLI](#wp-cli)
 - [Security and privacy](#security-and-privacy)
@@ -52,7 +52,7 @@ upload limits and dropped connections don't break a backup or a restore.
 | Safe restores | Every backup is checked before anything on the site changes; a failed restore puts the old site back |
 | Site migration | Moves a site to a new domain or host, rewriting addresses (also inside serialized data) |
 | Large sites | Resumable jobs and chunked uploads, no matter how short the PHP time limit is |
-| Remote storage | S3-compatible (AWS, B2, Wasabi, R2, Spaces, MinIO), FTP/FTPS, Google Drive |
+| Remote storage | S3-compatible (AWS, B2, Wasabi, R2, Spaces, MinIO), FTP/FTPS, Google Drive, Dropbox |
 | Open format | Backups are standard TAR files any archive tool can open, with SHA-256 checksums |
 | .wpress | Imports All-in-One WP Migration backups and writes .wpress files it can import |
 | No lock-in, no tracking | GPL, no licence keys, no telemetry; it only talks to the storage you set up |
@@ -99,8 +99,9 @@ upload limits and dropped connections don't break a backup or a restore.
 - **FTP and FTPS**: explicit FTPS by default, passive mode, uploads in parts that resume.
 - **Google Drive**: one-click "Sign in with Google", or your own OAuth client. Only the
   `drive.file` scope: SiteFerry sees only the files it created.
+- **Dropbox**: one-click "Sign in with Dropbox", or your own Dropbox app. App folder access only,
+  no app secret anywhere (PKCE), and the tokens never leave your site and Dropbox.
 - Connection tests that write, read, list and delete a small file.
-- Dropbox is planned.
 
 </details>
 
@@ -120,7 +121,7 @@ upload limits and dropped connections don't break a backup or a restore.
 flowchart LR
     A["Your WordPress site"] -->|"Back up now"| B["Backup file<br/>.tar / .tar.gz / .wpress"]
     B --> C["This server<br/>protected folder"]
-    B --> D["Remote storage<br/>S3 · FTP · Google Drive"]
+    B --> D["Remote storage<br/>S3 · FTP · Google Drive · Dropbox"]
     C -->|"Download"| E["Your computer"]
     D -->|"Restore / Move here"| F["Same site, new host<br/>or new domain"]
     C -->|"Restore / Move here"| F
@@ -184,7 +185,7 @@ wp dist-archive . siteferry.zip
 > Different address after the move? Open **Advanced** in the restore panel and enter it.
 > Must-use plugins and server-specific drop-ins are only copied if you tick them there.
 
-## Remote storage: S3, FTP and Google Drive
+## Remote storage: S3, FTP, Google Drive and Dropbox
 
 <details>
 <summary><b>Amazon S3, Backblaze B2, Wasabi, Cloudflare R2, DigitalOcean Spaces, MinIO</b></summary>
@@ -239,6 +240,39 @@ created, nothing else in your Drive.
 
 </details>
 
+<details>
+<summary><b>Dropbox</b></summary>
+
+- **Sign in with Dropbox** (default): click the button and allow access. Your browser passes
+  through SiteFerry's sign-in service at `auth.xsofty.com` on the way to Dropbox and back; the
+  access itself goes straight to your site and never through the service.
+- **Your own Dropbox app** (advanced): in the Dropbox App Console, create an app with "Scoped
+  access" and "App folder"; tick `files.metadata.read`, `files.content.read` and
+  `files.content.write`; register the redirect URI the Storage tab shows; enter the app key. No app
+  secret is needed.
+
+With "App folder" access SiteFerry sees only its own folder in your Dropbox (Apps → the app's
+name). Optionally name a folder inside it, for example one per site. Uploads go in 8 MB parts and
+continue after an interruption.
+
+```mermaid
+sequenceDiagram
+    participant S as Your site
+    participant B as Your browser
+    participant R as auth.xsofty.com
+    participant D as Dropbox
+    S->>B: state + PKCE challenge (verifier stays on the site)
+    B->>R: /dropbox/start
+    R->>D: authorize (SiteFerry's app key)
+    D->>R: one-time code
+    R->>B: back to your site with the code
+    B->>S: code + state (with the admin nonce)
+    S->>D: code + PKCE verifier → tokens
+    Note over R: never sees a token
+```
+
+</details>
+
 ## Import .wpress backups (All-in-One WP Migration)
 
 SiteFerry reads and writes `.wpress` files, the backup format of the All-in-One WP Migration
@@ -280,7 +314,7 @@ wp siteferry storage fetch <id> <name>
 wp siteferry storage delete <id> <name> [--yes]
 ```
 
-Storage ids: `s3`, `ftp`, `gdrive`. Settings come from the Storage tab.
+Storage ids: `s3`, `ftp`, `gdrive`, `dropbox`. Settings come from the Storage tab.
 
 `--dir` writes the backup and its work files to another folder, so a site without SiteFerry can be
 exported with `wp --require=/path/to/siteferry/siteferry.php siteferry export --dir=...`.
@@ -289,8 +323,9 @@ exported with `wp --require=/path/to/siteferry/siteferry.php siteferry export --
 
 ## Security and privacy
 
-- Administrators only (`manage_options`); every request carries a nonce; Google sign-in also
-  uses a one-time `state` and PKCE, and tokens are only saved from an authenticated request.
+- Administrators only (`manage_options`); every request carries a nonce; Google and Dropbox
+  sign-in also use a one-time `state` and PKCE, and tokens are only saved from an authenticated
+  request.
 - Secret keys, passwords and OAuth tokens are encrypted at rest (libsodium, or OpenSSL AES-256-GCM)
   with a key from the WordPress salts, never shown again, never logged, left out of every backup
   and removed when SiteFerry is deleted.
@@ -299,8 +334,9 @@ exported with `wp --require=/path/to/siteferry/siteferry.php siteferry export --
 - Imports refuse links, devices and unsafe paths, accept only the SQL statements a backup
   contains, and load into temporary tables first.
 - No licence keys, no update checks of its own, no telemetry. SiteFerry connects only to the
-  storage you set up, plus `auth.xsofty.com` for one-click Google sign-in (it holds SiteFerry's
-  Google app secret, stores nothing, and backups never pass through it).
+  storage you set up, plus `auth.xsofty.com` for one-click Google and Dropbox sign-in (it holds
+  SiteFerry's Google app secret, stores nothing, and backups never pass through it; Dropbox tokens
+  don't either).
 
 > [!IMPORTANT]
 > On nginx (which ignores `.htaccess`), add a rule such as
@@ -372,7 +408,7 @@ starts, the previous tables and files are put back.
 <summary><b>Where are backups stored?</b></summary>
 
 On this server in `wp-content/siteferry-<random>/backups/`, and wherever you send them: S3-compatible
-storage, an FTP server or Google Drive. The list on the Backups tab shows every copy.
+storage, an FTP server, Google Drive or Dropbox. The list on the Backups tab shows every copy.
 
 </details>
 
@@ -389,8 +425,8 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] S3-compatible storage, FTP/FTPS, Google Drive (one-click sign-in)
 - [x] .wpress import and export
 - [x] Backups home, guided restore, names, notes, tags and search
+- [x] Dropbox (one-click sign-in)
 - [ ] Safety backup before a restore, with Undo
-- [ ] Dropbox
 - [ ] Scheduled backups to your chosen storage, with retention
 - [ ] Password-protected .wpress backups
 - [ ] Multisite
@@ -413,7 +449,7 @@ powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-src eval-fil
 powershell -ExecutionPolicy Bypass -File tests\wp-storage-check.ps1 -Site siteferry-src
 ```
 
-The sign-in relay for one-click Google sign-in lives in [`relay/`](relay/README.md).
+The sign-in relay for one-click Google and Dropbox sign-in lives in [`relay/`](relay/README.md).
 
 </details>
 

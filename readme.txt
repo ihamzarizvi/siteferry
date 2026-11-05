@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.7.0
+Stable tag: 0.8.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,7 +17,7 @@ imports and writes .wpress files, the backup format of the All-in-One WP Migrati
 ".wpress backups" below).
 
 Work in progress. This version exports and imports sites from the admin screen and from WP-CLI,
-and sends backups to S3-compatible storage, FTP/FTPS servers and Google Drive. Dropbox follows.
+and sends backups to S3-compatible storage, FTP/FTPS servers, Google Drive and Dropbox.
 
 = Admin screen =
 
@@ -58,8 +58,8 @@ job; opening SiteFerry again offers to resume or cancel it. Only one job runs at
 * `wp siteferry export --send=<id> [--delete-after-send]`
 * `wp siteferry storage test|list <id>`, `wp siteferry storage send <id> <backup>`,
   `wp siteferry storage fetch <id> <name>`, `wp siteferry storage delete <id> <name> [--yes]`
-  (storage id: s3, ftp or gdrive; settings come from the Storage tab, where Google Drive is also
-  connected)
+  (storage id: s3, ftp, gdrive or dropbox; settings come from the Storage tab, where Google Drive
+  and Dropbox are also connected)
 
 = S3-compatible storage =
 
@@ -131,26 +131,67 @@ created itself, nothing else in the Drive. Backups go into one folder at the top
   Deleting a backup moves it to the Drive trash. Downloads use range requests.
 * The access token is only ever sent to Google's API hosts.
 
+= Dropbox =
+
+Two ways to sign in, chosen on the Storage tab; neither needs a secret, because Dropbox lets an app
+sign in with PKCE and its public app key alone:
+
+* "Sign in with Dropbox" (the default): click the button and allow access on Dropbox's page.
+  SiteFerry's own Dropbox app is used; your browser passes through SiteFerry's sign-in service on
+  the way (see "Sign-in service" below), but the access itself never does.
+* "Use my own Dropbox app" (advanced, no sign-in service involved): in the Dropbox App Console,
+  create an app with "Scoped access" and "App folder" access; on its Permissions tab tick
+  files.metadata.read, files.content.read and files.content.write; on its Settings tab register the
+  redirect URI that the Storage tab shows (Dropbox accepts http only for localhost). Enter its app
+  key; no app secret is needed.
+
+With "App folder" access SiteFerry sees only its own folder in the Dropbox (Apps, then the app's
+name), nothing else. Backups go into that folder, or into a folder inside it named on the Storage
+tab (for example one per site, when several sites share a Dropbox).
+
+* Connecting works as for Google Drive: a one-time `state` tied to the administrator and a PKCE
+  code verifier, kept for 10 minutes; the code that comes back is exchanged only by an
+  authenticated POST with the nonce, after the state matches. SiteFerry asks for the permissions
+  account_info.read (the account's email address, shown on the Storage tab), files.metadata.read,
+  files.content.read and files.content.write, and checks that they were granted.
+* The refresh token and access token are stored encrypted; the access token (valid for four hours)
+  is renewed when it is about to expire, or when Dropbox refuses it, and the new one saved.
+  "Disconnect" revokes the access at Dropbox. Switching between the two ways of signing in, or
+  changing the app key, drops the connection.
+* Uploads use upload sessions in parts of 8 MB; after an interruption Dropbox says how much it has
+  and the upload continues from there. Sending a backup again replaces the earlier copy. Cancelling
+  leaves nothing in the folder (an unfinished upload session never becomes a file, and Dropbox
+  discards it). Downloads use range requests. Deleted backups can be restored from Dropbox's deleted
+  files for a while, depending on the Dropbox plan.
+* The access token is only ever sent to Dropbox's API hosts.
+
 = Sign-in service (auth.xsofty.com) =
 
-"Sign in with Google" for Google Drive uses SiteFerry's sign-in service at
-`https://auth.xsofty.com/siteferry`, run by the publisher of SiteFerry. It holds the secret of
-SiteFerry's Google app, which a plugin cannot keep secret. SiteFerry contacts it only for that
-storage, only in that mode, and only for these steps:
+"Sign in with Google" and "Sign in with Dropbox" use SiteFerry's sign-in service at
+`https://auth.xsofty.com/siteferry`, run by the publisher of SiteFerry. Google and Dropbox only send
+the browser back to the one address registered for SiteFerry's apps, which is the service's; for
+Google, the service also holds the secret of SiteFerry's Google app, which a plugin cannot keep
+secret. SiteFerry contacts it only for those two storages, only in those modes, and only for these
+steps:
 
 * Signing in: your browser goes to the service with this site's SiteFerry page address, a random
-  state and a PKCE challenge, and on to Google; Google sends the browser back through the service,
-  which passes the one-time code to this site's page.
-* Getting and renewing access: this site sends the service the one-time code with the PKCE verifier
-  (once), and later the refresh token whenever the access token needs renewing (about once an hour
-  while SiteFerry works with the Drive). The service adds the app's client ID and secret, sends the
-  request to Google and returns Google's answer.
+  state and a PKCE challenge, and on to Google or Dropbox, which sends the browser back through the
+  service; the service passes the one-time code to this site's page. The code is useless without
+  the PKCE verifier, which stays on this site.
+* Google Drive, getting and renewing access: this site sends the service the one-time code with the
+  PKCE verifier (once), and later the refresh token whenever the access token needs renewing (about
+  once an hour while SiteFerry works with the Drive). The service adds the app's client ID and
+  secret, sends the request to Google and returns Google's answer.
+* Dropbox, connecting: this site asks the service once for the app key and redirect address of
+  SiteFerry's Dropbox app (both public). The code exchange and every renewal then go straight from
+  this site to Dropbox; no token ever passes through the service.
 
 The service stores nothing and keeps no logs of its own. Backups never go through it: they travel
-directly between this site and Google. If the service cannot be reached, signing in and renewing
-access fail with a message saying so; the rest of SiteFerry is not affected. To avoid the service
-completely, choose "Use my own OAuth client". To use a sign-in service of your own instead, define
-`SITEFERRY_RELAY_URL` (an https address) in wp-config.php.
+directly between this site and Google or Dropbox. If the service cannot be reached, signing in (and,
+for Google Drive, renewing access) fails with a message saying so; the rest of SiteFerry is not
+affected. To avoid the service completely, use your own OAuth client or Dropbox app. To use a
+sign-in service of your own instead, define `SITEFERRY_RELAY_URL` (an https address) in
+wp-config.php.
 
 = Stored keys =
 
@@ -236,6 +277,10 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.8.0 =
+* Dropbox storage: one-click "Sign in with Dropbox" through SiteFerry's sign-in service, or your own Dropbox app; PKCE without any app secret, so tokens go straight between the site and Dropbox; App folder access; encrypted tokens renewed automatically; upload sessions in 8 MB parts that continue after an interruption; ranged downloads; connection test; revoke on disconnect.
+* The sign-in service handles Dropbox as well (it only passes the browser through) and can be set up for Google Drive, Dropbox or both.
 
 = 0.7.0 =
 * Simpler backup and restore: one Backups tab with "Back up now", Options, "Upload a backup" and one list of all backups (this server and every storage) in columns; a guided panel to restore a backup of this site or move another site here, checked before anything changes; names, notes and tags for backups, with search and a tag filter. Export and Import tabs are folded into Backups, Log is now Activity.

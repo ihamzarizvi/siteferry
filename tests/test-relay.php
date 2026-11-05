@@ -188,4 +188,102 @@ Sf_Test::run(
 	}
 );
 
+const SF_R_DROPBOX_RETURN = 'https://example.com/blog/wp-admin/admin.php?page=siteferry&oauth=dropbox';
+
+/**
+ * A relay set up for Google Drive and Dropbox, or only one of them.
+ *
+ * @param string        $only  'google', 'dropbox' or '' for both.
+ * @param callable|null $clock Clock.
+ */
+function sf_relay_with_dropbox( string $only = '', ?callable $clock = null ): Relay {
+	$config = array(
+		'base_url'    => 'https://auth.example.test/siteferry',
+		'signing_key' => str_repeat( 'k', 40 ),
+	);
+	if ( 'dropbox' !== $only ) {
+		$config += array(
+			'google_client_id'     => 'relay-client.apps.googleusercontent.com',
+			'google_client_secret' => 'relay-secret',
+		);
+	}
+	if ( 'google' !== $only ) {
+		$config['dropbox_app_key'] = 'relaydropboxkey1';
+	}
+	return new Relay(
+		$config,
+		static function () {
+			throw new RuntimeException( 'nothing is posted for Dropbox' );
+		},
+		$clock
+	);
+}
+
+Sf_Test::run(
+	'dropbox start: to Dropbox with the relay\'s app key, its callback, offline access, the four permissions and the site\'s challenge',
+	static function () use ( $sf_state, $sf_challenge ) {
+		$start = sf_relay_with_dropbox()->handle( 'GET', '/siteferry/dropbox/start', array( 'return' => SF_R_DROPBOX_RETURN, 'state' => $sf_state, 'challenge' => $sf_challenge ), '' );
+		$query = sf_location_query( $start );
+		Sf_Test::same( 'https://www.dropbox.com/oauth2/authorize', strtok( $start['headers']['Location'], '?' ) );
+		Sf_Test::same( 'relaydropboxkey1', $query['client_id'] );
+		Sf_Test::same( 'https://auth.example.test/siteferry/dropbox/callback', $query['redirect_uri'] );
+		Sf_Test::same( 'code', $query['response_type'] );
+		Sf_Test::same( 'offline', $query['token_access_type'] );
+		Sf_Test::same( 'account_info.read files.metadata.read files.content.read files.content.write', $query['scope'] );
+		Sf_Test::same( $sf_challenge, $query['code_challenge'] );
+		Sf_Test::same( 'S256', $query['code_challenge_method'] );
+		Sf_Test::ok( strlen( $query['state'] ) <= Relay::DROPBOX_STATE_MAX, 'state within Dropbox\'s 500 bytes: ' . strlen( $query['state'] ) );
+		Sf_Test::same( 'no-store', $start['headers']['Cache-Control'] );
+
+		$gdrive = sf_relay_with_dropbox()->handle( 'GET', '/siteferry/dropbox/start', array( 'return' => SF_R_RETURN, 'state' => $sf_state, 'challenge' => $sf_challenge ), '' );
+		Sf_Test::same( 400, $gdrive['status'], 'a return address for Google Drive is refused for Dropbox:' );
+		$long = sf_relay_with_dropbox()->handle( 'GET', '/siteferry/dropbox/start', array( 'return' => 'https://' . str_repeat( 'a', 200 ) . '.example.com/' . str_repeat( 'p', 120 ) . '/wp-admin/admin.php?page=siteferry&oauth=dropbox', 'state' => $sf_state, 'challenge' => $sf_challenge ), '' );
+		Sf_Test::same( 400, $long['status'], 'an address too long for Dropbox\'s state:' );
+		Sf_Test::ok( false !== strpos( $long['body'], 'own Dropbox app' ), $long['body'] );
+	}
+);
+
+Sf_Test::run(
+	'dropbox callback and app: back to the site with the code; a Google state does not work here; the public app details',
+	static function () use ( $sf_state, $sf_challenge ) {
+		$relay  = sf_relay_with_dropbox();
+		$signed = sf_location_query( $relay->handle( 'GET', '/siteferry/dropbox/start', array( 'return' => SF_R_DROPBOX_RETURN, 'state' => $sf_state, 'challenge' => $sf_challenge ), '' ) )['state'];
+		$back   = $relay->handle( 'GET', '/siteferry/dropbox/callback', array( 'code' => 'dbx-Code_123', 'state' => $signed ), '' );
+		Sf_Test::same( 0, strpos( $back['headers']['Location'], SF_R_DROPBOX_RETURN . '&' ) );
+		$query = sf_location_query( $back );
+		Sf_Test::same( 'dbx-Code_123', $query['code'] );
+		Sf_Test::same( $sf_state, $query['state'] );
+		$denied = sf_location_query( $relay->handle( 'GET', '/siteferry/dropbox/callback', array( 'error' => 'access_denied', 'error_description' => 'The user chose not to', 'state' => $signed ), '' ) );
+		Sf_Test::same( 'access_denied', $denied['error'] );
+
+		$google = sf_location_query( $relay->handle( 'GET', '/siteferry/google/start', array( 'return' => SF_R_RETURN, 'state' => $sf_state, 'challenge' => $sf_challenge ), '' ) )['state'];
+		Sf_Test::same( 400, $relay->handle( 'GET', '/siteferry/dropbox/callback', array( 'code' => 'c', 'state' => $google ), '' )['status'], 'a Google sign-in cannot finish at the Dropbox callback:' );
+		Sf_Test::same( 400, $relay->handle( 'GET', '/siteferry/google/callback', array( 'code' => 'c', 'state' => $signed ), '' )['status'], 'nor the other way round:' );
+
+		$app = $relay->handle( 'GET', '/siteferry/dropbox/app', array(), '' );
+		Sf_Test::same( 200, $app['status'] );
+		Sf_Test::same( array( 'app_key' => 'relaydropboxkey1', 'redirect_uri' => 'https://auth.example.test/siteferry/dropbox/callback' ), json_decode( $app['body'], true ) );
+		Sf_Test::same( 405, $relay->handle( 'POST', '/siteferry/dropbox/app', array(), '' )['status'], 'POST refused:' );
+		Sf_Test::same( 404, $relay->handle( 'POST', '/siteferry/dropbox/token', array(), 'grant_type=refresh_token&refresh_token=x' )['status'], 'no token route for Dropbox (tokens never pass through):' );
+	}
+);
+
+Sf_Test::run(
+	'a relay may offer one provider: the other one answers 503',
+	static function () use ( $sf_state, $sf_challenge ) {
+		$google_only = sf_relay_with_dropbox( 'google' );
+		Sf_Test::same( 503, $google_only->handle( 'GET', '/siteferry/dropbox/start', array( 'return' => SF_R_DROPBOX_RETURN, 'state' => $sf_state, 'challenge' => $sf_challenge ), '' )['status'] );
+		$app = $google_only->handle( 'GET', '/siteferry/dropbox/app', array(), '' );
+		Sf_Test::same( 503, $app['status'] );
+		Sf_Test::same( 'Dropbox sign-in is not set up on this relay.', json_decode( $app['body'], true )['error_description'] );
+		Sf_Test::same( 302, $google_only->handle( 'GET', '/siteferry/google/start', array( 'return' => SF_R_RETURN, 'state' => $sf_state, 'challenge' => $sf_challenge ), '' )['status'], 'Google still works:' );
+
+		$dropbox_only = sf_relay_with_dropbox( 'dropbox' );
+		Sf_Test::same( 503, $dropbox_only->handle( 'GET', '/siteferry/google/start', array( 'return' => SF_R_RETURN, 'state' => $sf_state, 'challenge' => $sf_challenge ), '' )['status'] );
+		Sf_Test::same( 503, $dropbox_only->handle( 'POST', '/siteferry/google/token', array(), 'grant_type=refresh_token&refresh_token=x' )['status'] );
+		Sf_Test::same( 302, $dropbox_only->handle( 'GET', '/siteferry/dropbox/start', array( 'return' => SF_R_DROPBOX_RETURN, 'state' => $sf_state, 'challenge' => $sf_challenge ), '' )['status'], 'Dropbox still works:' );
+		Sf_Test::same( 200, $dropbox_only->handle( 'GET', '/siteferry/', array(), '' )['status'], 'health check:' );
+	}
+);
+
 exit( Sf_Test::finish( 'test-relay' ) );

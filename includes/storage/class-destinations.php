@@ -31,16 +31,18 @@ final class Destinations {
 
 	/** Destination id => driver class. */
 	const DRIVERS = array(
-		's3'     => S3_Driver::class,
-		'ftp'    => Ftp_Driver::class,
-		'gdrive' => Gdrive_Driver::class,
+		's3'      => S3_Driver::class,
+		'ftp'     => Ftp_Driver::class,
+		'gdrive'  => Gdrive_Driver::class,
+		'dropbox' => Dropbox_Driver::class,
 	);
 
 	/** Destination id => [name, short name]. */
 	const LABELS = array(
-		's3'     => array( 'S3-compatible storage', 'S3' ),
-		'ftp'    => array( 'FTP server', 'FTP' ),
-		'gdrive' => array( 'Google Drive', 'Google Drive' ),
+		's3'      => array( 'S3-compatible storage', 'S3' ),
+		'ftp'     => array( 'FTP server', 'FTP' ),
+		'gdrive'  => array( 'Google Drive', 'Google Drive' ),
+		'dropbox' => array( 'Dropbox', 'Dropbox' ),
 	);
 
 	/**
@@ -141,7 +143,7 @@ final class Destinations {
 		$secrets = array();
 		foreach ( $class::secrets() as $name => $label ) {
 			if ( ! array_key_exists( $name, $normal['secrets'] ) ) {
-				continue; // Not used with these settings (Google Drive through the relay needs no secret).
+				continue; // Not used with these settings (Google Drive through the sign-in service needs no secret).
 			}
 			$value = $normal['secrets'][ $name ];
 			if ( null !== $value ) {

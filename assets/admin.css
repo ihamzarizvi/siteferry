@@ -1730,21 +1730,6 @@ details.sf-dest[open] > .sf-dest-head::after {
 	overflow-wrap: anywhere;
 }
 
-.sf-dest.is-soon {
-	border-style: dashed;
-	background: transparent;
-}
-
-.sf-dest.is-soon .sf-dest-head {
-	grid-template-columns: auto minmax(0, 1fr);
-	cursor: default;
-}
-
-.sf-dest.is-soon .sf-dest-icon {
-	background: transparent;
-	color: var(--sf-ink-soft);
-}
-
 .sf-dest-body {
 	padding: 4px 18px 18px;
 }

@@ -716,9 +716,9 @@
 		const connected = d && d.oauth && d.oauth.connected;
 		const connect = form.querySelector( '[data-role=connect]' );
 		if ( mode === 'relay' ) {
-			connect.textContent = connected ? 'Sign in again' : 'Sign in with Google';
+			connect.textContent = connected ? 'Sign in again' : connect.dataset.labelRelay;
 		} else {
-			connect.textContent = connected ? 'Connect again' : 'Connect to Google Drive';
+			connect.textContent = connected ? 'Connect again' : connect.dataset.labelOwn;
 		}
 	}
 

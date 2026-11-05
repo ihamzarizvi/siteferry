@@ -232,7 +232,7 @@ final class Admin {
 						</div>
 						<p class="sf-delete-after" id="siteferry-delete-after" hidden><label><input type="checkbox" name="delete_after_send"> <?php esc_html_e( 'Then delete the copy on this server', 'siteferry' ); ?></label></p>
 						<p class="description" id="siteferry-no-storage" hidden>
-							<?php esc_html_e( 'To send backups to S3, an FTP server or Google Drive, set one up first.', 'siteferry' ); ?>
+							<?php esc_html_e( 'To send backups to S3, an FTP server, Google Drive or Dropbox, set one up first.', 'siteferry' ); ?>
 							<a href="#storage" data-goto="storage"><?php esc_html_e( 'Set up storage', 'siteferry' ); ?></a>
 						</p>
 						<p class="sf-download-ready"><label><input type="checkbox" id="siteferry-download-ready"> <?php esc_html_e( 'Also download it to my computer when it is ready', 'siteferry' ); ?></label></p>
@@ -327,13 +327,8 @@ final class Admin {
 					self::render_destination( 's3', 'dashicons-cloud', __( 'S3-compatible storage', 'siteferry' ), __( 'Amazon S3, Backblaze B2, Wasabi, Cloudflare R2, DigitalOcean Spaces, MinIO', 'siteferry' ), array( self::class, 'render_s3' ) );
 					self::render_destination( 'ftp', 'dashicons-networking', __( 'FTP server', 'siteferry' ), __( 'FTPS (encrypted) or plain FTP', 'siteferry' ), array( self::class, 'render_ftp' ) );
 					self::render_destination( 'gdrive', 'dashicons-google', __( 'Google Drive', 'siteferry' ), __( 'Sign in with your Google account', 'siteferry' ), array( self::class, 'render_gdrive' ) );
+					self::render_destination( 'dropbox', 'dashicons-cloud-saved', __( 'Dropbox', 'siteferry' ), __( 'Sign in with your Dropbox account', 'siteferry' ), array( self::class, 'render_dropbox' ) );
 					?>
-					<div class="sf-dest is-soon">
-						<div class="sf-dest-head">
-							<span class="sf-dest-icon dashicons dashicons-cloud-saved" aria-hidden="true"></span>
-							<span class="sf-dest-text"><span class="sf-dest-name"><?php esc_html_e( 'Dropbox', 'siteferry' ); ?></span><span class="sf-dest-state"><?php esc_html_e( 'Comes in a later version.', 'siteferry' ); ?></span></span>
-						</div>
-					</div>
 				</div>
 			</section>
 
@@ -499,7 +494,75 @@ final class Admin {
 				</tr>
 			</table>
 			<p class="sf-form-actions">
-				<button type="button" class="button button-primary" data-role="connect"><?php esc_html_e( 'Sign in with Google', 'siteferry' ); ?></button>
+				<button type="button" class="button button-primary" data-role="connect" data-label-relay="<?php esc_attr_e( 'Sign in with Google', 'siteferry' ); ?>" data-label-own="<?php esc_attr_e( 'Connect to Google Drive', 'siteferry' ); ?>"><?php esc_html_e( 'Sign in with Google', 'siteferry' ); ?></button>
+				<button type="submit" class="button"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
+				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
+				<button type="button" class="button" data-role="disconnect" hidden><?php esc_html_e( 'Disconnect', 'siteferry' ); ?></button>
+				<button type="button" class="button-link button-link-delete" data-role="remove"><?php esc_html_e( 'Remove these settings', 'siteferry' ); ?></button>
+			</p>
+			<div class="sf-result" data-role="result" role="status" hidden></div>
+		</form>
+		<?php
+	}
+
+	/**
+	 * Prints the Dropbox settings form: one-click sign-in through SiteFerry's sign-in service, or
+	 * (advanced) the administrator's own Dropbox app with the redirect URI to register. Neither
+	 * needs a secret.
+	 */
+	private static function render_dropbox(): void {
+		$redirect   = \SiteFerry\Storage\Destinations::redirect_uri( 'dropbox' );
+		$relay_host = (string) wp_parse_url( \SiteFerry\Storage\Gdrive_Driver::relay_url(), PHP_URL_HOST );
+		?>
+		<form id="siteferry-storage-dropbox" class="siteferry-storage-form" data-destination="dropbox" method="post" action="#" autocomplete="off">
+			<p>
+				<label for="siteferry-dropbox-mode"><?php esc_html_e( 'Sign-in:', 'siteferry' ); ?></label>
+				<select id="siteferry-dropbox-mode" name="mode" data-default="relay">
+					<option value="relay"><?php esc_html_e( 'Sign in with Dropbox (recommended)', 'siteferry' ); ?></option>
+					<option value="own"><?php esc_html_e( 'Use my own Dropbox app (advanced)', 'siteferry' ); ?></option>
+				</select>
+			</p>
+			<p class="description" data-mode="relay">
+				<?php
+				printf(
+					/* translators: %s: host name of the sign-in service */
+					esc_html__( 'Sign in with your Dropbox account; no keys needed. The sign-in page opens through SiteFerry\'s sign-in service at %s, which only passes your browser on to Dropbox and back: the access itself goes straight to this site and never through the service. Backups go straight between this site and SiteFerry\'s own folder in your Dropbox (Apps, SiteFerry); SiteFerry cannot see anything else there.', 'siteferry' ),
+					'<strong>' . esc_html( $relay_host ) . '</strong>'
+				);
+				?>
+			</p>
+			<details class="siteferry-howto" data-mode="own">
+				<summary><?php esc_html_e( 'How to create your own Dropbox app (once)', 'siteferry' ); ?></summary>
+				<ol>
+					<li><?php esc_html_e( 'In the Dropbox App Console (dropbox.com/developers/apps), click "Create app": choose "Scoped access" and "App folder", and give it a name. Its folder appears in your Dropbox under Apps.', 'siteferry' ); ?></li>
+					<li><?php esc_html_e( 'On the Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then click Submit.', 'siteferry' ); ?></li>
+					<li><?php esc_html_e( 'On the Settings tab, add the redirect URI below under OAuth 2, Redirect URIs (Dropbox accepts http only for localhost).', 'siteferry' ); ?></li>
+					<li><?php esc_html_e( 'Enter the app key here (no app secret is needed), save, then click "Connect to Dropbox".', 'siteferry' ); ?></li>
+				</ol>
+			</details>
+			<table class="form-table" role="presentation">
+				<tr data-mode="own">
+					<th scope="row"><?php esc_html_e( 'Redirect URI', 'siteferry' ); ?></th>
+					<td>
+						<code class="siteferry-redirect" data-role="redirect"><?php echo esc_html( $redirect ); ?></code>
+						<button type="button" class="button button-small" data-role="copy" data-copy="<?php echo esc_attr( $redirect ); ?>"><?php esc_html_e( 'Copy', 'siteferry' ); ?></button>
+						<p class="description"><?php esc_html_e( 'Register exactly this address with your Dropbox app.', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+				<tr data-mode="own">
+					<th scope="row"><label for="siteferry-dropbox-app_key"><?php esc_html_e( 'App key', 'siteferry' ); ?></label></th>
+					<td><input type="text" class="regular-text" id="siteferry-dropbox-app_key" name="app_key" placeholder="a1b2c3d4e5f6g7h" spellcheck="false" autocomplete="off"></td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="siteferry-dropbox-folder"><?php esc_html_e( 'Folder in the app folder', 'siteferry' ); ?></label></th>
+					<td>
+						<input type="text" class="regular-text" id="siteferry-dropbox-folder" name="folder" placeholder="<?php esc_attr_e( '(the app folder itself)', 'siteferry' ); ?>" spellcheck="false" autocomplete="off">
+						<p class="description"><?php esc_html_e( 'Optional, for example the site\'s name when several sites share one Dropbox. Dropbox creates it with the first backup.', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+			</table>
+			<p class="sf-form-actions">
+				<button type="button" class="button button-primary" data-role="connect" data-label-relay="<?php esc_attr_e( 'Sign in with Dropbox', 'siteferry' ); ?>" data-label-own="<?php esc_attr_e( 'Connect to Dropbox', 'siteferry' ); ?>"><?php esc_html_e( 'Sign in with Dropbox', 'siteferry' ); ?></button>
 				<button type="submit" class="button"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="disconnect" hidden><?php esc_html_e( 'Disconnect', 'siteferry' ); ?></button>

@@ -1,6 +1,6 @@
 <?php
 /**
- * SiteFerry sign-in relay: one-click Google Drive sign-in for SiteFerry sites.
+ * SiteFerry sign-in relay: one-click Google Drive and Dropbox sign-in for SiteFerry sites.
  *
  * @package SiteFerry_Relay
  * SPDX-License-Identifier: GPL-2.0-or-later
@@ -9,10 +9,12 @@
 namespace SiteFerry_Relay;
 
 /**
- * Holds the Google OAuth client secret so that the plugin does not have to, and does nothing
- * else. Every SiteFerry site uses the same Google app; Google only returns to the one redirect
- * address registered for it, which is this relay's.
+ * Every SiteFerry site signs in with the same Google and Dropbox apps, and the providers only
+ * send the browser back to the one redirect address registered for each app: this relay's. The
+ * relay passes the browser through, holds the Google client secret so that the plugin does not
+ * have to, and does nothing else.
  *
+ * Google Drive:
  * - GET  /google/start     The site's browser arrives with its return address, its one-time state
  *                          and its PKCE challenge. The relay signs return address + state (valid 10
  *                          minutes) and sends the browser to Google's consent page.
@@ -22,29 +24,59 @@ namespace SiteFerry_Relay;
  * - POST /google/token     The site exchanges the code (with its verifier) or renews its access
  *                          (with its refresh token). The relay adds the client ID and secret,
  *                          forwards the request to Google and returns Google's answer unchanged.
- * - GET  /                 Health check.
+ *
+ * Dropbox (no app secret: Dropbox accepts PKCE alone, so the tokens never pass through here):
+ * - GET  /dropbox/start     As /google/start, to Dropbox's authorization page.
+ * - GET  /dropbox/callback  As /google/callback.
+ * - GET  /dropbox/app       The app key and this redirect address (both public), which the site
+ *                           needs to exchange the code with Dropbox itself and to renew its access.
+ *
+ * - GET  /                  Health check.
  *
  * Nothing is stored or logged: no tokens, no codes, no request bodies. Return addresses must be
- * a SiteFerry page (…/wp-admin/admin.php?page=siteferry&oauth=gdrive), so the relay cannot be used
- * to send people anywhere else.
+ * a SiteFerry page (…/wp-admin/admin.php?page=siteferry&oauth=gdrive or =dropbox), so the relay
+ * cannot be used to send people anywhere else.
  */
 final class Relay {
 
 	/** Seconds a sign-in may take. */
 	const STATE_TTL = 600;
 
-	/** The only scope requested. */
+	/** The only Google scope requested. */
 	const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
+	/** The Dropbox permissions requested. */
+	const DROPBOX_SCOPES = 'account_info.read files.metadata.read files.content.read files.content.write';
 
 	const GOOGLE_AUTH  = 'https://accounts.google.com/o/oauth2/v2/auth';
 	const GOOGLE_TOKEN = 'https://oauth2.googleapis.com/token';
+	const DROPBOX_AUTH = 'https://www.dropbox.com/oauth2/authorize';
+
+	/** Dropbox returns at most 500 bytes of state. */
+	const DROPBOX_STATE_MAX = 500;
+
+	/** Provider => the SiteFerry storage id in the return address. */
+	const PROVIDERS = array(
+		'google'  => 'gdrive',
+		'dropbox' => 'dropbox',
+	);
+
+	/** Path => what it does. */
+	const ROUTES = array(
+		'google/start'     => 'start',
+		'google/callback'  => 'callback',
+		'google/token'     => 'token',
+		'dropbox/start'    => 'start',
+		'dropbox/callback' => 'callback',
+		'dropbox/app'      => 'app',
+	);
 
 	/** Largest request body accepted. */
 	const MAX_BODY = 16384;
 
 	/**
-	 * Settings: base_url, signing_key, google_client_id, google_client_secret, and for tests
-	 * google_auth_url and google_token_url.
+	 * Settings: base_url, signing_key, google_client_id, google_client_secret, dropbox_app_key,
+	 * and for tests google_auth_url, google_token_url and dropbox_auth_url.
 	 *
 	 * @var array
 	 */
@@ -75,6 +107,7 @@ final class Relay {
 		$this->config = $config + array(
 			'google_auth_url'  => self::GOOGLE_AUTH,
 			'google_token_url' => self::GOOGLE_TOKEN,
+			'dropbox_auth_url' => self::DROPBOX_AUTH,
 		);
 		$this->post   = $post;
 		$this->clock  = null === $clock ? 'time' : $clock;
@@ -102,66 +135,97 @@ final class Relay {
 		if ( '/' === $route && 'GET' === $method ) {
 			return self::text( 200, 'SiteFerry relay' );
 		}
-		if ( '/google/start' === $route && 'GET' === $method ) {
-			return $this->start( $query );
+		$key = trim( $route, '/' );
+		if ( ! isset( self::ROUTES[ $key ] ) ) {
+			return self::text( 404, 'Not found.' );
 		}
-		if ( '/google/callback' === $route && 'GET' === $method ) {
-			return $this->callback( $query );
+		$provider = strtok( $key, '/' );
+		$action   = self::ROUTES[ $key ];
+		if ( ! $this->offers( $provider ) ) {
+			$message = sprintf( '%s sign-in is not set up on this relay.', 'google' === $provider ? 'Google Drive' : 'Dropbox' );
+			return in_array( $action, array( 'token', 'app' ), true ) ? self::json( 503, array( 'error' => 'temporarily_unavailable', 'error_description' => $message ) ) : self::text( 503, $message );
 		}
-		if ( '/google/token' === $route ) {
+		if ( 'token' === $action ) {
 			return 'POST' === $method ? $this->token( $body ) : self::json( 405, array( 'error' => 'invalid_request', 'error_description' => 'Use POST.' ) );
 		}
-		return self::text( 404, 'Not found.' );
+		if ( 'GET' !== $method ) {
+			return self::text( 405, 'Use GET.' );
+		}
+		if ( 'start' === $action ) {
+			return $this->start( $provider, $query );
+		}
+		if ( 'callback' === $action ) {
+			return $this->callback( $provider, $query );
+		}
+		return self::json(
+			200,
+			array(
+				'app_key'      => $this->config['dropbox_app_key'],
+				'redirect_uri' => $this->callback_url( 'dropbox' ),
+			)
+		);
 	}
 
 	/**
-	 * GET /google/start: checks the request and sends the browser to Google.
+	 * GET /<provider>/start: checks the request and sends the browser to the provider.
 	 *
-	 * @param array $query Query.
+	 * @param string $provider google or dropbox.
+	 * @param array  $query    Query.
 	 */
-	private function start( array $query ): array {
+	private function start( string $provider, array $query ): array {
 		$return    = self::param( $query, 'return' );
 		$state     = self::param( $query, 'state' );
 		$challenge = self::param( $query, 'challenge' );
-		if ( ! self::valid_return( $return, 'gdrive' ) || ! preg_match( '/^[a-f0-9]{48}$/', $state ) || ! preg_match( '/^[A-Za-z0-9_-]{43,128}$/', $challenge ) ) {
+		if ( ! self::valid_return( $return, self::PROVIDERS[ $provider ] ) || ! preg_match( '/^[a-f0-9]{48}$/', $state ) || ! preg_match( '/^[A-Za-z0-9_-]{43,128}$/', $challenge ) ) {
 			return self::text( 400, 'This sign-in request is not valid. Start again from the SiteFerry page of your site.' );
 		}
 		$signed = $this->sign(
 			array(
-				'p' => 'google',
+				'p' => $provider,
 				'r' => $return,
 				's' => $state,
 				'e' => $this->now() + self::STATE_TTL,
 			)
 		);
-		return self::redirect(
-			$this->config['google_auth_url'] . '?' . http_build_query(
-				array(
-					'client_id'             => $this->config['google_client_id'],
-					'redirect_uri'          => $this->callback_url(),
-					'response_type'         => 'code',
-					'scope'                 => self::SCOPE,
-					'access_type'           => 'offline',
-					'prompt'                => 'consent',
-					'state'                 => $signed,
-					'code_challenge'        => $challenge,
-					'code_challenge_method' => 'S256',
-				),
-				'',
-				'&',
-				PHP_QUERY_RFC3986
-			)
+		if ( 'google' === $provider ) {
+			$fields = array(
+				'client_id'             => $this->config['google_client_id'],
+				'redirect_uri'          => $this->callback_url( 'google' ),
+				'response_type'         => 'code',
+				'scope'                 => self::SCOPE,
+				'access_type'           => 'offline',
+				'prompt'                => 'consent',
+				'state'                 => $signed,
+				'code_challenge'        => $challenge,
+				'code_challenge_method' => 'S256',
+			);
+			return self::redirect( $this->config['google_auth_url'] . '?' . http_build_query( $fields, '', '&', PHP_QUERY_RFC3986 ) );
+		}
+		if ( strlen( $signed ) > self::DROPBOX_STATE_MAX ) {
+			return self::text( 400, 'The address of this site is too long for Dropbox\'s sign-in. Use your own Dropbox app instead (SiteFerry, Storage tab, Dropbox).' );
+		}
+		$fields = array(
+			'client_id'             => $this->config['dropbox_app_key'],
+			'redirect_uri'          => $this->callback_url( 'dropbox' ),
+			'response_type'         => 'code',
+			'token_access_type'     => 'offline',
+			'scope'                 => self::DROPBOX_SCOPES,
+			'state'                 => $signed,
+			'code_challenge'        => $challenge,
+			'code_challenge_method' => 'S256',
 		);
+		return self::redirect( $this->config['dropbox_auth_url'] . '?' . http_build_query( $fields, '', '&', PHP_QUERY_RFC3986 ) );
 	}
 
 	/**
-	 * GET /google/callback: sends the browser back to the site with the code (or the refusal).
+	 * GET /<provider>/callback: sends the browser back to the site with the code (or the refusal).
 	 *
-	 * @param array $query Query.
+	 * @param string $provider google or dropbox.
+	 * @param array  $query    Query.
 	 */
-	private function callback( array $query ): array {
+	private function callback( string $provider, array $query ): array {
 		$data = $this->verify( self::param( $query, 'state' ) );
-		if ( null === $data || 'google' !== $data['p'] ) {
+		if ( null === $data || $provider !== $data['p'] ) {
 			return self::text( 400, 'This sign-in answer is not valid any more (it works once, for 10 minutes). Start again from the SiteFerry page of your site.' );
 		}
 		$error = self::param( $query, 'error' );
@@ -171,7 +235,7 @@ final class Relay {
 		}
 		$code = self::param( $query, 'code' );
 		if ( ! preg_match( '/^[\x21-\x7e]{1,2048}$/', $code ) ) {
-			return self::text( 400, 'Google sent no authorization code. Start again from the SiteFerry page of your site.' );
+			return self::text( 400, sprintf( '%s sent no authorization code. Start again from the SiteFerry page of your site.', 'google' === $provider ? 'Google' : 'Dropbox' ) );
 		}
 		return self::redirect( $data['r'] . '&' . http_build_query( array( 'code' => $code, 'state' => $data['s'] ), '', '&', PHP_QUERY_RFC3986 ) );
 	}
@@ -202,7 +266,7 @@ final class Relay {
 				'grant_type'    => 'authorization_code',
 				'code'          => $code,
 				'code_verifier' => $verifier,
-				'redirect_uri'  => $this->callback_url(),
+				'redirect_uri'  => $this->callback_url( 'google' ),
 			) + $base;
 		} elseif ( 'refresh_token' === $grant ) {
 			$refresh = self::param( $form, 'refresh_token' );
@@ -288,22 +352,37 @@ final class Relay {
 	}
 
 	/**
-	 * Whether every required setting is there.
+	 * Whether the settings every route needs are there: the address and a signing key.
 	 */
 	private function configured(): bool {
-		foreach ( array( 'base_url', 'google_client_id', 'google_client_secret' ) as $key ) {
+		return ! empty( $this->config['base_url'] ) && is_string( $this->config['base_url'] )
+			&& isset( $this->config['signing_key'] ) && is_string( $this->config['signing_key'] ) && strlen( $this->config['signing_key'] ) >= 32;
+	}
+
+	/**
+	 * Whether the relay is set up for a provider (a relay may offer only one).
+	 *
+	 * @param string $provider google or dropbox.
+	 */
+	private function offers( string $provider ): bool {
+		if ( 'dropbox' === $provider ) {
+			return isset( $this->config['dropbox_app_key'] ) && is_string( $this->config['dropbox_app_key'] ) && 1 === preg_match( '/^[A-Za-z0-9]{8,64}$/', $this->config['dropbox_app_key'] );
+		}
+		foreach ( array( 'google_client_id', 'google_client_secret' ) as $key ) {
 			if ( empty( $this->config[ $key ] ) || ! is_string( $this->config[ $key ] ) ) {
 				return false;
 			}
 		}
-		return isset( $this->config['signing_key'] ) && is_string( $this->config['signing_key'] ) && strlen( $this->config['signing_key'] ) >= 32;
+		return true;
 	}
 
 	/**
-	 * The redirect address registered with Google.
+	 * The redirect address registered with a provider.
+	 *
+	 * @param string $provider google or dropbox.
 	 */
-	public function callback_url(): string {
-		return rtrim( (string) $this->config['base_url'], '/' ) . '/google/callback';
+	public function callback_url( string $provider = 'google' ): string {
+		return rtrim( (string) $this->config['base_url'], '/' ) . '/' . $provider . '/callback';
 	}
 
 	/**
@@ -383,7 +462,7 @@ final class Relay {
 		return array(
 			'status'  => $status,
 			'headers' => self::headers( 'application/json; charset=utf-8' ),
-			'body'    => (string) json_encode( $data ),
+			'body'    => (string) json_encode( $data, JSON_UNESCAPED_SLASHES ),
 		);
 	}
 

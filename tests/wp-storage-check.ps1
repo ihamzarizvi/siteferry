@@ -9,6 +9,8 @@
       ftp: tests\tools\fake-ftp-server.php, explicit FTPS with a self-signed certificate (port 18767)
       gdrive: tests\tools\fake-google-server.php under "php -S" (port 18769), OAuth and Drive
       gdrive-relay: the same, plus the real relay (relay\public\index.php, port 18771) in between
+      dropbox: tests\tools\fake-dropbox-server.php under "php -S" (port 18773), OAuth and API v2
+      dropbox-relay: the same, with the browser passing through the real relay (port 18771)
     With -Serve the server of -Driver keeps running for browser tests until Enter is pressed; the
     logins are in the printed config.json (test values only).
 
@@ -18,7 +20,7 @@
 #>
 param(
     [string] $Site = 'siteferry-src',
-    [ValidateSet('s3', 'ftp', 'gdrive', 'gdrive-relay', 'all')] [string] $Driver = 'all',
+    [ValidateSet('s3', 'ftp', 'gdrive', 'gdrive-relay', 'dropbox', 'dropbox-relay', 'all')] [string] $Driver = 'all',
     [switch] $Serve,
     [switch] $Keep
 )
@@ -70,6 +72,42 @@ function Start-Php([string[]] $Arguments, [string] $Dir, [string] $Name, [int] $
 # Starts the fake server(s) for a kind; returns the processes. Sets the environment variables the test reads.
 function Start-FakeServer([string] $Kind, [string] $Dir) {
     $env:SITEFERRY_TEST_STORAGE = $Kind
+    if ($Kind -eq 'dropbox' -or $Kind -eq 'dropbox-relay') {
+        $port = 18773
+        $relayPort = 18771
+        $config = [ordered] @{
+            base      = "http://127.0.0.1:$port"
+            app_key   = (New-TestKey 15).ToLower().Replace('+', 'x').Replace('/', 'y')
+            account   = 'tester@example.com'
+            page_size = 2
+        }
+        if ($Kind -eq 'dropbox-relay') {
+            # Like Dropbox: only the relay's registered redirect address is accepted.
+            $config.redirect_uris = @("http://127.0.0.1:$relayPort/siteferry/dropbox/callback")
+        }
+        Write-Json (Join-Path $Dir 'config.json') $config
+        New-Item -ItemType Directory -Force (Join-Path $Dir 'data') | Out-Null
+        $env:SITEFERRY_FAKE_DROPBOX_DIR = $Dir
+        $dropbox = Start-Php @('-n', '-d', 'memory_limit=512M', '-S', "127.0.0.1:$port", (Join-Path $root 'tests\tools\fake-dropbox-server.php')) $Dir 'dropbox' $port
+        if ($Kind -eq 'dropbox') { return @($dropbox) }
+
+        $key = -join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
+        $relayConfig = Join-Path $Dir 'relay-config.php'
+        $lines = @(
+            '<?php',
+            'return array(',
+            "    'base_url' => 'http://127.0.0.1:$relayPort/siteferry',",
+            "    'signing_key' => '$key',",
+            "    'dropbox_app_key' => '$($config.app_key)',",
+            "    'dropbox_auth_url' => 'http://127.0.0.1:$port/oauth2/authorize',",
+            ');'
+        )
+        [IO.File]::WriteAllText($relayConfig, ($lines -join "`n"), (New-Object Text.UTF8Encoding $false))
+        $env:SITEFERRY_RELAY_CONFIG = $relayConfig
+        $env:SITEFERRY_FAKE_RELAY_URL = "http://127.0.0.1:$relayPort/siteferry"
+        $relay = Start-Php @('-n', '-S', "127.0.0.1:$relayPort", (Join-Path $root 'relay\public\index.php')) $Dir 'relay' $relayPort
+        return @($dropbox, $relay)
+    }
     if ($Kind -eq 'gdrive' -or $Kind -eq 'gdrive-relay') {
         $port = 18769
         $config = [ordered] @{
@@ -134,7 +172,7 @@ function Start-FakeServer([string] $Kind, [string] $Dir) {
     return @(Start-Php $arguments $Dir 'server' $port)
 }
 
-$kinds = if ($Driver -eq 'all') { @('s3', 'ftp', 'gdrive', 'gdrive-relay') } else { @($Driver) }
+$kinds = if ($Driver -eq 'all') { @('s3', 'ftp', 'gdrive', 'gdrive-relay', 'dropbox', 'dropbox-relay') } else { @($Driver) }
 if ($Serve -and $kinds.Count -ne 1) { throw 'Use -Serve with one -Driver.' }
 
 $failed = 0
@@ -156,7 +194,7 @@ foreach ($kind in $kinds) {
     }
     finally {
         foreach ($server in $servers) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
-        foreach ($name in 'SITEFERRY_TEST_STORAGE', 'SITEFERRY_FAKE_S3_DIR', 'SITEFERRY_FAKE_S3_URL', 'SITEFERRY_FAKE_FTP_DIR', 'SITEFERRY_FAKE_GOOGLE_DIR', 'SITEFERRY_RELAY_CONFIG', 'SITEFERRY_FAKE_RELAY_URL') {
+        foreach ($name in 'SITEFERRY_TEST_STORAGE', 'SITEFERRY_FAKE_S3_DIR', 'SITEFERRY_FAKE_S3_URL', 'SITEFERRY_FAKE_FTP_DIR', 'SITEFERRY_FAKE_GOOGLE_DIR', 'SITEFERRY_FAKE_DROPBOX_DIR', 'SITEFERRY_RELAY_CONFIG', 'SITEFERRY_FAKE_RELAY_URL') {
             Remove-Item "Env:\$name" -ErrorAction SilentlyContinue
         }
         if (-not $Keep) {
