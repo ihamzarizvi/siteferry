@@ -580,7 +580,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 		for ( ;; ) {
 			foreach ( isset( $data['entries'] ) && is_array( $data['entries'] ) ? $data['entries'] : array() as $entry ) {
 				$name = isset( $entry['name'] ) ? (string) $entry['name'] : '';
-				if ( 'file' === self::tag( $entry ) && strlen( $name ) <= 200 && preg_match( Backups::SAFE_NAME, $name ) ) {
+				if ( 'file' === self::tag( $entry ) && Parts::stored_name( $name ) ) {
 					$items[] = array(
 						'name'     => $name,
 						'size'     => isset( $entry['size'] ) ? (int) $entry['size'] : 0,

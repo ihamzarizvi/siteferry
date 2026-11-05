@@ -56,9 +56,18 @@ final class Fetch_Step implements Step {
 			if ( ! ftruncate( $handle, $state['offset'] ) || 0 !== fseek( $handle, $state['offset'] ) ) {
 				throw new Archive_Exception( 'Cannot write the download.', Archive_Exception::IO );
 			}
+			// A backup stored in parts is joined back into one file, part after part.
+			$pieces = (array) $job->option( 'pieces', array( array( $name, $size ) ) );
 			while ( $state['offset'] < $size ) {
-				$want  = (int) min( self::CHUNK, $size - $state['offset'] );
-				$bytes = $driver->download_range( $name, $state['offset'], $want );
+				$start = 0;
+				foreach ( $pieces as $piece ) {
+					if ( $state['offset'] < $start + (int) $piece[1] ) {
+						break;
+					}
+					$start += (int) $piece[1];
+				}
+				$want  = (int) min( self::CHUNK, $size - $state['offset'], $start + (int) $piece[1] - $state['offset'] );
+				$bytes = $driver->download_range( (string) $piece[0], $state['offset'] - $start, $want );
 				if ( strlen( $bytes ) !== $want ) {
 					throw new Job_Exception( sprintf( 'The storage sent %d bytes instead of %d; the file may have changed there.', strlen( $bytes ), $want ), Job_Exception::STEP );
 				}

@@ -301,6 +301,16 @@ final class Rest {
 	 */
 	public static function download( WP_REST_Request $request ): void {
 		$path = Backups::path( Storage::backups_dir(), (string) $request['name'] );
+		$part = (int) $request->get_param( 'part' );
+		if ( $part > 0 ) {
+			// One part of the backup ("<name>.001" and so on), for disks and uploads with a size limit.
+			$pieces = \SiteFerry\Storage\Parts::pieces( basename( $path ), (int) filesize( $path ), \SiteFerry\Storage\Parts::normalize_mb( $request->get_param( 'part_mb' ) ) * 1048576 );
+			if ( ! isset( $pieces[ $part - 1 ] ) ) {
+				throw new Job_Exception( 'There is no such part.', Job_Exception::NOT_FOUND );
+			}
+			list( $file_name, $offset, $length ) = $pieces[ $part - 1 ];
+			Backups::stream( $path, $request->get_header( 'range' ), $offset, $length, $file_name );
+		}
 		Backups::stream( $path, $request->get_header( 'range' ) );
 	}
 
@@ -718,7 +728,7 @@ final class Rest {
 		$driver = Destinations::driver( (string) $request['dest'] );
 		return array(
 			'where'   => $driver->describe(),
-			'backups' => $driver->list(),
+			'backups' => \SiteFerry\Storage\Parts::group( $driver->list() ), // A set of parts is one backup.
 		);
 	}
 
@@ -732,7 +742,7 @@ final class Rest {
 		if ( ! preg_match( Backups::SAFE_NAME, $name ) ) {
 			throw new Job_Exception( 'Unknown backup.', Job_Exception::NOT_FOUND );
 		}
-		Destinations::driver( (string) $request['dest'] )->delete( $name );
+		\SiteFerry\Storage\Parts::delete( Destinations::driver( (string) $request['dest'] ), $name );
 		Check::forget( $name, (string) $request['dest'] );
 		return array( 'deleted' => $name );
 	}

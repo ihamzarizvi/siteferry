@@ -881,7 +881,7 @@ final class Ftp_Driver implements Driver {
 	 * @param string $name File name.
 	 */
 	private static function is_backup_name( string $name ): bool {
-		return strlen( $name ) <= 200 && (bool) preg_match( Backups::SAFE_NAME, $name );
+		return Parts::stored_name( $name );
 	}
 
 	/**

@@ -8,7 +8,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.15.0-f97316" alt="Version 0.15.0">
+  <img src="https://img.shields.io/badge/version-0.16.0-f97316" alt="Version 0.16.0">
   <a href="https://xsofty.com/"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -23,8 +23,8 @@ Large sites are no problem: every job runs in short, resumable steps, so the PHP
 upload limits and dropped connections don't break a backup or a restore.
 
 > [!NOTE]
-> SiteFerry is in active development (0.15.0). Backups split into parts are next; see the
-> [roadmap](#roadmap).
+> SiteFerry is in active development (0.16.0). Moving a site directly to another server is next;
+> see the [roadmap](#roadmap).
 
 ## Contents
 
@@ -119,6 +119,9 @@ upload limits and dropped connections don't break a backup or a restore.
 - **Dropbox**: one-click "Sign in with Dropbox", or your own Dropbox app. App folder access only,
   no app secret anywhere (PKCE), and the tokens never leave your site and Dropbox.
 - Connection tests that write, read, list and delete a small file.
+- **Size limits**: give a storage a largest file size (for example 2 GB, or 4 GB for FAT32 and
+  many FTP servers) and larger backups are stored there in numbered parts (`.001`, `.002`, ...),
+  shown as one backup and joined again for downloads, checks and restores.
 - **Check a stored copy**: SiteFerry downloads it, compares every file with the backup's own
   checksums and deletes the download again. The list shows which copies were checked and how.
 
@@ -270,6 +273,12 @@ wp siteferry export --password            # asks for it (or set SITEFERRY_PASSWO
 wp siteferry import mysite-2026-11-05-1a2b3c4d5e6f.tar.enc --password
 wp siteferry backups check mysite-2026-11-05-1a2b3c4d5e6f.tar.enc --password
 ```
+**Backups in parts.** A storage with a size limit gets larger backups as numbered parts:
+set **Largest file on this storage** in its settings. **Download in parts** in a backup's menu
+gives the parts of the copy on this server, for a disk or service with a limit; to put such a
+backup back on a site, choose (or drop) all its parts at once in **Upload a backup**: they are
+joined in order as they upload. The backup on the server always stays one file.
+
 **Look inside a backup, and restore only part of it.** **Look inside** in a backup's **...** menu
 lists its folders and files (with sizes and dates) and its database tables; **Download** gets one
 file out of it. Tick what you want back — the whole database or single tables, all files, a
@@ -585,7 +594,7 @@ Yes. It is GPL-2.0-or-later software with no licence keys or paid add-ons.
 - [x] Encrypted backups with a password
 - [ ] Importing password-protected .wpress backups
 - [x] Space report before a backup
-- [ ] Backups split into parts, for file size limits
+- [x] Backups split into parts, for file size limits
 - [ ] More storages: WebDAV (Nextcloud, ownCloud), OneDrive, pCloud
 - [ ] Site-to-site move without downloading
 - [ ] Multisite

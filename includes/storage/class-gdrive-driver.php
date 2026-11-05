@@ -614,7 +614,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				if ( isset( $this->ids[ $name ] ) && isset( $items[ $name ] ) ) {
 					continue; // Newest first: an older copy with the same name is not listed.
 				}
-				if ( strlen( $name ) <= 200 && preg_match( Backups::SAFE_NAME, $name ) && isset( $file['id'] ) ) {
+				if ( Parts::stored_name( $name ) && isset( $file['id'] ) ) {
 					$this->ids[ $name ] = (string) $file['id'];
 					$items[ $name ]     = array(
 						'name'     => $name,

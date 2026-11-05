@@ -13,6 +13,7 @@ use SiteFerry\Jobs\Job;
 use SiteFerry\Jobs\Job_Exception;
 use SiteFerry\Security\Storage;
 use SiteFerry\Storage\Destinations;
+use SiteFerry\Storage\Parts;
 use SiteFerry\Storage\Transfer;
 
 defined( 'ABSPATH' ) || exit;
@@ -83,15 +84,12 @@ final class Check {
 		}
 
 		Destinations::require_ready( $place );
-		$found = null;
-		foreach ( Destinations::driver( $place )->list() as $item ) {
-			if ( $item['name'] === $name ) {
-				$found = $item;
-				break;
-			}
-		}
+		$found = Parts::find( Destinations::driver( $place ), $name ); // Whole, or all its parts.
 		if ( null === $found ) {
 			throw new Job_Exception( 'That backup is not on the storage (any more).', Job_Exception::NOT_FOUND );
+		}
+		if ( ! $found['complete'] ) {
+			throw new Job_Exception( sprintf( 'Parts of that backup are missing on the storage (%d of them are there).', $found['parts'] ), Job_Exception::STEP );
 		}
 		$dir  = Storage::jobs_dir();
 		$free = function_exists( 'disk_free_space' ) ? @disk_free_space( $dir ) : false; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
@@ -107,6 +105,7 @@ final class Check {
 				'place'  => $place,
 				'source' => $place,
 				'size'   => (int) $found['size'],
+				'pieces' => $found['pieces'],
 				'adopt'  => false,
 			)
 		);

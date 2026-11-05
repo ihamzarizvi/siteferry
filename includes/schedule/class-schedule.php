@@ -588,7 +588,7 @@ final class Schedule {
 		}
 		if ( '' !== (string) $run['destination'] ) {
 			try {
-				Destinations::driver( (string) $run['destination'] )->delete( $name );
+				\SiteFerry\Storage\Parts::delete( Destinations::driver( (string) $run['destination'] ), $name );
 				\SiteFerry\Check\Check::forget( $name, (string) $run['destination'] );
 			} catch ( \Throwable $e ) {
 				return sprintf( '%s could not be deleted on %s: %s', $name, Destinations::short_label( (string) $run['destination'] ), $e->getMessage() );

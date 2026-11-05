@@ -11,6 +11,8 @@
       gdrive-relay: the same, plus the real relay (relay\public\index.php, port 18771) in between
       dropbox: tests\tools\fake-dropbox-server.php under "php -S" (port 18773), OAuth and API v2
       dropbox-relay: the same, with the browser passing through the real relay (port 18771)
+    The backup sent first is the database only; -Full sends the whole site without media instead,
+    started through the REST API (slow on a big site: use it when the transfer code changes).
     With -Serve the server of -Driver keeps running for browser tests until Enter is pressed; the
     logins are in the printed config.json (test values only).
 
@@ -22,7 +24,8 @@ param(
     [string] $Site = 'siteferry-src',
     [ValidateSet('s3', 'ftp', 'gdrive', 'gdrive-relay', 'dropbox', 'dropbox-relay', 'all')] [string] $Driver = 'all',
     [switch] $Serve,
-    [switch] $Keep
+    [switch] $Keep,
+    [switch] $Full
 )
 
 $ErrorActionPreference = 'Stop'
@@ -187,6 +190,7 @@ foreach ($kind in $kinds) {
             Read-Host 'Press Enter to stop it'
         } else {
             $ErrorActionPreference = 'Continue'
+            $env:SITEFERRY_STORAGE_FULL = if ($Full) { '1' } else { '' }
             & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'wp-cli.ps1') $Site --skip-themes "--exec=define('DISABLE_WP_CRON', true);" eval-file tests/wp/test-storage.php
             if ($LASTEXITCODE -ne 0) { $failed++ }
             $ErrorActionPreference = 'Stop'

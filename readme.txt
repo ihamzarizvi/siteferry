@@ -3,7 +3,7 @@ Tags: backup, migration, restore, tar
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.15.0
+Stable tag: 0.16.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -378,6 +378,10 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.16.0 =
+* Backups in parts: "Largest file on this storage" in a storage's settings (100 MB to 4 GB) stores larger backups there as numbered parts (.001, .002, ...). The list shows them as one backup ("Dropbox · 3 parts"; a missing part is shown); downloading, checking, restoring and deleting handle all parts, and a cancelled send removes the parts already stored.
+* "Download in parts" in a backup's menu; uploading all parts of a backup at once joins them as they upload.
 
 = 0.15.0 =
 * Space report: opening Options measures the site (in short steps; kept for an hour) and shows about how big the backup will be with the choices made, before compression, next to the free space on the server, with a warning when it does not fit. "What takes the room" lists the database, media, plugins and themes (and what of them is inactive), cache and the rest, the largest files, media by year, the largest plugins, themes and tables, post revisions and spam comments. WP-CLI: `wp siteferry space`.

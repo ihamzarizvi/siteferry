@@ -139,6 +139,8 @@ final class Destinations {
 		$old      = isset( $stored[ $id ] ) ? $stored[ $id ] : array();
 		$previous = isset( $old['secrets'] ) ? (array) $old['secrets'] : array();
 		$normal   = $class::normalize( $input );
+		// Backups larger than this are stored in numbered parts (0: whole files).
+		$normal['settings']['split_mb'] = Parts::normalize_mb( isset( $input['split_mb'] ) ? $input['split_mb'] : 0 );
 
 		$secrets = array();
 		foreach ( $class::secrets() as $name => $label ) {
@@ -166,6 +168,17 @@ final class Destinations {
 		}
 		$stored[ $id ] = $entry;
 		update_option( self::OPTION, $stored, false );
+	}
+
+	/**
+	 * Largest part a backup is stored in on a destination, in bytes (0: whole files).
+	 *
+	 * @param string $id Destination id.
+	 */
+	public static function split( string $id ): int {
+		$stored = self::stored();
+		$mb     = isset( $stored[ $id ]['settings']['split_mb'] ) ? (int) $stored[ $id ]['settings']['split_mb'] : 0;
+		return $mb > 0 ? $mb * 1048576 : 0;
 	}
 
 	/**

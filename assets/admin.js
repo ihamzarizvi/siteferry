@@ -1145,6 +1145,8 @@
 				}
 				item.places.push( id );
 				item.sizes[ id ] = b.size;
+				item.parts = item.parts || {};
+				item.parts[ id ] = { count: b.parts || 1, complete: b.complete !== false };
 			} );
 		} );
 		return Array.from( map.values() ).sort( ( a, b ) => ( b.time || 0 ) - ( a.time || 0 ) );
@@ -1337,7 +1339,15 @@
 		if ( item.local ) {
 			places.push( placeBadge( item, 'local', 'This server' ) );
 		}
-		item.places.forEach( ( id ) => places.push( placeBadge( item, id, ( destination( id ) || { short: id } ).short ) ) );
+		item.places.forEach( ( id ) => {
+			const set = item.parts && item.parts[ id ];
+			const short = ( destination( id ) || { short: id } ).short;
+			if ( set && ! set.complete ) {
+				places.push( el( 'span', { class: 'sf-badge is-place is-bad', title: 'Some of its parts are missing there' }, [ short + ': parts missing' ] ) );
+				return;
+			}
+			places.push( placeBadge( item, id, set && set.count > 1 ? short + ' · ' + set.count + ' parts' : short ) );
+		} );
 
 		const actions = [];
 		if ( ! item.error ) {
@@ -1452,6 +1462,9 @@
 		if ( item.local ) {
 			entries.push( menuItem( 'Look inside', () => openContents( item ) ) );
 			entries.push( el( 'a', { class: 'sf-menu-item', href: downloadUrl( item.name ), text: 'Download to your computer', role: 'menuitem' } ) );
+			if ( item.size > 100 * 1048576 ) {
+				entries.push( menuItem( 'Download in parts', () => openParts( item ) ) );
+			}
 			if ( ! item.error ) {
 				ready.filter( ( d ) => item.places.indexOf( d.id ) === -1 ).forEach( ( d ) => entries.push( menuItem( 'Send to ' + d.short, () => sendTo( d, item.name ) ) ) );
 			}
@@ -1645,8 +1658,56 @@
 		}
 	}
 
+	/** "Download in parts": links to each part of the backup on this server. */
+	function openParts( item ) {
+		closeMenus();
+		const dialog = $( 'siteferry-parts-dialog' );
+		const size = $( 'siteferry-parts-size' );
+		const render = () => {
+			const limit = Number( size.value ) * 1048576;
+			const count = Math.max( 1, Math.ceil( item.size / limit ) );
+			$( 'siteferry-parts-list' ).replaceChildren(
+				...Array.from( { length: count }, ( _, i ) => {
+					const number = String( i + 1 ).padStart( 3, '0' );
+					const length = Math.min( limit, item.size - i * limit );
+					return el( 'li', {}, [
+						el( 'a', { href: url( 'backups/' + encodeURIComponent( item.name ) + '/download', { part: i + 1, part_mb: size.value, _wpnonce: cfg.nonce } ), text: item.name + '.' + number } ),
+						el( 'span', { class: 'sf-space-size', text: bytes( length ) } ),
+					] );
+				} )
+			);
+		};
+		size.onchange = render;
+		$( 'siteferry-parts-dialog-title' ).textContent = 'Download ' + called( item ) + ' in parts';
+		render();
+		dialog.showModal();
+	}
+
+	/**
+	 * Files chosen or dropped for upload: one backup, or all parts of one (".001", ".002", ...),
+	 * which are joined in order into one upload without reading them into memory.
+	 */
+	function chosenBackup( files ) {
+		const list = Array.from( files || [] );
+		if ( list.length < 2 ) {
+			return list[ 0 ] || null;
+		}
+		const parts = list.map( ( file ) => /^(.+)\.(\d{3})$/.exec( file.name ) );
+		const base = parts[ 0 ] && parts[ 0 ][ 1 ];
+		if ( ! base || parts.some( ( match ) => ! match || match[ 1 ] !== base ) ) {
+			notice( 'Choose one backup file, or all the parts of one backup (name.001, name.002, ...).', 'error' );
+			return null;
+		}
+		const sorted = list.map( ( file, i ) => [ Number( parts[ i ][ 2 ] ), file ] ).sort( ( a, b ) => a[ 0 ] - b[ 0 ] );
+		const missing = sorted.findIndex( ( [ number ], i ) => number !== i + 1 );
+		if ( missing !== -1 ) {
+			notice( 'Part ' + String( missing + 1 ).padStart( 3, '0' ) + ' of ' + base + ' is missing: choose all its parts.', 'error' );
+			return null;
+		}
+		return new File( sorted.map( ( [ , file ] ) => file ), base, { type: 'application/octet-stream' } );
+	}
 	function onFileChosen( event ) {
-		const file = event.target.files[ 0 ];
+		const file = chosenBackup( event.target.files );
 		event.target.value = '';
 		if ( file ) {
 			uploadChosen( file );
@@ -1665,7 +1726,7 @@
 		zone.addEventListener( 'dragleave', over( false ) );
 		zone.addEventListener( 'drop', ( event ) => {
 			over( false )( event );
-			const file = event.dataTransfer && event.dataTransfer.files[ 0 ];
+			const file = chosenBackup( event.dataTransfer && event.dataTransfer.files );
 			if ( file ) {
 				uploadChosen( file );
 			}

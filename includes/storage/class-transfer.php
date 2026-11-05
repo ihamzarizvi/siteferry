@@ -61,15 +61,12 @@ final class Transfer {
 			throw new Job_Exception( 'Unknown backup.', Job_Exception::NOT_FOUND );
 		}
 		Destinations::require_ready( $destination );
-		$found = null;
-		foreach ( Destinations::driver( $destination )->list() as $item ) {
-			if ( $item['name'] === $name ) {
-				$found = $item;
-				break;
-			}
-		}
+		$found = Parts::find( Destinations::driver( $destination ), $name ); // Whole, or all its parts.
 		if ( null === $found ) {
 			throw new Job_Exception( 'That backup is not on the storage (any more).', Job_Exception::NOT_FOUND );
+		}
+		if ( ! $found['complete'] ) {
+			throw new Job_Exception( sprintf( 'Parts of that backup are missing on the storage (%d of them are there).', $found['parts'] ), Job_Exception::STEP );
 		}
 
 		$dir  = Storage::backups_dir();
@@ -85,6 +82,7 @@ final class Transfer {
 				'source'     => $destination,
 				'name'       => $name,
 				'size'       => $found['size'],
+				'pieces'     => $found['pieces'],
 				'output_dir' => $dir,
 			)
 		);

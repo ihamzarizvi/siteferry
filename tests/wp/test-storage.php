@@ -434,6 +434,24 @@ function sf_start( int $admin, string $route, array $body ): array {
 }
 
 /**
+ * Export options for a small backup: the database only.
+ */
+function sf_small_export(): array {
+	$exclude = array();
+	foreach ( array_diff( (array) scandir( WP_CONTENT_DIR ), array( '.', '..', 'plugins', 'themes', 'uploads' ) ) as $name ) {
+		if ( 0 !== strpos( $name, 'siteferry-' ) ) {
+			$exclude[] = $name;
+		}
+	}
+	return array(
+		'exclude_media'   => true,
+		'exclude_plugins' => true,
+		'exclude_themes'  => true,
+		'exclude_paths'   => $exclude,
+	);
+}
+
+/**
  * SHA-256 of a local backup.
  *
  * @param string $name Backup name.
@@ -526,14 +544,20 @@ Sf_Test::run(
 Sf_Test::run(
 	'export with "send to": the stored file is byte-identical; fetching it back works',
 	static function () use ( $sf_b, $sf_id, $sf_admin, &$sf_local ) {
-		list( $id, $token ) = sf_start(
-			$sf_admin,
-			'/exports',
-			array(
-				'exclude_media' => true,
-				'send_to'       => $sf_id,
-			)
-		);
+		if ( '1' === getenv( 'SITEFERRY_STORAGE_FULL' ) ) {
+			// The whole site without media, started through the REST API (slow on a big site).
+			list( $id, $token ) = sf_start(
+				$sf_admin,
+				'/exports',
+				array(
+					'exclude_media' => true,
+					'send_to'       => $sf_id,
+				)
+			);
+		} else {
+			list( $started, $token ) = \SiteFerry\Export\Export::start( sf_small_export() + array( 'send_to' => $sf_id ) );
+			$id                      = $started->id();
+		}
 		$job = sf_rest_drive( $id, $token );
 		if ( isset( $job['result']['name'] ) ) {
 			$sf_local[] = $job['result']['name']; // Removed at the end even if a check below fails.
@@ -735,6 +759,83 @@ Sf_Test::run(
 		Sf_Test::same( 'done', $job['status'], 'check: ' . (string) $job['error'] );
 		Sf_Test::same( true, Check::all()[ $name ][ $sf_id ]['ok'] );
 		Sf_Test::same( array(), \SiteFerry\Jobs\Job::load( Storage::jobs_dir(), $id )->state( 'crypto' ), 'nothing of the password or key left in the job:' );
+	}
+);
+
+Sf_Test::run(
+	'a size limit on the storage: the backup is stored in parts, listed as one, fetched and checked whole, deleted with all parts',
+	static function () use ( $sf_b, $sf_id, $sf_admin, &$sf_local ) {
+		list( $status, $data ) = sf_rest( 'POST', "/storage/$sf_id", $sf_admin, array(), $sf_b['input'] + array( 'split_mb' => 5 ) );
+		Sf_Test::same( 400, $status, 'parts under 10 MB are refused: ' . wp_json_encode( $data ) );
+		list( $status, $data ) = sf_rest( 'POST', "/storage/$sf_id", $sf_admin, array(), $sf_b['input'] + array( 'split_mb' => 10 ) );
+		Sf_Test::same( 200, $status, 'saved: ' . wp_json_encode( $data ) );
+		Sf_Test::same( 10, $data['settings']['split_mb'] );
+
+		// A small but complete backup of 25 MB: manifest, dump, one big file, checksums.
+		$name    = 'sftest-' . gmdate( 'Y-m-d' ) . '-' . bin2hex( random_bytes( 6 ) ) . '.tar';
+		$file    = Storage::backups_dir() . '/' . $name;
+		$dump    = "-- dump\n" . \SiteFerry\Database\Dumper::END_MARKER . "\n";
+		$padding = random_bytes( 25 * 1048576 );
+		$writer  = Tar_Writer::create( $file );
+		$writer->add_string(
+			Manifest::ENTRY,
+			(string) wp_json_encode(
+				array(
+					'format'   => Manifest::FORMAT,
+					'created'  => gmdate( 'c' ),
+					'site'     => array( 'home' => home_url() ),
+					'versions' => array( 'wordpress' => get_bloginfo( 'version' ) ),
+					'database' => array( 'size' => strlen( $dump ) ),
+				)
+			)
+		);
+		$writer->add_string( Manifest::DATABASE, $dump );
+		$writer->add_string( 'wp-content/padding.bin', $padding );
+		$writer->add_string( Manifest::CHECKSUMS, hash( 'sha256', $dump ) . "  database.sql\n" . hash( 'sha256', $padding ) . "  wp-content/padding.bin\n" );
+		$writer->finish();
+		$writer->close();
+		$sf_local[] = $name;
+		unset( $padding );
+
+		list( $id, $token ) = sf_start( $sf_admin, "/storage/$sf_id/send", array( 'backup' => $name ) );
+		$job                = sf_rest_drive( $id, $token, 0 );
+		Sf_Test::same( 'done', $job['status'], 'send: ' . (string) $job['error'] );
+		Sf_Test::same( 3, $job['result']['sent']['parts'] );
+		$stored = array_values( array_filter( $sf_b['names'](), static function ( string $n ) use ( $name ): bool {
+			return 0 === strpos( basename( $n ), $name );
+		} ) );
+		sort( $stored );
+		Sf_Test::same( array( $name . '.001', $name . '.002', $name . '.003' ), array_map( 'basename', $stored ), 'stored as three parts:' );
+		foreach ( array( '.001', '.002', '.003' ) as $suffix ) {
+			Sf_Test::ok( null !== $sf_b['hash']( $name . $suffix ), 'part ' . $suffix . ' is there' );
+		}
+
+		list( $status, $remote ) = sf_rest( 'GET', "/storage/$sf_id/backups", $sf_admin );
+		$entry = array_values( array_filter( $remote['backups'], static function ( array $b ) use ( $name ): bool {
+			return $b['name'] === $name;
+		} ) );
+		Sf_Test::same( 1, count( $entry ), 'listed once:' );
+		Sf_Test::same( array( 3, true, filesize( $file ) ), array( $entry[0]['parts'], $entry[0]['complete'], $entry[0]['size'] ) );
+
+		list( $id, $token ) = sf_start( $sf_admin, "/storage/$sf_id/fetch", array( 'name' => $name ) );
+		$job                = sf_rest_drive( $id, $token, 0 );
+		Sf_Test::same( 'done', $job['status'], 'fetch: ' . (string) $job['error'] );
+		$fetched    = $job['result']['fetched']['name'];
+		$sf_local[] = $fetched;
+		Sf_Test::same( sf_local_hash( $name ), sf_local_hash( $fetched ), 'joined again byte for byte:' );
+
+		list( $id, $token ) = sf_start( $sf_admin, '/checks', array( 'name' => $name, 'place' => $sf_id ) );
+		$job                = sf_rest_drive( $id, $token );
+		Sf_Test::same( 'done', $job['status'], 'check of the parts: ' . (string) $job['error'] );
+
+		list( $status ) = sf_rest( 'DELETE', "/storage/$sf_id/backups/" . $name, $sf_admin );
+		Sf_Test::same( 200, $status );
+		Sf_Test::same( array(), array_values( array_filter( $sf_b['names'](), static function ( string $n ) use ( $name ): bool {
+			return 0 === strpos( basename( $n ), $name );
+		} ) ), 'every part deleted:' );
+
+		list( $status, $data ) = sf_rest( 'POST', "/storage/$sf_id", $sf_admin, array(), $sf_b['input'] + array( 'split_mb' => 0 ) );
+		Sf_Test::same( 200, $status, 'back to whole files:' );
 	}
 );
 

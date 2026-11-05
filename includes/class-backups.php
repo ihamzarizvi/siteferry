@@ -98,8 +98,9 @@ final class Backups {
 	 * @param string      $file  Backup file.
 	 * @param string|null $range Range header, if any.
 	 */
-	public static function stream( string $file, ?string $range ): void {
-		$size  = (int) filesize( $file );
+	public static function stream( string $file, ?string $range, int $from = 0, ?int $length = null, ?string $name = null ): void {
+		// The bytes sent are $length bytes from $from (a part of the file), or all of it.
+		$size  = null === $length ? (int) filesize( $file ) - $from : $length;
 		$start = 0;
 		$end   = $size - 1;
 		$code  = 200;
@@ -132,7 +133,7 @@ final class Backups {
 		status_header( $code );
 		$type = Wpress\Wpress::is_name( $file ) ? 'application/octet-stream' : ( '.gz' === substr( $file, -3 ) ? 'application/gzip' : 'application/x-tar' );
 		header( 'Content-Type: ' . $type );
-		header( 'Content-Disposition: attachment; filename="' . basename( $file ) . '"' );
+		header( 'Content-Disposition: attachment; filename="' . ( null === $name ? basename( $file ) : $name ) . '"' );
 		header( 'Content-Length: ' . ( $end - $start + 1 ) );
 		header( 'Accept-Ranges: bytes' );
 		header( 'Cache-Control: no-store' );
@@ -142,7 +143,7 @@ final class Backups {
 		}
 
 		$handle = fopen( $file, 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
-		fseek( $handle, $start );
+		fseek( $handle, $from + $start );
 		$left = $end - $start + 1;
 		while ( $left > 0 && ! feof( $handle ) && ! connection_aborted() ) {
 			$chunk = (string) fread( $handle, (int) min( 1048576, $left ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread

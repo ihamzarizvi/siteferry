@@ -463,7 +463,7 @@ final class S3_Driver implements Driver {
 			foreach ( $xml->Contents as $object ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 				$key  = (string) $object->Key; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 				$name = (string) substr( $key, strlen( $prefix ) );
-				if ( 0 === strpos( $key, $prefix ) && strlen( $name ) <= 200 && preg_match( Backups::SAFE_NAME, $name ) ) {
+				if ( 0 === strpos( $key, $prefix ) && Parts::stored_name( $name ) ) {
 					$items[] = array(
 						'name'     => $name,
 						'size'     => (int) (string) $object->Size, // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase

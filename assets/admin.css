@@ -2452,3 +2452,31 @@ details.sf-dest[open] > .sf-dest-head::after {
 		grid-row: 2;
 	}
 }
+
+/* --------------------------------------------------------------- parts */
+
+.sf-split {
+	margin: 4px 0 12px;
+}
+
+.sf-split select {
+	margin-left: 8px;
+}
+
+.sf-parts-list {
+	max-height: 260px;
+	margin: 8px 0;
+	padding-left: 0;
+	overflow: auto;
+	list-style: none;
+}
+
+.sf-parts-list li {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 4px 0;
+	border-bottom: 1px solid var(--sf-fog);
+	font-family: var(--sf-mono);
+	font-size: 12px;
+}

@@ -76,7 +76,7 @@ final class Storage_Command {
 	 */
 	public function list_( $args, $assoc_args ): void {
 		try {
-			$items = Destinations::driver( (string) $args[0] )->list();
+			$items = \SiteFerry\Storage\Parts::group( Destinations::driver( (string) $args[0] )->list() );
 		} catch ( \Throwable $e ) {
 			WP_CLI::error( $e->getMessage() );
 			return;
@@ -88,11 +88,12 @@ final class Storage_Command {
 					'size'     => size_format( $item['size'], 1 ),
 					'bytes'    => $item['size'],
 					'modified' => gmdate( 'Y-m-d H:i:s', $item['modified'] ),
+					'parts'    => $item['parts'] . ( $item['complete'] ? '' : ' (incomplete)' ),
 				);
 			},
 			$items
 		);
-		\WP_CLI\Utils\format_items( (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'table' ), $rows, array( 'name', 'size', 'bytes', 'modified' ) );
+		\WP_CLI\Utils\format_items( (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'table' ), $rows, array( 'name', 'size', 'bytes', 'modified', 'parts' ) );
 	}
 
 	/**
@@ -181,7 +182,7 @@ final class Storage_Command {
 		}
 		WP_CLI::confirm( sprintf( 'Delete %s from the storage? This cannot be undone.', $name ), $assoc_args );
 		try {
-			Destinations::driver( (string) $args[0] )->delete( $name );
+			\SiteFerry\Storage\Parts::delete( Destinations::driver( (string) $args[0] ), $name );
 			\SiteFerry\Check\Check::forget( $name, (string) $args[0] );
 		} catch ( \Throwable $e ) {
 			WP_CLI::error( $e->getMessage() );

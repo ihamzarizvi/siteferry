@@ -31,6 +31,7 @@ A single suite can be run directly, for example `php -n tests\test-tar-roundtrip
 | `test-check.php` | Checking a copy of a backup: an intact .tar, .tar.gz and .wpress (also in one-chunk slices, with files cut by a slice continued, by saved hash state on PHP 8 and by reading again on 7.4); a changed byte, a cut archive, a missing file, an incomplete dump, a dump of the wrong size, a missing manifest or checksum list and an entry an import refuses, each named; the working files removed; outcomes kept per place, newest first, forgotten per place or per backup |
 | `test-crypto.php` | Password-protected backups: the password check (right, wrong, a changed header, fewer rounds written in), .tar and .tar.gz written through the encrypting stream in slices with junk from dead requests cut off and read back exactly, reads at any position, nothing in the clear, and tampering refused (a changed byte, a missing final chunk, a cut file, swapped chunks, chunks under another header); sealing twice; an unsealed file refused |
 | `test-space.php` | The space report's sums: parts of wp-content, media by year, plugins and themes with what is inactive, cache, top-level folders and the largest files (also over many files), and plugins kept outside wp-content |
+| `test-parts.php` | Backups in parts: cutting (whole when it fits, numbered parts that add up exactly, at most 999), which stored names count, listings that show each set as one backup (in order, a missing part noticed, a whole file preferred), part sizes from the settings form |
 | `test-gdrive.php` | Google Drive driver against an in-process fake Google (`lib/class-fake-google.php`): consent URL (drive.file only, offline, PKCE S256), code exchange (reused code, wrong verifier, missing scope, missing refresh token, wrong client secret), token refresh before expiry and after a 401 with the new token saved, revoked grant, folder created/found/re-created, resumable upload with a repeated and a half-stored part, replacing an earlier copy, paged listing, ranged downloads, trash, abort, rate limits retried, a full Drive and a foreign upload host refused, connection test, disconnect revokes; one-click mode through the relay (no client ID or secret on the site, renewal through the relay, an unreachable relay named in the error) |
 | `test-relay.php` | The sign-in relay (`relay/src/class-relay.php`) with a fake Google transport: health check, return addresses that are not a SiteFerry admin page refused, signed state (tampered, changed return address, expired), callback back to the site with its own state or Google's refusal, token requests forwarded with the client secret added, malformed and oversized requests, Google unreachable; Dropbox start (app key, callback, offline access, permissions, PKCE, state within 500 bytes, an address too long refused), callback, `/dropbox/app`, Google and Dropbox states not interchangeable, no token route for Dropbox, a relay set up for only one provider |
 | `test-schedule.php` | Backup schedule without WordPress: settings defaults and every invalid value refused (frequency, time, days, retention, format, storage, email with a header injection), next run daily/weekly/monthly in several time zones, across daylight saving time (including a skipped hour) and month and year ends, retention picking only the scheduled backups beyond the newest N, the export options a schedule makes; backups before updates: settings, which updates get one (not new installs or translations), and options that keep only the plugin or theme being updated (the database only for WordPress) |
@@ -105,7 +106,8 @@ powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-t
 # points the "siteferry_gdrive_endpoints" filter at the fake and goes through the sign-in: state,
 # consent, connect), FTPS through PHP's ftp extension. Encrypted settings, connection test,
 # export sent to storage and fetched back byte-identical, the stored copy checked (intact, then
-# with a changed byte on the fake storage), sending in slices, cancel (the
+# with a changed byte on the fake storage), a size limit (stored as three parts, listed as one,
+# fetched and checked whole, deleted with all parts), sending in slices, cancel (the
 # unfinished upload is removed), retried temporary failures, the WP-CLI storage commands, remote
 # delete. Refuses to run when the site already has settings for that storage.
 # gdrive-relay runs the Google Drive test in one-click mode, with the real relay
@@ -114,7 +116,8 @@ powershell -ExecutionPolicy Bypass -File tests\wp-cli.ps1 siteferry-dst --skip-t
 # dropbox-relay in one-click mode with the browser passing through the real relay; Dropbox has no
 # way to remove an unfinished upload session, so after a cancel one is left for it to discard.
 # -Driver s3|ftp|gdrive|gdrive-relay|dropbox|dropbox-relay|all; -Serve keeps one server running
-# for browser tests. Big sites take a while: every part goes through a single-threaded "php -S".
+# for browser tests. The backup sent first is the database only; -Full sends the whole site (slow on
+# a big site: every part goes through a single-threaded "php -S").
 powershell -ExecutionPolicy Bypass -File tests\wp-storage-check.ps1 -Site siteferry-src
 
 # Import tests. They REPLACE siteferry-dst's content; run them only with the owner's permission.

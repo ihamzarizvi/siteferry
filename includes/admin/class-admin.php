@@ -271,7 +271,7 @@ final class Admin {
 
 					<div id="siteferry-upload" class="sf-drawer" hidden>
 						<p class="sf-drawer-note"><?php esc_html_e( 'Upload a backup to restore it here, or to move another site here. It is added to the list below; nothing changes until you choose to restore it.', 'siteferry' ); ?></p>
-						<input type="file" id="siteferry-file" class="sf-file-input" accept=".tar,.gz,.tgz,.enc,.wpress">
+						<input type="file" id="siteferry-file" class="sf-file-input" multiple>
 						<label for="siteferry-file" class="sf-drop" id="siteferry-drop">
 							<span class="dashicons dashicons-upload" aria-hidden="true"></span>
 							<span class="sf-drop-main"><?php esc_html_e( 'Drop a backup file here, or choose one', 'siteferry' ); ?></span>
@@ -284,6 +284,24 @@ final class Admin {
 					<?php self::render_schedule( $whole_parts, $clutter ); ?>
 				</div>
 
+				<dialog class="sf-dialog" id="siteferry-parts-dialog" aria-labelledby="siteferry-parts-dialog-title">
+					<form method="dialog" class="sf-dialog-form">
+						<h2 class="sf-card-title" id="siteferry-parts-dialog-title"><?php esc_html_e( 'Download in parts', 'siteferry' ); ?></h2>
+						<p><?php esc_html_e( 'For disks and services with a size limit. Upload all parts together to put the backup back on a site; or join them in order (copy /b on Windows, cat elsewhere).', 'siteferry' ); ?></p>
+						<p class="sf-field">
+							<label for="siteferry-parts-size"><?php esc_html_e( 'Largest part', 'siteferry' ); ?></label>
+							<select id="siteferry-parts-size">
+								<option value="100">100 MB</option>
+								<option value="500">500 MB</option>
+								<option value="1024">1 GB</option>
+								<option value="2048" selected>2 GB</option>
+								<option value="4095">4 GB (FAT32)</option>
+							</select>
+						</p>
+						<ol class="sf-parts-list" id="siteferry-parts-list"></ol>
+						<p class="sf-actions"><button type="submit" class="button" value="close"><?php esc_html_e( 'Close', 'siteferry' ); ?></button></p>
+					</form>
+				</dialog>
 				<dialog class="sf-dialog" id="siteferry-password-dialog" aria-labelledby="siteferry-password-dialog-title">
 					<form method="dialog" class="sf-dialog-form">
 						<h2 class="sf-card-title" id="siteferry-password-dialog-title"></h2>
@@ -583,6 +601,31 @@ final class Admin {
 	}
 
 	/**
+	 * The size limit of a storage: larger backups are stored there in numbered parts.
+	 */
+	private static function render_split(): void {
+		$choices = array(
+			0    => __( 'No limit: whole backups', 'siteferry' ),
+			100  => '100 MB',
+			500  => '500 MB',
+			1024 => '1 GB',
+			2048 => '2 GB',
+			4095 => __( '4 GB (FAT32 and many FTP servers)', 'siteferry' ),
+		);
+		?>
+		<p class="sf-field sf-split">
+			<label><?php esc_html_e( 'Largest file on this storage', 'siteferry' ); ?>
+				<select name="split_mb" data-default="0">
+					<?php foreach ( $choices as $value => $label ) : ?>
+						<option value="<?php echo esc_attr( (string) $value ); ?>"><?php echo esc_html( $label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<span class="description"><?php esc_html_e( 'Larger backups are stored in numbered parts (.001, .002, ...). SiteFerry joins them again when it downloads, checks or restores one.', 'siteferry' ); ?></span>
+		</p>
+		<?php
+	}
+	/**
 	 * Prints one storage as a card that opens its settings form.
 	 *
 	 * @param string   $id    Storage id.
@@ -658,6 +701,7 @@ final class Admin {
 					<td><label><input type="checkbox" name="path_style"> <?php esc_html_e( 'Path-style requests (endpoint/bucket/file instead of bucket.endpoint/file)', 'siteferry' ); ?></label></td>
 				</tr>
 			</table>
+			<?php self::render_split(); ?>
 			<p class="sf-form-actions">
 				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
@@ -730,6 +774,7 @@ final class Admin {
 					</td>
 				</tr>
 			</table>
+			<?php self::render_split(); ?>
 			<p class="sf-form-actions">
 				<button type="button" class="button button-primary" data-role="connect" data-label-relay="<?php esc_attr_e( 'Sign in with Google', 'siteferry' ); ?>" data-label-own="<?php esc_attr_e( 'Connect to Google Drive', 'siteferry' ); ?>"><?php esc_html_e( 'Sign in with Google', 'siteferry' ); ?></button>
 				<button type="submit" class="button"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
@@ -798,6 +843,7 @@ final class Admin {
 					</td>
 				</tr>
 			</table>
+			<?php self::render_split(); ?>
 			<p class="sf-form-actions">
 				<button type="button" class="button button-primary" data-role="connect" data-label-relay="<?php esc_attr_e( 'Sign in with Dropbox', 'siteferry' ); ?>" data-label-own="<?php esc_attr_e( 'Connect to Dropbox', 'siteferry' ); ?>"><?php esc_html_e( 'Sign in with Dropbox', 'siteferry' ); ?></button>
 				<button type="submit" class="button"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
@@ -862,6 +908,7 @@ final class Admin {
 					<td><label><input type="checkbox" name="passive" data-default="1" checked> <?php esc_html_e( 'Passive mode (works through most firewalls)', 'siteferry' ); ?></label></td>
 				</tr>
 			</table>
+			<?php self::render_split(); ?>
 			<p class="sf-form-actions">
 				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>

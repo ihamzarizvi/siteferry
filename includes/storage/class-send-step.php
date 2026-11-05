@@ -51,35 +51,63 @@ final class Send_Step implements Step {
 			if ( $size <= 0 ) {
 				throw new Job_Exception( 'The backup to send is missing or empty.', Job_Exception::STEP );
 			}
-			$state = array(
+			// A storage with a size limit gets the backup as numbered parts.
+			$pieces = Parts::pieces( $name, $size, Destinations::split( $destination ) );
+			$state  = array(
 				'size'     => $size,
 				'offset'   => 0,
 				'index'    => 0,
-				'upload'   => $driver->begin( $name, $size ),
+				'pieces'   => $pieces,
+				'piece'    => 0,
+				'upload'   => $driver->begin( $pieces[0][0], $pieces[0][2] ),
 				'finished' => false,
 			);
 			$job->set_state( self::STATE, $state );
 			$job->save();
-			$job->log( 'info', sprintf( 'Sending %s (%s) to %s in parts of %s.', $name, size_format( $size, 1 ), $driver->describe(), size_format( $state['upload']['part_size'] ) ) );
+			$job->log(
+				'info',
+				count( $pieces ) > 1
+					? sprintf( 'Sending %s (%s) to %s as %d parts of at most %s.', $name, size_format( $size, 1 ), $driver->describe(), count( $pieces ), size_format( $pieces[0][2], 1 ) )
+					: sprintf( 'Sending %s (%s) to %s in parts of %s.', $name, size_format( $size, 1 ), $driver->describe(), size_format( $state['upload']['part_size'] ) )
+			);
 		}
 		if ( $size !== $state['size'] ) {
 			throw new Job_Exception( 'The backup changed or disappeared while it was being sent.', Job_Exception::STEP );
 		}
+		if ( ! isset( $state['pieces'] ) ) {
+			$state['pieces'] = array( array( $name, 0, $size ) ); // Begun by an earlier version.
+			$state['piece']  = 0;
+		}
 
-		$part   = (int) $state['upload']['part_size'];
 		$handle = Io::open_or_fail( $file, 'rb' );
 		try {
-			while ( $state['offset'] < $state['size'] ) {
-				$bytes = self::read( $handle, $state['offset'], (int) min( $part, $state['size'] - $state['offset'] ) );
+			while ( ! $state['finished'] ) {
+				list( , $start, $length ) = $state['pieces'][ $state['piece'] ];
+				$end                      = $start + $length;
+				if ( $state['offset'] < $end ) {
+					$bytes = self::read( $handle, $state['offset'], (int) min( (int) $state['upload']['part_size'], $end - $state['offset'] ) );
 
-				$state['upload'] = $driver->put_part( $state['upload'], $state['index'], $bytes );
-				$state['offset'] += strlen( $bytes );
-				++$state['index'];
+					$state['upload'] = $driver->put_part( $state['upload'], $state['index'], $bytes );
+					$state['offset'] += strlen( $bytes );
+					++$state['index'];
+				}
+				if ( $state['offset'] >= $end ) {
+					// This piece is stored; the next one starts (or the last one is done).
+					$driver->finish( $state['upload'] );
+					++$state['piece'];
+					if ( $state['piece'] < count( $state['pieces'] ) ) {
+						$next             = $state['pieces'][ $state['piece'] ];
+						$state['upload']  = $driver->begin( $next[0], $next[2] );
+						$state['index']   = 0;
+					} else {
+						$state['finished'] = true;
+					}
+				}
 				$job->set_state( self::STATE, $state );
 				$job->set_progress( sprintf( 'Sending to %s: %s of %s', Destinations::short_label( $destination ), size_format( $state['offset'], 1 ), size_format( $state['size'], 1 ) ), $state['offset'], $state['size'] );
 				$job->save();
 
-				if ( $state['offset'] < $state['size'] && $budget->exhausted() ) {
+				if ( ! $state['finished'] && $budget->exhausted() ) {
 					return false;
 				}
 			}
@@ -87,18 +115,15 @@ final class Send_Step implements Step {
 			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		}
 
-		$driver->finish( $state['upload'] );
-		$state['finished'] = true;
-		$job->set_state( self::STATE, $state );
-
 		$result         = $job->result();
 		$result['sent'] = array(
 			'destination' => $destination,
 			'name'        => $name,
 			'size'        => $state['size'],
+			'parts'       => count( $state['pieces'] ),
 			'where'       => $driver->describe(),
 		);
-		$job->log( 'info', sprintf( 'Sent %s to %s.', $name, $driver->describe() ) );
+		$job->log( 'info', count( $state['pieces'] ) > 1 ? sprintf( 'Sent %s to %s in %d parts.', $name, $driver->describe(), count( $state['pieces'] ) ) : sprintf( 'Sent %s to %s.', $name, $driver->describe() ) );
 
 		if ( $job->option( 'delete_after_send', false ) ) {
 			$deleted = Io::quiet(
@@ -128,7 +153,16 @@ final class Send_Step implements Step {
 		if ( ! isset( $state['upload'] ) || ! empty( $state['finished'] ) ) {
 			return;
 		}
-		Destinations::driver( (string) $job->option( 'send_to' ) )->abort( $state['upload'] );
+		$driver = Destinations::driver( (string) $job->option( 'send_to' ) );
+		$driver->abort( $state['upload'] );
+		// Parts already stored are removed too: half a set is no backup.
+		for ( $i = 0; isset( $state['piece'], $state['pieces'] ) && $i < $state['piece']; $i++ ) {
+			try {
+				$driver->delete( (string) $state['pieces'][ $i ][0] );
+			} catch ( \Throwable $e ) {
+				$job->warn( sprintf( 'Part %s could not be removed from the storage: %s', $state['pieces'][ $i ][0], $e->getMessage() ) );
+			}
+		}
 		$job->log( 'info', 'Removed the unfinished upload from the storage.' );
 	}
 
