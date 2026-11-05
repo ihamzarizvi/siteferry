@@ -122,7 +122,7 @@ final class Gzip_Input implements Input_Stream {
 	 */
 	public function __construct( string $path, ?array $state = null ) {
 		if ( ! function_exists( 'inflate_init' ) || ! function_exists( 'inflate_get_read_len' ) ) {
-			throw new Archive_Exception( 'Reading .tar.gz files needs the PHP zlib extension.', Archive_Exception::IO );
+			throw new Archive_Exception( __( 'Reading .tar.gz files needs the PHP zlib extension.', 'siteferry' ), Archive_Exception::IO );
 		}
 
 		$member_offset   = null === $state ? 0 : (int) $state['member_offset'];
@@ -132,7 +132,7 @@ final class Gzip_Input implements Input_Stream {
 		$this->handle = Io::open_or_fail( $path, 'rb' );
 		if ( $member_offset > Io::size( $this->handle ) || 0 !== fseek( $this->handle, $member_offset ) || $position < $member_position ) {
 			$this->close();
-			throw new Archive_Exception( 'Saved read position is not valid for this archive.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'Saved read position is not valid for this archive.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 
 		$this->compressed_offset = $member_offset;
@@ -143,7 +143,7 @@ final class Gzip_Input implements Input_Stream {
 		$discard = $position - $member_position;
 		if ( $discard > 0 && $this->skip( $discard ) !== $discard ) {
 			$this->close();
-			throw new Archive_Exception( 'Saved read position is past the end of the archive.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'Saved read position is past the end of the archive.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 	}
 
@@ -248,7 +248,7 @@ final class Gzip_Input implements Input_Stream {
 			if ( '' === $this->pending ) {
 				$this->pending = $this->read_compressed();
 				if ( '' === $this->pending ) {
-					throw new Archive_Exception( 'The compressed archive ends in the middle of a gzip member; the file is incomplete.', Archive_Exception::TRUNCATED );
+					throw new Archive_Exception( __( 'The compressed archive ends in the middle of a gzip member; the file is incomplete.', 'siteferry' ), Archive_Exception::TRUNCATED );
 				}
 			}
 
@@ -291,7 +291,7 @@ final class Gzip_Input implements Input_Stream {
 
 		if ( "\x1f\x8b" !== substr( $this->pending, 0, 2 ) ) {
 			if ( 0 === $this->members && 0 === $this->compressed_offset ) {
-				throw new Archive_Exception( 'This is not a gzip file.', Archive_Exception::CORRUPT );
+				throw new Archive_Exception( __( 'This is not a gzip file.', 'siteferry' ), Archive_Exception::CORRUPT );
 			}
 			// End of data, or padding some tools add after the last member.
 			return false;
@@ -299,7 +299,7 @@ final class Gzip_Input implements Input_Stream {
 
 		$this->inflate = inflate_init( ZLIB_ENCODING_GZIP );
 		if ( false === $this->inflate ) {
-			throw new Archive_Exception( 'Cannot start gzip decompression.', Archive_Exception::IO );
+			throw new Archive_Exception( __( 'Cannot start gzip decompression.', 'siteferry' ), Archive_Exception::IO );
 		}
 		$this->fed = 0;
 		++$this->members;
@@ -329,7 +329,7 @@ final class Gzip_Input implements Input_Stream {
 			}
 		);
 		if ( false === $output ) {
-			throw new Archive_Exception( 'The compressed archive is damaged (gzip data error).', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'The compressed archive is damaged (gzip data error).', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 		return $output;
 	}

@@ -150,6 +150,6 @@ final class Sql_Values {
 	 * Exception for a broken value list.
 	 */
 	private static function malformed(): Archive_Exception {
-		return new Archive_Exception( 'An INSERT statement in the database dump is malformed.', Archive_Exception::CORRUPT );
+		return new Archive_Exception( __( 'An INSERT statement in the database dump is malformed.', 'siteferry' ), Archive_Exception::CORRUPT );
 	}
 }

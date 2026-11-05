@@ -60,7 +60,7 @@ final class Check {
 			throw new \SiteFerry\Archive\Archive_Exception( 'This backup is protected with a password; enter it to check the backup.', \SiteFerry\Archive\Archive_Exception::LOCKED );
 		}
 		if ( ! preg_match( Backups::SAFE_NAME, $name ) ) {
-			throw new Job_Exception( 'Unknown backup.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'Unknown backup.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		if ( self::LOCAL === $place || '' === $place ) {
 			$file    = Backups::path( Storage::backups_dir(), $name );
@@ -86,15 +86,15 @@ final class Check {
 		Destinations::require_ready( $place );
 		$found = Parts::find( Destinations::driver( $place ), $name ); // Whole, or all its parts.
 		if ( null === $found ) {
-			throw new Job_Exception( 'That backup is not on the storage (any more).', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'That backup is not on the storage (any more).', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		if ( ! $found['complete'] ) {
-			throw new Job_Exception( sprintf( 'Parts of that backup are missing on the storage (%d of them are there).', $found['parts'] ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %d: a number */ __( 'Parts of that backup are missing on the storage (%d of them are there).', 'siteferry' ), $found['parts'] ), Job_Exception::STEP );
 		}
 		$dir  = Storage::jobs_dir();
 		$free = function_exists( 'disk_free_space' ) ? @disk_free_space( $dir ) : false; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		if ( false !== $free && $free < $found['size'] + Transfer::SPARE_BYTES ) {
-			throw new Job_Exception( sprintf( 'Not enough disk space to download the copy for the check: it needs %s, %s is free.', size_format( $found['size'], 1 ), size_format( $free, 1 ) ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB */ __( 'Not enough disk space to download the copy for the check: it needs %1$s, %2$s is free.', 'siteferry' ), size_format( $found['size'], 1 ), size_format( $free, 1 ) ), Job_Exception::STEP );
 		}
 		$created = Job::create(
 			$dir,
@@ -123,7 +123,7 @@ final class Check {
 	 * @param string $place Place.
 	 */
 	public static function where( string $place ): string {
-		return self::LOCAL === $place ? 'this server' : Destinations::short_label( $place );
+		return self::LOCAL === $place ? __( 'this server', 'siteferry' ) : Destinations::short_label( $place );
 	}
 
 	/**

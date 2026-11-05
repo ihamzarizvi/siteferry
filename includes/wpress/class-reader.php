@@ -133,7 +133,7 @@ final class Reader implements Entry_Reader {
 		if ( null !== $state ) {
 			if ( ! isset( $state['version'] ) || 1 !== $state['version'] ) {
 				$reader->close();
-				throw new Archive_Exception( 'Invalid saved reader state.', Archive_Exception::BAD_STATE );
+				throw new Archive_Exception( __( 'Invalid saved reader state.', 'siteferry' ), Archive_Exception::BAD_STATE );
 			}
 			$reader->offset    = (int) $state['offset'];
 			$reader->entry     = empty( $state['entry'] ) ? null : Tar_Entry::from_array( (array) $state['entry'] );
@@ -144,7 +144,7 @@ final class Reader implements Entry_Reader {
 		}
 		if ( 0 !== fseek( $handle, $reader->offset ) ) {
 			$reader->close();
-			throw new Archive_Exception( 'Cannot resume reading the .wpress archive.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'Cannot resume reading the .wpress archive.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		return $reader;
 	}
@@ -335,7 +335,7 @@ final class Reader implements Entry_Reader {
 	private function check_crc(): void {
 		if ( null !== $this->raw && null !== $this->raw['crc'] && $this->raw['crc'] !== $this->crc ) {
 			throw new Archive_Exception(
-				sprintf( 'The file "%s" in the .wpress backup is damaged (its CRC-32 does not match).', $this->entry->name ),
+				sprintf( /* translators: %s: a file name */ __( 'The file "%s" in the .wpress backup is damaged (its CRC-32 does not match).', 'siteferry' ), $this->entry->name ),
 				Archive_Exception::CORRUPT
 			);
 		}
@@ -345,6 +345,6 @@ final class Reader implements Entry_Reader {
 	 * Exception for an archive that ends too early.
 	 */
 	private function truncated(): Archive_Exception {
-		return new Archive_Exception( 'The .wpress archive is incomplete (it ends too early).', Archive_Exception::TRUNCATED );
+		return new Archive_Exception( __( 'The .wpress archive is incomplete (it ends too early).', 'siteferry' ), Archive_Exception::TRUNCATED );
 	}
 }

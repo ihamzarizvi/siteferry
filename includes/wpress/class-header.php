@@ -50,15 +50,15 @@ final class Header {
 	 */
 	public static function build( string $name, int $size, int $mtime, string $path, ?int $crc ): string {
 		if ( '' === $name || strlen( $name ) > self::NAME_BYTES || false !== strpos( $name, "\0" ) || false !== strpos( $name, '/' ) ) {
-			throw new Archive_Exception( sprintf( 'The file name "%s" cannot be stored in a .wpress archive.', $name ), Archive_Exception::UNSUPPORTED );
+			throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'The file name "%s" cannot be stored in a .wpress archive.', 'siteferry' ), $name ), Archive_Exception::UNSUPPORTED );
 		}
 		if ( '' === $path || strlen( $path ) > self::PATH_BYTES || false !== strpos( $path, "\0" ) ) {
-			throw new Archive_Exception( sprintf( 'The folder "%s" cannot be stored in a .wpress archive.', $path ), Archive_Exception::UNSUPPORTED );
+			throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'The folder "%s" cannot be stored in a .wpress archive.', 'siteferry' ), $path ), Archive_Exception::UNSUPPORTED );
 		}
 		$size_text = (string) $size;
 		$time_text = (string) max( 0, $mtime );
 		if ( $size < 0 || strlen( $size_text ) > self::SIZE_BYTES || strlen( $time_text ) > self::TIME_BYTES ) {
-			throw new Archive_Exception( sprintf( 'The file "%s" is too large for a .wpress archive.', $name ), Archive_Exception::UNSUPPORTED );
+			throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'The file "%s" is too large for a .wpress archive.', 'siteferry' ), $name ), Archive_Exception::UNSUPPORTED );
 		}
 		return str_pad( $name, self::NAME_BYTES, "\0" )
 			. str_pad( $size_text, self::SIZE_BYTES, "\0" )
@@ -89,7 +89,7 @@ final class Header {
 	 */
 	public static function parse( string $block ): array {
 		if ( strlen( $block ) !== self::SIZE ) {
-			throw new Archive_Exception( 'The .wpress archive ends in the middle of a header.', Archive_Exception::TRUNCATED );
+			throw new Archive_Exception( __( 'The .wpress archive ends in the middle of a header.', 'siteferry' ), Archive_Exception::TRUNCATED );
 		}
 		$name = self::field( $block, self::NAME_AT, self::NAME_BYTES );
 		$size = self::field( $block, self::SIZE_AT, self::SIZE_BYTES );
@@ -107,7 +107,7 @@ final class Header {
 			);
 		}
 		if ( ! ctype_digit( $size ) || ( '' !== $time && ! ctype_digit( $time ) ) ) {
-			throw new Archive_Exception( 'The .wpress archive has a damaged header.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'The .wpress archive has a damaged header.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 
 		if ( preg_match( '/^[0-9a-f]{8}$/', $crc ) ) {
@@ -119,7 +119,7 @@ final class Header {
 			$value = null;
 		}
 		if ( false !== strpos( $name . $path, "\0" ) || '' === $path ) {
-			throw new Archive_Exception( 'The .wpress archive has a damaged header.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'The .wpress archive has a damaged header.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 		return array(
 			'end'   => false,

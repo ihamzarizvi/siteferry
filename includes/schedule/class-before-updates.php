@@ -143,7 +143,8 @@ final class Before_Updates {
 			}
 		}
 		return array(
-			'title'           => trim( sprintf( 'Before updating %s %s', $item['name'], $item['version'] ) ),
+			/* translators: 1: name of the plugin, theme or WordPress, 2: its version */
+			'title'           => trim( sprintf( __( 'Before updating %1$s %2$s', 'siteferry' ), $item['name'], $item['version'] ) ),
 			'tags'            => array( self::TAG ),
 			'exclude_media'   => true,
 			'exclude_plugins' => 'plugin' !== $item['type'],

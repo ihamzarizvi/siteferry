@@ -63,7 +63,8 @@ final class Safety_Step implements Step {
 			$what    = null !== $label && '' !== $label['title'] ? $label['title'] : $archive;
 			list( $export ) = Export::start(
 				array(
-					'title' => 'Before restoring ' . $what,
+					/* translators: %s: name of the backup being restored */
+					'title' => sprintf( __( 'Before restoring %s', 'siteferry' ), $what ),
 					'tags'  => array( self::TAG ),
 				),
 				null,
@@ -79,9 +80,9 @@ final class Safety_Step implements Step {
 		$export = Job::load( Storage::jobs_dir(), (string) $state['export'] );
 		Runner::run_slice( $export, $budget );
 		$progress = $export->progress();
-		$job->set_progress( 'Safety backup: ' . $progress['message'], (int) $progress['done'], (int) $progress['total'] );
+		$job->set_progress( sprintf( /* translators: %s: the progress of the safety backup */ __( 'Safety backup: %s', 'siteferry' ), $progress['message'] ), (int) $progress['done'], (int) $progress['total'] );
 		if ( Job::STATUS_FAILED === $export->status() ) {
-			throw new Job_Exception( 'The safety backup could not be made: ' . $export->error() . ' Nothing on this site has changed. To restore without one, untick "Make a safety backup" and try again.', Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: the reason, ending with a full stop */ __( 'The safety backup could not be made: %s Nothing on this site has changed. To restore without one, untick "Make a safety backup" and try again.', 'siteferry' ), $export->error() ), Job_Exception::STEP );
 		}
 		if ( ! $export->finished() ) {
 			return false;

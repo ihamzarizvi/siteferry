@@ -49,7 +49,7 @@ final class Send_Step implements Step {
 
 		if ( array() === $state ) {
 			if ( $size <= 0 ) {
-				throw new Job_Exception( 'The backup to send is missing or empty.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'The backup to send is missing or empty.', 'siteferry' ), Job_Exception::STEP );
 			}
 			// A storage with a size limit gets the backup as numbered parts.
 			$pieces = Parts::pieces( $name, $size, Destinations::split( $destination ) );
@@ -72,7 +72,7 @@ final class Send_Step implements Step {
 			);
 		}
 		if ( $size !== $state['size'] ) {
-			throw new Job_Exception( 'The backup changed or disappeared while it was being sent.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The backup changed or disappeared while it was being sent.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( ! isset( $state['pieces'] ) ) {
 			$state['pieces'] = array( array( $name, 0, $size ) ); // Begun by an earlier version.
@@ -104,7 +104,7 @@ final class Send_Step implements Step {
 					}
 				}
 				$job->set_state( self::STATE, $state );
-				$job->set_progress( sprintf( 'Sending to %s: %s of %s', Destinations::short_label( $destination ), size_format( $state['offset'], 1 ), size_format( $state['size'], 1 ) ), $state['offset'], $state['size'] );
+				$job->set_progress( sprintf( /* translators: 1: where it goes, such as Dropbox or another site's host name, 2: a size, such as 12 MB, 3: a size, such as 12 MB */ __( 'Sending to %1$s: %2$s of %3$s', 'siteferry' ), Destinations::short_label( $destination ), size_format( $state['offset'], 1 ), size_format( $state['size'], 1 ) ), $state['offset'], $state['size'] );
 				$job->save();
 
 				if ( ! $state['finished'] && $budget->exhausted() ) {
@@ -135,11 +135,11 @@ final class Send_Step implements Step {
 			if ( $deleted ) {
 				$job->log( 'info', 'Deleted the copy on this server, as asked.' );
 			} else {
-				$job->warn( 'The copy on this server could not be deleted.' );
+				$job->warn( __( 'The copy on this server could not be deleted.', 'siteferry' ) );
 			}
 		}
 		$job->set_result( $result );
-		$job->set_progress( sprintf( 'Sent to %s', $driver->describe() ), 1, 1 );
+		$job->set_progress( sprintf( /* translators: %s: where it went, such as Dropbox or another site's host name */ __( 'Sent to %s', 'siteferry' ), $driver->describe() ), 1, 1 );
 		return true;
 	}
 
@@ -160,7 +160,7 @@ final class Send_Step implements Step {
 			try {
 				$driver->delete( (string) $state['pieces'][ $i ][0] );
 			} catch ( \Throwable $e ) {
-				$job->warn( sprintf( 'Part %s could not be removed from the storage: %s', $state['pieces'][ $i ][0], $e->getMessage() ) );
+				$job->warn( sprintf( /* translators: 1: a file name, 2: the reason */ __( 'Part %1$s could not be removed from the storage: %2$s', 'siteferry' ), $state['pieces'][ $i ][0], $e->getMessage() ) );
 			}
 		}
 		$job->log( 'info', 'Removed the unfinished upload from the storage.' );
@@ -190,13 +190,13 @@ final class Send_Step implements Step {
 	 */
 	private static function read( $handle, int $offset, int $length ): string {
 		if ( 0 !== fseek( $handle, $offset ) ) {
-			throw new Job_Exception( 'Cannot read the backup.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Cannot read the backup.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$bytes = '';
 		while ( strlen( $bytes ) < $length ) {
 			$chunk = fread( $handle, $length - strlen( $bytes ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread
 			if ( false === $chunk || '' === $chunk ) {
-				throw new Job_Exception( 'The backup ended early while it was being sent.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'The backup ended early while it was being sent.', 'siteferry' ), Job_Exception::STEP );
 			}
 			$bytes .= $chunk;
 		}

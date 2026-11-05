@@ -47,7 +47,7 @@ final class Wpress {
 			$entry = $reader->next();
 			$raw   = $reader->raw();
 			if ( null === $entry || 'package.json' !== $entry->name || '.' !== $raw['path'] || $entry->size > Package::MAX_BYTES ) {
-				throw new Archive_Exception( 'This file is not a .wpress backup (it has no package.json).', Archive_Exception::CORRUPT );
+				throw new Archive_Exception( __( 'This file is not a .wpress backup (it has no package.json).', 'siteferry' ), Archive_Exception::CORRUPT );
 			}
 			$package = Package::parse( $reader->read( $entry->size ) );
 		} finally {
@@ -101,13 +101,13 @@ final class Wpress {
 		$out  = Io::open_or_fail( $to, 'c+b' );
 		try {
 			if ( 0 !== fseek( $in, $offset + $done ) || ! ftruncate( $out, $done ) || 0 !== fseek( $out, $done ) ) {
-				throw new Archive_Exception( 'Cannot continue copying from the .wpress backup.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot continue copying from the .wpress backup.', 'siteferry' ), Archive_Exception::IO );
 			}
 			while ( $done < $length ) {
 				$want = (int) min( Reader::CHUNK, $length - $done );
 				$data = (string) fread( $in, $want ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread
 				if ( strlen( $data ) !== $want ) {
-					throw new Archive_Exception( 'The .wpress archive is incomplete (it ends too early).', Archive_Exception::TRUNCATED );
+					throw new Archive_Exception( __( 'The .wpress archive is incomplete (it ends too early).', 'siteferry' ), Archive_Exception::TRUNCATED );
 				}
 				Io::write_all( $out, $data );
 				$crc   = Crc32::update( $crc, $data );

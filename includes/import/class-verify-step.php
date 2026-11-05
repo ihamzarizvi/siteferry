@@ -61,22 +61,22 @@ final class Verify_Step implements Step {
 			}
 		}
 		if ( array() !== $missing ) {
-			throw new Job_Exception( 'The backup is incomplete; missing: ' . self::names( $missing ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: a list of file names */ __( 'The backup is incomplete; missing: %s', 'siteferry' ), self::names( $missing ) ), Job_Exception::STEP );
 		}
 		if ( array() !== $changed ) {
-			throw new Job_Exception( 'The backup is damaged; checksum mismatch for: ' . self::names( $changed ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: a list of file names */ __( 'The backup is damaged; checksum mismatch for: %s', 'siteferry' ), self::names( $changed ) ), Job_Exception::STEP );
 		}
 
 		$unverified = array_diff( array_keys( $actual ), array_keys( $expected ), array( Manifest::ENTRY, Manifest::CHECKSUMS ) );
 		foreach ( array_slice( $unverified, 0, 50 ) as $path ) {
-			$job->warn( sprintf( '"%s" has no checksum in the backup (it changed while the backup was made).', $path ) );
+			$job->warn( sprintf( /* translators: %s: a file or backup name */ __( '"%s" has no checksum in the backup (it changed while the backup was made).', 'siteferry' ), $path ) );
 		}
 
 		if ( ! self::dump_complete( $staging . '/' . Manifest::DATABASE ) ) {
-			throw new Job_Exception( 'The database dump in the backup is incomplete.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The database dump in the backup is incomplete.', 'siteferry' ), Job_Exception::STEP );
 		}
 
-		$job->set_progress( sprintf( 'Checked %s files', number_format( count( $expected ) ) ) );
+		$job->set_progress( sprintf( /* translators: %s: a number */ __( 'Checked %s files', 'siteferry' ), number_format( count( $expected ) ) ) );
 		$job->log( 'info', sprintf( 'Checksums verified for %d files.', count( $expected ) ) );
 		return true;
 	}
@@ -100,7 +100,7 @@ final class Verify_Step implements Step {
 	private static function read_list( string $file, bool $strict ): array {
 		$handle = is_file( $file ) ? fopen( $file, 'rb' ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 		if ( false === $handle ) {
-			throw new Job_Exception( 'The backup has no checksum list.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The backup has no checksum list.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$list = array();
 		while ( false !== ( $line = fgets( $handle ) ) ) { // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition, WordPress.WP.AlternativeFunctions.file_system_operations_fgets
@@ -110,7 +110,7 @@ final class Verify_Step implements Step {
 			}
 			if ( ! preg_match( '/^([0-9a-f]{64}|-) [ *](.+)$/', $line, $match ) || ( $strict && '-' === $match[1] ) ) {
 				fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-				throw new Job_Exception( 'The checksum list in the backup is malformed.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'The checksum list in the backup is malformed.', 'siteferry' ), Job_Exception::STEP );
 			}
 			$list[ $match[2] ] = $match[1];
 		}

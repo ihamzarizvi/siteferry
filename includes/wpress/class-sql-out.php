@@ -94,7 +94,7 @@ final class Sql_Out {
 		$in  = new Statement_Reader( $this->source, (int) $this->state['offset'] );
 		try {
 			if ( ! ftruncate( $out, (int) $this->state['written'] ) || 0 !== fseek( $out, (int) $this->state['written'] ) ) {
-				throw new Archive_Exception( 'Cannot continue writing the converted database dump.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot continue writing the converted database dump.', 'siteferry' ), Archive_Exception::IO );
 			}
 			if ( 0 === (int) $this->state['written'] ) {
 				Io::write_all( $out, "-- Database dump for a .wpress backup, written by SiteFerry\n--\n\n" );
@@ -190,7 +190,7 @@ final class Sql_Out {
 			}
 			return $text;
 		}
-		throw new Archive_Exception( 'The database dump contains a statement that cannot be written to a .wpress backup.', Archive_Exception::UNSUPPORTED );
+		throw new Archive_Exception( __( 'The database dump contains a statement that cannot be written to a .wpress backup.', 'siteferry' ), Archive_Exception::UNSUPPORTED );
 	}
 
 	/**

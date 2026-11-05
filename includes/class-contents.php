@@ -165,7 +165,7 @@ final class Contents {
 		$source = self::source( $file, $key );
 		$wpress = $source === $file && ( Wpress\Wpress::is_name( $file ) || Wpress\Reader::is_wpress( $file ) );
 		if ( $wpress && ! empty( Wpress\Wpress::describe( $file )['encrypted'] ) ) {
-			throw new Job_Exception( 'This .wpress backup is protected with a password; its files cannot be read.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This .wpress backup is protected with a password; its files cannot be read.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$reader = self::open( $source, $wpress, null );
 		try {
@@ -207,7 +207,7 @@ final class Contents {
 		} finally {
 			$reader->close();
 		}
-		throw new Job_Exception( 'That file is not in the backup.', Job_Exception::NOT_FOUND );
+		throw new Job_Exception( __( 'That file is not in the backup.', 'siteferry' ), Job_Exception::NOT_FOUND );
 	}
 
 	/**
@@ -284,7 +284,7 @@ final class Contents {
 			return $file;
 		}
 		if ( null === $key ) {
-			throw new Archive_Exception( 'This backup is protected with a password.', Archive_Exception::LOCKED );
+			throw new Archive_Exception( __( 'This backup is protected with a password.', 'siteferry' ), Archive_Exception::LOCKED );
 		}
 		return Archive\Crypto::url( $file, $key );
 	}

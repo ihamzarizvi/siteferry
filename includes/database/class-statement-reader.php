@@ -64,7 +64,7 @@ final class Statement_Reader {
 		$this->handle = Io::open_or_fail( $file, 'rb' );
 		if ( $offset > 0 && 0 !== fseek( $this->handle, $offset ) ) {
 			$this->close();
-			throw new Archive_Exception( 'Cannot resume the database dump at its saved position.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'Cannot resume the database dump at its saved position.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		$this->buffer_start = $offset;
 		$this->offset       = $offset;
@@ -84,7 +84,7 @@ final class Statement_Reader {
 				$line = fgets( $this->handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fgets
 				if ( false === $line ) {
 					if ( '' !== trim( $statement ) ) {
-						throw new Archive_Exception( 'The database dump ends in the middle of a statement.', Archive_Exception::TRUNCATED );
+						throw new Archive_Exception( __( 'The database dump ends in the middle of a statement.', 'siteferry' ), Archive_Exception::TRUNCATED );
 					}
 					return null;
 				}
@@ -136,7 +136,7 @@ final class Statement_Reader {
 			$statement   .= $this->buffer;
 			$this->buffer = '';
 			if ( strlen( $statement ) > self::MAX_STATEMENT_BYTES ) {
-				throw new Archive_Exception( 'A statement in the database dump is too large.', Archive_Exception::CORRUPT );
+				throw new Archive_Exception( __( 'A statement in the database dump is too large.', 'siteferry' ), Archive_Exception::CORRUPT );
 			}
 		}
 	}
@@ -180,7 +180,7 @@ final class Statement_Reader {
 			while ( false === $end ) {
 				$line = fgets( $this->handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fgets
 				if ( false === $line ) {
-					throw new Archive_Exception( 'The database dump ends inside a comment.', Archive_Exception::TRUNCATED );
+					throw new Archive_Exception( __( 'The database dump ends inside a comment.', 'siteferry' ), Archive_Exception::TRUNCATED );
 				}
 				$trimmed            = $line;
 				$skipped            = 0;

@@ -130,7 +130,7 @@ final class Statement_Rewriter {
 			);
 		}
 
-		throw new Archive_Exception( sprintf( 'The database dump contains a statement SiteFerry does not accept: "%s".', self::preview( $statement ) ), Archive_Exception::UNSUPPORTED );
+		throw new Archive_Exception( sprintf( /* translators: %s: the start of an SQL statement */ __( 'The database dump contains a statement SiteFerry does not accept: "%s".', 'siteferry' ), self::preview( $statement ) ), Archive_Exception::UNSUPPORTED );
 	}
 
 	/**
@@ -151,11 +151,11 @@ final class Statement_Rewriter {
 	public function temp_name( string $escaped ): string {
 		$name = str_replace( '``', '`', $escaped );
 		if ( '' === $this->source_prefix || 0 !== strpos( $name, $this->source_prefix ) || strlen( $name ) === strlen( $this->source_prefix ) ) {
-			throw new Archive_Exception( sprintf( 'The database dump refers to the table "%s", which does not use the backup\'s prefix "%s".', self::preview( $name ), $this->source_prefix ), Archive_Exception::UNSUPPORTED );
+			throw new Archive_Exception( sprintf( /* translators: 1: a table name, 2: a table prefix, such as wp_ */ __( 'The database dump refers to the table "%1$s", which does not use the backup\'s prefix "%2$s".', 'siteferry' ), self::preview( $name ), $this->source_prefix ), Archive_Exception::UNSUPPORTED );
 		}
 		$temp = $this->temp_prefix . substr( $name, strlen( $this->source_prefix ) );
 		if ( strlen( $temp ) > self::MAX_IDENTIFIER ) {
-			throw new Archive_Exception( sprintf( 'The table name "%s" is too long to import with a temporary prefix.', self::preview( $name ) ), Archive_Exception::UNSUPPORTED );
+			throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'The table name "%s" is too long to import with a temporary prefix.', 'siteferry' ), self::preview( $name ) ), Archive_Exception::UNSUPPORTED );
 		}
 		return $temp;
 	}
@@ -171,7 +171,7 @@ final class Statement_Rewriter {
 	private function rewrite_create( string $statement, string $table, int $head ): string {
 		$outside = self::outside_quotes( $statement );
 		if ( preg_match( '/\b(DATA|INDEX)\s+DIRECTORY\b|\bCONNECTION\s*=|\bUNION\s*=|\bENGINE\s*=\s*(FEDERATED|CONNECT|MRG_MYISAM|MERGE)\b|\)\s*(AS\s+)?SELECT\b/i', $outside ) ) {
-			throw new Archive_Exception( sprintf( 'The table definition of "%s" uses options SiteFerry does not accept.', $table ), Archive_Exception::UNSUPPORTED );
+			throw new Archive_Exception( sprintf( /* translators: %s: a table name */ __( 'The table definition of "%s" uses options SiteFerry does not accept.', 'siteferry' ), $table ), Archive_Exception::UNSUPPORTED );
 		}
 
 		$sql = 'CREATE TABLE ' . Sql::identifier( $table ) . ' (' . substr( $statement, $head );
@@ -232,7 +232,7 @@ final class Statement_Rewriter {
 				return $charset . $suffix;
 			}
 		}
-		throw new Archive_Exception( sprintf( 'This database server does not support the collation %s used by the backup.', $collation ), Archive_Exception::UNSUPPORTED );
+		throw new Archive_Exception( sprintf( /* translators: %s: a collation, such as utf8mb4_unicode_520_ci */ __( 'This database server does not support the collation %s used by the backup.', 'siteferry' ), $collation ), Archive_Exception::UNSUPPORTED );
 	}
 
 	/**
@@ -258,7 +258,7 @@ final class Statement_Rewriter {
 				return $alternative;
 			}
 		}
-		throw new Archive_Exception( sprintf( 'This database server does not support the character set %s used by the backup.', $charset ), Archive_Exception::UNSUPPORTED );
+		throw new Archive_Exception( sprintf( /* translators: %s: a character set, such as utf8mb4 */ __( 'This database server does not support the character set %s used by the backup.', 'siteferry' ), $charset ), Archive_Exception::UNSUPPORTED );
 	}
 
 	/**
@@ -295,12 +295,12 @@ final class Statement_Rewriter {
 		if ( preg_match_all( '/\b[A-Za-z_][A-Za-z0-9_]*/', $outside, $words ) ) {
 			foreach ( array_unique( $words[0] ) as $word ) {
 				if ( ! in_array( strtoupper( $word ), array( 'VALUES', 'NULL', 'TRUE', 'FALSE', 'B', 'X', '_BINARY', '_UTF8MB4', '_UTF8', '_LATIN1' ), true ) ) {
-					throw new Archive_Exception( sprintf( 'An INSERT in the database dump contains "%s", which is not a plain value.', self::preview( $word ) ), Archive_Exception::UNSUPPORTED );
+					throw new Archive_Exception( sprintf( /* translators: %s: the start of the value */ __( 'An INSERT in the database dump contains "%s", which is not a plain value.', 'siteferry' ), self::preview( $word ) ), Archive_Exception::UNSUPPORTED );
 				}
 			}
 		}
 		if ( preg_match( '/[^\s(),.+\-0-9A-Za-z_]/', $outside ) ) {
-			throw new Archive_Exception( 'An INSERT in the database dump contains characters that are not part of plain values.', Archive_Exception::UNSUPPORTED );
+			throw new Archive_Exception( __( 'An INSERT in the database dump contains characters that are not part of plain values.', 'siteferry' ), Archive_Exception::UNSUPPORTED );
 		}
 	}
 

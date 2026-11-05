@@ -96,15 +96,15 @@ final class Replace_Step implements Step {
 				$this->set_network( $wpdb, $temp, $inspect['network'], $state['tables'] );
 			}
 			if ( $state['stats']['broken'] > 0 ) {
-				$job->warn( sprintf( '%d values looked serialized but were already damaged in the backup; they were updated as plain text.', $state['stats']['broken'] ) );
+				$job->warn( sprintf( /* translators: %d: a number */ __( '%d values looked serialized but were already damaged in the backup; they were updated as plain text.', 'siteferry' ), $state['stats']['broken'] ) );
 			}
 			if ( $state['stats']['opaque'] > 0 ) {
-				$job->warn( sprintf( '%d serialized values use a custom format SiteFerry cannot rewrite; they keep the old addresses.', $state['stats']['opaque'] ) );
+				$job->warn( sprintf( /* translators: %d: a number */ __( '%d serialized values use a custom format SiteFerry cannot rewrite; they keep the old addresses.', 'siteferry' ), $state['stats']['opaque'] ) );
 			}
 			$job->log( 'info', sprintf( 'Search and replace: %d rows changed (%s).', $state['rows'], self::describe( $state['changed'] ) ) );
 		}
 		$job->set_state( 'replace', $state );
-		$job->set_progress( sprintf( 'Updating addresses: table %d of %d', min( $state['index'] + 1, count( $state['tables'] ) ), count( $state['tables'] ) ), $state['index'], count( $state['tables'] ) );
+		$job->set_progress( sprintf( /* translators: 1: a number, 2: a number */ __( 'Updating addresses: table %1$d of %2$d', 'siteferry' ), min( $state['index'] + 1, count( $state['tables'] ) ), count( $state['tables'] ) ), $state['index'], count( $state['tables'] ) );
 		return $done;
 	}
 

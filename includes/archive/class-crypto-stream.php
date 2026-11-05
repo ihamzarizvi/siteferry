@@ -189,7 +189,7 @@ final class Crypto_Stream {
 		$this->header  = (string) fread( $handle, Crypto::HEADER_BYTES ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread
 		if ( Crypto::HEADER_BYTES !== strlen( $this->header ) || 0 !== strpos( $this->header, Crypto::MAGIC ) ) {
 			$this->stream_close();
-			throw new Archive_Exception( 'This is not an encrypted SiteFerry backup.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'This is not an encrypted SiteFerry backup.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 		$scan         = Crypto::scan( $handle );
 		$this->chunks = $scan['chunks'];
@@ -197,11 +197,11 @@ final class Crypto_Stream {
 		$this->end    = $scan['end'];
 		if ( ! $this->writing && ( ! $scan['sealed'] || $scan['torn'] ) ) {
 			$this->stream_close();
-			throw new Archive_Exception( 'The encrypted backup is incomplete (it was cut off).', Archive_Exception::TRUNCATED );
+			throw new Archive_Exception( __( 'The encrypted backup is incomplete (it was cut off).', 'siteferry' ), Archive_Exception::TRUNCATED );
 		}
 		if ( $this->writing && $scan['sealed'] ) {
 			$this->stream_close();
-			throw new Archive_Exception( 'This encrypted backup is already complete.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'This encrypted backup is already complete.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		return true;
 	}

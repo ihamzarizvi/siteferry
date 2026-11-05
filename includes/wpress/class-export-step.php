@@ -105,7 +105,7 @@ final class Export_Step implements Step {
 				}
 			);
 			if ( ! $renamed ) {
-				throw new Job_Exception( 'Cannot rename the finished .wpress backup.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'Cannot rename the finished .wpress backup.', 'siteferry' ), Job_Exception::STEP );
 			}
 		}
 		Io::quiet(
@@ -125,7 +125,7 @@ final class Export_Step implements Step {
 		$job->set_result( $result );
 		$state['phase'] = 'done';
 		$job->set_state( self::STEP, $state );
-		$job->set_progress( 'The .wpress backup is ready', 1, 1 );
+		$job->set_progress( __( 'The .wpress backup is ready', 'siteferry' ), 1, 1 );
 		$job->log( 'info', sprintf( '.wpress backup written: %s (%s).', basename( $final ), size_format( $result['size'], 1 ) ) );
 		return true;
 	}
@@ -186,12 +186,12 @@ final class Export_Step implements Step {
 		try {
 			$entry = $reader->next();
 			if ( null === $entry || Manifest::ENTRY !== $entry->name ) {
-				throw new Job_Exception( 'The backup has no manifest.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'The backup has no manifest.', 'siteferry' ), Job_Exception::STEP );
 			}
 			$manifest = json_decode( $reader->read( $entry->size ), true );
 			$entry    = $reader->next();
 			if ( ! is_array( $manifest ) || null === $entry || Manifest::DATABASE !== $entry->name ) {
-				throw new Job_Exception( 'The backup does not start with its manifest and database.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'The backup does not start with its manifest and database.', 'siteferry' ), Job_Exception::STEP );
 			}
 			$state['reader'] = $reader->state();
 		} finally {
@@ -219,7 +219,7 @@ final class Export_Step implements Step {
 		$out     = Io::open_or_fail( $job->path( self::SOURCE ), 'c+b' );
 		try {
 			if ( ! ftruncate( $out, $written ) || 0 !== fseek( $out, $written ) ) {
-				throw new Archive_Exception( 'Cannot continue copying the database.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot continue copying the database.', 'siteferry' ), Archive_Exception::IO );
 			}
 			$done            = $reader->copy_to( $out, $budget );
 			$state['reader'] = $reader->state();
@@ -255,7 +255,7 @@ final class Export_Step implements Step {
 				while ( $writer->has_open_entry() ) {
 					$data = $reader->read( (int) min( Reader::CHUNK, $writer->remaining() ) );
 					if ( '' === $data ) {
-						throw new Archive_Exception( 'The backup ended in the middle of a file.', Archive_Exception::TRUNCATED );
+						throw new Archive_Exception( __( 'The backup ended in the middle of a file.', 'siteferry' ), Archive_Exception::TRUNCATED );
 					}
 					$writer->write( $data );
 					$budget->consume( strlen( $data ) );
@@ -313,7 +313,7 @@ final class Export_Step implements Step {
 			while ( $writer->has_open_entry() ) {
 				$data = (string) fread( $in, (int) min( Reader::CHUNK, $writer->remaining() ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread
 				if ( '' === $data ) {
-					throw new Archive_Exception( 'The converted database is shorter than expected.', Archive_Exception::IO );
+					throw new Archive_Exception( __( 'The converted database is shorter than expected.', 'siteferry' ), Archive_Exception::IO );
 				}
 				$writer->write( $data );
 				$state['db'] += strlen( $data );

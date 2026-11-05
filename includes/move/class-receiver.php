@@ -186,7 +186,7 @@ final class Receiver {
 	 */
 	public static function start( string $name, int $size, string $from ): array {
 		if ( ! preg_match( Backups::NAME_PATTERN, $name ) || ! Backups::encrypted_name( $name ) ) {
-			throw new Job_Exception( 'Only an encrypted SiteFerry backup can be received this way.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Only an encrypted SiteFerry backup can be received this way.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$state  = self::state();
 		$upload = self::upload( $state );
@@ -215,7 +215,7 @@ final class Receiver {
 	public static function chunk( int $offset, string $bytes, string $sha256 ): array {
 		$upload = self::upload( self::state() );
 		if ( null === $upload ) {
-			throw new Job_Exception( 'No transfer was started with this key.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'No transfer was started with this key.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		ignore_user_abort( true );
 		$upload->append( $offset, $bytes, $sha256 );
@@ -231,7 +231,7 @@ final class Receiver {
 		$state  = self::state();
 		$upload = self::upload( $state );
 		if ( null === $upload ) {
-			throw new Job_Exception( 'No transfer was started with this key.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'No transfer was started with this key.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		$name   = $upload->finish( Storage::backups_dir() );
 		$secret = Secrets::site()->decrypt( (string) $state['secret'] );
@@ -244,7 +244,7 @@ final class Receiver {
 					return unlink( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
 				}
 			);
-			throw new Job_Exception( 'The backup that arrived does not open with this key.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The backup that arrived does not open with this key.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$from              = isset( $state['from'] ) ? (string) $state['from'] : '';
 		$state['upload']   = '';
@@ -264,7 +264,8 @@ final class Receiver {
 		);
 		update_option( self::RECEIVED, $received, false );
 		$host = (string) wp_parse_url( $from, PHP_URL_HOST );
-		Labels::set( $name, 'Moved from ' . ( '' === $host ? 'another site' : $host ), '', array( 'moved' ) );
+		/* translators: %s: address of the site it came from */
+		Labels::set( $name, '' === $host ? __( 'Moved from another site', 'siteferry' ) : sprintf( __( 'Moved from %s', 'siteferry' ), $host ), '', array( 'moved' ) );
 		return array( 'backup' => $name );
 	}
 

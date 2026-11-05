@@ -89,7 +89,7 @@ final class Storage {
 				}
 			);
 			if ( ! $made && ! is_dir( $dir ) ) {
-				throw new Archive_Exception( sprintf( 'Cannot create the folder "%s". Check that wp-content is writable.', $dir ), Archive_Exception::IO );
+				throw new Archive_Exception( sprintf( /* translators: %s: dir */ __( 'Cannot create the folder "%s". Check that wp-content is writable.', 'siteferry' ), $dir ), Archive_Exception::IO );
 			}
 		}
 		self::protect( $dir );

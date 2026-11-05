@@ -72,7 +72,7 @@ final class Import_Step implements Step {
 					return $this->pause( $job, $state, 'Reading the database from the .wpress backup', $state['copy']['done'], $state['dump']['size'] );
 				}
 				if ( null !== $state['dump']['crc'] && $state['dump']['crc'] !== $state['copy']['crc'] ) {
-					throw new Job_Exception( 'The database in the .wpress backup is damaged (its CRC-32 does not match).', Job_Exception::STEP );
+					throw new Job_Exception( __( 'The database in the .wpress backup is damaged (its CRC-32 does not match).', 'siteferry' ), Job_Exception::STEP );
 				}
 				$state['phase'] = 'translate';
 			}
@@ -112,12 +112,12 @@ final class Import_Step implements Step {
 		$job->delete_file( self::SOURCE );
 
 		if ( $state['sql']['stray'] > 0 ) {
-			$job->warn( sprintf( '%d database statements contain the placeholder prefix inside a value; those values were left as they are.', $state['sql']['stray'] ) );
+			$job->warn( sprintf( /* translators: %d: a number */ __( '%d database statements contain the placeholder prefix inside a value; those values were left as they are.', 'siteferry' ), $state['sql']['stray'] ) );
 		}
 		$state['phase']  = 'done';
 		$state['reader'] = null;
 		$job->set_state( self::STEP, $state );
-		$job->set_progress( 'The .wpress backup was read' );
+		$job->set_progress( __( 'The .wpress backup was read', 'siteferry' ) );
 		$job->log(
 			'info',
 			sprintf(
@@ -152,7 +152,7 @@ final class Import_Step implements Step {
 	public static function manifest( Job $job ): array {
 		$data = is_file( $job->path( self::MANIFEST ) ) ? json_decode( (string) file_get_contents( $job->path( self::MANIFEST ) ), true ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		if ( ! is_array( $data ) ) {
-			throw new Job_Exception( 'The converted .wpress backup is missing; start the import again.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The converted .wpress backup is missing; start the import again.', 'siteferry' ), Job_Exception::STEP );
 		}
 		return $data;
 	}
@@ -179,11 +179,11 @@ final class Import_Step implements Step {
 				}
 			);
 			if ( ! $moved ) {
-				throw new Job_Exception( 'Cannot move the converted database into the staging folder.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'Cannot move the converted database into the staging folder.', 'siteferry' ), Job_Exception::STEP );
 			}
 		}
 		if ( ! copy( $job->path( self::MANIFEST ), $staging . '/' . Manifest::ENTRY ) ) {
-			throw new Job_Exception( 'Cannot write the manifest into the staging folder.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Cannot write the manifest into the staging folder.', 'siteferry' ), Job_Exception::STEP );
 		}
 
 		$in  = Io::open_or_fail( $sums, 'rb' );
@@ -223,12 +223,12 @@ final class Import_Step implements Step {
 				$relative = $entry->name;
 				if ( 'package.json' === $relative ) {
 					if ( $entry->size > Package::MAX_BYTES ) {
-						throw new Job_Exception( 'The package.json of this .wpress backup is too large.', Job_Exception::STEP );
+						throw new Job_Exception( __( 'The package.json of this .wpress backup is too large.', 'siteferry' ), Job_Exception::STEP );
 					}
 					$state['package'] = Package::parse( $reader->read( $entry->size ) );
 					$state['created'] = $entry->mtime;
 					if ( Package::encrypted( $state['package'] ) ) {
-						throw new Job_Exception( 'This .wpress backup is protected with a password, and SiteFerry cannot open password-protected .wpress backups yet. Make the backup again without a password.', Job_Exception::STEP );
+						throw new Job_Exception( __( 'This .wpress backup is protected with a password, and SiteFerry cannot open password-protected .wpress backups yet. Make the backup again without a password.', 'siteferry' ), Job_Exception::STEP );
 					}
 				} elseif ( 'database.sql' === $relative ) {
 					$state['dump'] = array(
@@ -237,7 +237,7 @@ final class Import_Step implements Step {
 						'crc'    => $raw['crc'],
 					);
 				} elseif ( 'multisite.json' === $relative ) {
-					throw new Job_Exception( 'This .wpress backup comes from a multisite network, which this version of SiteFerry cannot import.', Job_Exception::STEP );
+					throw new Job_Exception( __( 'This .wpress backup comes from a multisite network, which this version of SiteFerry cannot import.', 'siteferry' ), Job_Exception::STEP );
 				} elseif ( ! Wpress::skipped( $relative ) ) {
 					++$state['files'];
 					$state['bytes'] += $entry->size;
@@ -253,10 +253,10 @@ final class Import_Step implements Step {
 		}
 
 		if ( null === $state['package'] ) {
-			throw new Job_Exception( 'This file is not a .wpress backup (it has no package.json).', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This file is not a .wpress backup (it has no package.json).', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( null === $state['dump'] ) {
-			throw new Job_Exception( 'This .wpress backup has no database (it was made with "Exclude database"), so SiteFerry cannot import it.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This .wpress backup has no database (it was made with "Exclude database"), so SiteFerry cannot import it.', 'siteferry' ), Job_Exception::STEP );
 		}
 		self::prefix( $state['package'] );
 		$state['phase']  = 'copy';
@@ -273,7 +273,7 @@ final class Import_Step implements Step {
 	private static function prefix( array $package ): string {
 		$prefix = isset( $package['Database']['Prefix'] ) && is_string( $package['Database']['Prefix'] ) ? $package['Database']['Prefix'] : '';
 		if ( ! preg_match( '/^[A-Za-z0-9_]{1,40}$/', $prefix ) ) {
-			throw new Job_Exception( 'The .wpress backup does not state a usable table prefix.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The .wpress backup does not state a usable table prefix.', 'siteferry' ), Job_Exception::STEP );
 		}
 		return $prefix;
 	}

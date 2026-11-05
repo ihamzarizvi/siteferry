@@ -18,6 +18,7 @@ if ( 'cli-server' !== PHP_SAPI ) {
 
 define( 'ABSPATH', dirname( __DIR__ ) . '/' );
 require dirname( __DIR__, 2 ) . '/includes/class-autoloader.php';
+require dirname( __DIR__ ) . '/lib/i18n-stub.php';
 SiteFerry\Autoloader::register();
 require dirname( __DIR__ ) . '/lib/fixtures.php';
 require dirname( __DIR__ ) . '/lib/class-fake-s3.php';

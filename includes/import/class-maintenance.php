@@ -41,7 +41,7 @@ final class Maintenance {
 	public static function enable(): void {
 		$file = self::file();
 		if ( is_file( $file ) && ! self::is_ours() ) {
-			throw new Job_Exception( 'WordPress is already in maintenance mode (an update may be running). Try the import again later.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'WordPress is already in maintenance mode (an update may be running). Try the import again later.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$content = "<?php\n// " . self::MARKER . " while an import swaps the database and files; it is removed automatically.\n"
 			. "// WordPress also ignores this file ten minutes after it was written.\n"
@@ -52,7 +52,7 @@ final class Maintenance {
 			}
 		);
 		if ( false === $written ) {
-			throw new Job_Exception( 'Cannot write the maintenance file in the WordPress folder.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Cannot write the maintenance file in the WordPress folder.', 'siteferry' ), Job_Exception::STEP );
 		}
 	}
 

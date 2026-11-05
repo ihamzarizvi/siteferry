@@ -46,11 +46,11 @@ final class Sender {
 			|| ! preg_match( '#^https?://[^/\s]+#i', (string) $data['u'] )
 			|| ! preg_match( '/^[a-f0-9]{16}$/', (string) $data['i'] )
 			|| ! preg_match( '/^[A-Za-z0-9_-]{43}$/', (string) $data['s'] ) ) {
-			throw new Job_Exception( 'That is not a move key. Copy the whole key from "Receive a site" on the new site.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'That is not a move key. Copy the whole key from "Receive a site" on the new site.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$url = untrailingslashit( (string) $data['u'] );
 		if ( untrailingslashit( home_url() ) === $url && ! apply_filters( 'siteferry_move_to_self', false ) ) {
-			throw new Job_Exception( 'This key was made on this site. Make the key on the site you are moving to.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This key was made on this site. Make the key on the site you are moving to.', 'siteferry' ), Job_Exception::STEP );
 		}
 		return array(
 			'url'    => $url,
@@ -87,7 +87,8 @@ final class Sender {
 		$options = (array) apply_filters(
 			'siteferry_move_export_options',
 			array(
-				'title'    => 'Moved to ' . $host,
+				/* translators: %s: address of the site it is moved to */
+				'title'    => sprintf( __( 'Moved to %s', 'siteferry' ), $host ),
 				'tags'     => array( 'moved' ),
 				'compress' => \SiteFerry\Requirements::can_compress(),
 			)
@@ -134,18 +135,18 @@ final class Sender {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
-			throw new Job_Exception( sprintf( 'The other site (%s) cannot be reached: %s', $key['url'], $response->get_error_message() ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: 1: a web address, 2: the reason */ __( 'The other site (%1$s) cannot be reached: %2$s', 'siteferry' ), $key['url'], $response->get_error_message() ), Job_Exception::STEP );
 		}
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		$data = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 		if ( 401 === $code || 403 === $code ) {
-			throw new Job_Exception( 'The other site refused the key: it has expired, was used already, or was replaced. Make a new key there.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The other site refused the key: it has expired, was used already, or was replaced. Make a new key there.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( 404 === $code && ( ! is_array( $data ) || ! isset( $data['code'] ) || 'rest_no_route' === $data['code'] ) ) {
-			throw new Job_Exception( sprintf( 'SiteFerry %s or later is not active on %s.', SITEFERRY_VERSION, $key['url'] ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: 1: a version number, 2: a web address */ __( 'SiteFerry %1$s or later is not active on %2$s.', 'siteferry' ), SITEFERRY_VERSION, $key['url'] ), Job_Exception::STEP );
 		}
 		if ( $code < 200 || $code >= 300 || ! is_array( $data ) ) {
-			$error = new Job_Exception( sprintf( 'The other site answered: %s', is_array( $data ) && isset( $data['message'] ) ? $data['message'] : 'HTTP ' . $code ), 409 === $code ? Job_Exception::BUSY : Job_Exception::STEP );
+			$error = new Job_Exception( sprintf( /* translators: %s: the message of the other site */ __( 'The other site answered: %s', 'siteferry' ), is_array( $data ) && isset( $data['message'] ) ? $data['message'] : 'HTTP ' . $code ), 409 === $code ? Job_Exception::BUSY : Job_Exception::STEP );
 			throw $error;
 		}
 		return $data;

@@ -165,27 +165,27 @@ final class Ftp_Driver implements Driver {
 		$host = (string) preg_replace( '#^(ftps?|sftp)://#', '', $host );
 		$host = rtrim( $host, '/' );
 		if ( ! preg_match( '/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $host ) ) {
-			throw new Storage_Exception( 'Enter the server\'s host name, such as ftp.example.com (no path, no port).', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Enter the server\'s host name, such as ftp.example.com (no path, no port).', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		$port = isset( $input['port'] ) && '' !== trim( (string) $input['port'] ) ? (string) $input['port'] : '21';
 		if ( ! preg_match( '/^\d{1,5}$/', trim( $port ) ) || (int) $port < 1 || (int) $port > 65535 ) {
-			throw new Storage_Exception( 'The port must be a number from 1 to 65535 (usually 21).', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'The port must be a number from 1 to 65535 (usually 21).', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		$encryption = isset( $input['encryption'] ) ? (string) $input['encryption'] : 'ftps';
 		if ( ! in_array( $encryption, array( 'ftps', 'ftp' ), true ) ) {
-			throw new Storage_Exception( 'Choose FTPS or plain FTP.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Choose FTPS or plain FTP.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		// No control characters anywhere: a line break would end the FTP command early.
 		$username = trim( isset( $input['username'] ) ? (string) $input['username'] : '' );
 		if ( ! preg_match( '/^[^\x00-\x1f\x7f]{1,128}$/u', $username ) ) {
-			throw new Storage_Exception( 'Enter the user name.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Enter the user name.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 		$password = isset( $input['password'] ) ? (string) $input['password'] : '';
 		if ( '' !== $password && ! preg_match( '/^[^\x00-\x1f\x7f]{1,256}$/u', $password ) ) {
-			throw new Storage_Exception( 'The password contains characters that are not allowed.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'The password contains characters that are not allowed.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		$raw_folder = trim( str_replace( '\\', '/', isset( $input['folder'] ) ? (string) $input['folder'] : 'siteferry' ) );
@@ -193,7 +193,7 @@ final class Ftp_Driver implements Driver {
 		$folder     = trim( $raw_folder, '/' );
 		foreach ( '' === $folder ? array() : explode( '/', $folder ) as $segment ) {
 			if ( ! preg_match( '/^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$/', $segment ) ) {
-				throw new Storage_Exception( 'The folder may contain only letters, digits, ".", "-", "_" and "/" between folder names.', Storage_Exception::CONFIG );
+				throw new Storage_Exception( __( 'The folder may contain only letters, digits, ".", "-", "_" and "/" between folder names.', 'siteferry' ), Storage_Exception::CONFIG );
 			}
 		}
 
@@ -288,12 +288,12 @@ final class Ftp_Driver implements Driver {
 				$offset = $index * (int) $state['part_size'];
 				$remote = $this->remote_size( $state['temp'] );
 				if ( $remote >= 0 && $remote < $offset ) {
-					throw new Storage_Exception( sprintf( 'The partly uploaded file on the server has %d bytes instead of at least %d; start the transfer again.', $remote, $offset ), Storage_Exception::REMOTE );
+					throw new Storage_Exception( sprintf( /* translators: 1: remote, 2: a number */ __( 'The partly uploaded file on the server has %1$d bytes instead of at least %2$d; start the transfer again.', 'siteferry' ), $remote, $offset ), Storage_Exception::REMOTE );
 				}
 				$this->upload( $state['temp'], $bytes, $offset, sprintf( 'Uploading part %d', $index + 1 ) );
 				$after = $this->remote_size( $state['temp'] );
 				if ( $after >= 0 && $after < $offset + strlen( $bytes ) ) {
-					throw new Storage_Exception( sprintf( 'The server stored %d bytes instead of %d.', $after, $offset + strlen( $bytes ) ), Storage_Exception::REMOTE );
+					throw new Storage_Exception( sprintf( /* translators: 1: after, 2: a number */ __( 'The server stored %1$d bytes instead of %2$d.', 'siteferry' ), $after, $offset + strlen( $bytes ) ), Storage_Exception::REMOTE );
 				}
 				return $state;
 			}
@@ -312,7 +312,7 @@ final class Ftp_Driver implements Driver {
 				$size   = (int) $state['size'];
 				$remote = $this->remote_size( $state['temp'] );
 				if ( $remote >= 0 && $remote !== $size ) {
-					throw new Storage_Exception( sprintf( 'The uploaded file on the server has %d bytes instead of %d.', $remote, $size ), Storage_Exception::REMOTE );
+					throw new Storage_Exception( sprintf( /* translators: 1: remote, 2: a number */ __( 'The uploaded file on the server has %1$d bytes instead of %2$d.', 'siteferry' ), $remote, $size ), Storage_Exception::REMOTE );
 				}
 				if ( $this->remote_size( $state['name'] ) >= 0 ) {
 					self::ftp(
@@ -332,7 +332,7 @@ final class Ftp_Driver implements Driver {
 				}
 				$stored = $this->remote_size( $state['name'] );
 				if ( $stored >= 0 && $stored !== $size ) {
-					throw new Storage_Exception( sprintf( 'The stored file has %d bytes instead of %d.', $stored, $size ), Storage_Exception::REMOTE );
+					throw new Storage_Exception( sprintf( /* translators: 1: a number, 2: a number */ __( 'The stored file has %1$d bytes instead of %2$d.', 'siteferry' ), $stored, $size ), Storage_Exception::REMOTE );
 				}
 			}
 		);
@@ -379,7 +379,7 @@ final class Ftp_Driver implements Driver {
 		return $this->attempt(
 			function () use ( $name, $offset, $length ): string {
 				if ( ! $this->enter_folder( false ) ) {
-					throw new Storage_Exception( 'The backup folder does not exist on the server.', Storage_Exception::NOT_FOUND );
+					throw new Storage_Exception( __( 'The backup folder does not exist on the server.', 'siteferry' ), Storage_Exception::NOT_FOUND );
 				}
 				return $this->download( $name, $offset, $length );
 			}
@@ -425,8 +425,10 @@ final class Ftp_Driver implements Driver {
 		);
 		$s       = $this->settings;
 		$lines[] = 'ftps' === $s['encryption']
-			? sprintf( 'Connected to %s:%d with explicit FTPS (TLS) and logged in as %s.', $s['host'], $s['port'], $s['username'] )
-			: sprintf( 'Connected to %s:%d and logged in as %s WITHOUT encryption: the password and the backups travel in plain text.', $s['host'], $s['port'], $s['username'] );
+			/* translators: 1: server, 2: port, 3: user name */
+			? sprintf( __( 'Connected to %1$s:%2$d with explicit FTPS (TLS) and logged in as %3$s.', 'siteferry' ), $s['host'], $s['port'], $s['username'] )
+			/* translators: 1: server, 2: port, 3: user name */
+			: sprintf( __( 'Connected to %1$s:%2$d and logged in as %3$s WITHOUT encryption: the password and the backups travel in plain text.', 'siteferry' ), $s['host'], $s['port'], $s['username'] );
 
 		$this->check(
 			'Opening the folder',
@@ -439,7 +441,7 @@ final class Ftp_Driver implements Driver {
 				return ftp_pwd( $this->conn );
 			}
 		);
-		$lines[] = sprintf( 'Using the folder %s on the server.', is_string( $pwd ) ? $pwd : $s['folder'] );
+		$lines[] = sprintf( /* translators: %s: a folder path */ __( 'Using the folder %s on the server.', 'siteferry' ), is_string( $pwd ) ? $pwd : $s['folder'] );
 
 		$name = '.siteferry-test-' . bin2hex( random_bytes( 6 ) ) . '.txt';
 		$body = 'SiteFerry connection test, ' . gmdate( 'Y-m-d H:i:s' ) . " UTC.\n" . str_repeat( 'x', 100 ) . "\n";
@@ -456,19 +458,19 @@ final class Ftp_Driver implements Driver {
 				$this->upload( $name, substr( $body, $half ), $half, 'Resuming' );
 			}
 		);
-		$lines[] = 'Wrote a test file in two pieces (resuming works).';
+		$lines[] = __( 'Wrote a test file in two pieces (resuming works).', 'siteferry' );
 
 		$this->check(
 			'Reading the test file back',
 			function () use ( $name, $body ) {
 				if ( $this->download( $name, 0, strlen( $body ) ) !== $body ) {
-					throw new Storage_Exception( 'The file read back differs from what was written.', Storage_Exception::REMOTE );
+					throw new Storage_Exception( __( 'The file read back differs from what was written.', 'siteferry' ), Storage_Exception::REMOTE );
 				}
 				// The download may have dropped the connection; this reconnects if so.
 				$this->enter_folder( false );
 			}
 		);
-		$lines[] = 'Read it back unchanged.';
+		$lines[] = __( 'Read it back unchanged.', 'siteferry' );
 
 		$count   = $this->check(
 			'Listing the folder',
@@ -476,7 +478,7 @@ final class Ftp_Driver implements Driver {
 				return count( $this->list_here() );
 			}
 		);
-		$lines[] = sprintf( 'Listed the folder: %d SiteFerry backup(s).', $count );
+		$lines[] = sprintf( /* translators: %d: a number */ __( 'Listed the folder: %d SiteFerry backup(s).', 'siteferry' ), $count );
 
 		$this->check(
 			'Deleting the test file',
@@ -491,7 +493,7 @@ final class Ftp_Driver implements Driver {
 				}
 			}
 		);
-		$lines[] = 'Deleted the test file.';
+		$lines[] = __( 'Deleted the test file.', 'siteferry' );
 		return $lines;
 	}
 
@@ -602,7 +604,7 @@ final class Ftp_Driver implements Driver {
 			fclose( $stream ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 			$failure = $this->failure( 'Downloading ' . $name, $error );
 			if ( ! $failure->retryable() && $this->remote_size( $name ) < 0 ) {
-				throw new Storage_Exception( sprintf( '%s is not on the server.', $name ), Storage_Exception::NOT_FOUND );
+				throw new Storage_Exception( sprintf( /* translators: %s: a file or backup name */ __( '%s is not on the server.', 'siteferry' ), $name ), Storage_Exception::NOT_FOUND );
 			}
 			throw $failure;
 		}
@@ -629,10 +631,10 @@ final class Ftp_Driver implements Driver {
 		$s   = $this->settings;
 		$tls = 'ftps' === $s['encryption'];
 		if ( ! function_exists( 'ftp_connect' ) ) {
-			throw new Storage_Exception( 'This server\'s PHP has no ftp extension; ask the host to enable it.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'This server\'s PHP has no ftp extension; ask the host to enable it.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 		if ( $tls && ! function_exists( 'ftp_ssl_connect' ) ) {
-			throw new Storage_Exception( 'This server\'s PHP cannot use FTPS (its ftp extension was built without TLS).', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'This server\'s PHP cannot use FTPS (its ftp extension was built without TLS).', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		list( $conn, $message ) = self::ftp(
@@ -641,7 +643,7 @@ final class Ftp_Driver implements Driver {
 			}
 		);
 		if ( false === $conn ) {
-			throw new Storage_Exception( sprintf( 'Cannot connect to %s:%d%s', $s['host'], $s['port'], '' === $message ? '.' : ': ' . $message ), Storage_Exception::TRANSIENT );
+			throw new Storage_Exception( sprintf( /* translators: 1: a host name, 2: a port number, 3: empty, or ": " and the reason */ __( 'Cannot connect to %1$s:%2$d%3$s', 'siteferry' ), $s['host'], $s['port'], '' === $message ? '.' : ': ' . $message ), Storage_Exception::TRANSIENT );
 		}
 
 		list( $logged_in, $message ) = self::ftp(
@@ -656,12 +658,12 @@ final class Ftp_Driver implements Driver {
 				}
 			);
 			if ( '' === $message ) {
-				throw new Storage_Exception( 'The connection broke during the login.', Storage_Exception::TRANSIENT );
+				throw new Storage_Exception( __( 'The connection broke during the login.', 'siteferry' ), Storage_Exception::TRANSIENT );
 			}
 			if ( $tls && preg_match( '/\b(AUTH|TLS|SSL)\b/i', $message ) ) {
-				throw new Storage_Exception( sprintf( 'The server did not accept an encrypted (FTPS) connection: %s Ask the host whether it supports explicit FTPS (AUTH TLS).', $message ), Storage_Exception::CONFIG );
+				throw new Storage_Exception( sprintf( /* translators: %s: the reason */ __( 'The server did not accept an encrypted (FTPS) connection: %s Ask the host whether it supports explicit FTPS (AUTH TLS).', 'siteferry' ), $message ), Storage_Exception::CONFIG );
 			}
-			throw new Storage_Exception( sprintf( 'The server refused the login for "%s": %s Check the user name and password.', $s['username'], $message ), Storage_Exception::AUTH );
+			throw new Storage_Exception( sprintf( /* translators: 1: a user name, 2: the reason, ending with a full stop */ __( 'The server refused the login for "%1$s": %2$s Check the user name and password.', 'siteferry' ), $s['username'], $message ), Storage_Exception::AUTH );
 		}
 
 		self::ftp(
@@ -684,7 +686,7 @@ final class Ftp_Driver implements Driver {
 					return ftp_close( $conn );
 				}
 			);
-			throw new Storage_Exception( 'The server refused passive mode: ' . $message, Storage_Exception::REMOTE );
+			throw new Storage_Exception( sprintf( /* translators: %s: the reason */ __( 'The server refused passive mode: %s', 'siteferry' ), $message ), Storage_Exception::REMOTE );
 		}
 		list( $home ) = self::ftp(
 			static function () use ( $conn ) {
@@ -787,10 +789,10 @@ final class Ftp_Driver implements Driver {
 		}
 		if ( ! $alive ) {
 			$this->disconnect( false );
-			return new Storage_Exception( sprintf( '%s failed: the connection to the server was lost%s.', $what, '' === $message ? '' : ' (' . $message . ')' ), Storage_Exception::TRANSIENT );
+			return new Storage_Exception( sprintf( /* translators: 1: the reason, 2: the reason */ __( '%1$s failed: the connection to the server was lost%2$s.', 'siteferry' ), $what, '' === $message ? '' : ' (' . $message . ')' ), Storage_Exception::TRANSIENT );
 		}
 		$hint = preg_match( '/data connection|425|PASV|PORT/i', $message ) ? ' If this keeps happening, check the passive mode setting and the server\'s firewall.' : '';
-		return new Storage_Exception( sprintf( '%s failed: %s%s', $what, '' === $message ? 'the server refused.' : $message, $hint ), Storage_Exception::REMOTE );
+		return new Storage_Exception( sprintf( /* translators: 1: the reason, 2: the reason, 3: hint */ __( '%1$s failed: %2$s%3$s', 'siteferry' ), $what, '' === $message ? 'the server refused.' : $message, $hint ), Storage_Exception::REMOTE );
 	}
 
 	/**

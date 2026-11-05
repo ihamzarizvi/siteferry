@@ -1,9 +1,9 @@
 === SiteFerry ===
-Tags: backup, migration, restore, tar
+Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.18.0
+Stable tag: 0.19.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -397,7 +397,50 @@ from file", within the host's upload limit.
 Tested with backups made by All-in-One WP Migration 7.113, and by importing SiteFerry's .wpress files
 with that version.
 
+== External services ==
+
+SiteFerry works on your server and contacts other services only when you set one up or ask it to.
+Nothing is sent in the background, there is no telemetry, and no service is contacted on a site
+where none is set up.
+
+**Storage you set up (S3-compatible, FTP/FTPS).** When you save the settings of an S3-compatible
+storage (Amazon S3, Backblaze B2, Wasabi, Cloudflare R2, DigitalOcean Spaces or another endpoint you
+enter) or of an FTP/FTPS server, SiteFerry connects to that endpoint or server: to test the
+connection, to list, send, download and delete backups when you ask (or when a schedule you set
+runs), and to check a stored copy. It sends the backup files and the requests the service needs,
+signed with your keys. Which service that is, and its terms, depend on your choice; for Amazon S3:
+[terms](https://aws.amazon.com/service-terms/), [privacy](https://aws.amazon.com/privacy/).
+
+**Google Drive.** When you connect Google Drive, SiteFerry uses Google's sign-in
+(accounts.google.com, oauth2.googleapis.com) and the Drive API (www.googleapis.com) with the
+drive.file scope: it uploads, lists, downloads and deletes the backup files it made, in the folder
+you choose, when you ask or a schedule you set runs. Google's
+[terms of service](https://policies.google.com/terms) and
+[privacy policy](https://policies.google.com/privacy).
+
+**Dropbox.** When you connect Dropbox, SiteFerry uses Dropbox's sign-in (www.dropbox.com,
+api.dropboxapi.com) and its API (api.dropboxapi.com, content.dropboxapi.com) with access to its app
+folder only: it uploads, lists, downloads and deletes backup files there when you ask or a schedule
+you set runs. Dropbox's [terms of service](https://www.dropbox.com/terms) and
+[privacy policy](https://www.dropbox.com/privacy).
+
+**Sign-in service (auth.xsofty.com).** Only if you choose one-click "Sign in with Google" or "Sign in
+with Dropbox" (instead of your own OAuth client or Dropbox app), your browser passes through
+`https://auth.xsofty.com/siteferry`, run by the publisher of SiteFerry, while signing in, with this
+site's SiteFerry page address, a random state and a PKCE challenge. For Google Drive this site
+also sends it the one-time code with the PKCE verifier, and later the refresh token when access
+needs renewing; the service adds SiteFerry's app credentials and passes the request to Google. For
+Dropbox, this site only asks it for the public app key. It stores nothing; backups never go through
+it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsofty.com/).
+
+**Another WordPress site (moving a site).** Only when you paste a move key made on another site and
+start the move, SiteFerry sends this site's encrypted backup to the address in that key.
+
 == Changelog ==
+
+= 0.19.0 =
+* Translation-ready: every message of the admin page (wp.i18n, with script translations), of the server (errors, warnings, progress, connection tests, the check, emails, automatic backup names) uses the "siteferry" text domain, with translator notes; the template is languages/siteferry.pot. WP-CLI output stays English.
+* readme: an "External services" section listing every service SiteFerry can contact, when, what it sends, and their terms and privacy policies.
 
 = 0.18.0 =
 * Multisite networks: whole-network backups (every site's tables, the network tables, all media) by super admins on the main site; restoring them into a network of the same kind, with every subsite's address mapped to the new network (subdomains keep their first label) and subsites made after the backup removed with their tables. The network stays network-activated for SiteFerry.

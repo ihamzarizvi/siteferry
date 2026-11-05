@@ -28,16 +28,16 @@ final class Requirements {
 		$problems = array();
 
 		if ( version_compare( PHP_VERSION, self::MIN_PHP, '<' ) ) {
-			$problems[] = sprintf( 'PHP %s or newer is required (this server runs %s).', self::MIN_PHP, PHP_VERSION );
+			$problems[] = sprintf( /* translators: 1: a PHP version, such as 7.4, 2: the PHP version of this server */ __( 'PHP %1$s or newer is required (this server runs %2$s).', 'siteferry' ), self::MIN_PHP, PHP_VERSION );
 		}
 		if ( PHP_INT_SIZE < 8 ) {
-			$problems[] = 'A 64-bit build of PHP is required to handle files larger than 2 GB.';
+			$problems[] = __( 'A 64-bit build of PHP is required to handle files larger than 2 GB.', 'siteferry' );
 		}
 		if ( ! function_exists( 'hash_init' ) || ! in_array( 'sha256', hash_algos(), true ) ) {
-			$problems[] = 'The PHP hash extension with SHA-256 is required.';
+			$problems[] = __( 'The PHP hash extension with SHA-256 is required.', 'siteferry' );
 		}
 		if ( ! function_exists( 'json_encode' ) ) {
-			$problems[] = 'The PHP JSON extension is required.';
+			$problems[] = __( 'The PHP JSON extension is required.', 'siteferry' );
 		}
 
 		return $problems;

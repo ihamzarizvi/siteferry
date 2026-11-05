@@ -68,7 +68,7 @@ final class Pack_Step implements Step {
 
 		try {
 			if ( ! ftruncate( $sums, $state['sums_size'] ) || 0 !== fseek( $sums, $state['sums_size'] ) ) {
-				throw new Archive_Exception( 'Cannot rewind the checksum list.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot rewind the checksum list.', 'siteferry' ), Archive_Exception::IO );
 			}
 			$done = $this->work( $job, $writer, $sums, $state, $budget );
 			fflush( $sums );
@@ -93,7 +93,7 @@ final class Pack_Step implements Step {
 
 		$total = (int) $job->state( 'scan' )['bytes'] + (int) $job->state( 'database' )['size'];
 		$job->set_progress(
-			sprintf( 'Packing: %s of %s', size_format( $state['bytes'], 1 ), size_format( $total, 1 ) ),
+			sprintf( /* translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB */ __( 'Packing: %1$s of %2$s', 'siteferry' ), size_format( $state['bytes'], 1 ), size_format( $total, 1 ) ),
 			$state['bytes'],
 			$total
 		);
@@ -155,7 +155,7 @@ final class Pack_Step implements Step {
 					case 'manifest':
 						$json = wp_json_encode( Manifest::build( $job ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 						if ( false === $json ) {
-							throw new Job_Exception( 'Cannot encode the manifest.', Job_Exception::STEP );
+							throw new Job_Exception( __( 'Cannot encode the manifest.', 'siteferry' ), Job_Exception::STEP );
 						}
 						$writer->add_string( Manifest::ENTRY, $json . "\n", $job->created() );
 						$state['phase'] = 'database';
@@ -224,7 +224,7 @@ final class Pack_Step implements Step {
 	private function add_listed( Job $job, Tar_Writer $writer, $sums, array &$state, string $line, Slice_Budget $budget ): bool {
 		$item = Scanner::parse_line( $line );
 		if ( null === $item ) {
-			throw new Job_Exception( 'The file list is damaged.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The file list is damaged.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$name = '' === $item['path'] ? 'wp-content' : 'wp-content/' . $item['path'];
 
@@ -253,7 +253,7 @@ final class Pack_Step implements Step {
 	private function record( Job $job, array &$state, $sums, array $result ): void {
 		if ( isset( $result['skipped'] ) ) {
 			++$state['skipped'];
-			$job->warn( sprintf( '"%s" disappeared or could not be read; it was left out.', $result['name'] ) );
+			$job->warn( sprintf( /* translators: %s: a file or backup name */ __( '"%s" disappeared or could not be read; it was left out.', 'siteferry' ), $result['name'] ) );
 			return;
 		}
 		if ( Manifest::CHECKSUMS === $result['name'] ) {
@@ -265,11 +265,11 @@ final class Pack_Step implements Step {
 
 		if ( $result['changed'] ) {
 			++$state['changed'];
-			$job->warn( sprintf( '"%s" changed while it was being saved; the backup holds the bytes that were read.', $result['name'] ) );
+			$job->warn( sprintf( /* translators: %s: a file or backup name */ __( '"%s" changed while it was being saved; the backup holds the bytes that were read.', 'siteferry' ), $result['name'] ) );
 		}
 		if ( null === $result['sha256'] ) {
 			++$state['unhashed'];
-			$job->warn( sprintf( '"%s" has no checksum because it changed while being saved.', $result['name'] ) );
+			$job->warn( sprintf( /* translators: %s: a file or backup name */ __( '"%s" has no checksum because it changed while being saved.', 'siteferry' ), $result['name'] ) );
 			return;
 		}
 		Io::write_all( $sums, $result['sha256'] . '  ' . $result['name'] . "\n" );
@@ -293,7 +293,7 @@ final class Pack_Step implements Step {
 
 		if ( false !== $free && $free < $needed ) {
 			throw new Job_Exception(
-				sprintf( 'Not enough disk space: the backup needs up to %s, but only %s is free.', size_format( $needed, 1 ), size_format( $free, 1 ) ),
+				sprintf( /* translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB */ __( 'Not enough disk space: the backup needs up to %1$s, but only %2$s is free.', 'siteferry' ), size_format( $needed, 1 ), size_format( $free, 1 ) ),
 				Job_Exception::STEP
 			);
 		}

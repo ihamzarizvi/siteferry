@@ -84,7 +84,7 @@ final class Job {
 			}
 		);
 		if ( ! $made ) {
-			throw new Job_Exception( 'Cannot create the job folder.', Job_Exception::INVALID );
+			throw new Job_Exception( __( 'Cannot create the job folder.', 'siteferry' ), Job_Exception::INVALID );
 		}
 
 		$now = time();
@@ -127,7 +127,7 @@ final class Job {
 	 */
 	public static function load( string $base, string $id ): self {
 		if ( ! preg_match( '/^[a-f0-9]{16}$/', $id ) ) {
-			throw new Job_Exception( 'Unknown job.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'Unknown job.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		$dir  = rtrim( $base, '/\\' ) . '/' . $id;
 		$json = false;
@@ -143,11 +143,11 @@ final class Job {
 			);
 		}
 		if ( false === $json ) {
-			throw new Job_Exception( 'Unknown job.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'Unknown job.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		$data = json_decode( $json, true );
 		if ( ! is_array( $data ) || 1 !== ( isset( $data['version'] ) ? $data['version'] : 0 ) || $id !== $data['id'] ) {
-			throw new Job_Exception( 'The job state file is damaged.', Job_Exception::INVALID );
+			throw new Job_Exception( __( 'The job state file is damaged.', 'siteferry' ), Job_Exception::INVALID );
 		}
 		return new self( $dir, $data );
 	}
@@ -490,7 +490,7 @@ final class Job {
 		$this->data['updated'] = time();
 		$json                  = json_encode( $this->data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT );
 		if ( false === $json ) {
-			throw new Job_Exception( 'Cannot encode the job state: ' . json_last_error_msg(), Job_Exception::INVALID );
+			throw new Job_Exception( sprintf( /* translators: %s: the reason */ __( 'Cannot encode the job state: %s', 'siteferry' ), json_last_error_msg() ), Job_Exception::INVALID );
 		}
 		$final   = $this->path( 'job.json' );
 		$temp    = $this->path( 'job.json.' . bin2hex( random_bytes( 4 ) ) . '.tmp' );
@@ -516,7 +516,7 @@ final class Job {
 					return unlink( $temp ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
 				}
 			);
-			throw new Job_Exception( 'Cannot save the job state. The disk may be full.', Job_Exception::INVALID );
+			throw new Job_Exception( __( 'Cannot save the job state. The disk may be full.', 'siteferry' ), Job_Exception::INVALID );
 		}
 	}
 

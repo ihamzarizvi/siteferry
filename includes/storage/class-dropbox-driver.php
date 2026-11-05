@@ -209,14 +209,14 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 	public static function normalize( array $input ): array {
 		$mode = isset( $input['mode'] ) ? (string) $input['mode'] : 'relay';
 		if ( ! in_array( $mode, self::MODES, true ) ) {
-			throw new Storage_Exception( 'Choose how to sign in to Dropbox.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Choose how to sign in to Dropbox.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 		$folder = self::clean_folder( isset( $input['folder'] ) ? (string) $input['folder'] : '' );
 		$key    = '';
 		if ( 'own' === $mode ) {
 			$key = trim( isset( $input['app_key'] ) ? (string) $input['app_key'] : '' );
 			if ( ! preg_match( self::APP_KEY, $key ) ) {
-				throw new Storage_Exception( 'Enter the app key of your Dropbox app (App Console, your app, Settings).', Storage_Exception::CONFIG );
+				throw new Storage_Exception( __( 'Enter the app key of your Dropbox app (App Console, your app, Settings).', 'siteferry' ), Storage_Exception::CONFIG );
 			}
 		}
 		return array(
@@ -241,11 +241,11 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 			return '';
 		}
 		if ( strlen( $folder ) > 200 || ! preg_match( '//u', $folder ) || preg_match( '/[\x00-\x1f\x7f\\\\<>:"|?*]/', $folder ) ) {
-			throw new Storage_Exception( 'The folder may not contain \\ < > : " | ? * or control characters, and has at most 200 characters.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'The folder may not contain \\ < > : " | ? * or control characters, and has at most 200 characters.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 		foreach ( explode( '/', $folder ) as $part ) {
 			if ( '' === $part || '.' === $part || '..' === $part || trim( $part ) !== $part || '.' === substr( $part, -1 ) ) {
-				throw new Storage_Exception( 'Each folder name needs at least one character, and may not be "." or "..", start or end with a space, or end with a dot.', Storage_Exception::CONFIG );
+				throw new Storage_Exception( __( 'Each folder name needs at least one character, and may not be "." or "..", start or end with a space, or end with a dot.', 'siteferry' ), Storage_Exception::CONFIG );
 			}
 		}
 		return $folder;
@@ -347,13 +347,13 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 			)
 		);
 		if ( empty( $data['refresh_token'] ) ) {
-			throw new Storage_Exception( 'Dropbox did not send a refresh token, so the access would end within hours. Connect again.', Storage_Exception::REMOTE );
+			throw new Storage_Exception( __( 'Dropbox did not send a refresh token, so the access would end within hours. Connect again.', 'siteferry' ), Storage_Exception::REMOTE );
 		}
 		if ( isset( $data['scope'] ) && is_string( $data['scope'] ) ) {
 			$missing = array_diff( self::SCOPES, explode( ' ', $data['scope'] ) );
 			if ( array() !== $missing ) {
 				throw new Storage_Exception(
-					sprintf( 'Dropbox did not grant every permission SiteFerry needs (missing: %s).', implode( ', ', $missing ) )
+					sprintf( /* translators: %s: permission names, separated by commas */ __( 'Dropbox did not grant every permission SiteFerry needs (missing: %s).', 'siteferry' ), implode( ', ', $missing ) )
 					. ( $this->relayed() ? '' : ' In the App Console, tick them on your app\'s Permissions tab, click Submit, and connect again.' ),
 					Storage_Exception::AUTH
 				);
@@ -422,7 +422,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 	public function begin( string $name, int $size ): array {
 		$data = self::json( $this->request( 'POST', $this->endpoints['content'] . '/files/upload_session/start', self::upload_headers( array( 'close' => false ) ), '' ) );
 		if ( empty( $data['session_id'] ) || ! is_string( $data['session_id'] ) ) {
-			throw new Storage_Exception( 'Dropbox did not start the upload (no session in its answer).', Storage_Exception::REMOTE );
+			throw new Storage_Exception( __( 'Dropbox did not start the upload (no session in its answer).', 'siteferry' ), Storage_Exception::REMOTE );
 		}
 		return array(
 			'name'      => $name,
@@ -474,12 +474,12 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 					}
 					$has = (int) $error['correct_offset'];
 					if ( $has < $offset ) {
-						throw new Storage_Exception( sprintf( 'Dropbox has %d bytes of the upload instead of at least %d; start the transfer again.', $has, $offset ), Storage_Exception::REMOTE );
+						throw new Storage_Exception( sprintf( /* translators: 1: has, 2: a number */ __( 'Dropbox has %1$d bytes of the upload instead of at least %2$d; start the transfer again.', 'siteferry' ), $has, $offset ), Storage_Exception::REMOTE );
 					}
 					$from = $has; // At or past $end: Dropbox already has the whole part.
 				}
 				if ( $from < $end ) {
-					throw new Storage_Exception( 'Dropbox kept asking for a different part of the upload.', Storage_Exception::TRANSIENT );
+					throw new Storage_Exception( __( 'Dropbox kept asking for a different part of the upload.', 'siteferry' ), Storage_Exception::TRANSIENT );
 				}
 			}
 		);
@@ -528,12 +528,12 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 						// Finished already (its answer was lost), or expired: the file says which.
 						$file = $this->metadata( (string) $state['path'] );
 						if ( null === $file ) {
-							throw new Storage_Exception( 'The upload is not complete on Dropbox (its upload session has ended); start the transfer again.', Storage_Exception::REMOTE );
+							throw new Storage_Exception( __( 'The upload is not complete on Dropbox (its upload session has ended); start the transfer again.', 'siteferry' ), Storage_Exception::REMOTE );
 						}
 						return $file;
 					}
 					if ( 'incorrect_offset' === self::tag( $lookup ) && isset( $lookup['correct_offset'] ) ) {
-						throw new Storage_Exception( sprintf( 'Dropbox has %d bytes of the upload instead of %d; start the transfer again.', (int) $lookup['correct_offset'], (int) $state['size'] ), Storage_Exception::REMOTE );
+						throw new Storage_Exception( sprintf( /* translators: 1: a number, 2: a number */ __( 'Dropbox has %1$d bytes of the upload instead of %2$d; start the transfer again.', 'siteferry' ), (int) $lookup['correct_offset'], (int) $state['size'] ), Storage_Exception::REMOTE );
 					}
 				}
 				throw $this->error( $response );
@@ -541,7 +541,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 		);
 		$size = isset( $file['size'] ) ? (int) $file['size'] : -1;
 		if ( $size !== (int) $state['size'] ) {
-			throw new Storage_Exception( sprintf( 'The file on Dropbox has %d bytes instead of %d.', $size, $state['size'] ), Storage_Exception::REMOTE );
+			throw new Storage_Exception( sprintf( /* translators: 1: a number, 2: a number */ __( 'The file on Dropbox has %1$d bytes instead of %2$d.', 'siteferry' ), $size, $state['size'] ), Storage_Exception::REMOTE );
 		}
 	}
 
@@ -627,7 +627,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 		if ( 409 === $response['status'] ) {
 			$error = self::error_body( $response );
 			if ( 'path' === self::tag( $error ) && isset( $error['path'] ) && 'not_found' === self::tag( (array) $error['path'] ) ) {
-				throw new Storage_Exception( sprintf( '%s is not in the Dropbox folder.', $name ), Storage_Exception::NOT_FOUND );
+				throw new Storage_Exception( sprintf( /* translators: %s: a file or backup name */ __( '%s is not in the Dropbox folder.', 'siteferry' ), $name ), Storage_Exception::NOT_FOUND );
 			}
 			throw $this->error( $response );
 		}
@@ -636,7 +636,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 		}
 		$range = isset( $response['headers']['content-range'] ) ? $response['headers']['content-range'] : '';
 		if ( ! preg_match( '/^bytes ' . $offset . '-/', $range ) ) {
-			throw new Storage_Exception( 'Dropbox sent a different part of the file than requested.', Storage_Exception::REMOTE );
+			throw new Storage_Exception( __( 'Dropbox sent a different part of the file than requested.', 'siteferry' ), Storage_Exception::REMOTE );
 		}
 		return $response['body'];
 	}
@@ -667,10 +667,11 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 				return $this->account();
 			}
 		);
-		$lines[] = sprintf( 'Signed in to Dropbox as %s.', $account );
+		$lines[] = sprintf( /* translators: %s: account */ __( 'Signed in to Dropbox as %s.', 'siteferry' ), $account );
 		$lines[] = '' === $this->settings['folder']
-			? 'Backups go into the app folder (Dropbox > Apps > the app\'s name).'
-			: sprintf( 'Backups go into the folder "%s" in the app folder (Dropbox > Apps > the app\'s name); Dropbox creates it with the first file.', $this->settings['folder'] );
+			? __( 'Backups go into the app folder (Dropbox > Apps > the app\'s name).', 'siteferry' )
+			/* translators: %s: folder name */
+			: sprintf( __( 'Backups go into the folder "%s" in the app folder (Dropbox > Apps > the app\'s name); Dropbox creates it with the first file.', 'siteferry' ), $this->settings['folder'] );
 
 		$part = 65536;
 		$name = '.siteferry-test-' . bin2hex( random_bytes( 6 ) ) . '.bin';
@@ -685,17 +686,17 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 				$this->finish( $state );
 			}
 		);
-		$lines[] = 'Wrote a test file in two parts.';
+		$lines[] = __( 'Wrote a test file in two parts.', 'siteferry' );
 
 		$this->check(
 			'Reading the test file back',
 			function () use ( $name, $data ) {
 				if ( $this->download_range( $name, 0, strlen( $data ) ) !== $data ) {
-					throw new Storage_Exception( 'The file read back differs from what was written.', Storage_Exception::REMOTE );
+					throw new Storage_Exception( __( 'The file read back differs from what was written.', 'siteferry' ), Storage_Exception::REMOTE );
 				}
 			}
 		);
-		$lines[] = 'Read it back unchanged.';
+		$lines[] = __( 'Read it back unchanged.', 'siteferry' );
 
 		$count   = $this->check(
 			'Listing the folder',
@@ -703,7 +704,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 				return count( $this->list() );
 			}
 		);
-		$lines[] = sprintf( 'Listed the folder: %d SiteFerry backup(s).', $count );
+		$lines[] = sprintf( /* translators: %d: a number */ __( 'Listed the folder: %d SiteFerry backup(s).', 'siteferry' ), $count );
 
 		$this->check(
 			'Deleting the test file',
@@ -711,7 +712,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 				$this->delete( $name );
 			}
 		);
-		$lines[] = 'Deleted the test file.';
+		$lines[] = __( 'Deleted the test file.', 'siteferry' );
 		return $lines;
 	}
 
@@ -761,7 +762,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 				if ( 200 !== $response['status'] ) {
 					$text = isset( $data['error_description'] ) && is_string( $data['error_description'] ) ? ': ' . preg_replace( '/[\x00-\x1f\x7f]+/', ' ', $data['error_description'] ) : '';
 					$kind = $response['status'] >= 500 || 429 === $response['status'] ? Storage_Exception::TRANSIENT : Storage_Exception::REMOTE;
-					throw new Storage_Exception( sprintf( '%s answered HTTP %d%s', $service, $response['status'], $text ), $kind );
+					throw new Storage_Exception( sprintf( /* translators: 1: a service, such as Dropbox, 2: an HTTP status code, 3: empty, or ": " and the error message */ __( '%1$s answered HTTP %2$d%3$s', 'siteferry' ), $service, $response['status'], $text ), $kind );
 				}
 				$key      = isset( $data['app_key'] ) && is_string( $data['app_key'] ) ? $data['app_key'] : '';
 				$redirect = isset( $data['redirect_uri'] ) && is_string( $data['redirect_uri'] ) ? $data['redirect_uri'] : '';
@@ -807,7 +808,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 			return (string) $this->auth['access_token'];
 		}
 		if ( ! $this->connected() ) {
-			throw new Storage_Exception( 'Dropbox is not connected yet. Click "Connect to Dropbox" on the Storage tab.', Storage_Exception::AUTH );
+			throw new Storage_Exception( __( 'Dropbox is not connected yet. Click "Connect to Dropbox" on the Storage tab.', 'siteferry' ), Storage_Exception::AUTH );
 		}
 		$data                       = $this->token_request(
 			array(
@@ -838,7 +839,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 				try {
 					$response = $this->transport->request( 'POST', $this->endpoints['token'], array( 'Content-Type' => 'application/x-www-form-urlencoded' ), http_build_query( $fields, '', '&' ), self::SHORT_TIMEOUT );
 				} catch ( Storage_Exception $e ) {
-					throw new Storage_Exception( 'Dropbox\'s sign-in service cannot be reached: ' . $e->getMessage(), $e->getCode(), $e );
+					throw new Storage_Exception( sprintf( /* translators: %s: the reason */ __( 'Dropbox\'s sign-in service cannot be reached: %s', 'siteferry' ), $e->getMessage() ), $e->getCode(), $e );
 				}
 				$data = self::json( $response );
 				if ( 200 === $response['status'] && ! empty( $data['access_token'] ) ) {
@@ -848,10 +849,10 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 				$text = isset( $data['error_description'] ) && is_string( $data['error_description'] ) ? ': ' . $data['error_description'] : '';
 				$text = (string) preg_replace( '/[\x00-\x1f\x7f]+/', ' ', $text );
 				if ( $response['status'] >= 500 || 429 === $response['status'] ) {
-					throw new Storage_Exception( sprintf( 'Dropbox\'s sign-in service answered HTTP %d; try again later.', $response['status'] ), Storage_Exception::TRANSIENT );
+					throw new Storage_Exception( sprintf( /* translators: %d: an HTTP status code */ __( 'Dropbox\'s sign-in service answered HTTP %d; try again later.', 'siteferry' ), $response['status'] ), Storage_Exception::TRANSIENT );
 				}
 				if ( 'invalid_grant' === $code ) {
-					throw new Storage_Exception( 'Dropbox no longer accepts the saved authorization (invalid_grant' . $text . '). Connect Dropbox again on the Storage tab.', Storage_Exception::AUTH );
+					throw new Storage_Exception( sprintf( /* translators: %s: empty, or ": " and the error message */ __( 'Dropbox no longer accepts the saved authorization (invalid_grant%s). Connect Dropbox again on the Storage tab.', 'siteferry' ), $text ), Storage_Exception::AUTH );
 				}
 				if ( in_array( $code, array( 'invalid_client', 'unauthorized_client' ), true ) ) {
 					throw new Storage_Exception(
@@ -861,7 +862,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 						Storage_Exception::AUTH
 					);
 				}
-				throw new Storage_Exception( sprintf( 'Dropbox\'s sign-in service refused (HTTP %d%s%s).', $response['status'], '' === $code ? '' : ' ' . $code, $text ), Storage_Exception::REMOTE );
+				throw new Storage_Exception( sprintf( /* translators: 1: an HTTP status code, 2: empty, or an error code, 3: empty, or ": " and the error message */ __( 'Dropbox\'s sign-in service refused (HTTP %1$d%2$s%3$s).', 'siteferry' ), $response['status'], '' === $code ? '' : ' ' . $code, $text ), Storage_Exception::REMOTE );
 			}
 		);
 	}
@@ -965,7 +966,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 		$allowed = array( self::origin( $this->endpoints['api'] ), self::origin( $this->endpoints['content'] ) );
 		$origin  = self::origin( $url );
 		if ( ! in_array( $origin, $allowed, true ) ) {
-			throw new Storage_Exception( 'Refusing to send the Dropbox token to ' . $origin . '.', Storage_Exception::REMOTE );
+			throw new Storage_Exception( sprintf( /* translators: %s: origin */ __( 'Refusing to send the Dropbox token to %s.', 'siteferry' ), $origin ), Storage_Exception::REMOTE );
 		}
 	}
 

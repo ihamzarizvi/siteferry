@@ -107,7 +107,7 @@ final class Tar_Extractor {
 	public function __construct( Entry_Reader $reader, string $root, array $options = array(), ?array $state = null ) {
 		$real = realpath( $root );
 		if ( false === $real || ! is_dir( $real ) ) {
-			throw new Archive_Exception( 'The staging folder does not exist.', Archive_Exception::IO );
+			throw new Archive_Exception( __( 'The staging folder does not exist.', 'siteferry' ), Archive_Exception::IO );
 		}
 
 		$this->reader         = $reader;
@@ -151,14 +151,14 @@ final class Tar_Extractor {
 
 			if ( ! $entry->is_file() && ! $entry->is_dir() ) {
 				throw new Archive_Exception(
-					sprintf( 'The archive contains a %s ("%s"), which is not allowed.', $entry->type_label(), Path_Guard::printable( $entry->name ) ),
+					sprintf( /* translators: 1: a kind of archive entry, such as "symbolic link", 2: its name */ __( 'The archive contains a %1$s ("%2$s"), which is not allowed.', 'siteferry' ), $entry->type_label(), Path_Guard::printable( $entry->name ) ),
 					Archive_Exception::UNSUPPORTED
 				);
 			}
 			$path = Path_Guard::check( $entry->name, $this->windows );
 			if ( null !== $this->allow && true !== call_user_func( $this->allow, $path, $entry ) ) {
 				throw new Archive_Exception(
-					sprintf( 'The archive contains "%s", which is outside the allowed folders.', Path_Guard::printable( $path ) ),
+					sprintf( /* translators: %s: a file or backup name */ __( 'The archive contains "%s", which is outside the allowed folders.', 'siteferry' ), Path_Guard::printable( $path ) ),
 					Archive_Exception::UNSAFE_PATH
 				);
 			}
@@ -224,7 +224,7 @@ final class Tar_Extractor {
 
 		$target = $this->target( $path );
 		if ( is_link( $target ) || is_dir( $target ) ) {
-			throw new Archive_Exception( sprintf( 'Cannot write "%s": a folder or link is in the way.', Path_Guard::printable( $path ) ), Archive_Exception::UNSAFE_PATH );
+			throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Cannot write "%s": a folder or link is in the way.', 'siteferry' ), Path_Guard::printable( $path ) ), Archive_Exception::UNSAFE_PATH );
 		}
 
 		$handle = Io::open_or_fail( $target, 'wb' );
@@ -251,7 +251,7 @@ final class Tar_Extractor {
 		$handle  = Io::open_or_fail( $target, 'r+b' );
 		if ( Io::size( $handle ) < $written || ! ftruncate( $handle, $written ) || 0 !== fseek( $handle, $written ) ) {
 			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-			throw new Archive_Exception( sprintf( 'The staged copy of "%s" is shorter than expected.', Path_Guard::printable( $this->current['path'] ) ), Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'The staged copy of "%s" is shorter than expected.', 'siteferry' ), Path_Guard::printable( $this->current['path'] ) ), Archive_Exception::BAD_STATE );
 		}
 		return $handle;
 	}
@@ -316,16 +316,16 @@ final class Tar_Extractor {
 		$current = $this->root;
 		foreach ( explode( '/', $path ) as $segment ) {
 			if ( '' === $segment || '.' === $segment || '..' === $segment ) {
-				throw new Archive_Exception( sprintf( 'Unsafe folder name in "%s".', Path_Guard::printable( $path ) ), Archive_Exception::UNSAFE_PATH );
+				throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Unsafe folder name in "%s".', 'siteferry' ), Path_Guard::printable( $path ) ), Archive_Exception::UNSAFE_PATH );
 			}
 			$current .= DIRECTORY_SEPARATOR . $segment;
 
 			if ( is_link( $current ) ) {
-				throw new Archive_Exception( sprintf( 'Cannot create folder "%s": a link is in the way.', Path_Guard::printable( $path ) ), Archive_Exception::UNSAFE_PATH );
+				throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Cannot create folder "%s": a link is in the way.', 'siteferry' ), Path_Guard::printable( $path ) ), Archive_Exception::UNSAFE_PATH );
 			}
 			if ( ! is_dir( $current ) ) {
 				if ( file_exists( $current ) ) {
-					throw new Archive_Exception( sprintf( 'Cannot create folder "%s": a file is in the way.', Path_Guard::printable( $path ) ), Archive_Exception::UNSAFE_PATH );
+					throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Cannot create folder "%s": a file is in the way.', 'siteferry' ), Path_Guard::printable( $path ) ), Archive_Exception::UNSAFE_PATH );
 				}
 				$dir  = $current;
 				$made = Io::quiet(
@@ -334,7 +334,7 @@ final class Tar_Extractor {
 					}
 				);
 				if ( ! $made && ! is_dir( $current ) ) {
-					throw new Archive_Exception( sprintf( 'Cannot create folder "%s".', Path_Guard::printable( $path ) ), Archive_Exception::IO );
+					throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Cannot create folder "%s".', 'siteferry' ), Path_Guard::printable( $path ) ), Archive_Exception::IO );
 				}
 			}
 			$this->assert_inside( $current );
@@ -364,7 +364,7 @@ final class Tar_Extractor {
 	private function assert_inside( string $target ): void {
 		$real = realpath( $target );
 		if ( false === $real || 0 !== strpos( $real, $this->root . DIRECTORY_SEPARATOR ) ) {
-			throw new Archive_Exception( 'An archive entry resolved outside the staging folder.', Archive_Exception::UNSAFE_PATH );
+			throw new Archive_Exception( __( 'An archive entry resolved outside the staging folder.', 'siteferry' ), Archive_Exception::UNSAFE_PATH );
 		}
 	}
 

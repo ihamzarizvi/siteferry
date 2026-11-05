@@ -96,7 +96,7 @@ final class Database_Step implements Step {
 		foreach ( $rewriter->mapped() as $from => $to ) {
 			if ( ! isset( $state['mapped'][ $from ] ) ) {
 				$state['mapped'][ $from ] = $to;
-				$job->warn( sprintf( 'This database server does not support %s; %s is used instead.', $from, $to ) );
+				$job->warn( sprintf( /* translators: 1: a collation or character set, 2: the one used instead */ __( 'This database server does not support %1$s; %2$s is used instead.', 'siteferry' ), $from, $to ) );
 			}
 		}
 
@@ -106,7 +106,7 @@ final class Database_Step implements Step {
 		$job->set_state( 'database', $state );
 
 		$size = (int) $inspect['db_size'];
-		$job->set_progress( sprintf( 'Loading the database: %d tables', count( $state['tables'] ) ), min( $state['offset'], $size ), $size );
+		$job->set_progress( sprintf( /* translators: %d: a number */ __( 'Loading the database: %d tables', 'siteferry' ), count( $state['tables'] ) ), min( $state['offset'], $size ), $size );
 		if ( $state['done'] ) {
 			$job->log( 'info', sprintf( 'Database loaded into %d temporary tables (%d statements).', count( $state['tables'] ), $state['statements'] ) );
 		}
@@ -132,7 +132,7 @@ final class Database_Step implements Step {
 	 */
 	public static function drop_prefixed( $db, string $prefix ): void {
 		if ( ! preg_match( '/^sf[to][a-f0-9]{6}_$/', $prefix ) ) {
-			throw new Job_Exception( 'Refusing to drop tables with an unexpected prefix.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Refusing to drop tables with an unexpected prefix.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$tables = Raw_Query::column( $db, 'SHOW TABLES LIKE ' . Raw_Query::quote( $db, addcslashes( $prefix, '_%\\' ) . '%' ) );
 		if ( array() !== $tables ) {
@@ -197,7 +197,7 @@ final class Database_Step implements Step {
 			}
 		}
 		if ( count( $tables ) !== $expected ) {
-			throw new Job_Exception( sprintf( 'The backup lists %d tables to load, but the dump created %d.', $expected, count( $tables ) ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: 1: a number, 2: a number */ __( 'The backup lists %1$d tables to load, but the dump created %2$d.', 'siteferry' ), $expected, count( $tables ) ), Job_Exception::STEP );
 		}
 		if ( array() !== $chosen && empty( $inspect['rows_exact'] ) ) {
 			// Backups from SiteFerry before 0.12 list estimated rows per table; the dump itself was
@@ -211,7 +211,7 @@ final class Database_Step implements Step {
 			$rows += (int) $count[0];
 		}
 		if ( $rows !== $want ) {
-			throw new Job_Exception( sprintf( 'The backup has %d rows, but %d were loaded.', $want, $rows ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: 1: a number, 2: a number */ __( 'The backup has %1$d rows, but %2$d were loaded.', 'siteferry' ), $want, $rows ), Job_Exception::STEP );
 		}
 	}
 }

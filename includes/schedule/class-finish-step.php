@@ -70,7 +70,7 @@ final class Finish_Step implements Step {
 		if ( $mailed ) {
 			$job->log( 'info', 'Sent the email about this backup.' );
 		}
-		$job->set_progress( 'Scheduled backup done', 1, 1 );
+		$job->set_progress( __( 'Scheduled backup done', 'siteferry' ), 1, 1 );
 		return true;
 	}
 

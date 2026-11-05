@@ -82,13 +82,13 @@ final class Tar_Header {
 	 */
 	public static function parse( string $block ): array {
 		if ( self::BLOCK !== strlen( $block ) ) {
-			throw new Archive_Exception( 'Short TAR header block.', Archive_Exception::TRUNCATED );
+			throw new Archive_Exception( __( 'Short TAR header block.', 'siteferry' ), Archive_Exception::TRUNCATED );
 		}
 
 		$stored = self::parse_number( substr( $block, 148, 8 ) );
 		$blank  = substr_replace( $block, '        ', 148, 8 );
 		if ( $stored !== self::checksum( $blank ) && $stored !== array_sum( unpack( 'c*', $blank ) ) ) {
-			throw new Archive_Exception( 'TAR header checksum mismatch. The archive is damaged or not a TAR file.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'TAR header checksum mismatch. The archive is damaged or not a TAR file.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 
 		$name = self::cstring( substr( $block, 0, self::NAME_LENGTH ) );
@@ -158,18 +158,18 @@ final class Tar_Header {
 			}
 			$space = strpos( $data, ' ', $offset );
 			if ( false === $space || $space - $offset > 18 ) {
-				throw new Archive_Exception( 'Malformed pax header.', Archive_Exception::CORRUPT );
+				throw new Archive_Exception( __( 'Malformed pax header.', 'siteferry' ), Archive_Exception::CORRUPT );
 			}
 			$digits = substr( $data, $offset, $space - $offset );
 			$length = preg_match( '/^[0-9]+$/', $digits ) ? (int) $digits : 0;
 			if ( $length < strlen( $digits ) + 4 || $offset + $length > $total || "\n" !== $data[ $offset + $length - 1 ] ) {
-				throw new Archive_Exception( 'Malformed pax header.', Archive_Exception::CORRUPT );
+				throw new Archive_Exception( __( 'Malformed pax header.', 'siteferry' ), Archive_Exception::CORRUPT );
 			}
 
 			$record = substr( $data, $space + 1, $offset + $length - $space - 2 );
 			$equals = strpos( $record, '=' );
 			if ( false === $equals || 0 === $equals ) {
-				throw new Archive_Exception( 'Malformed pax header.', Archive_Exception::CORRUPT );
+				throw new Archive_Exception( __( 'Malformed pax header.', 'siteferry' ), Archive_Exception::CORRUPT );
 			}
 			$records[ substr( $record, 0, $equals ) ] = (string) substr( $record, $equals + 1 );
 			$offset                                  += $length;
@@ -214,12 +214,12 @@ final class Tar_Header {
 	public static function parse_number( string $field ): int {
 		if ( '' !== $field && ( ord( $field[0] ) & 0x80 ) ) {
 			if ( ord( $field[0] ) & 0x40 ) {
-				throw new Archive_Exception( 'Negative number in TAR header.', Archive_Exception::CORRUPT );
+				throw new Archive_Exception( __( 'Negative number in TAR header.', 'siteferry' ), Archive_Exception::CORRUPT );
 			}
 			$value = ord( $field[0] ) & 0x3f;
 			for ( $i = 1, $n = strlen( $field ); $i < $n; $i++ ) {
 				if ( $value > ( PHP_INT_MAX >> 8 ) ) {
-					throw new Archive_Exception( 'Number too large in TAR header.', Archive_Exception::CORRUPT );
+					throw new Archive_Exception( __( 'Number too large in TAR header.', 'siteferry' ), Archive_Exception::CORRUPT );
 				}
 				$value = ( $value << 8 ) | ord( $field[ $i ] );
 			}
@@ -231,7 +231,7 @@ final class Tar_Header {
 			return 0;
 		}
 		if ( ! preg_match( '/^[0-7]{1,20}$/', $digits ) ) {
-			throw new Archive_Exception( 'Malformed number in TAR header.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'Malformed number in TAR header.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 		return (int) octdec( $digits );
 	}

@@ -70,7 +70,7 @@ final class Parts {
 		}
 		$count = (int) ceil( $size / $limit );
 		if ( $count > self::MAX ) {
-			throw new Storage_Exception( sprintf( 'The backup would take %d parts of %s; choose larger parts for this storage (at most %d parts).', $count, size_format( $limit ), self::MAX ), Storage_Exception::CONFIG );
+			throw new Storage_Exception( sprintf( /* translators: 1: a number, 2: a size, such as 12 MB, 3: a number */ __( 'The backup would take %1$d parts of %2$s; choose larger parts for this storage (at most %3$d parts).', 'siteferry' ), $count, size_format( $limit ), self::MAX ), Storage_Exception::CONFIG );
 		}
 		$pieces = array();
 		for ( $i = 0; $i < $count; $i++ ) {
@@ -173,7 +173,7 @@ final class Parts {
 	public static function normalize_mb( $value ): int {
 		$mb = (int) $value;
 		if ( 0 !== $mb && ( $mb < self::MIN_MB || $mb > self::MAX_MB ) ) {
-			throw new Storage_Exception( sprintf( 'Parts must be between %d MB and %d MB (or 0 for whole files).', self::MIN_MB, self::MAX_MB ), Storage_Exception::CONFIG );
+			throw new Storage_Exception( sprintf( /* translators: 1: a number, 2: a number */ __( 'Parts must be between %1$d MB and %2$d MB (or 0 for whole files).', 'siteferry' ), self::MIN_MB, self::MAX_MB ), Storage_Exception::CONFIG );
 		}
 		return $mb;
 	}

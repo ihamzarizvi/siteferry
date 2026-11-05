@@ -115,7 +115,7 @@ final class Path_Guard {
 	 */
 	private static function reject( string $path, string $reason ): void {
 		throw new Archive_Exception(
-			sprintf( 'Unsafe path in archive (%s): "%s"', $reason, self::printable( $path ) ),
+			sprintf( /* translators: 1: the reason, 2: a file or backup name */ __( 'Unsafe path in archive (%1$s): "%2$s"', 'siteferry' ), $reason, self::printable( $path ) ),
 			Archive_Exception::UNSAFE_PATH
 		);
 	}

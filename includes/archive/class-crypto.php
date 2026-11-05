@@ -95,7 +95,7 @@ final class Crypto {
 		int $iterations = self::ITERATIONS
 	): array {
 		if ( ! self::available() ) {
-			throw new Archive_Exception( 'Encrypted backups need the PHP OpenSSL extension with AES-256-GCM.', Archive_Exception::UNSUPPORTED );
+			throw new Archive_Exception( __( 'Encrypted backups need the PHP OpenSSL extension with AES-256-GCM.', 'siteferry' ), Archive_Exception::UNSUPPORTED );
 		}
 		$salt   = random_bytes( self::SALT_BYTES );
 		$prefix = self::MAGIC . chr( self::CIPHER ) . chr( self::KDF ) . pack( 'N', $iterations ) . $salt;
@@ -117,22 +117,22 @@ final class Crypto {
 		string $password
 	): string {
 		if ( strlen( $header ) !== self::HEADER_BYTES || 0 !== strpos( $header, self::MAGIC ) ) {
-			throw new Archive_Exception( 'This is not an encrypted SiteFerry backup.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'This is not an encrypted SiteFerry backup.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 		if ( self::CIPHER !== ord( $header[6] ) || self::KDF !== ord( $header[7] ) ) {
-			throw new Archive_Exception( 'This backup is encrypted in a way this version of SiteFerry does not know.', Archive_Exception::UNSUPPORTED );
+			throw new Archive_Exception( __( 'This backup is encrypted in a way this version of SiteFerry does not know.', 'siteferry' ), Archive_Exception::UNSUPPORTED );
 		}
 		$iterations = (int) unpack( 'N', substr( $header, 8, 4 ) )[1];
 		if ( $iterations < self::MIN_ROUNDS || $iterations > self::MAX_ROUNDS ) {
-			throw new Archive_Exception( 'The header of this encrypted backup is damaged.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'The header of this encrypted backup is damaged.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 		if ( ! self::available() ) {
-			throw new Archive_Exception( 'Encrypted backups need the PHP OpenSSL extension with AES-256-GCM.', Archive_Exception::UNSUPPORTED );
+			throw new Archive_Exception( __( 'Encrypted backups need the PHP OpenSSL extension with AES-256-GCM.', 'siteferry' ), Archive_Exception::UNSUPPORTED );
 		}
 		$prefix = substr( $header, 0, 28 );
 		list( $key, $check ) = self::derive( $password, substr( $header, 12, self::SALT_BYTES ), $iterations );
 		if ( ! hash_equals( substr( $header, 28 ), substr( hash_hmac( 'sha256', $prefix, $check, true ), 0, self::CHECK_BYTES ) ) ) {
-			throw new Archive_Exception( 'The password is wrong.', Archive_Exception::LOCKED );
+			throw new Archive_Exception( __( 'The password is wrong.', 'siteferry' ), Archive_Exception::LOCKED );
 		}
 		return $key;
 	}
@@ -163,7 +163,7 @@ final class Crypto {
 		$header = (string) fread( $handle, self::HEADER_BYTES ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread
 		fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		if ( strlen( $header ) !== self::HEADER_BYTES || 0 !== strpos( $header, self::MAGIC ) ) {
-			throw new Archive_Exception( 'This is not an encrypted SiteFerry backup.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'This is not an encrypted SiteFerry backup.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 		return $header;
 	}
@@ -208,7 +208,7 @@ final class Crypto {
 		$tag    = '';
 		$cipher = openssl_encrypt( $plain, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $nonce, $tag, $header . pack( 'J', $index ) . $head, self::TAG );
 		if ( false === $cipher ) {
-			throw new Archive_Exception( 'Encryption failed.', Archive_Exception::IO );
+			throw new Archive_Exception( __( 'Encryption failed.', 'siteferry' ), Archive_Exception::IO );
 		}
 		return $head . $nonce . $cipher . $tag;
 	}
@@ -241,7 +241,7 @@ final class Crypto {
 			$header . pack( 'J', $index ) . substr( $head, 0, 5 )
 		);
 		if ( false === $plain ) {
-			throw new Archive_Exception( sprintf( 'Part %d of the encrypted backup fails its check: the file is damaged or was changed.', $index + 1 ), Archive_Exception::CORRUPT );
+			throw new Archive_Exception( sprintf( /* translators: %d: index + 1 */ __( 'Part %d of the encrypted backup fails its check: the file is damaged or was changed.', 'siteferry' ), $index + 1 ), Archive_Exception::CORRUPT );
 		}
 		return $plain;
 	}
@@ -303,7 +303,7 @@ final class Crypto {
 				return;
 			}
 			if ( ! ftruncate( $handle, $scan['end'] ) || 0 !== fseek( $handle, $scan['end'] ) ) {
-				throw new Archive_Exception( 'Cannot finish the encrypted backup.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot finish the encrypted backup.', 'siteferry' ), Archive_Exception::IO );
 			}
 			Io::write_all( $handle, self::seal_chunk( $key, $header, count( $scan['chunks'] ), '', true ) );
 			fflush( $handle );

@@ -83,7 +83,7 @@ final class Runner {
 			return;
 		}
 		if ( ! $job->lock() ) {
-			throw new Job_Exception( 'This job is already running in another request.', Job_Exception::BUSY );
+			throw new Job_Exception( __( 'This job is already running in another request.', 'siteferry' ), Job_Exception::BUSY );
 		}
 
 		try {
@@ -126,7 +126,7 @@ final class Runner {
 			return;
 		}
 		if ( ! $job->lock() ) {
-			throw new Job_Exception( 'This job is running right now; try again in a moment.', Job_Exception::BUSY );
+			throw new Job_Exception( __( 'This job is running right now; try again in a moment.', 'siteferry' ), Job_Exception::BUSY );
 		}
 		try {
 			$job->fail( $reason );
@@ -162,7 +162,7 @@ final class Runner {
 	private static function make( string $name ): Step {
 		$steps = self::STEPS + self::$extra;
 		if ( ! isset( $steps[ $name ] ) ) {
-			throw new Job_Exception( 'Unknown job step: ' . $name, Job_Exception::INVALID );
+			throw new Job_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Unknown job step: %s', 'siteferry' ), $name ), Job_Exception::INVALID );
 		}
 		$class = $steps[ $name ];
 		return new $class();

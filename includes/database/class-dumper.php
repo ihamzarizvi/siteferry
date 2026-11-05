@@ -147,7 +147,7 @@ final class Dumper {
 
 		try {
 			if ( ! ftruncate( $handle, $state['size'] ) || 0 !== fseek( $handle, $state['size'] ) ) {
-				throw new Archive_Exception( 'Cannot rewind the database dump.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot rewind the database dump.', 'siteferry' ), Archive_Exception::IO );
 			}
 			if ( ! $state['started'] ) {
 				$this->write( $handle, $budget, $this->header( count( $state['tables'] ) ) );
@@ -400,7 +400,7 @@ final class Dumper {
 			$this->db->queries = array();
 		}
 		if ( '' !== $error ) {
-			throw new Job_Exception( 'Database error during export: ' . $error, Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: the reason */ __( 'Database error during export: %s', 'siteferry' ), $error ), Job_Exception::STEP );
 		}
 		return is_array( $rows ) ? $rows : array();
 	}

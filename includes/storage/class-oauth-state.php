@@ -68,7 +68,7 @@ final class Oauth_State {
 			&& preg_match( '/^[a-f0-9]{48}$/', $state )
 			&& hash_equals( (string) $saved['state'], hash( 'sha256', $state ) );
 		if ( ! $valid ) {
-			throw new Job_Exception( 'This sign-in answer is not valid any more (each one works once, for 10 minutes, for the administrator who started it). Click "Connect" again.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This sign-in answer is not valid any more (each one works once, for 10 minutes, for the administrator who started it). Click "Connect" again.', 'siteferry' ), Job_Exception::STEP );
 		}
 		try {
 			return Secrets::site()->decrypt( (string) $saved['verifier'] );

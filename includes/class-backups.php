@@ -242,7 +242,7 @@ final class Backups {
 	): array {
 		if ( Archive\Crypto::is_encrypted( $path ) ) {
 			if ( null === $key ) {
-				throw new Archive_Exception( 'This backup is protected with a password.', Archive_Exception::LOCKED );
+				throw new Archive_Exception( __( 'This backup is protected with a password.', 'siteferry' ), Archive_Exception::LOCKED );
 			}
 			$path = Archive\Crypto::url( $path, $key );
 		}
@@ -250,14 +250,14 @@ final class Backups {
 		try {
 			$entry = $reader->next();
 			if ( null === $entry || Manifest::ENTRY !== $entry->name || $entry->size > self::MAX_MANIFEST_BYTES ) {
-				throw new Archive_Exception( 'This file is not a SiteFerry backup (no manifest).', Archive_Exception::CORRUPT );
+				throw new Archive_Exception( __( 'This file is not a SiteFerry backup (no manifest).', 'siteferry' ), Archive_Exception::CORRUPT );
 			}
 			$data = json_decode( $reader->read( $entry->size ), true );
 		} finally {
 			$reader->close();
 		}
 		if ( ! is_array( $data ) || Manifest::FORMAT !== ( isset( $data['format'] ) ? $data['format'] : null ) ) {
-			throw new Archive_Exception( 'The backup manifest is damaged.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'The backup manifest is damaged.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 		return $data;
 	}

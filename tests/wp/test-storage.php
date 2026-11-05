@@ -610,7 +610,7 @@ Sf_Test::run(
 		list( $id, $token ) = sf_start( $sf_admin, '/checks', array( 'name' => $name, 'place' => $sf_id ) );
 		$job                = sf_rest_drive( $id, $token );
 		Sf_Test::same( 'failed', $job['status'] );
-		Sf_Test::ok( false !== strpos( (string) $job['error'], 'is damaged: 1 files do not match their checksums: database.sql' ), 'named: ' . $job['error'] );
+		Sf_Test::ok( false !== strpos( (string) $job['error'], 'is damaged: 1 file does not match its checksum: database.sql' ), 'named: ' . $job['error'] );
 		Sf_Test::same( false, Check::all()[ $name ][ $sf_id ]['ok'], 'recorded:' );
 		$handle = fopen( $blob, 'r+b' );
 		fseek( $handle, $at + 1 );

@@ -63,7 +63,7 @@ final class Import {
 	public static function start( string $archive, array $options = array() ): array {
 		$real = realpath( $archive );
 		if ( false === $real || ! is_file( $real ) || ! is_readable( $real ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_readable
-			throw new Job_Exception( sprintf( 'Cannot read the backup "%s".', $archive ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Cannot read the backup "%s".', 'siteferry' ), $archive ), Job_Exception::STEP );
 		}
 
 		// A password-protected backup: the password must open it now; only the key is kept.
@@ -110,7 +110,7 @@ final class Import {
 	 */
 	public static function confirm( Job $job, ?bool $safety = null ): void {
 		if ( Job::STATUS_WAITING !== $job->status() ) {
-			throw new Job_Exception( 'This import is not waiting for confirmation.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This import is not waiting for confirmation.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$job->set_state( 'confirm', array( 'confirmed' => true ) + ( null === $safety ? array() : array( 'safety' => $safety ) ) );
 		$job->set_status( Job::STATUS_PENDING );
@@ -143,19 +143,19 @@ final class Import {
 	public static function normalize( array $options ): array {
 		$unknown = array_diff( array_keys( $options ), array_keys( self::DEFAULTS ) );
 		if ( array() !== $unknown ) {
-			throw new Job_Exception( 'Unknown import option: ' . implode( ', ', $unknown ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: option names, separated by commas */ __( 'Unknown import option: %s', 'siteferry' ), implode( ', ', $unknown ) ), Job_Exception::STEP );
 		}
 		$options = array_merge( self::DEFAULTS, $options );
 
 		$url = trim( (string) $options['replace_url'] );
 		if ( '' !== $url && ( ! preg_match( '#^https?://[^/\s]+#i', $url ) || false === wp_parse_url( $url ) ) ) {
-			throw new Job_Exception( sprintf( 'The new site address "%s" must start with http:// or https://.', $url ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: a web address */ __( 'The new site address "%s" must start with http:// or https://.', 'siteferry' ), $url ), Job_Exception::STEP );
 		}
 
 		$pairs = array();
 		foreach ( (array) $options['replace'] as $pair ) {
 			if ( ! is_array( $pair ) || ! isset( $pair[0], $pair[1] ) || '' === (string) $pair[0] ) {
-				throw new Job_Exception( 'Each extra replacement needs a text to find and a replacement.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'Each extra replacement needs a text to find and a replacement.', 'siteferry' ), Job_Exception::STEP );
 			}
 			$pairs[] = array( (string) $pair[0], (string) $pair[1] );
 		}
@@ -164,7 +164,7 @@ final class Import {
 		foreach ( (array) $options['restore_tables'] as $table ) {
 			$table = trim( (string) $table );
 			if ( ! preg_match( '/^[A-Za-z0-9_$]{1,64}$/', $table ) ) {
-				throw new Job_Exception( sprintf( 'Invalid table name to restore: "%s".', substr( $table, 0, 80 ) ), Job_Exception::STEP );
+				throw new Job_Exception( sprintf( /* translators: %s: a table name */ __( 'Invalid table name to restore: "%s".', 'siteferry' ), substr( $table, 0, 80 ) ), Job_Exception::STEP );
 			}
 			$tables[] = $table;
 		}
@@ -182,19 +182,19 @@ final class Import {
 			try {
 				$path = \SiteFerry\Archive\Path_Guard::check( $path, false );
 			} catch ( \SiteFerry\Archive\Archive_Exception $e ) {
-				throw new Job_Exception( sprintf( 'Invalid path to restore: "%s".', \SiteFerry\Archive\Path_Guard::printable( $path ) ), Job_Exception::STEP );
+				throw new Job_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Invalid path to restore: "%s".', 'siteferry' ), \SiteFerry\Archive\Path_Guard::printable( $path ) ), Job_Exception::STEP );
 			}
 			$parts = explode( '/', $path );
 			// Folders outside plugins and themes are replaced as a whole, so only their top level can be chosen.
 			if ( count( $parts ) > 2 || ( 2 === count( $parts ) && ! in_array( $parts[0], array( 'plugins', 'themes' ), true ) ) ) {
-				throw new Job_Exception( sprintf( 'Only a whole folder in wp-content, or one plugin or theme, can be restored on its own; not "%s".', \SiteFerry\Archive\Path_Guard::printable( $path ) ), Job_Exception::STEP );
+				throw new Job_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Only a whole folder in wp-content, or one plugin or theme, can be restored on its own; not "%s".', 'siteferry' ), \SiteFerry\Archive\Path_Guard::printable( $path ) ), Job_Exception::STEP );
 			}
 			$paths[] = $path;
 		}
 		$tables = array_values( array_unique( $tables ) );
 		$paths  = $whole ? array() : array_values( array_unique( $paths ) );
 		if ( count( $tables ) > 2000 || count( $paths ) > 500 ) {
-			throw new Job_Exception( 'Too many items chosen to restore.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Too many items chosen to restore.', 'siteferry' ), Job_Exception::STEP );
 		}
 
 		return array(

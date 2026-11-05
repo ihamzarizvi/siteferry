@@ -95,7 +95,7 @@ final class Verify_Step implements Step {
 		$job->set_state( self::STATE, $state );
 		$size = (int) filesize( $file );
 		$read = $done ? $size : min( $size, (int) $state['offset'] );
-		$job->set_progress( sprintf( 'Checking: %s of %s', size_format( $read, 1 ), size_format( $size, 1 ) ), $read, $size );
+		$job->set_progress( sprintf( /* translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB */ __( 'Checking: %1$s of %2$s', 'siteferry' ), size_format( $read, 1 ), size_format( $size, 1 ) ), $read, $size );
 		if ( ! $done ) {
 			return false;
 		}
@@ -142,7 +142,7 @@ final class Verify_Step implements Step {
 			$keep           = isset( $state['sizes'][ $name ] ) ? (int) $state['sizes'][ $name ] : 0;
 			// Anything a dead request wrote after the last saved state is cut off.
 			if ( ! ftruncate( $files[ $name ], $keep ) || 0 !== fseek( $files[ $name ], $keep ) ) {
-				throw new Archive_Exception( 'Cannot write the check\'s working files.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot write the check\'s working files.', 'siteferry' ), Archive_Exception::IO );
 			}
 		}
 
@@ -315,32 +315,33 @@ final class Verify_Step implements Step {
 
 		if ( $state['wpress'] ) {
 			if ( ! $state['package'] ) {
-				$problems[] = 'it has no package.json';
+				$problems[] = __( 'it has no package.json', 'siteferry' );
 			}
 			if ( $state['database'] < 0 ) {
-				$problems[] = 'it has no database.sql';
+				$problems[] = __( 'it has no database.sql', 'siteferry' );
 			}
 		} else {
 			if ( array() !== $state['refused'] ) {
-				$problems[] = 'it holds entries an import refuses: ' . self::names( $state['refused'] );
+				/* translators: %s: names of the entries */
+				$problems[] = sprintf( __( 'it holds entries an import refuses: %s', 'siteferry' ), self::names( $state['refused'] ) );
 			}
 			$manifest = json_decode( (string) file_get_contents( $job->path( self::MANIFEST ) ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 			if ( ! is_array( $manifest ) || Manifest::FORMAT !== ( isset( $manifest['format'] ) ? $manifest['format'] : null ) ) {
-				$problems[] = 'its manifest (siteferry.json) is missing or damaged';
+				$problems[] = __( 'its manifest (siteferry.json) is missing or damaged', 'siteferry' );
 				$manifest   = null;
 			}
 			if ( $state['database'] < 0 ) {
-				$problems[] = 'it has no database dump';
+				$problems[] = __( 'it has no database dump', 'siteferry' );
 			} elseif ( ! $complete ) {
-				$problems[] = 'its database dump is incomplete';
+				$problems[] = __( 'its database dump is incomplete', 'siteferry' );
 			} elseif ( null !== $manifest && isset( $manifest['database']['size'] ) && (int) $manifest['database']['size'] !== $state['database'] ) {
-				$problems[] = sprintf( 'its database dump has %s bytes, the manifest says %s', number_format( $state['database'] ), number_format( (int) $manifest['database']['size'] ) );
+				$problems[] = sprintf( /* translators: 1: a number, 2: a number */ __( 'its database dump has %1$s bytes, the manifest says %2$s', 'siteferry' ), number_format( $state['database'] ), number_format( (int) $manifest['database']['size'] ) );
 			}
 
 			$expected = self::read_list( $job->path( self::EXPECTED ) );
 			$computed = self::read_list( $job->path( self::COMPUTED ) );
 			if ( null === $expected ) {
-				$problems[] = 'its checksum list (siteferry.sha256) is missing or damaged';
+				$problems[] = __( 'its checksum list (siteferry.sha256) is missing or damaged', 'siteferry' );
 			} else {
 				$missing = array();
 				$changed = array();
@@ -352,10 +353,10 @@ final class Verify_Step implements Step {
 					}
 				}
 				if ( array() !== $missing ) {
-					$problems[] = sprintf( '%d files of its checksum list are missing: %s', count( $missing ), self::names( $missing ) );
+					$problems[] = sprintf( /* translators: 1: a number, 2: a list of file names */ _n( '%1$d file of its checksum list is missing: %2$s', '%1$d files of its checksum list are missing: %2$s', count( $missing ), 'siteferry' ), count( $missing ), self::names( $missing ) );
 				}
 				if ( array() !== $changed ) {
-					$problems[] = sprintf( '%d files do not match their checksums: %s', count( $changed ), self::names( $changed ) );
+					$problems[] = sprintf( /* translators: 1: a number, 2: a list of file names */ _n( '%1$d file does not match its checksum: %2$s', '%1$d files do not match their checksums: %2$s', count( $changed ), 'siteferry' ), count( $changed ), self::names( $changed ) );
 				}
 				$listed   = count( $expected ) - count( $missing ) - count( $changed );
 				$unlisted = count( array_diff( array_keys( (array) $computed ), array_keys( $expected ), array( Manifest::ENTRY, Manifest::CHECKSUMS ) ) );
@@ -376,11 +377,11 @@ final class Verify_Step implements Step {
 		}
 
 		if ( $state['wpress'] ) {
-			$summary = sprintf( 'Read to its end: %s files. A .wpress file has no checksums to compare.', number_format( $state['files'] ) );
+			$summary = sprintf( /* translators: %s: a number */ _n( 'Read to its end: %s file. A .wpress file has no checksums to compare.', 'Read to its end: %s files. A .wpress file has no checksums to compare.', $state['files'], 'siteferry' ), number_format( $state['files'] ) );
 		} else {
-			$summary = sprintf( 'All %s files match their checksums; the database dump is complete.', number_format( $listed ) );
+			$summary = sprintf( /* translators: %s: a number */ _n( 'The %s file matches its checksum; the database dump is complete.', 'All %s files match their checksums; the database dump is complete.', $listed, 'siteferry' ), number_format( $listed ) );
 			if ( $unlisted > 0 ) {
-				$summary .= sprintf( ' %s files have no checksum (they changed while the backup was made).', number_format( $unlisted ) );
+				$summary .= sprintf( /* translators: %s: a number */ _n( ' %s file has no checksum (it changed while the backup was made).', ' %s files have no checksum (they changed while the backup was made).', $unlisted, 'siteferry' ), number_format( $unlisted ) );
 			}
 		}
 		Check::record( $name, $place, true, $size, $summary );
@@ -397,7 +398,7 @@ final class Verify_Step implements Step {
 				),
 			)
 		);
-		$job->set_progress( 'The copy on ' . $where . ' is intact', 1, 1 );
+		$job->set_progress( sprintf( /* translators: %s: where the backup is, such as "this server" or "Dropbox" */ __( 'The copy on %s is intact', 'siteferry' ), $where ), 1, 1 );
 		$job->log( 'info', sprintf( 'The copy of %s on %s is intact. %s', $name, $where, $summary ) );
 	}
 
@@ -424,7 +425,7 @@ final class Verify_Step implements Step {
 				),
 			)
 		);
-		throw new Job_Exception( sprintf( 'The copy on %s is damaged: %s.', Check::where( $place ), $what ), Job_Exception::STEP );
+		throw new Job_Exception( sprintf( /* translators: 1: where it is stored, such as Dropbox, 2: the reason */ __( 'The copy on %1$s is damaged: %2$s.', 'siteferry' ), Check::where( $place ), $what ), Job_Exception::STEP );
 	}
 
 	/**
@@ -461,6 +462,6 @@ final class Verify_Step implements Step {
 	 */
 	private static function names( array $names ): string {
 		$shown = implode( ', ', array_slice( $names, 0, self::SHOW ) );
-		return count( $names ) > self::SHOW ? sprintf( '%s and %d more', $shown, count( $names ) - self::SHOW ) : $shown;
+		return count( $names ) > self::SHOW ? sprintf( /* translators: 1: a comma-separated list of names, 2: how many more are not listed */ _n( '%1$s and %2$d more', '%1$s and %2$d more', count( $names ) - self::SHOW, 'siteferry' ), $shown, count( $names ) - self::SHOW ) : $shown;
 	}
 }

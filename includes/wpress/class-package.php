@@ -32,7 +32,7 @@ final class Package {
 	public static function parse( string $json ): array {
 		$data = json_decode( $json, true );
 		if ( ! is_array( $data ) || ! isset( $data['SiteURL'], $data['HomeURL'] ) || ! is_string( $data['SiteURL'] ) || ! is_string( $data['HomeURL'] ) ) {
-			throw new Archive_Exception( 'The package.json of this .wpress backup is damaged or incomplete.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'The package.json of this .wpress backup is damaged or incomplete.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 		return $data;
 	}

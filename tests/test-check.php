@@ -183,7 +183,7 @@ Sf_Test::run(
 		file_put_contents( $file, $data );
 		list( $job ) = sf_check( $base, $file, 0.0 );
 		Sf_Test::same( Job::STATUS_FAILED, $job->status() );
-		Sf_Test::same( 'The copy on this server is damaged: 1 files do not match their checksums: wp-content/themes/t/style.css.', $job->error() );
+		Sf_Test::same( 'The copy on this server is damaged: 1 file does not match its checksum: wp-content/themes/t/style.css.', $job->error() );
 		Sf_Test::same( false, Check::all()[ basename( $file ) ][ Check::LOCAL ]['ok'] );
 		Sf_Test::same( array( 'job.json', 'job.log', 'lock' ), array_values( array_diff( scandir( $job->dir() ), array( '.', '..' ) ) ), 'left in the job folder:' );
 
@@ -198,7 +198,7 @@ Sf_Test::run(
 		$missing = $dir . '/missing-2026-11-05-eeeeeeeeeeee.tar';
 		sf_make( $missing, array( 'listed' => array( 'wp-content/plugins/gone.php' => str_repeat( 'a', 64 ) ) ) );
 		list( $job ) = sf_check( $base, $missing );
-		Sf_Test::same( 'The copy on this server is damaged: 1 files of its checksum list are missing: wp-content/plugins/gone.php.', $job->error() );
+		Sf_Test::same( 'The copy on this server is damaged: 1 file of its checksum list is missing: wp-content/plugins/gone.php.', $job->error() );
 	}
 );
 

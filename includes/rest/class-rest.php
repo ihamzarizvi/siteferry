@@ -217,7 +217,7 @@ final class Rest {
 	public static function move_chunk( WP_REST_Request $request ): array {
 		$offset = (string) $request->get_header( 'x_siteferry_offset' );
 		if ( ! preg_match( '/^[0-9]{1,18}$/', $offset ) ) {
-			throw new Job_Exception( 'Missing or invalid chunk offset.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Missing or invalid chunk offset.', 'siteferry' ), Job_Exception::STEP );
 		}
 		return \SiteFerry\Move\Receiver::chunk( (int) $offset, $request->get_body(), (string) $request->get_header( 'x_siteferry_sha256' ) );
 	}
@@ -410,7 +410,7 @@ final class Rest {
 				return unlink( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
 			}
 		) ) {
-			throw new Job_Exception( 'The backup could not be deleted.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The backup could not be deleted.', 'siteferry' ), Job_Exception::STEP );
 		}
 		Contents::forget( (string) $request['name'] );
 		Check::forget( (string) $request['name'], Check::LOCAL );
@@ -430,7 +430,7 @@ final class Rest {
 			// One part of the backup ("<name>.001" and so on), for disks and uploads with a size limit.
 			$pieces = \SiteFerry\Storage\Parts::pieces( basename( $path ), (int) filesize( $path ), \SiteFerry\Storage\Parts::normalize_mb( $request->get_param( 'part_mb' ) ) * 1048576 );
 			if ( ! isset( $pieces[ $part - 1 ] ) ) {
-				throw new Job_Exception( 'There is no such part.', Job_Exception::NOT_FOUND );
+				throw new Job_Exception( __( 'There is no such part.', 'siteferry' ), Job_Exception::NOT_FOUND );
 			}
 			list( $file_name, $offset, $length ) = $pieces[ $part - 1 ];
 			Backups::stream( $path, $request->get_header( 'range' ), $offset, $length, $file_name );
@@ -576,7 +576,7 @@ final class Rest {
 		$path  = Backups::path( Storage::backups_dir(), (string) $request['name'] );
 		$inner = trim( (string) $request->get_param( 'path' ), '/' );
 		if ( '' === $inner || strlen( $inner ) > 4096 ) {
-			throw new Job_Exception( 'That file is not in the backup.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'That file is not in the backup.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		Contents::stream( $path, $inner, self::unlocked( $request ) );
 	}
@@ -781,7 +781,7 @@ final class Rest {
 		$upload = Upload::load( self::uploads_dir(), (string) $request['id'] );
 		$offset = (string) $request->get_header( 'x_siteferry_offset' );
 		if ( ! preg_match( '/^[0-9]{1,18}$/', $offset ) ) {
-			throw new Job_Exception( 'Missing or invalid chunk offset.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Missing or invalid chunk offset.', 'siteferry' ), Job_Exception::STEP );
 		}
 		ignore_user_abort( true );
 		$upload->append( (int) $offset, $request->get_body(), (string) $request->get_header( 'x_siteferry_sha256' ) );
@@ -865,7 +865,7 @@ final class Rest {
 	public static function delete_remote( WP_REST_Request $request ): array {
 		$name = (string) $request['name'];
 		if ( ! preg_match( Backups::SAFE_NAME, $name ) ) {
-			throw new Job_Exception( 'Unknown backup.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'Unknown backup.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		\SiteFerry\Storage\Parts::delete( Destinations::driver( (string) $request['dest'] ), $name );
 		Check::forget( $name, (string) $request['dest'] );
@@ -992,7 +992,7 @@ final class Rest {
 				return $entry;
 			}
 		}
-		throw new Job_Exception( 'Unknown storage.', Job_Exception::NOT_FOUND );
+		throw new Job_Exception( __( 'Unknown storage.', 'siteferry' ), Job_Exception::NOT_FOUND );
 	}
 
 	/**
@@ -1034,7 +1034,7 @@ final class Rest {
 	private static function assert_idle(): void {
 		$active = Job::active( Storage::jobs_dir() );
 		if ( null !== $active ) {
-			throw new Job_Exception( sprintf( 'Another %s is still in progress (job %s). Finish or cancel it first.', $active->type(), $active->id() ), Job_Exception::BUSY );
+			throw new Job_Exception( sprintf( /* translators: 1: a kind of job, such as "export" or "import", 2: the job's ID */ __( 'Another %1$s is still in progress (job %2$s). Finish or cancel it first.', 'siteferry' ), $active->type(), $active->id() ), Job_Exception::BUSY );
 		}
 	}
 

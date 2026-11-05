@@ -262,12 +262,12 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 	public static function normalize( array $input ): array {
 		$mode = isset( $input['mode'] ) ? (string) $input['mode'] : 'relay';
 		if ( ! in_array( $mode, self::MODES, true ) ) {
-			throw new Storage_Exception( 'Choose how to sign in to Google Drive.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Choose how to sign in to Google Drive.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 		$folder = trim( isset( $input['folder'] ) ? (string) $input['folder'] : '' );
 		$folder = '' === $folder ? 'SiteFerry' : $folder;
 		if ( ! preg_match( '/^[^\x00-\x1f\x7f\/\\\\]{1,100}$/u', $folder ) ) {
-			throw new Storage_Exception( 'The folder name may not contain slashes or control characters (one folder at the top of My Drive).', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'The folder name may not contain slashes or control characters (one folder at the top of My Drive).', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 		if ( 'relay' === $mode ) {
 			return array(
@@ -282,11 +282,11 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 
 		$client_id = trim( isset( $input['client_id'] ) ? (string) $input['client_id'] : '' );
 		if ( ! preg_match( '/^[A-Za-z0-9._-]{1,200}\.apps\.googleusercontent\.com$/', $client_id ) ) {
-			throw new Storage_Exception( 'Enter the OAuth client ID (it ends with .apps.googleusercontent.com).', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Enter the OAuth client ID (it ends with .apps.googleusercontent.com).', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 		$secret = trim( isset( $input['client_secret'] ) ? (string) $input['client_secret'] : '' );
 		if ( '' !== $secret && ! preg_match( '/^[\x21-\x7e]{1,200}$/', $secret ) ) {
-			throw new Storage_Exception( 'The client secret contains characters that are not allowed.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'The client secret contains characters that are not allowed.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 		return array(
 			'settings' => array(
@@ -390,11 +390,11 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			)
 		);
 		if ( empty( $data['refresh_token'] ) ) {
-			throw new Storage_Exception( 'Google did not send a refresh token. Remove SiteFerry\'s access in your Google account (Security, third-party access) and connect again.', Storage_Exception::REMOTE );
+			throw new Storage_Exception( __( 'Google did not send a refresh token. Remove SiteFerry\'s access in your Google account (Security, third-party access) and connect again.', 'siteferry' ), Storage_Exception::REMOTE );
 		}
 		$scopes = explode( ' ', isset( $data['scope'] ) ? (string) $data['scope'] : '' );
 		if ( ! in_array( self::SCOPE, $scopes, true ) ) {
-			throw new Storage_Exception( 'Access to Google Drive was not granted. Connect again and allow SiteFerry to see and change the files it creates.', Storage_Exception::AUTH );
+			throw new Storage_Exception( __( 'Access to Google Drive was not granted. Connect again and allow SiteFerry to see and change the files it creates.', 'siteferry' ), Storage_Exception::AUTH );
 		}
 		$this->use_auth(
 			array(
@@ -480,7 +480,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		);
 		$session = isset( $response['headers']['location'] ) ? trim( $response['headers']['location'] ) : '';
 		if ( '' === $session ) {
-			throw new Storage_Exception( 'Google Drive did not start the upload (no session address in its answer).', Storage_Exception::REMOTE );
+			throw new Storage_Exception( __( 'Google Drive did not start the upload (no session address in its answer).', 'siteferry' ), Storage_Exception::REMOTE );
 		}
 		$this->check_host( $session );
 		return array(
@@ -514,7 +514,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 					return;
 				}
 				if ( $status['received'] < $offset ) {
-					throw new Storage_Exception( sprintf( 'Google Drive has %d bytes of the upload instead of at least %d; start the transfer again.', $status['received'], $offset ), Storage_Exception::REMOTE );
+					throw new Storage_Exception( sprintf( /* translators: 1: a number, 2: a number */ __( 'Google Drive has %1$d bytes of the upload instead of at least %2$d; start the transfer again.', 'siteferry' ), $status['received'], $offset ), Storage_Exception::REMOTE );
 				}
 				$start    = $status['received'];
 				$chunk    = (string) substr( $bytes, $start - $offset );
@@ -532,7 +532,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				);
 				if ( 308 === $response['status'] ) {
 					if ( self::received( $response ) < $end + 1 ) {
-						throw new Storage_Exception( 'Google Drive accepted only part of the data.', Storage_Exception::TRANSIENT );
+						throw new Storage_Exception( __( 'Google Drive accepted only part of the data.', 'siteferry' ), Storage_Exception::TRANSIENT );
 					}
 					return;
 				}
@@ -559,14 +559,14 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				}
 			);
 			if ( null === $status['file'] ) {
-				throw new Storage_Exception( 'The upload is not complete on Google Drive.', Storage_Exception::REMOTE );
+				throw new Storage_Exception( __( 'The upload is not complete on Google Drive.', 'siteferry' ), Storage_Exception::REMOTE );
 			}
 			$id = (string) $status['file']['id'];
 		}
 		$meta = self::json( $this->request( 'GET', $this->file_url( $id ) . '?' . self::query( array( 'fields' => 'id,name,size,trashed' ) ) ) );
 		$size = isset( $meta['size'] ) ? (int) $meta['size'] : -1;
 		if ( $size !== (int) $state['size'] ) {
-			throw new Storage_Exception( sprintf( 'The file on Google Drive has %d bytes instead of %d.', $size, $state['size'] ), Storage_Exception::REMOTE );
+			throw new Storage_Exception( sprintf( /* translators: 1: a number, 2: a number */ __( 'The file on Google Drive has %1$d bytes instead of %2$d.', 'siteferry' ), $size, $state['size'] ), Storage_Exception::REMOTE );
 		}
 		// An earlier copy with the same name (the same backup sent again) is replaced.
 		foreach ( $this->ids_named( (string) $state['name'] ) as $other ) {
@@ -649,7 +649,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			$this->list();
 		}
 		if ( ! isset( $this->ids[ $name ] ) ) {
-			throw new Storage_Exception( sprintf( '%s is not in the Google Drive folder.', $name ), Storage_Exception::NOT_FOUND );
+			throw new Storage_Exception( sprintf( /* translators: %s: a file or backup name */ __( '%s is not in the Google Drive folder.', 'siteferry' ), $name ), Storage_Exception::NOT_FOUND );
 		}
 		return $this->download_id( $this->ids[ $name ], $offset, $length );
 	}
@@ -683,7 +683,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				return $this->account();
 			}
 		);
-		$lines[] = sprintf( 'Signed in to Google Drive as %s.', $account );
+		$lines[] = sprintf( /* translators: %s: account */ __( 'Signed in to Google Drive as %s.', 'siteferry' ), $account );
 
 		$this->check(
 			'Opening the folder',
@@ -691,7 +691,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				$this->folder( true );
 			}
 		);
-		$lines[] = sprintf( 'Using the folder "%s" at the top of My Drive (SiteFerry sees only the files it created).', $this->settings['folder'] );
+		$lines[] = sprintf( /* translators: %s: a folder name */ __( 'Using the folder "%s" at the top of My Drive (SiteFerry sees only the files it created).', 'siteferry' ), $this->settings['folder'] );
 
 		$name  = '.siteferry-test-' . bin2hex( random_bytes( 6 ) ) . '.bin';
 		$data  = random_bytes( self::CHUNK_UNIT ) . 'SiteFerry connection test, ' . gmdate( 'Y-m-d H:i:s' ) . ' UTC.';
@@ -706,18 +706,18 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				return $state;
 			}
 		);
-		$lines[] = 'Wrote a test file with a resumable upload in two pieces.';
+		$lines[] = __( 'Wrote a test file with a resumable upload in two pieces.', 'siteferry' );
 
 		$this->check(
 			'Reading the test file back',
 			function () use ( $state, $data ) {
 				$id = (string) $this->ids[ $state['name'] ];
 				if ( $this->download_id( $id, 0, strlen( $data ) ) !== $data ) {
-					throw new Storage_Exception( 'The file read back differs from what was written.', Storage_Exception::REMOTE );
+					throw new Storage_Exception( __( 'The file read back differs from what was written.', 'siteferry' ), Storage_Exception::REMOTE );
 				}
 			}
 		);
-		$lines[] = 'Read it back unchanged.';
+		$lines[] = __( 'Read it back unchanged.', 'siteferry' );
 
 		$count   = $this->check(
 			'Listing the folder',
@@ -725,7 +725,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				return count( $this->list() );
 			}
 		);
-		$lines[] = sprintf( 'Listed the folder: %d SiteFerry backup(s).', $count );
+		$lines[] = sprintf( /* translators: %d: a number */ __( 'Listed the folder: %d SiteFerry backup(s).', 'siteferry' ), $count );
 
 		$this->check(
 			'Deleting the test file',
@@ -733,7 +733,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				$this->request( 'DELETE', $this->file_url( (string) $this->ids[ $state['name'] ] ), array(), '', array( 204, 200 ) );
 			}
 		);
-		$lines[] = 'Deleted the test file.';
+		$lines[] = __( 'Deleted the test file.', 'siteferry' );
 		return $lines;
 	}
 
@@ -787,7 +787,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			);
 			$id = isset( $made['id'] ) ? (string) $made['id'] : '';
 			if ( '' === $id ) {
-				throw new Storage_Exception( 'Google Drive did not create the folder.', Storage_Exception::REMOTE );
+				throw new Storage_Exception( __( 'Google Drive did not create the folder.', 'siteferry' ), Storage_Exception::REMOTE );
 			}
 		}
 		$this->auth['folder_id']   = $id;
@@ -848,7 +848,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		}
 		$range = isset( $response['headers']['content-range'] ) ? $response['headers']['content-range'] : '';
 		if ( ! preg_match( '/^bytes ' . $offset . '-/', $range ) ) {
-			throw new Storage_Exception( 'Google Drive sent a different part of the file than requested.', Storage_Exception::REMOTE );
+			throw new Storage_Exception( __( 'Google Drive sent a different part of the file than requested.', 'siteferry' ), Storage_Exception::REMOTE );
 		}
 		return $response['body'];
 	}
@@ -907,7 +907,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			return (string) $this->auth['access_token'];
 		}
 		if ( ! $this->connected() ) {
-			throw new Storage_Exception( 'Google Drive is not connected yet. Click "Connect to Google Drive" on the Storage tab.', Storage_Exception::AUTH );
+			throw new Storage_Exception( __( 'Google Drive is not connected yet. Click "Connect to Google Drive" on the Storage tab.', 'siteferry' ), Storage_Exception::AUTH );
 		}
 		$data                        = $this->token_request(
 			array(
@@ -957,10 +957,10 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				$text = isset( $data['error_description'] ) && is_string( $data['error_description'] ) ? ': ' . $data['error_description'] : '';
 				$text = (string) preg_replace( '/[\x00-\x1f\x7f]+/', ' ', $text );
 				if ( $response['status'] >= 500 || 429 === $response['status'] ) {
-					throw new Storage_Exception( sprintf( '%s answered HTTP %d; try again later.', $service, $response['status'] ), Storage_Exception::TRANSIENT );
+					throw new Storage_Exception( sprintf( /* translators: 1: a service, such as Google, 2: an HTTP status code */ __( '%1$s answered HTTP %2$d; try again later.', 'siteferry' ), $service, $response['status'] ), Storage_Exception::TRANSIENT );
 				}
 				if ( 'invalid_grant' === $code ) {
-					throw new Storage_Exception( 'Google no longer accepts the saved authorization (invalid_grant' . $text . '). Connect Google Drive again on the Storage tab. If the app\'s consent screen is in "Testing", Google ends authorizations after 7 days; publish the app to keep them.', Storage_Exception::AUTH );
+					throw new Storage_Exception( sprintf( /* translators: %s: empty, or ": " and the error message */ __( 'Google no longer accepts the saved authorization (invalid_grant%s). Connect Google Drive again on the Storage tab. If the app\'s consent screen is in "Testing", Google ends authorizations after 7 days; publish the app to keep them.', 'siteferry' ), $text ), Storage_Exception::AUTH );
 				}
 				if ( in_array( $code, array( 'invalid_client', 'unauthorized_client' ), true ) ) {
 					throw new Storage_Exception(
@@ -970,7 +970,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 						Storage_Exception::AUTH
 					);
 				}
-				throw new Storage_Exception( sprintf( '%s refused (HTTP %d%s%s).', $service, $response['status'], '' === $code ? '' : ' ' . $code, $text ), Storage_Exception::REMOTE );
+				throw new Storage_Exception( sprintf( /* translators: 1: a service, such as Google, 2: an HTTP status code, 3: empty, or an error code, 4: empty, or ": " and the error message */ __( '%1$s refused (HTTP %2$d%3$s%4$s).', 'siteferry' ), $service, $response['status'], '' === $code ? '' : ' ' . $code, $text ), Storage_Exception::REMOTE );
 			}
 		);
 	}
@@ -1044,7 +1044,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		}
 		$host = strtolower( (string) parse_url( $url, PHP_URL_SCHEME ) . '://' . parse_url( $url, PHP_URL_HOST ) . ( null === parse_url( $url, PHP_URL_PORT ) ? '' : ':' . parse_url( $url, PHP_URL_PORT ) ) );
 		if ( ! in_array( $host, $allowed, true ) ) {
-			throw new Storage_Exception( 'Refusing to send the Google token to ' . $host . '.', Storage_Exception::REMOTE );
+			throw new Storage_Exception( sprintf( /* translators: %s: a host name */ __( 'Refusing to send the Google token to %s.', 'siteferry' ), $host ), Storage_Exception::REMOTE );
 		}
 	}
 

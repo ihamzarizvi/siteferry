@@ -190,7 +190,7 @@ final class S3_Driver implements Driver {
 	public static function normalize( array $input ): array {
 		$preset = isset( $input['preset'] ) ? (string) $input['preset'] : 'aws';
 		if ( ! isset( self::PRESETS[ $preset ] ) ) {
-			throw new Storage_Exception( 'Choose a storage provider.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Choose a storage provider.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		$region = strtolower( trim( isset( $input['region'] ) ? (string) $input['region'] : '' ) );
@@ -198,36 +198,36 @@ final class S3_Driver implements Driver {
 			$region = self::PRESETS[ $preset ]['region'];
 		}
 		if ( ! preg_match( '/^[a-z0-9][a-z0-9-]{0,39}$/', $region ) ) {
-			throw new Storage_Exception( 'The region may contain only letters, digits and hyphens (for example us-east-1).', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'The region may contain only letters, digits and hyphens (for example us-east-1).', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		$endpoint = self::endpoint( trim( isset( $input['endpoint'] ) ? (string) $input['endpoint'] : '' ), $preset, $region );
 
 		$bucket = trim( isset( $input['bucket'] ) ? (string) $input['bucket'] : '' );
 		if ( ! preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]{1,62}$/', $bucket ) || false !== strpos( $bucket, '..' ) ) {
-			throw new Storage_Exception( 'Enter the bucket name (3 to 63 letters, digits, dots, hyphens or underscores).', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Enter the bucket name (3 to 63 letters, digits, dots, hyphens or underscores).', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		$folder = trim( str_replace( '\\', '/', isset( $input['folder'] ) ? (string) $input['folder'] : 'siteferry' ), " /\t" );
 		foreach ( '' === $folder ? array() : explode( '/', $folder ) as $segment ) {
 			if ( ! preg_match( '/^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$/', $segment ) || '..' === $segment ) {
-				throw new Storage_Exception( 'The folder may contain only letters, digits, ".", "-", "_" and "/" between folder names.', Storage_Exception::CONFIG );
+				throw new Storage_Exception( __( 'The folder may contain only letters, digits, ".", "-", "_" and "/" between folder names.', 'siteferry' ), Storage_Exception::CONFIG );
 			}
 		}
 
 		$access = trim( isset( $input['access_key'] ) ? (string) $input['access_key'] : '' );
 		if ( ! preg_match( '/^[\x21-\x7e]{1,128}$/', $access ) ) {
-			throw new Storage_Exception( 'Enter the access key ID.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Enter the access key ID.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		$secret = trim( isset( $input['secret_key'] ) ? (string) $input['secret_key'] : '' );
 		if ( '' !== $secret && ! preg_match( '/^[\x21-\x7e]{1,256}$/', $secret ) ) {
-			throw new Storage_Exception( 'The secret access key contains characters that are not allowed.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'The secret access key contains characters that are not allowed.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		$path_style = array_key_exists( 'path_style', $input ) ? (bool) $input['path_style'] : self::PRESETS[ $preset ]['path_style'];
 		if ( ! $path_style && false !== strpos( $bucket, '.' ) && 0 === strpos( $endpoint, 'https://' ) ) {
-			throw new Storage_Exception( 'Bucket names with dots do not work with https in bucket.endpoint form. Tick "path-style requests".', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Bucket names with dots do not work with https in bucket.endpoint form. Tick "path-style requests".', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 
 		return array(
@@ -285,18 +285,18 @@ final class S3_Driver implements Driver {
 				$this->call( 'PUT', $key, array(), $body, array( 'Content-Type' => 'text/plain' ) );
 			}
 		);
-		$lines[] = sprintf( 'Wrote a test file to %s.', $this->describe() );
+		$lines[] = sprintf( /* translators: %s: where it is stored, such as Dropbox */ __( 'Wrote a test file to %s.', 'siteferry' ), $this->describe() );
 
 		$this->check(
 			'Reading the test file back',
 			function () use ( $key, $body ) {
 				$response = $this->call( 'GET', $key );
 				if ( $response['body'] !== $body ) {
-					throw new Storage_Exception( 'The file read back differs from what was written.', Storage_Exception::REMOTE );
+					throw new Storage_Exception( __( 'The file read back differs from what was written.', 'siteferry' ), Storage_Exception::REMOTE );
 				}
 			}
 		);
-		$lines[] = 'Read it back unchanged.';
+		$lines[] = __( 'Read it back unchanged.', 'siteferry' );
 
 		$count = $this->check(
 			'Listing the folder',
@@ -304,7 +304,7 @@ final class S3_Driver implements Driver {
 				return count( $this->list() );
 			}
 		);
-		$lines[] = sprintf( 'Listed the folder: %d SiteFerry backup(s).', $count );
+		$lines[] = sprintf( /* translators: %d: a number */ __( 'Listed the folder: %d SiteFerry backup(s).', 'siteferry' ), $count );
 
 		$this->check(
 			'Deleting the test file',
@@ -312,7 +312,7 @@ final class S3_Driver implements Driver {
 				$this->call( 'DELETE', $key, array(), '', array(), array( 204, 200 ) );
 			}
 		);
-		$lines[] = 'Deleted the test file.';
+		$lines[] = __( 'Deleted the test file.', 'siteferry' );
 		return $lines;
 	}
 
@@ -344,7 +344,7 @@ final class S3_Driver implements Driver {
 		$xml      = self::xml( $response['body'] );
 		$id       = null === $xml ? '' : (string) $xml->UploadId; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 		if ( '' === $id ) {
-			throw new Storage_Exception( 'The storage did not start the upload (no upload ID in its answer).', Storage_Exception::REMOTE );
+			throw new Storage_Exception( __( 'The storage did not start the upload (no upload ID in its answer).', 'siteferry' ), Storage_Exception::REMOTE );
 		}
 		return array(
 			'key'       => $key,
@@ -365,7 +365,7 @@ final class S3_Driver implements Driver {
 	 */
 	public function put_part( array $state, int $index, string $bytes ): array {
 		if ( $index < 0 || $index >= self::MAX_PARTS ) {
-			throw new Storage_Exception( 'Too many parts for one upload.', Storage_Exception::REMOTE );
+			throw new Storage_Exception( __( 'Too many parts for one upload.', 'siteferry' ), Storage_Exception::REMOTE );
 		}
 		$response = $this->call(
 			'PUT',
@@ -379,7 +379,7 @@ final class S3_Driver implements Driver {
 		);
 		$etag = isset( $response['headers']['etag'] ) ? trim( $response['headers']['etag'] ) : '';
 		if ( '' === $etag ) {
-			throw new Storage_Exception( 'The storage accepted a part but did not return its ETag.', Storage_Exception::REMOTE );
+			throw new Storage_Exception( __( 'The storage accepted a part but did not return its ETag.', 'siteferry' ), Storage_Exception::REMOTE );
 		}
 		$state['etags'][ $index ] = $etag;
 		return $state;
@@ -396,7 +396,7 @@ final class S3_Driver implements Driver {
 		$parts = '';
 		for ( $i = 0; $i < $count; $i++ ) {
 			if ( ! isset( $state['etags'][ $i ] ) ) {
-				throw new Storage_Exception( sprintf( 'Part %d of the upload is missing.', $i + 1 ), Storage_Exception::REMOTE );
+				throw new Storage_Exception( sprintf( /* translators: %d: i + 1 */ __( 'Part %d of the upload is missing.', 'siteferry' ), $i + 1 ), Storage_Exception::REMOTE );
 			}
 			$parts .= sprintf( '<Part><PartNumber>%d</PartNumber><ETag>%s</ETag></Part>', $i + 1, htmlspecialchars( $state['etags'][ $i ], ENT_XML1 | ENT_QUOTES, 'UTF-8' ) );
 		}
@@ -417,14 +417,14 @@ final class S3_Driver implements Driver {
 					throw $this->error( array( 'status' => 500 ) + $response );
 				}
 				if ( null === $xml || 'CompleteMultipartUploadResult' !== $xml->getName() ) {
-					throw new Storage_Exception( 'The storage sent an unexpected answer when completing the upload.', Storage_Exception::REMOTE );
+					throw new Storage_Exception( __( 'The storage sent an unexpected answer when completing the upload.', 'siteferry' ), Storage_Exception::REMOTE );
 				}
 			}
 		);
 
 		$stored = $this->stored_size( $state['key'] );
 		if ( $stored !== (int) $state['size'] ) {
-			throw new Storage_Exception( sprintf( 'The stored file has %d bytes instead of %d.', $stored, $state['size'] ), Storage_Exception::REMOTE );
+			throw new Storage_Exception( sprintf( /* translators: 1: a number, 2: a number */ __( 'The stored file has %1$d bytes instead of %2$d.', 'siteferry' ), $stored, $state['size'] ), Storage_Exception::REMOTE );
 		}
 	}
 
@@ -458,7 +458,7 @@ final class S3_Driver implements Driver {
 			}
 			$xml = self::xml( $this->call( 'GET', '', $query )['body'] );
 			if ( null === $xml || 'ListBucketResult' !== $xml->getName() ) {
-				throw new Storage_Exception( 'The storage sent an unexpected answer to a listing.', Storage_Exception::REMOTE );
+				throw new Storage_Exception( __( 'The storage sent an unexpected answer to a listing.', 'siteferry' ), Storage_Exception::REMOTE );
 			}
 			foreach ( $xml->Contents as $object ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 				$key  = (string) $object->Key; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
@@ -500,7 +500,7 @@ final class S3_Driver implements Driver {
 		}
 		$range = isset( $response['headers']['content-range'] ) ? $response['headers']['content-range'] : '';
 		if ( ! preg_match( '/^bytes ' . $offset . '-/', $range ) ) {
-			throw new Storage_Exception( 'The storage sent a different part of the file than requested.', Storage_Exception::REMOTE );
+			throw new Storage_Exception( __( 'The storage sent a different part of the file than requested.', 'siteferry' ), Storage_Exception::REMOTE );
 		}
 		return $response['body'];
 	}
@@ -691,7 +691,7 @@ final class S3_Driver implements Driver {
 		$template = self::PRESETS[ $preset ]['endpoint'];
 		if ( '' === $raw || $raw === $template ) {
 			if ( '' === $template || false !== strpos( $template, '<' ) ) {
-				throw new Storage_Exception( 'Enter the endpoint of the storage service.', Storage_Exception::CONFIG );
+				throw new Storage_Exception( __( 'Enter the endpoint of the storage service.', 'siteferry' ), Storage_Exception::CONFIG );
 			}
 			$raw = str_replace( '{region}', $region, $template );
 		}
@@ -703,10 +703,10 @@ final class S3_Driver implements Driver {
 		$host   = is_array( $parts ) && isset( $parts['host'] ) ? strtolower( $parts['host'] ) : '';
 		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) || ! preg_match( '/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $host )
 			|| isset( $parts['user'] ) || isset( $parts['pass'] ) || isset( $parts['query'] ) || isset( $parts['fragment'] ) || ( isset( $parts['path'] ) && '' !== $parts['path'] ) ) {
-			throw new Storage_Exception( 'Enter the endpoint as a host name, such as s3.example.com (no path).', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Enter the endpoint as a host name, such as s3.example.com (no path).', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 		if ( 'http' === $scheme && 'custom' !== $preset ) {
-			throw new Storage_Exception( 'Use https for this provider.', Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Use https for this provider.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
 		return $scheme . '://' . $host . ( isset( $parts['port'] ) ? ':' . (int) $parts['port'] : '' );
 	}

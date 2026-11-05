@@ -115,7 +115,7 @@ final class Tar_Writer {
 	 */
 	public static function resume( string $path, array $state ): self {
 		if ( ! isset( $state['version'], $state['output'], $state['options'] ) || 1 !== $state['version'] || ! empty( $state['finished'] ) ) {
-			throw new Archive_Exception( 'Invalid saved archive state.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'Invalid saved archive state.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 
 		$options = self::normalize_options( (array) $state['options'] );
@@ -222,7 +222,7 @@ final class Tar_Writer {
 	 */
 	public function continue_file( ?Slice_Budget $budget = null ): ?array {
 		if ( null === $this->pending ) {
-			throw new Archive_Exception( 'No file is being written.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'No file is being written.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 
 		$handle = null;
@@ -431,10 +431,10 @@ final class Tar_Writer {
 	 */
 	private function assert_idle(): void {
 		if ( $this->finished ) {
-			throw new Archive_Exception( 'The archive is already finished.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'The archive is already finished.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		if ( null !== $this->pending ) {
-			throw new Archive_Exception( 'A file is still being written; call continue_file() first.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'A file is still being written; call continue_file() first.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 	}
 

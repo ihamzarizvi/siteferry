@@ -68,10 +68,10 @@ final class Upload {
 	public static function create( string $base, string $name, int $size ): self {
 		$name = self::clean_name( $name );
 		if ( ! preg_match( '/\.((tar|tar\.gz|tgz)(\.enc)?|wpress)$/i', $name ) ) {
-			throw new Job_Exception( 'Only SiteFerry backups (.tar, .tar.gz, or .enc when protected with a password) and All-in-One WP Migration backups (.wpress) can be uploaded.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Only SiteFerry backups (.tar, .tar.gz, or .enc when protected with a password) and All-in-One WP Migration backups (.wpress) can be uploaded.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( $size <= 0 ) {
-			throw new Job_Exception( 'The file is empty.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The file is empty.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$free = function_exists( 'disk_free_space' ) ? Io::quiet(
 			static function () use ( $base ) {
@@ -79,7 +79,7 @@ final class Upload {
 			}
 		) : false;
 		if ( false !== $free && $free < $size + 52428800 ) {
-			throw new Job_Exception( 'Not enough disk space for this upload.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Not enough disk space for this upload.', 'siteferry' ), Job_Exception::STEP );
 		}
 
 		self::remove_stale( $base );
@@ -90,7 +90,7 @@ final class Upload {
 				return mkdir( $dir, 0755, true );
 			}
 		) ) {
-			throw new Job_Exception( 'Cannot create the upload folder.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Cannot create the upload folder.', 'siteferry' ), Job_Exception::STEP );
 		}
 		touch( $dir . '/data.part' );
 
@@ -118,13 +118,13 @@ final class Upload {
 	 */
 	public static function load( string $base, string $id ): self {
 		if ( ! preg_match( '/^[a-f0-9]{24}$/', $id ) ) {
-			throw new Job_Exception( 'Unknown upload.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'Unknown upload.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		$dir  = rtrim( $base, '/\\' ) . '/' . $id;
 		$json = is_file( $dir . '/upload.json' ) ? file_get_contents( $dir . '/upload.json' ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$data = false === $json ? null : json_decode( $json, true );
 		if ( ! is_array( $data ) || ! isset( $data['id'] ) || $id !== $data['id'] ) {
-			throw new Job_Exception( 'Unknown upload.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'Unknown upload.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		return new self( $dir, $data );
 	}
@@ -169,27 +169,27 @@ final class Upload {
 	public function append( int $offset, string $bytes, string $sha256 ): int {
 		$length = strlen( $bytes );
 		if ( 0 === $length || $length > self::MAX_CHUNK ) {
-			throw new Job_Exception( 'The chunk is empty or too large.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The chunk is empty or too large.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( ! hash_equals( strtolower( $sha256 ), hash( 'sha256', $bytes ) ) ) {
-			throw new Job_Exception( 'The chunk was damaged in transit (checksum mismatch); it will be sent again.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The chunk was damaged in transit (checksum mismatch); it will be sent again.', 'siteferry' ), Job_Exception::STEP );
 		}
 
 		$handle = Io::open_or_fail( $this->dir . '/data.part', 'c+b' );
 		try {
 			if ( ! flock( $handle, LOCK_EX ) ) {
-				throw new Job_Exception( 'The upload is busy.', Job_Exception::BUSY );
+				throw new Job_Exception( __( 'The upload is busy.', 'siteferry' ), Job_Exception::BUSY );
 			}
 			$this->reload();
 			if ( $offset !== $this->data['offset'] ) {
-				throw new Job_Exception( sprintf( 'Expected the chunk at byte %d, not %d.', $this->data['offset'], $offset ), Job_Exception::BUSY );
+				throw new Job_Exception( sprintf( /* translators: 1: a number, 2: a number */ __( 'Expected the chunk at byte %1$d, not %2$d.', 'siteferry' ), $this->data['offset'], $offset ), Job_Exception::BUSY );
 			}
 			if ( $offset + $length > $this->data['size'] ) {
-				throw new Job_Exception( 'The chunk goes past the end of the file.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'The chunk goes past the end of the file.', 'siteferry' ), Job_Exception::STEP );
 			}
 			// Cut off anything a request that died after writing (but before saving) left behind.
 			if ( ! ftruncate( $handle, $offset ) || 0 !== fseek( $handle, $offset ) ) {
-				throw new Archive_Exception( 'Cannot write the upload.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot write the upload.', 'siteferry' ), Archive_Exception::IO );
 			}
 			Io::write_all( $handle, $bytes );
 			fflush( $handle );
@@ -212,13 +212,13 @@ final class Upload {
 	 */
 	public function finish( string $backups ): string {
 		if ( $this->data['offset'] !== $this->data['size'] ) {
-			throw new Job_Exception( 'The upload is not complete yet.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The upload is not complete yet.', 'siteferry' ), Job_Exception::STEP );
 		}
 		try {
 			$name = Backups::adopt( $this->dir . '/data.part', $this->data['name'], $backups );
 		} catch ( Archive_Exception $e ) {
 			$this->delete();
-			throw new Job_Exception( 'The uploaded file is not a backup SiteFerry can import: ' . $e->getMessage(), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: the reason */ __( 'The uploaded file is not a backup SiteFerry can import: %s', 'siteferry' ), $e->getMessage() ), Job_Exception::STEP );
 		}
 		$this->delete();
 		return $name;
@@ -275,7 +275,7 @@ final class Upload {
 			}
 		);
 		if ( ! $ok ) {
-			throw new Job_Exception( 'Cannot save the upload state.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Cannot save the upload state.', 'siteferry' ), Job_Exception::STEP );
 		}
 	}
 

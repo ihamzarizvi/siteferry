@@ -74,7 +74,7 @@ final class Send_Step implements Step {
 					$state['offset'] = (int) $again['upload']['offset'];
 				}
 				$job->set_state( self::STATE, $state );
-				$job->set_progress( sprintf( 'Sending to %s: %s of %s', (string) wp_parse_url( $state['to'], PHP_URL_HOST ), size_format( $state['offset'], 1 ), size_format( $size, 1 ) ), $state['offset'], $size );
+				$job->set_progress( sprintf( /* translators: 1: where it goes, such as Dropbox or another site's host name, 2: a size, such as 12 MB, 3: a size, such as 12 MB */ __( 'Sending to %1$s: %2$s of %3$s', 'siteferry' ), (string) wp_parse_url( $state['to'], PHP_URL_HOST ), size_format( $state['offset'], 1 ), size_format( $size, 1 ) ), $state['offset'], $size );
 				$job->save();
 				if ( $state['offset'] < $size && $budget->exhausted() ) {
 					return false;
@@ -104,7 +104,7 @@ final class Send_Step implements Step {
 		}
 		$job->set_result( $result );
 		$job->set_state( self::STATE, array( 'to' => $state['to'] ) ); // The key is no longer needed.
-		$job->set_progress( 'Sent to ' . $state['to'], 1, 1 );
+		$job->set_progress( sprintf( /* translators: %s: where it went, such as Dropbox or another site's host name */ __( 'Sent to %s', 'siteferry' ), $state['to'] ), 1, 1 );
 		$job->log( 'info', sprintf( 'Sent to %s as %s. Finish the move there.', $state['to'], $finished['backup'] ) );
 		return true;
 	}

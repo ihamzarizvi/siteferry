@@ -58,21 +58,21 @@ final class Transfer {
 	 */
 	public static function fetch( string $destination, string $name ): array {
 		if ( ! preg_match( Backups::SAFE_NAME, $name ) ) {
-			throw new Job_Exception( 'Unknown backup.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'Unknown backup.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		Destinations::require_ready( $destination );
 		$found = Parts::find( Destinations::driver( $destination ), $name ); // Whole, or all its parts.
 		if ( null === $found ) {
-			throw new Job_Exception( 'That backup is not on the storage (any more).', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'That backup is not on the storage (any more).', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		if ( ! $found['complete'] ) {
-			throw new Job_Exception( sprintf( 'Parts of that backup are missing on the storage (%d of them are there).', $found['parts'] ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %d: a number */ __( 'Parts of that backup are missing on the storage (%d of them are there).', 'siteferry' ), $found['parts'] ), Job_Exception::STEP );
 		}
 
 		$dir  = Storage::backups_dir();
 		$free = function_exists( 'disk_free_space' ) ? @disk_free_space( $dir ) : false; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		if ( false !== $free && $free < $found['size'] + self::SPARE_BYTES ) {
-			throw new Job_Exception( sprintf( 'Not enough disk space: the backup needs %s, %s is free.', size_format( $found['size'], 1 ), size_format( $free, 1 ) ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB */ __( 'Not enough disk space: the backup needs %1$s, %2$s is free.', 'siteferry' ), size_format( $found['size'], 1 ), size_format( $free, 1 ) ), Job_Exception::STEP );
 		}
 		return Job::create(
 			Storage::jobs_dir(),

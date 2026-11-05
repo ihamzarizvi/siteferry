@@ -109,7 +109,7 @@ final class Archive_Keys {
 		}
 		$key = self::key( $job, $file );
 		if ( null === $key ) {
-			throw new Archive_Exception( 'This backup is protected with a password.', Archive_Exception::LOCKED );
+			throw new Archive_Exception( __( 'This backup is protected with a password.', 'siteferry' ), Archive_Exception::LOCKED );
 		}
 		return Crypto::url( $file, $key );
 	}

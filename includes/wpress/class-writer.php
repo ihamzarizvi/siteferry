@@ -90,13 +90,13 @@ final class Writer {
 	 */
 	public static function resume( string $path, array $state ): self {
 		if ( ! isset( $state['version'] ) || 1 !== $state['version'] ) {
-			throw new Archive_Exception( 'Invalid saved writer state.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'Invalid saved writer state.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		$handle   = Io::open_or_fail( $path, 'c+b' );
 		$position = (int) $state['position'];
 		if ( Io::size( $handle ) < $position || ! ftruncate( $handle, $position ) || 0 !== fseek( $handle, $position ) ) {
 			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-			throw new Archive_Exception( 'The .wpress archive being written is shorter than expected.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'The .wpress archive being written is shorter than expected.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		$writer           = new self( $handle );
 		$writer->position = $position;
@@ -154,7 +154,7 @@ final class Writer {
 	public function write( string $data ): void {
 		$this->assert_open( true );
 		if ( $this->current['written'] + strlen( $data ) > $this->current['size'] ) {
-			throw new Archive_Exception( sprintf( 'The file "%s" grew while it was being archived.', $this->current['name'] ), Archive_Exception::IO );
+			throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'The file "%s" grew while it was being archived.', 'siteferry' ), $this->current['name'] ), Archive_Exception::IO );
 		}
 		$this->write_raw( $data );
 		$this->current['written'] += strlen( $data );
@@ -199,12 +199,12 @@ final class Writer {
 		fflush( $this->handle );
 		while ( $this->seal['offset'] < $this->position ) {
 			if ( 0 !== fseek( $this->handle, $this->seal['offset'] ) ) {
-				throw new Archive_Exception( 'Cannot read back the .wpress archive.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot read back the .wpress archive.', 'siteferry' ), Archive_Exception::IO );
 			}
 			$want = (int) min( self::CHUNK, $this->position - $this->seal['offset'] );
 			$data = (string) fread( $this->handle, $want ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread
 			if ( strlen( $data ) !== $want ) {
-				throw new Archive_Exception( 'Cannot read back the .wpress archive.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot read back the .wpress archive.', 'siteferry' ), Archive_Exception::IO );
 			}
 			$this->seal['crc']     = Crc32::update( (int) $this->seal['crc'], $data );
 			$this->seal['offset'] += $want;
@@ -261,7 +261,7 @@ final class Writer {
 	private function end(): void {
 		$at = (int) $this->current['header_at'] + Header::CRC_AT;
 		if ( 0 !== fseek( $this->handle, $at ) ) {
-			throw new Archive_Exception( 'Cannot finish an entry of the .wpress archive.', Archive_Exception::IO );
+			throw new Archive_Exception( __( 'Cannot finish an entry of the .wpress archive.', 'siteferry' ), Archive_Exception::IO );
 		}
 		Io::write_all( $this->handle, Crc32::hex( (int) $this->current['crc'] ) );
 		fseek( $this->handle, $this->position );
@@ -286,7 +286,7 @@ final class Writer {
 	 */
 	private function assert_open( bool $open ): void {
 		if ( $this->sealed ) {
-			throw new Archive_Exception( 'The .wpress archive is already complete.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'The .wpress archive is already complete.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		if ( $open !== ( null !== $this->current ) ) {
 			throw new Archive_Exception( $open ? 'No file is open in the .wpress archive.' : 'A file in the .wpress archive is not finished.', Archive_Exception::BAD_STATE );

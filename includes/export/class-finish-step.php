@@ -40,7 +40,7 @@ final class Finish_Step implements Step {
 				}
 			);
 			if ( ! $renamed ) {
-				throw new Job_Exception( 'Cannot rename the finished backup.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'Cannot rename the finished backup.', 'siteferry' ), Job_Exception::STEP );
 			}
 		}
 
@@ -65,7 +65,7 @@ final class Finish_Step implements Step {
 				'seconds'  => time() - $job->created(),
 			)
 		);
-		$job->set_progress( 'Backup complete', 1, 1 );
+		$job->set_progress( __( 'Backup complete', 'siteferry' ), 1, 1 );
 		$job->log( 'info', sprintf( 'Backup complete: %s (%s).', $job->option( 'archive' ), size_format( (int) filesize( $final ), 1 ) ) );
 		return true;
 	}

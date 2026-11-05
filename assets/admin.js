@@ -8,44 +8,65 @@
 	'use strict';
 
 	const cfg = window.SiteFerryConfig || {};
+	const { __, _n, _x, sprintf } = wp.i18n;
 	const $ = ( id ) => document.getElementById( id );
 	const JOB_KEY = 'siteferry.job';
-	const JOB_NAMES = { export: 'A backup', import: 'A restore', send: 'A transfer to storage', fetch: 'A download from storage', check: 'A check of a backup' };
-	const JOB_TYPES = { export: 'Backup', import: 'Restore', send: 'Send to storage', fetch: 'Download from storage', check: 'Check a copy' };
+	const JOB_NAMES = {
+		export: __( 'A backup', 'siteferry' ),
+		import: __( 'A restore', 'siteferry' ),
+		send: __( 'A transfer to storage', 'siteferry' ),
+		fetch: __( 'A download from storage', 'siteferry' ),
+		check: __( 'A check of a backup', 'siteferry' ),
+	};
+	const JOB_TYPES = {
+		export: __( 'Backup', 'siteferry' ),
+		import: __( 'Restore', 'siteferry' ),
+		send: __( 'Send to storage', 'siteferry' ),
+		fetch: __( 'Download from storage', 'siteferry' ),
+		check: __( 'Check a copy', 'siteferry' ),
+	};
 	const JOB_STATES = {
-		pending: [ 'Not started', 'is-busy' ],
-		running: [ 'Not finished', 'is-busy' ],
-		waiting: [ 'Waiting for confirmation', 'is-warn' ],
-		done: [ 'Done', 'is-good' ],
-		failed: [ 'Failed', 'is-bad' ],
+		pending: [ __( 'Not started', 'siteferry' ), 'is-busy' ],
+		running: [ __( 'Not finished', 'siteferry' ), 'is-busy' ],
+		waiting: [ __( 'Waiting for confirmation', 'siteferry' ), 'is-warn' ],
+		done: [ __( 'Done', 'siteferry' ), 'is-good' ],
+		failed: [ __( 'Failed', 'siteferry' ), 'is-bad' ],
 	};
 	// Names of the job steps, as the legs of the route the progress box draws.
 	const STEP_LABELS = {
-		'export.scan': 'Find files',
-		'export.database': 'Database',
-		'export.pack': 'Pack files',
-		'export.finish': 'Seal',
-		'export.send': 'Send',
-		'send.upload': 'Send',
-		'fetch.download': 'Download',
-		'import.inspect': 'Check',
-		'import.confirm': 'Confirm',
-		'import.extract': 'Unpack',
-		'import.verify': 'Verify',
-		'import.database': 'Database',
-		'import.replace': 'Addresses',
-		'import.swap': 'Switch over',
-		'import.finish': 'Clean up',
-		'import.wpress': 'Read .wpress',
-		'export.wpress': 'Make .wpress',
-		'schedule.finish': 'Wrap up',
-		'import.safety': 'Safety backup',
-		'check.download': 'Download',
-		'check.verify': 'Verify',
-		upload: 'Upload',
+		'export.scan': __( 'Find files', 'siteferry' ),
+		'export.database': __( 'Database', 'siteferry' ),
+		'export.pack': __( 'Pack files', 'siteferry' ),
+		'export.finish': __( 'Seal', 'siteferry' ),
+		'export.send': __( 'Send', 'siteferry' ),
+		'send.upload': __( 'Send', 'siteferry' ),
+		'fetch.download': __( 'Download', 'siteferry' ),
+		'import.inspect': __( 'Check', 'siteferry' ),
+		'import.confirm': __( 'Confirm', 'siteferry' ),
+		'import.extract': __( 'Unpack', 'siteferry' ),
+		'import.verify': __( 'Verify', 'siteferry' ),
+		'import.database': __( 'Database', 'siteferry' ),
+		'import.replace': __( 'Addresses', 'siteferry' ),
+		'import.swap': __( 'Switch over', 'siteferry' ),
+		'import.finish': __( 'Clean up', 'siteferry' ),
+		'import.wpress': __( 'Read .wpress', 'siteferry' ),
+		'export.wpress': __( 'Make .wpress', 'siteferry' ),
+		'schedule.finish': __( 'Wrap up', 'siteferry' ),
+		'import.safety': __( 'Safety backup', 'siteferry' ),
+		'check.download': __( 'Download', 'siteferry' ),
+		'check.verify': __( 'Verify', 'siteferry' ),
+		upload: __( 'Upload', 'siteferry' ),
 	};
 	const DROP_INS = [ 'advanced-cache.php', 'object-cache.php', 'db.php', 'db-error.php' ];
-	const WEEKDAYS = [ 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' ];
+	const WEEKDAYS = [
+		__( 'Sunday', 'siteferry' ),
+		__( 'Monday', 'siteferry' ),
+		__( 'Tuesday', 'siteferry' ),
+		__( 'Wednesday', 'siteferry' ),
+		__( 'Thursday', 'siteferry' ),
+		__( 'Friday', 'siteferry' ),
+		__( 'Saturday', 'siteferry' ),
+	];
 	const TABS = [ 'backups', 'storage', 'activity' ];
 	// Older links to the page still land somewhere sensible.
 	const OLD_TABS = { export: 'backups', import: 'backups', log: 'activity' };
@@ -120,7 +141,14 @@
 			data = await response.json();
 		} catch ( e ) {}
 		if ( ! response.ok ) {
-			const error = new Error( ( data && data.message ) || 'Request failed (HTTP ' + response.status + ').' );
+			const error = new Error(
+				( data && data.message ) ||
+					sprintf(
+						/* translators: %d: HTTP status code, such as 500 */
+						__( 'Request failed (HTTP %d).', 'siteferry' ),
+						response.status
+					)
+			);
 			error.status = response.status;
 			error.code = data && data.code ? data.code : '';
 			throw error;
@@ -141,6 +169,16 @@
 		} );
 		( children || [] ).forEach( ( child ) => node.appendChild( typeof child === 'string' ? document.createTextNode( child ) : child ) );
 		return node;
+	}
+
+	/**
+	 * Children for an element whose translated sentence holds a node (such as a file name in its
+	 * own span): the sentence is made with NODE_MARK where the node goes.
+	 */
+	const NODE_MARK = '\u0001';
+	function around( text, node ) {
+		const [ before, after ] = text.split( NODE_MARK );
+		return [ before, node, after ].filter( ( part ) => part );
 	}
 
 	/** Whether a backup is protected with a password. */
@@ -191,8 +229,6 @@
 		return isNaN( d ) ? '' : d.toLocaleString( undefined, { dateStyle: 'medium', timeStyle: 'short' } );
 	}
 
-	const plural = ( n, one, many ) => n + ' ' + ( n === 1 ? one : many );
-
 	/** A message above the tabs; success messages go away by themselves. */
 	function notice( message, type ) {
 		const box = $( 'siteferry-notice' );
@@ -200,7 +236,7 @@
 		box.setAttribute( 'role', type === 'error' ? 'alert' : 'status' );
 		box.replaceChildren(
 			el( 'p', { text: message } ),
-			el( 'button', { type: 'button', class: 'sf-notice-close', 'aria-label': 'Dismiss this message', text: '×', onclick: () => ( box.hidden = true ) } )
+			el( 'button', { type: 'button', class: 'sf-notice-close', 'aria-label': __( 'Dismiss this message', 'siteferry' ), text: '×', onclick: () => ( box.hidden = true ) } )
 		);
 		box.hidden = false;
 		clearTimeout( noticeTimer );
@@ -274,7 +310,19 @@
 			route.querySelector( '.sf-ferry' ).style.setProperty( '--at', ( at * 100 ).toFixed( 2 ) + '%' );
 			part( 'sf-progress-percent' ).textContent = Math.round( at * 100 ) + '%';
 			part( 'sf-route-caption' ).textContent =
-				index < names.length ? 'Step ' + ( index + 1 ) + ' of ' + names.length + ': ' + stepLabel( names[ index ] ) : plural( names.length, 'step', 'steps' ) + ' done';
+				index < names.length
+					? sprintf(
+							/* translators: 1: number of the current step, 2: number of steps, 3: name of the step, such as Database */
+							__( 'Step %1$d of %2$d: %3$s', 'siteferry' ),
+							index + 1,
+							names.length,
+							stepLabel( names[ index ] )
+					  )
+					: sprintf(
+							/* translators: %d: number of steps */
+							_n( '%d step done', '%d steps done', names.length, 'siteferry' ),
+							names.length
+					  );
 		}
 
 		return {
@@ -290,7 +338,7 @@
 				const names = step.names && step.names.length ? step.names : [ step.name || job.type ];
 				const index = Math.min( step.index || 0, names.length );
 				const fraction = index < names.length && p.total > 0 ? Math.min( 1, ( p.done || 0 ) / p.total ) : 0;
-				frame( 'running', p.message || 'Working...' );
+				frame( 'running', p.message || __( 'Working...', 'siteferry' ) );
 				draw( names, index, fraction, false );
 			},
 			note( message ) {
@@ -328,9 +376,27 @@
 		const list = el( 'ul', { class: 'sf-warnings' } );
 		job.warnings.first.forEach( ( text ) => list.appendChild( el( 'li', { text } ) ) );
 		if ( job.warnings.count > job.warnings.first.length ) {
-			list.appendChild( el( 'li', { text: '... and ' + ( job.warnings.count - job.warnings.first.length ) + ' more (see the Log tab).' } ) );
+			const more = job.warnings.count - job.warnings.first.length;
+			list.appendChild(
+				el( 'li', {
+					text: sprintf(
+						/* translators: %d: number of further warnings not shown */
+						_n( '... and %d more (see the Log tab).', '... and %d more (see the Log tab).', more, 'siteferry' ),
+						more
+					),
+				} )
+			);
 		}
-		return [ el( 'p', { text: plural( job.warnings.count, 'warning', 'warnings' ) + ':' } ), list ];
+		return [
+			el( 'p', {
+				text: sprintf(
+					/* translators: %d: number of warnings */
+					_n( '%d warning:', '%d warnings:', job.warnings.count, 'siteferry' ),
+					job.warnings.count
+				),
+			} ),
+			list,
+		];
 	}
 
 	// ------------------------------------------------------------ SHA-256
@@ -425,7 +491,14 @@
 				if ( error.status === 403 || error.status === 404 || ++failures > 6 ) {
 					throw error;
 				}
-				onProgress( null, 'Connection problem; retrying (' + failures + ')...' );
+				onProgress(
+					null,
+					sprintf(
+						/* translators: %d: number of the retry attempt */
+						__( 'Connection problem; retrying (%d)...', 'siteferry' ),
+						failures
+					)
+				);
 				await sleep( Math.min( 30000, 1000 * 2 ** failures ) );
 				continue;
 			}
@@ -453,15 +526,23 @@
 		const time = d.toLocaleTimeString( undefined, { hour: 'numeric', minute: '2-digit' } );
 		const start = new Date();
 		start.setHours( 0, 0, 0, 0 );
-		let text;
 		if ( d >= start ) {
-			text = 'Today, ' + time;
-		} else if ( d >= new Date( start.getTime() - DAY ) ) {
-			text = 'Yesterday, ' + time;
-		} else {
-			return d.toLocaleString( undefined, { dateStyle: 'medium', timeStyle: 'short' } );
+			if ( inSentence ) {
+				/* translators: %s: a time of day, such as 9:00 AM; used inside a sentence */
+				return sprintf( __( 'today, %s', 'siteferry' ), time );
+			}
+			/* translators: %s: a time of day, such as 7:21 PM */
+			return sprintf( __( 'Today, %s', 'siteferry' ), time );
 		}
-		return inSentence ? text.charAt( 0 ).toLowerCase() + text.slice( 1 ) : text;
+		if ( d >= new Date( start.getTime() - DAY ) ) {
+			if ( inSentence ) {
+				/* translators: %s: a time of day, such as 9:02 AM; used inside a sentence */
+				return sprintf( __( 'yesterday, %s', 'siteferry' ), time );
+			}
+			/* translators: %s: a time of day, such as 9:02 AM */
+			return sprintf( __( 'Yesterday, %s', 'siteferry' ), time );
+		}
+		return d.toLocaleString( undefined, { dateStyle: 'medium', timeStyle: 'short' } );
 	}
 
 	/** A time to come: "today, 9:00 AM", "tomorrow, 3:00 AM" or "Monday, Nov 9, 9:00 AM". */
@@ -475,19 +556,33 @@
 		start.setHours( 0, 0, 0, 0 );
 		const days = Math.floor( ( new Date( d ).setHours( 0, 0, 0, 0 ) - start.getTime() ) / DAY );
 		if ( days === 0 ) {
-			return 'today, ' + time;
+			/* translators: %s: a time of day, such as 9:00 AM; used inside a sentence */
+			return sprintf( __( 'today, %s', 'siteferry' ), time );
 		}
 		if ( days === 1 ) {
-			return 'tomorrow, ' + time;
+			/* translators: %s: a time of day, such as 3:00 AM; used inside a sentence */
+			return sprintf( __( 'tomorrow, %s', 'siteferry' ), time );
 		}
-		return d.toLocaleDateString( undefined, { weekday: 'long', month: 'short', day: 'numeric' } ) + ', ' + time;
+		return sprintf(
+			/* translators: 1: a date, such as Monday, Nov 9, 2: a time of day, such as 9:00 AM */
+			__( '%1$s, %2$s', 'siteferry' ),
+			d.toLocaleDateString( undefined, { weekday: 'long', month: 'short', day: 'numeric' } ),
+			time
+		);
 	}
 
 	/** The next scheduled run; with the site's own time when the viewer's time zone differs. */
 	function nextRun() {
 		const text = upcoming( schedule.next );
 		const viewer = -new Date( schedule.next * 1000 ).getTimezoneOffset() * 60;
-		return schedule.next_site && viewer !== schedule.next_offset ? text + ' your time (' + schedule.next_site + ' site time)' : text;
+		return schedule.next_site && viewer !== schedule.next_offset
+			? sprintf(
+					/* translators: 1: date and time in the viewer's time zone, 2: the same moment in the site's time zone */
+					__( '%1$s your time (%2$s site time)', 'siteferry' ),
+					text,
+					schedule.next_site
+			  )
+			: text;
 	}
 
 	/** A site address without scheme, "www." or trailing slash, for comparing sites. */
@@ -532,7 +627,15 @@
 					el( 'label', {}, [
 						el( 'input', { type: 'checkbox', name: 'exclude_tables', value: t.name } ),
 						' ' + t.name + ' ',
-						el( 'span', { class: 'sf-table-size', text: plural( t.rows, 'row', 'rows' ) + ', ' + bytes( t.data ) } ),
+						el( 'span', {
+							class: 'sf-table-size',
+							text: sprintf(
+								/* translators: 1: number of rows, 2: size such as 12 MB */
+								_n( '%1$d row, %2$s', '%1$d rows, %2$s', t.rows, 'siteferry' ),
+								t.rows,
+								bytes( t.data )
+							),
+						} ),
 					] )
 				)
 			);
@@ -544,7 +647,8 @@
 	function countLeftOutTables() {
 		const n = document.querySelectorAll( '#siteferry-tables input:checked' ).length;
 		const badge = $( 'siteferry-tables-count' );
-		badge.textContent = n + ' left out';
+		/* translators: %d: number of database tables left out of the backup */
+		badge.textContent = sprintf( _n( '%d left out', '%d left out', n, 'siteferry' ), n );
 		badge.hidden = n === 0;
 	}
 
@@ -622,7 +726,12 @@
 		options.tags = form.elements.tags.value;
 		if ( $( 'siteferry-encrypt' ) && $( 'siteferry-encrypt' ).checked && options.format !== 'wpress' ) {
 			const password = $( 'siteferry-password' ).value;
-			const problem = password.length < 8 ? 'The password needs at least 8 characters.' : password !== $( 'siteferry-password-again' ).value ? 'The two passwords are not the same.' : '';
+			const problem =
+				password.length < 8
+					? __( 'The password needs at least 8 characters.', 'siteferry' )
+					: password !== $( 'siteferry-password-again' ).value
+					? __( 'The two passwords are not the same.', 'siteferry' )
+					: '';
 			if ( problem ) {
 				toggleDrawer( 'options', true );
 				notice( problem, 'error' );
@@ -632,12 +741,12 @@
 			options.password = password;
 		}
 		const target = destination( options.send_to );
-		const view = progressView( 'siteferry-job-progress', [ 'This site', target ? target.short : 'This server' ] );
+		const view = progressView( 'siteferry-job-progress', [ __( 'This site', 'siteferry' ), target ? target.short : __( 'This server', 'siteferry' ) ] );
 		const starters = [ $( 'siteferry-backup-now' ), ...form.querySelectorAll( 'button[type=submit]' ) ];
 		starters.forEach( ( starter ) => ( starter.disabled = true ) );
 		// The choices are made; close Options so the progress shows right under the header.
 		toggleDrawer( 'options', false );
-		view.start( 'Starting the backup...' );
+		view.start( __( 'Starting the backup...', 'siteferry' ) );
 		try {
 			const started = await api( 'POST', 'exports', { json: options } );
 			remember( started.job, started.token );
@@ -647,7 +756,7 @@
 			} );
 			await finishExport( started.job.id, started.token, view, $( 'siteferry-download-ready' ).checked );
 		} catch ( error ) {
-			view.finish( false, 'The backup was not made', [ el( 'p', { text: error.message } ) ] );
+			view.finish( false, __( 'The backup was not made', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
 		} finally {
 			starters.forEach( ( starter ) => ( starter.disabled = false ) );
 		}
@@ -657,36 +766,87 @@
 		const job = await driveJob( id, token, progressHandler( view ) );
 		store.remove( JOB_KEY );
 		if ( job.status !== 'done' ) {
-			view.finish( false, 'The backup was not made', [ el( 'p', { text: job.error } ), ...warningList( job ) ] );
+			view.finish( false, __( 'The backup was not made', 'siteferry' ), [ el( 'p', { text: job.error } ), ...warningList( job ) ] );
 			return;
 		}
 		const r = job.result;
 		if ( r.moved ) {
-			view.finish( true, 'Sent to ' + hostOf( r.moved.to ), [
-				el( 'p', { text: 'This site (' + bytes( r.moved.size ) + ', encrypted with the key) is now on ' + r.moved.to + '. Nothing on that site has changed yet.' } ),
-				el( 'p', { text: 'To finish, open SiteFerry there and click "Move it here" under Move.' } ),
-				el( 'p', { class: 'sf-actions' }, [ el( 'a', { class: 'button button-primary', href: r.moved.to + '/wp-admin/tools.php?page=siteferry', target: '_blank', rel: 'noopener', text: 'Open SiteFerry there' } ) ] ),
-			] );
+			view.finish(
+				true,
+				sprintf(
+					/* translators: %s: where it went, such as Dropbox or another site's host name */
+					__( 'Sent to %s', 'siteferry' ),
+					hostOf( r.moved.to )
+				),
+				[
+					el( 'p', {
+						text: sprintf(
+							/* translators: 1: size such as 12 MB, 2: address of the other site */
+							__( 'This site (%1$s, encrypted with the key) is now on %2$s. Nothing on that site has changed yet.', 'siteferry' ),
+							bytes( r.moved.size ),
+							r.moved.to
+						),
+					} ),
+					el( 'p', { text: __( 'To finish, open SiteFerry there and click "Move it here" under Move.', 'siteferry' ) } ),
+					el( 'p', { class: 'sf-actions' }, [ el( 'a', { class: 'button button-primary', href: r.moved.to + '/wp-admin/tools.php?page=siteferry', target: '_blank', rel: 'noopener', text: __( 'Open SiteFerry there', 'siteferry' ) } ) ] ),
+				]
+			);
 			loadBackups();
 			return;
 		}
-		const where = r.sent ? ( r.deleted_local ? 'on ' + r.sent.where : 'on this server and on ' + r.sent.where ) : 'on this server';
+		let stored;
+		if ( ! r.sent ) {
+			stored = sprintf(
+				/* translators: 1: size such as 12 MB, 2: number of files */
+				_n( '%1$s · %2$d file, stored on this server.', '%1$s · %2$d files, stored on this server.', r.files, 'siteferry' ),
+				bytes( r.size ),
+				r.files
+			);
+		} else if ( r.deleted_local ) {
+			stored = sprintf(
+				/* translators: 1: size such as 12 MB, 2: number of files, 3: name of the storage, such as Dropbox */
+				_n( '%1$s · %2$d file, stored on %3$s.', '%1$s · %2$d files, stored on %3$s.', r.files, 'siteferry' ),
+				bytes( r.size ),
+				r.files,
+				r.sent.where
+			);
+		} else {
+			stored = sprintf(
+				/* translators: 1: size such as 12 MB, 2: number of files, 3: name of the storage, such as Dropbox */
+				_n( '%1$s · %2$d file, stored on this server and on %3$s.', '%1$s · %2$d files, stored on this server and on %3$s.', r.files, 'siteferry' ),
+				bytes( r.size ),
+				r.files,
+				r.sent.where
+			);
+		}
 		const nodes = [
-			el( 'p', { text: bytes( r.size ) + ' · ' + plural( r.files, 'file', 'files' ) + ', stored ' + where + '.' } ),
+			el( 'p', { text: stored } ),
 			el( 'p', {}, [ el( 'span', { class: 'sf-result-name', text: r.name } ) ] ),
 		];
 		const actions = [];
 		if ( ! r.deleted_local ) {
-			actions.push( el( 'a', { class: 'button button-primary', href: downloadUrl( r.name ), text: 'Download to your computer' } ) );
+			actions.push( el( 'a', { class: 'button button-primary', href: downloadUrl( r.name ), text: __( 'Download to your computer', 'siteferry' ) } ) );
 			destinations
 				.filter( ( d ) => d.ready && ! ( r.sent && r.sent.destination === d.id ) )
-				.forEach( ( d ) => actions.push( button( 'Also send to ' + d.short, () => sendTo( d, r.name ), 'button sf-quiet' ) ) );
+				.forEach( ( d ) =>
+					actions.push(
+						button(
+							sprintf(
+								/* translators: %s: name of the storage, such as Dropbox */
+								__( 'Also send to %s', 'siteferry' ),
+								d.short
+							),
+							() => sendTo( d, r.name ),
+							'button sf-quiet'
+						)
+					)
+				);
 		}
-		actions.push( button( 'Name, note and tags', () => editByName( r.sent && r.deleted_local ? r.sent.name : r.name ), 'button sf-quiet' ) );
+		actions.push( button( __( 'Name, note and tags', 'siteferry' ), () => editByName( r.sent && r.deleted_local ? r.sent.name : r.name ), 'button sf-quiet' ) );
 		if ( actions.length ) {
 			nodes.push( el( 'p', { class: 'sf-actions' }, actions ) );
 		}
-		view.finish( true, 'Backup ready', [ ...nodes, ...warningList( job ) ] );
+		view.finish( true, __( 'Backup ready', 'siteferry' ), [ ...nodes, ...warningList( job ) ] );
 		loadBackups();
 		if ( downloadWhenReady && ! r.deleted_local ) {
 			window.location.assign( downloadUrl( r.name ) );
@@ -700,7 +860,14 @@
 			destinations = await api( 'GET', 'storage' );
 		} catch ( error ) {
 			destinations = [];
-			notice( 'Cannot read the storage settings: ' + error.message, 'error' );
+			notice(
+				sprintf(
+					/* translators: %s: error message */
+					__( 'Cannot read the storage settings: %s', 'siteferry' ),
+					error.message
+				),
+				'error'
+			);
 		}
 		renderSendOptions();
 		if ( schedule ) {
@@ -721,12 +888,25 @@
 		if ( localBackups ) {
 			const total = localBackups.reduce( ( sum, b ) => sum + ( b.size || 0 ), 0 );
 			const facts = $( 'siteferry-facts-backups' );
-			facts.textContent = localBackups.length ? plural( localBackups.length, 'backup', 'backups' ) + ' here, ' + bytes( total ) : 'No backups here yet';
+			facts.textContent = localBackups.length
+				? sprintf(
+						/* translators: 1: number of backups, 2: total size such as 12 MB */
+						_n( '%1$d backup here, %2$s', '%1$d backups here, %2$s', localBackups.length, 'siteferry' ),
+						localBackups.length,
+						bytes( total )
+				  )
+				: __( 'No backups here yet', 'siteferry' );
 			facts.hidden = false;
 		}
 		const ready = destinations.filter( ( d ) => d.ready );
 		const storage = $( 'siteferry-facts-storage' );
-		storage.textContent = ready.length ? 'Storage: ' + ready.map( ( d ) => d.short ).join( ', ' ) : 'No storage set up';
+		storage.textContent = ready.length
+			? sprintf(
+					/* translators: %s: comma-separated names of the storages, such as Dropbox, Amazon S3 */
+					__( 'Storage: %s', 'siteferry' ),
+					ready.map( ( d ) => d.short ).join( ', ' )
+			  )
+			: __( 'No storage set up', 'siteferry' );
 		storage.classList.toggle( 'is-good', ready.length > 0 );
 		storage.hidden = false;
 	}
@@ -767,24 +947,31 @@
 		const set = names.length > 0 && names.every( ( name ) => d.secrets_set[ name ] );
 		const secretNote = form.querySelector( '[data-role=secret-note]' );
 		if ( secretNote ) {
-			secretNote.textContent = set ? 'Saved (not shown). Leave this empty to keep it, or enter a new one.' : 'Stored encrypted. It is never shown again.';
+			secretNote.textContent = set ? __( 'Saved (not shown). Leave this empty to keep it, or enter a new one.', 'siteferry' ) : __( 'Stored encrypted. It is never shown again.', 'siteferry' );
 		}
 
 		const card = form.closest( '.sf-dest' );
 		const state = card.querySelector( '[data-role=state]' );
 		const chip = card.querySelector( '[data-role=chip]' );
 		let text = state.dataset.about;
-		let label = 'Not set up';
+		let label = __( 'Not set up', 'siteferry' );
 		let tone = '';
 		if ( d.oauth ) {
 			if ( d.oauth.connected ) {
-				[ text, label, tone ] = [ d.description, 'Connected', 'is-good' ];
+				[ text, label, tone ] = [ d.description, __( 'Connected', 'siteferry' ), 'is-good' ];
 			} else if ( d.configured ) {
-				[ text, label, tone ] = [ 'Saved, but not signed in yet.', 'Not connected', 'is-warn' ];
+				[ text, label, tone ] = [ __( 'Saved, but not signed in yet.', 'siteferry' ), __( 'Not connected', 'siteferry' ), 'is-warn' ];
 			}
 		} else if ( d.configured ) {
-			text = d.description + ( d.updated ? ' · saved ' + date( d.updated ) : '' );
-			[ label, tone ] = d.ready ? [ 'Ready', 'is-good' ] : [ 'Incomplete', 'is-warn' ];
+			text = d.updated
+				? sprintf(
+						/* translators: 1: description of the storage, 2: date and time the settings were saved */
+						__( '%1$s · saved %2$s', 'siteferry' ),
+						d.description,
+						date( d.updated )
+				  )
+				: d.description;
+			[ label, tone ] = d.ready ? [ __( 'Ready', 'siteferry' ), 'is-good' ] : [ __( 'Incomplete', 'siteferry' ), 'is-warn' ];
 		}
 		state.textContent = text;
 		chip.textContent = label;
@@ -811,9 +998,9 @@
 		const connected = d && d.oauth && d.oauth.connected;
 		const connect = form.querySelector( '[data-role=connect]' );
 		if ( mode === 'relay' ) {
-			connect.textContent = connected ? 'Sign in again' : connect.dataset.labelRelay;
+			connect.textContent = connected ? __( 'Sign in again', 'siteferry' ) : connect.dataset.labelRelay;
 		} else {
-			connect.textContent = connected ? 'Connect again' : connect.dataset.labelOwn;
+			connect.textContent = connected ? __( 'Connect again', 'siteferry' ) : connect.dataset.labelOwn;
 		}
 	}
 
@@ -835,27 +1022,44 @@
 		const id = form.dataset.destination;
 		const connect = form.querySelector( '[data-role=connect]' );
 		connect.disabled = true;
-		storageResult( form, null, [ el( 'p', { text: 'Opening the sign-in page...' } ) ] );
+		storageResult( form, null, [ el( 'p', { text: __( 'Opening the sign-in page...', 'siteferry' ) } ) ] );
 		try {
 			await api( 'POST', 'storage/' + id, { json: formData( form ) } );
 			const result = await api( 'POST', 'storage/' + id + '/authorize' );
 			window.location.assign( result.url );
 		} catch ( error ) {
 			connect.disabled = false;
-			storageResult( form, false, [ el( 'p', { text: 'Cannot sign in: ' + error.message } ) ] );
+			storageResult( form, false, [
+				el( 'p', {
+					text: sprintf(
+						/* translators: %s: error message */
+						__( 'Cannot sign in: %s', 'siteferry' ),
+						error.message
+					),
+				} ),
+			] );
 		}
 	}
 
 	async function disconnectStorage( form ) {
 		const d = destination( form.dataset.destination );
 		// eslint-disable-next-line no-alert
-		if ( ! d || ! window.confirm( 'Disconnect ' + d.label + '? SiteFerry revokes its access and forgets the tokens; backups stored there stay.' ) ) {
+		if (
+			! d ||
+			! window.confirm(
+				sprintf(
+					/* translators: %s: name of the storage, such as Dropbox */
+					__( 'Disconnect %s? SiteFerry revokes its access and forgets the tokens; backups stored there stay.', 'siteferry' ),
+					d.label
+				)
+			)
+		) {
 			return;
 		}
 		try {
 			await api( 'POST', 'storage/' + d.id + '/disconnect' );
 			await loadDestinations();
-			storageResult( form, true, [ el( 'p', { text: 'Disconnected. Backups stored there stay.' } ) ] );
+			storageResult( form, true, [ el( 'p', { text: __( 'Disconnected. Backups stored there stay.', 'siteferry' ) } ) ] );
 		} catch ( error ) {
 			storageResult( form, false, [ el( 'p', { text: error.message } ) ] );
 		}
@@ -882,16 +1086,41 @@
 		}
 		form.closest( '.sf-dest' ).open = true;
 		if ( failure || ! code || ! state ) {
-			storageResult( form, false, [ el( 'p', { text: 'Not connected: ' + ( failure === 'access_denied' ? 'access was not allowed.' : failure || 'the answer had no authorization code.' ) } ) ] );
+			let reason;
+			if ( failure === 'access_denied' ) {
+				reason = __( 'Not connected: access was not allowed.', 'siteferry' );
+			} else if ( failure ) {
+				/* translators: %s: error message */
+				reason = sprintf( __( 'Not connected: %s', 'siteferry' ), failure );
+			} else {
+				reason = __( 'Not connected: the answer had no authorization code.', 'siteferry' );
+			}
+			storageResult( form, false, [ el( 'p', { text: reason } ) ] );
 			return true;
 		}
-		storageResult( form, null, [ el( 'p', { text: 'Finishing the connection...' } ) ] );
+		storageResult( form, null, [ el( 'p', { text: __( 'Finishing the connection...', 'siteferry' ) } ) ] );
 		try {
 			const d = await api( 'POST', 'storage/' + id + '/connect', { json: { code, state } } );
 			await loadDestinations();
-			storageResult( form, true, [ el( 'p', { text: 'Connected: ' + d.description + '. Use "Test connection" to check it.' } ) ] );
+			storageResult( form, true, [
+				el( 'p', {
+					text: sprintf(
+						/* translators: %s: description of the connected account */
+						__( 'Connected: %s. Use "Test connection" to check it.', 'siteferry' ),
+						d.description
+					),
+				} ),
+			] );
 		} catch ( error ) {
-			storageResult( form, false, [ el( 'p', { text: 'Not connected: ' + error.message } ) ] );
+			storageResult( form, false, [
+				el( 'p', {
+					text: sprintf(
+						/* translators: %s: error message */
+						__( 'Not connected: %s', 'siteferry' ),
+						error.message
+					),
+				} ),
+			] );
 		}
 		return true;
 	}
@@ -929,10 +1158,27 @@
 			await loadDestinations();
 			const d = destination( id );
 			storageResult( form, true, [
-				el( 'p', { text: d && d.oauth && ! d.oauth.connected ? 'Saved. Now click "' + form.querySelector( '[data-role=connect]' ).textContent + '" and allow access.' : 'Saved. Use "Test connection" to check the settings.' } ),
+				el( 'p', {
+					text:
+						d && d.oauth && ! d.oauth.connected
+							? sprintf(
+									/* translators: %s: label of the sign-in button, such as Connect Dropbox */
+									__( 'Saved. Now click "%s" and allow access.', 'siteferry' ),
+									form.querySelector( '[data-role=connect]' ).textContent
+							  )
+							: __( 'Saved. Use "Test connection" to check the settings.', 'siteferry' ),
+				} ),
 			] );
 		} catch ( error ) {
-			storageResult( form, false, [ el( 'p', { text: 'Not saved: ' + error.message } ) ] );
+			storageResult( form, false, [
+				el( 'p', {
+					text: sprintf(
+						/* translators: %s: error message */
+						__( 'Not saved: %s', 'siteferry' ),
+						error.message
+					),
+				} ),
+			] );
 		} finally {
 			submit.disabled = false;
 		}
@@ -942,10 +1188,10 @@
 		const id = form.dataset.destination;
 		const test = form.querySelector( '[data-role=test]' );
 		test.disabled = true;
-		storageResult( form, null, [ el( 'p', { text: 'Testing: writing, reading and deleting a small file...' } ) ] );
+		storageResult( form, null, [ el( 'p', { text: __( 'Testing: writing, reading and deleting a small file...', 'siteferry' ) } ) ] );
 		try {
 			const result = await api( 'POST', 'storage/' + id + '/test' );
-			storageResult( form, true, [ el( 'p', { text: 'The storage works.' } ), el( 'ul', {}, result.lines.map( ( line ) => el( 'li', { text: line } ) ) ) ] );
+			storageResult( form, true, [ el( 'p', { text: __( 'The storage works.', 'siteferry' ) } ), el( 'ul', {}, result.lines.map( ( line ) => el( 'li', { text: line } ) ) ) ] );
 		} catch ( error ) {
 			storageResult( form, false, [ el( 'p', { text: error.message } ) ] );
 		} finally {
@@ -956,7 +1202,16 @@
 	async function removeStorage( form ) {
 		const d = destination( form.dataset.destination );
 		// eslint-disable-next-line no-alert
-		if ( ! d || ! window.confirm( 'Remove the settings and key for ' + d.label + '? Backups already stored there are not deleted.' ) ) {
+		if (
+			! d ||
+			! window.confirm(
+				sprintf(
+					/* translators: %s: name of the storage, such as Dropbox */
+					__( 'Remove the settings and key for %s? Backups already stored there are not deleted.', 'siteferry' ),
+					d.label
+				)
+			)
+		) {
 			return;
 		}
 		try {
@@ -964,7 +1219,7 @@
 			await loadDestinations();
 			form.reset();
 			fillStorageForm( form );
-			storageResult( form, true, [ el( 'p', { text: 'Settings removed. Backups stored there stay.' } ) ] );
+			storageResult( form, true, [ el( 'p', { text: __( 'Settings removed. Backups stored there stay.', 'siteferry' ) } ) ] );
 		} catch ( error ) {
 			storageResult( form, false, [ el( 'p', { text: error.message } ) ] );
 		}
@@ -980,26 +1235,62 @@
 		try {
 			job = await driveJob( id, token, progressHandler( view ) );
 		} catch ( error ) {
-			view.finish( false, 'Stopped', [ el( 'p', { text: error.message } ) ] );
+			view.finish( false, __( 'Stopped', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
 			return null;
 		}
 		store.remove( JOB_KEY );
 		if ( job.type === 'check' ) {
 			const checked = job.result && job.result.checked;
 			if ( job.status === 'done' ) {
-				view.finish( true, 'Intact', [ el( 'p', { text: 'The copy on ' + checked.where + ' is intact. ' + checked.summary } ) ] );
+				view.finish( true, __( 'Intact', 'siteferry' ), [
+					el( 'p', {
+						text: sprintf(
+							/* translators: 1: where the copy is, such as Dropbox, 2: summary of the check */
+							__( 'The copy on %1$s is intact. %2$s', 'siteferry' ),
+							checked.where,
+							checked.summary
+						),
+					} ),
+				] );
 			} else {
-				view.finish( false, checked && checked.ok === false ? 'Damaged' : 'Not checked', [
+				view.finish( false, checked && checked.ok === false ? __( 'Damaged', 'siteferry' ) : __( 'Not checked', 'siteferry' ), [
 					el( 'p', { text: job.error } ),
-					...( checked && checked.ok === false ? [ el( 'p', { text: 'Do not rely on this copy: make a new backup, or use another copy of this one.' } ) ] : [] ),
+					...( checked && checked.ok === false ? [ el( 'p', { text: __( 'Do not rely on this copy: make a new backup, or use another copy of this one.', 'siteferry' ) } ) ] : [] ),
 				] );
 			}
 		} else if ( job.status !== 'done' ) {
-			view.finish( false, job.type === 'send' ? 'Not sent' : 'Not downloaded', [ el( 'p', { text: job.error } ), ...warningList( job ) ] );
+			view.finish( false, job.type === 'send' ? __( 'Not sent', 'siteferry' ) : __( 'Not downloaded', 'siteferry' ), [ el( 'p', { text: job.error } ), ...warningList( job ) ] );
 		} else if ( job.type === 'send' ) {
-			view.finish( true, 'Sent', [ el( 'p', {}, [ el( 'span', { class: 'sf-result-name', text: job.result.sent.name } ), ' is now on ' + job.result.sent.where + '.' ] ) ] );
+			view.finish( true, __( 'Sent', 'siteferry' ), [
+				el(
+					'p',
+					{},
+					around(
+						sprintf(
+							/* translators: 1: file name of the backup, 2: name of the storage, such as Dropbox */
+							__( '%1$s is now on %2$s.', 'siteferry' ),
+							NODE_MARK,
+							job.result.sent.where
+						),
+						el( 'span', { class: 'sf-result-name', text: job.result.sent.name } )
+					)
+				),
+			] );
 		} else {
-			view.finish( true, 'Downloaded to this server', [ el( 'p', {}, [ el( 'span', { class: 'sf-result-name', text: job.result.fetched.name } ), ' is now also on this server.' ] ) ] );
+			view.finish( true, __( 'Downloaded to this server', 'siteferry' ), [
+				el(
+					'p',
+					{},
+					around(
+						sprintf(
+							/* translators: %s: file name of the backup */
+							__( '%s is now also on this server.', 'siteferry' ),
+							NODE_MARK
+						),
+						el( 'span', { class: 'sf-result-name', text: job.result.fetched.name } )
+					)
+				),
+			] );
 		}
 		loadBackups();
 		return job;
@@ -1016,13 +1307,23 @@
 			}
 			const view = progressView( 'siteferry-job-progress' );
 			view.start( message );
-			view.finish( false, 'Could not start', [ el( 'p', { text: error.message } ) ] );
+			view.finish( false, __( 'Could not start', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
 			return null;
 		}
 	}
 
 	function sendTo( d, name ) {
-		return startTransfer( 'storage/' + d.id + '/send', { backup: name }, 'Sending ' + name + ' to ' + d.label + '...', [ 'This server', d.short ] );
+		return startTransfer(
+			'storage/' + d.id + '/send',
+			{ backup: name },
+			sprintf(
+				/* translators: 1: file name of the backup, 2: name of the storage, such as Dropbox */
+				__( 'Sending %1$s to %2$s...', 'siteferry' ),
+				name,
+				d.label
+			),
+			[ __( 'This server', 'siteferry' ), d.short ]
+		);
 	}
 
 	/** Reads one copy of a backup from start to end and compares it with its checksums. */
@@ -1030,7 +1331,15 @@
 		const d = place === 'local' ? null : destination( place );
 		const body = { name: item.name, place };
 		if ( isEncrypted( item ) ) {
-			const password = await askPassword( 'Check ' + called( item ), 'This backup is protected with a password. The check needs it to compare every file with its checksums.', error );
+			const password = await askPassword(
+				sprintf(
+					/* translators: %s: name of the backup */
+					__( 'Check %s', 'siteferry' ),
+					called( item )
+				),
+				__( 'This backup is protected with a password. The check needs it to compare every file with its checksums.', 'siteferry' ),
+				error
+			);
 			if ( null === password ) {
 				return null;
 			}
@@ -1039,14 +1348,35 @@
 		return startTransfer(
 			'checks',
 			body,
-			'Checking the copy of ' + called( item ) + ' on ' + ( d ? d.label : 'this server' ) + '; nothing changes...',
-			d ? [ d.short, 'Checked' ] : [ 'Backup', 'Checked' ],
+			d
+				? sprintf(
+						/* translators: 1: name of the backup, 2: name of the storage, such as Dropbox */
+						__( 'Checking the copy of %1$s on %2$s; nothing changes...', 'siteferry' ),
+						called( item ),
+						d.label
+				  )
+				: sprintf(
+						/* translators: %s: name of the backup */
+						__( 'Checking the copy of %s on this server; nothing changes...', 'siteferry' ),
+						called( item )
+				  ),
+			d ? [ d.short, __( 'Checked', 'siteferry' ) ] : [ __( 'Backup', 'siteferry' ), __( 'Checked', 'siteferry' ) ],
 			( message ) => checkCopy( item, place, message )
 		);
 	}
 
 	function fetchFrom( d, name ) {
-		return startTransfer( 'storage/' + d.id + '/fetch', { name }, 'Downloading ' + name + ' from ' + d.label + '...', [ d.short, 'This server' ] );
+		return startTransfer(
+			'storage/' + d.id + '/fetch',
+			{ name },
+			sprintf(
+				/* translators: 1: file name of the backup, 2: name of the storage, such as Dropbox */
+				__( 'Downloading %1$s from %2$s...', 'siteferry' ),
+				name,
+				d.label
+			),
+			[ d.short, __( 'This server', 'siteferry' ) ]
+		);
 	}
 
 	function downloadUrl( name ) {
@@ -1089,7 +1419,14 @@
 			localBackups = await api( 'GET', 'backups' );
 		} catch ( error ) {
 			localBackups = localBackups || [];
-			notice( 'Cannot list the backups on this server: ' + error.message, 'error' );
+			notice(
+				sprintf(
+					/* translators: %s: error message */
+					__( 'Cannot list the backups on this server: %s', 'siteferry' ),
+					error.message
+				),
+				'error'
+			);
 		}
 		updateFacts();
 		renderList();
@@ -1183,32 +1520,79 @@
 
 		const status = [];
 		if ( loading.length ) {
-			status.push( 'Looking on ' + loading.map( ( id ) => ( destination( id ) || { short: id } ).short ).join( ', ' ) + '...' );
+			status.push(
+				sprintf(
+					/* translators: %s: comma-separated names of the storages, such as Dropbox, Amazon S3 */
+					__( 'Looking on %s...', 'siteferry' ),
+					loading.map( ( id ) => ( destination( id ) || { short: id } ).short ).join( ', ' )
+				)
+			);
 		}
-		failed.forEach( ( id ) => status.push( ( destination( id ) || { short: id } ).short + ': ' + remote[ id ].error ) );
-		const counted = filtering ? visible.length + ' of ' + plural( all.length, 'backup', 'backups' ) : all.length ? plural( all.length, 'backup', 'backups' ) : '';
+		failed.forEach( ( id ) =>
+			status.push(
+				sprintf(
+					/* translators: 1: name of the storage, such as Dropbox, 2: error message */
+					__( '%1$s: %2$s', 'siteferry' ),
+					( destination( id ) || { short: id } ).short,
+					remote[ id ].error
+				)
+			)
+		);
+		let counted = '';
+		if ( filtering ) {
+			counted = sprintf(
+				/* translators: 1: number of backups shown, 2: number of backups in all */
+				_n( '%1$d of %2$d backup', '%1$d of %2$d backups', all.length, 'siteferry' ),
+				visible.length,
+				all.length
+			);
+		} else if ( all.length ) {
+			/* translators: %d: number of backups */
+			counted = sprintf( _n( '%d backup', '%d backups', all.length, 'siteferry' ), all.length );
+		}
 		$( 'siteferry-backups-summary' ).textContent = status.length ? status.join( ' · ' ) : counted;
 
 		const mine = all.filter( ours );
 		const here = all.filter( ( item ) => item.local ).length;
-		const counts = [ here + ' on this server' ];
-		destinations.filter( ( d ) => d.ready && remote[ d.id ] && remote[ d.id ].backups ).forEach( ( d ) => counts.push( remote[ d.id ].backups.length + ' on ' + d.short ) );
-		$( 'siteferry-summary' ).textContent = all.length
-			? ( mine.length ? 'Last backup ' + when( mine[ 0 ].time, true ) + ' · ' : '' ) + counts.join( ', ' )
-			: 'No backups yet. "Back up now" makes one of the whole site.';
+		/* translators: %d: number of backups on this server */
+		const counts = [ sprintf( _n( '%d on this server', '%d on this server', here, 'siteferry' ), here ) ];
+		destinations
+			.filter( ( d ) => d.ready && remote[ d.id ] && remote[ d.id ].backups )
+			.forEach( ( d ) =>
+				counts.push(
+					sprintf(
+						/* translators: 1: number of backups, 2: name of the storage, such as Dropbox */
+						_n( '%1$d on %2$s', '%1$d on %2$s', remote[ d.id ].backups.length, 'siteferry' ),
+						remote[ d.id ].backups.length,
+						d.short
+					)
+				)
+			);
+		let summary = __( 'No backups yet. "Back up now" makes one of the whole site.', 'siteferry' );
+		if ( all.length ) {
+			summary = mine.length
+				? sprintf(
+						/* translators: 1: when the last backup was made, such as today, 7:21 PM, 2: how many backups are where, such as 3 on this server, 2 on Dropbox */
+						__( 'Last backup %1$s · %2$s', 'siteferry' ),
+						when( mine[ 0 ].time, true ),
+						counts.join( ', ' )
+				  )
+				: counts.join( ', ' );
+		}
+		$( 'siteferry-summary' ).textContent = summary;
 
 		$( 'siteferry-columns' ).hidden = ! visible.length;
 		if ( null === localBackups ) {
-			list.replaceChildren( el( 'li', { class: 'sf-empty', text: 'Loading...' } ) );
+			list.replaceChildren( el( 'li', { class: 'sf-empty', text: __( 'Loading...', 'siteferry' ) } ) );
 			return;
 		}
 		if ( ! all.length ) {
 			list.replaceChildren(
 				el( 'li', { class: 'sf-empty' }, [
-					el( 'p', { text: loading.length ? 'Looking for backups on your storage...' : 'No backups yet. Make one now, or upload one to restore it here.' } ),
+					el( 'p', { text: loading.length ? __( 'Looking for backups on your storage...', 'siteferry' ) : __( 'No backups yet. Make one now, or upload one to restore it here.', 'siteferry' ) } ),
 					el( 'p', { class: 'sf-actions sf-empty-actions' }, [
-						button( 'Back up now', () => $( 'siteferry-backup-now' ).click(), 'button button-primary' ),
-						button( 'Upload a backup', () => toggleDrawer( 'upload', true ), 'button' ),
+						button( __( 'Back up now', 'siteferry' ), () => $( 'siteferry-backup-now' ).click(), 'button button-primary' ),
+						button( __( 'Upload a backup', 'siteferry' ), () => toggleDrawer( 'upload', true ), 'button' ),
 					] ),
 				] )
 			);
@@ -1217,8 +1601,8 @@
 		if ( ! visible.length ) {
 			list.replaceChildren(
 				el( 'li', { class: 'sf-empty' }, [
-					el( 'p', { text: 'No backups match this search.' } ),
-					el( 'p', { class: 'sf-actions sf-empty-actions' }, [ button( 'Show all backups', clearFilter, 'button' ) ] ),
+					el( 'p', { text: __( 'No backups match this search.', 'siteferry' ) } ),
+					el( 'p', { class: 'sf-actions sf-empty-actions' }, [ button( __( 'Show all backups', 'siteferry' ), clearFilter, 'button' ) ] ),
 				] )
 			);
 			return;
@@ -1282,13 +1666,13 @@
 	/** The file format from the name: SiteFerry .tar or .tar.gz, or .wpress. */
 	function formatOf( name ) {
 		if ( /\.tar\.gz\.enc$/i.test( name ) ) {
-			return { ext: '.tar.gz.enc', note: 'SiteFerry, compressed, password' };
+			return { ext: '.tar.gz.enc', note: __( 'SiteFerry, compressed, password', 'siteferry' ) };
 		}
 		if ( /\.tar\.enc$/i.test( name ) ) {
-			return { ext: '.tar.enc', note: 'SiteFerry, password' };
+			return { ext: '.tar.enc', note: __( 'SiteFerry, password', 'siteferry' ) };
 		}
 		if ( /\.tar\.gz$/i.test( name ) ) {
-			return { ext: '.tar.gz', note: 'SiteFerry, compressed' };
+			return { ext: '.tar.gz', note: __( 'SiteFerry, compressed', 'siteferry' ) };
 		}
 		if ( /\.wpress$/i.test( name ) ) {
 			return { ext: '.wpress', note: 'All-in-One WP Migration' };
@@ -1306,29 +1690,50 @@
 		if ( ! outcome || ( item.sizes && item.sizes[ place ] !== undefined && item.sizes[ place ] !== outcome.size ) ) {
 			return badge( text, 'is-place' );
 		}
-		const when = 'Checked ' + date( outcome.time ) + ': ' + outcome.summary;
+		const when = sprintf(
+			/* translators: 1: date and time of the check, 2: summary of the check */
+			__( 'Checked %1$s: %2$s', 'siteferry' ),
+			date( outcome.time ),
+			outcome.summary
+		);
 		return el( 'span', { class: 'sf-badge is-place ' + ( outcome.ok ? 'is-checked' : 'is-bad' ), title: when }, [
 			el( 'span', { class: 'sf-check-mark', 'aria-hidden': 'true', text: outcome.ok ? '✓' : '!' } ),
 			text,
-			el( 'span', { class: 'screen-reader-text', text: outcome.ok ? ', checked: intact' : ', checked: damaged' } ),
+			el( 'span', { class: 'screen-reader-text', text: outcome.ok ? __( ', checked: intact', 'siteferry' ) : __( ', checked: damaged', 'siteferry' ) } ),
 		] );
 	}
 
 	function row( item ) {
 		const mine = ours( item );
-		const title = item.title || ( mine ? when( item.time ) : hostOf( item.source ) || 'Another site' );
+		const title = item.title || ( mine ? when( item.time ) : hostOf( item.source ) || __( 'Another site', 'siteferry' ) );
 		const meta = [];
 		if ( ( item.title || ! mine ) && item.time ) {
 			meta.push( el( 'span', { text: when( item.time ) } ) );
 		}
 		if ( item.title && ! mine && item.source ) {
-			meta.push( el( 'span', { text: 'from ' + hostOf( item.source ) } ) );
+			meta.push(
+				el( 'span', {
+					text: sprintf(
+						/* translators: %s: address of the site the backup was made from */
+						__( 'from %s', 'siteferry' ),
+						hostOf( item.source )
+					),
+				} )
+			);
 		}
 		if ( item.contents ) {
 			meta.push( el( 'span', { text: item.contents } ) );
 		}
 		if ( item.wordpress ) {
-			meta.push( el( 'span', { text: 'WordPress ' + item.wordpress } ) );
+			meta.push(
+				el( 'span', {
+					text: sprintf(
+						/* translators: %s: WordPress version number */
+						__( 'WordPress %s', 'siteferry' ),
+						item.wordpress
+					),
+				} )
+			);
 		}
 		// Shown in their own columns on wide screens, in the meta line on narrow ones.
 		const format = formatOf( item.name );
@@ -1336,32 +1741,53 @@
 
 		const flags = [];
 		if ( ! mine ) {
-			flags.push( badge( 'From another site', 'is-warn' ) );
+			flags.push( badge( __( 'From another site', 'siteferry' ), 'is-warn' ) );
 		}
 		if ( item.error ) {
-			flags.push( badge( 'Cannot be restored', 'is-bad' ) );
+			flags.push( badge( __( 'Cannot be restored', 'siteferry' ), 'is-bad' ) );
 		}
 		if ( isEncrypted( item ) ) {
-			flags.push( badge( 'Password', 'is-lock' ) );
+			flags.push( badge( __( 'Password', 'siteferry' ), 'is-lock' ) );
 		}
 
 		const places = [];
 		if ( item.local ) {
-			places.push( placeBadge( item, 'local', 'This server' ) );
+			places.push( placeBadge( item, 'local', __( 'This server', 'siteferry' ) ) );
 		}
 		item.places.forEach( ( id ) => {
 			const set = item.parts && item.parts[ id ];
 			const short = ( destination( id ) || { short: id } ).short;
 			if ( set && ! set.complete ) {
-				places.push( el( 'span', { class: 'sf-badge is-place is-bad', title: 'Some of its parts are missing there' }, [ short + ': parts missing' ] ) );
+				places.push(
+					el( 'span', { class: 'sf-badge is-place is-bad', title: __( 'Some of its parts are missing there', 'siteferry' ) }, [
+						sprintf(
+							/* translators: %s: name of the storage, such as Dropbox */
+							__( '%s: parts missing', 'siteferry' ),
+							short
+						),
+					] )
+				);
 				return;
 			}
-			places.push( placeBadge( item, id, set && set.count > 1 ? short + ' · ' + set.count + ' parts' : short ) );
+			places.push(
+				placeBadge(
+					item,
+					id,
+					set && set.count > 1
+						? sprintf(
+								/* translators: 1: name of the storage, such as Dropbox, 2: number of parts */
+								_n( '%1$s · %2$d part', '%1$s · %2$d parts', set.count, 'siteferry' ),
+								short,
+								set.count
+						  )
+						: short
+				)
+			);
 		} );
 
 		const actions = [];
 		if ( ! item.error ) {
-			actions.push( button( mine ? 'Restore' : 'Move here', () => openRestore( item ), 'button sf-quiet' ) );
+			actions.push( button( mine ? __( 'Restore', 'siteferry' ) : __( 'Move here', 'siteferry' ), () => openRestore( item ), 'button sf-quiet' ) );
 		}
 		actions.push( menu( item ) );
 
@@ -1369,7 +1795,8 @@
 			el( 'button', {
 				type: 'button',
 				class: 'sf-tag' + ( same( tag, filter.tag ) ? ' is-on' : '' ),
-				title: 'Show only backups tagged ' + tag,
+				/* translators: %s: a tag */
+				title: sprintf( __( 'Show only backups tagged %s', 'siteferry' ), tag ),
 				text: tag,
 				onclick: () => setTagFilter( tag ),
 			} )
@@ -1412,9 +1839,18 @@
 		}
 		editing = item.name;
 		const id = 'siteferry-edit-' + Math.random().toString( 36 ).slice( 2, 8 );
-		const fallback = ours( item ) ? when( item.time, true ) : hostOf( item.source ) || 'the site address';
-		const title = el( 'input', { type: 'text', id: id + '-title', maxlength: '100', placeholder: 'Give this backup a name' } );
-		const tags = el( 'input', { type: 'text', id: id + '-tags', maxlength: '200', placeholder: 'before-update, monthly' } );
+		const fallback = ours( item ) ? when( item.time, true ) : hostOf( item.source );
+		let shows = __( 'Left empty, the list shows the site address.', 'siteferry' );
+		if ( ours( item ) || fallback ) {
+			shows = sprintf(
+				/* translators: %s: what the list shows instead of a name: a date and time, or a site address */
+				__( 'Left empty, the list shows %s.', 'siteferry' ),
+				fallback
+			);
+		}
+		const title = el( 'input', { type: 'text', id: id + '-title', maxlength: '100', placeholder: __( 'Give this backup a name', 'siteferry' ) } );
+		/* translators: example tags, separated with commas */
+		const tags = el( 'input', { type: 'text', id: id + '-tags', maxlength: '200', placeholder: __( 'before-update, monthly', 'siteferry' ) } );
 		const note = el( 'textarea', { id: id + '-note', rows: '2', maxlength: '1000' } );
 		title.value = item.title || '';
 		tags.value = ( item.tags || [] ).join( ', ' );
@@ -1424,23 +1860,30 @@
 			editing = '';
 			renderList();
 		};
-		const form = el( 'form', { class: 'sf-edit', 'aria-label': 'Name, note and tags of ' + item.name }, [
-			el( 'div', { class: 'sf-edit-head' }, [
-				el( 'span', { class: 'sf-edit-title', text: 'Name, note and tags' } ),
-				el( 'span', { class: 'sf-row-name', text: item.name } ),
-			] ),
-			el( 'div', { class: 'sf-label-fields' }, [
-				el( 'p', { class: 'sf-field' }, [
-					el( 'label', { for: title.id, text: 'Name' } ),
-					title,
-					el( 'span', { class: 'description', text: 'Left empty, the list shows ' + fallback + '.' } ),
+		const form = el(
+			'form',
+			{
+				class: 'sf-edit',
+				'aria-label': sprintf(
+					/* translators: %s: file name of the backup */
+					__( 'Name, note and tags of %s', 'siteferry' ),
+					item.name
+				),
+			},
+			[
+				el( 'div', { class: 'sf-edit-head' }, [
+					el( 'span', { class: 'sf-edit-title', text: __( 'Name, note and tags', 'siteferry' ) } ),
+					el( 'span', { class: 'sf-row-name', text: item.name } ),
 				] ),
-				el( 'p', { class: 'sf-field' }, [ el( 'label', { for: tags.id, text: 'Tags' } ), tags, el( 'span', { class: 'description', text: 'Separate tags with commas.' } ) ] ),
-				el( 'p', { class: 'sf-field sf-field-wide' }, [ el( 'label', { for: note.id, text: 'Note' } ), note ] ),
-			] ),
-			message,
-			el( 'p', { class: 'sf-actions' }, [ el( 'button', { type: 'submit', class: 'button button-primary', text: 'Save' } ), button( 'Cancel', cancel, 'button sf-quiet' ) ] ),
-		] );
+				el( 'div', { class: 'sf-label-fields' }, [
+					el( 'p', { class: 'sf-field' }, [ el( 'label', { for: title.id, text: __( 'Name', 'siteferry' ) } ), title, el( 'span', { class: 'description', text: shows } ) ] ),
+					el( 'p', { class: 'sf-field' }, [ el( 'label', { for: tags.id, text: __( 'Tags', 'siteferry' ) } ), tags, el( 'span', { class: 'description', text: __( 'Separate tags with commas.', 'siteferry' ) } ) ] ),
+					el( 'p', { class: 'sf-field sf-field-wide' }, [ el( 'label', { for: note.id, text: __( 'Note', 'siteferry' ) } ), note ] ),
+				] ),
+				message,
+				el( 'p', { class: 'sf-actions' }, [ el( 'button', { type: 'submit', class: 'button button-primary', text: __( 'Save', 'siteferry' ) } ), button( __( 'Cancel', 'siteferry' ), cancel, 'button sf-quiet' ) ] ),
+			]
+		);
 		form.addEventListener( 'submit', async ( event ) => {
 			event.preventDefault();
 			form.querySelector( 'button[type=submit]' ).disabled = true;
@@ -1448,9 +1891,10 @@
 				await api( 'POST', 'labels/' + encodeURIComponent( item.name ), { json: { title: title.value, note: note.value, tags: tags.value } } );
 				editing = '';
 				await Promise.all( [ loadLabels(), loadLocalBackups() ] );
-				notice( 'Saved the name, note and tags.', 'success' );
+				notice( __( 'Saved the name, note and tags.', 'siteferry' ), 'success' );
 			} catch ( error ) {
-				message.textContent = 'Not saved: ' + error.message;
+				/* translators: %s: error message */
+				message.textContent = sprintf( __( 'Not saved: %s', 'siteferry' ), error.message );
 				message.hidden = false;
 				form.querySelector( 'button[type=submit]' ).disabled = false;
 			}
@@ -1467,44 +1911,88 @@
 
 	/** The "..." menu of a row: look inside, download, send, check, delete. */
 	function menu( item ) {
-		const entries = [ menuItem( 'Name, note and tags', () => openEditor( item ) ) ];
+		const entries = [ menuItem( __( 'Name, note and tags', 'siteferry' ), () => openEditor( item ) ) ];
 		const ready = destinations.filter( ( d ) => d.ready );
 		if ( item.local ) {
-			entries.push( menuItem( 'Look inside', () => openContents( item ) ) );
-			entries.push( el( 'a', { class: 'sf-menu-item', href: downloadUrl( item.name ), text: 'Download to your computer', role: 'menuitem' } ) );
+			entries.push( menuItem( __( 'Look inside', 'siteferry' ), () => openContents( item ) ) );
+			entries.push( el( 'a', { class: 'sf-menu-item', href: downloadUrl( item.name ), text: __( 'Download to your computer', 'siteferry' ), role: 'menuitem' } ) );
 			if ( item.size > 100 * 1048576 ) {
-				entries.push( menuItem( 'Download in parts', () => openParts( item ) ) );
+				entries.push( menuItem( __( 'Download in parts', 'siteferry' ), () => openParts( item ) ) );
 			}
 			if ( ! item.error ) {
-				ready.filter( ( d ) => item.places.indexOf( d.id ) === -1 ).forEach( ( d ) => entries.push( menuItem( 'Send to ' + d.short, () => sendTo( d, item.name ) ) ) );
+				ready
+					.filter( ( d ) => item.places.indexOf( d.id ) === -1 )
+					.forEach( ( d ) =>
+						entries.push(
+							menuItem(
+								sprintf(
+									/* translators: %s: name of the storage, such as Dropbox */
+									__( 'Send to %s', 'siteferry' ),
+									d.short
+								),
+								() => sendTo( d, item.name )
+							)
+						)
+					);
 			}
 		}
 		item.places.forEach( ( id ) => {
 			const d = destination( id );
 			if ( d && ! item.local ) {
-				entries.push( menuItem( 'Download to this server', () => fetchFrom( d, item.name ) ) );
+				entries.push( menuItem( __( 'Download to this server', 'siteferry' ), () => fetchFrom( d, item.name ) ) );
 			}
 		} );
 		if ( item.local ) {
-			entries.push( menuItem( 'Check the copy on this server', () => checkCopy( item, 'local' ) ) );
+			entries.push( menuItem( __( 'Check the copy on this server', 'siteferry' ), () => checkCopy( item, 'local' ) ) );
 		}
 		item.places.forEach( ( id ) => {
 			const d = destination( id );
 			if ( d && d.ready ) {
-				entries.push( menuItem( 'Check the copy on ' + d.short, () => checkCopy( item, id ) ) );
+				entries.push(
+					menuItem(
+						sprintf(
+							/* translators: %s: name of the storage, such as Dropbox */
+							__( 'Check the copy on %s', 'siteferry' ),
+							d.short
+						),
+						() => checkCopy( item, id )
+					)
+				);
 			}
 		} );
 		if ( item.local ) {
-			entries.push( menuItem( 'Delete from this server', () => deleteBackup( item ), true ) );
+			entries.push( menuItem( __( 'Delete from this server', 'siteferry' ), () => deleteBackup( item ), true ) );
 		}
 		item.places.forEach( ( id ) => {
 			const d = destination( id );
 			if ( d ) {
-				entries.push( menuItem( 'Delete from ' + d.short, () => deleteRemote( d, item ), true ) );
+				entries.push(
+					menuItem(
+						sprintf(
+							/* translators: %s: name of the storage, such as Dropbox */
+							__( 'Delete from %s', 'siteferry' ),
+							d.short
+						),
+						() => deleteRemote( d, item ),
+						true
+					)
+				);
 			}
 		} );
 		return el( 'details', { class: 'sf-menu' }, [
-			el( 'summary', { class: 'sf-icon-button', title: 'More actions', 'aria-label': 'More actions for ' + called( item ) }, [ dotsIcon() ] ),
+			el(
+				'summary',
+				{
+					class: 'sf-icon-button',
+					title: __( 'More actions', 'siteferry' ),
+					'aria-label': sprintf(
+						/* translators: %s: name of the backup */
+						__( 'More actions for %s', 'siteferry' ),
+						called( item )
+					),
+				},
+				[ dotsIcon() ]
+			),
 			el( 'div', { class: 'sf-menu-list', role: 'menu' }, entries ),
 		] );
 	}
@@ -1550,12 +2038,24 @@
 	}
 
 	/** The display name of a backup in messages. */
-	const called = ( item ) => ( item.title ? '"' + item.title + '"' : item.name );
+	const called = ( item ) =>
+		item.title ? '"' + item.title + '"' : item.name;
 
 	async function deleteBackup( item ) {
 		const last = ! item.places.length;
+		const question = last
+			? sprintf(
+					/* translators: %s: name of the backup */
+					__( 'Delete %s from this server? It is the only copy; this cannot be undone.', 'siteferry' ),
+					called( item )
+			  )
+			: sprintf(
+					/* translators: %s: name of the backup */
+					__( 'Delete %s from this server? The copies on storage stay.', 'siteferry' ),
+					called( item )
+			  );
 		// eslint-disable-next-line no-alert
-		if ( ! window.confirm( 'Delete ' + called( item ) + ' from this server?' + ( last ? ' It is the only copy; this cannot be undone.' : ' The copies on storage stay.' ) ) ) {
+		if ( ! window.confirm( question ) ) {
 			return;
 		}
 		try {
@@ -1563,17 +2063,32 @@
 			if ( last ) {
 				await forgetLabel( item );
 			}
-			notice( 'Deleted ' + called( item ) + ' from this server.', 'success' );
+			/* translators: %s: name of the backup */
+			notice( sprintf( __( 'Deleted %s from this server.', 'siteferry' ), called( item ) ), 'success' );
 		} catch ( error ) {
-			notice( 'Could not delete: ' + error.message, 'error' );
+			/* translators: %s: error message */
+			notice( sprintf( __( 'Could not delete: %s', 'siteferry' ), error.message ), 'error' );
 		}
 		loadLocalBackups();
 	}
 
 	async function deleteRemote( d, item ) {
 		const last = ! item.local && item.places.length === 1;
+		const question = last
+			? sprintf(
+					/* translators: 1: name of the backup, 2: name of the storage, such as Dropbox */
+					__( 'Delete %1$s from %2$s? It is the only copy; this cannot be undone.', 'siteferry' ),
+					called( item ),
+					d.label
+			  )
+			: sprintf(
+					/* translators: 1: name of the backup, 2: name of the storage, such as Dropbox */
+					__( 'Delete %1$s from %2$s?', 'siteferry' ),
+					called( item ),
+					d.label
+			  );
 		// eslint-disable-next-line no-alert
-		if ( ! window.confirm( 'Delete ' + called( item ) + ' from ' + d.label + '?' + ( last ? ' It is the only copy; this cannot be undone.' : '' ) ) ) {
+		if ( ! window.confirm( question ) ) {
 			return;
 		}
 		try {
@@ -1581,9 +2096,18 @@
 			if ( last ) {
 				await forgetLabel( item );
 			}
-			notice( 'Deleted ' + called( item ) + ' from ' + d.label + '.', 'success' );
+			notice(
+				sprintf(
+					/* translators: 1: name of the backup, 2: name of the storage, such as Dropbox */
+					__( 'Deleted %1$s from %2$s.', 'siteferry' ),
+					called( item ),
+					d.label
+				),
+				'success'
+			);
 		} catch ( error ) {
-			notice( 'Could not delete: ' + error.message, 'error' );
+			/* translators: %s: error message */
+			notice( sprintf( __( 'Could not delete: %s', 'siteferry' ), error.message ), 'error' );
 		}
 		loadRemote();
 	}
@@ -1650,21 +2174,55 @@
 	}
 
 	async function uploadChosen( file ) {
-		const view = progressView( 'siteferry-upload-progress', [ 'Your computer', 'This server' ] );
-		view.start( 'Uploading ' + file.name + '...' );
+		const view = progressView( 'siteferry-upload-progress', [ __( 'Your computer', 'siteferry' ), __( 'This server', 'siteferry' ) ] );
+		/* translators: %s: name of the file being uploaded */
+		view.start( sprintf( __( 'Uploading %s...', 'siteferry' ), file.name ) );
 		try {
-			const name = await uploadFile( file, ( done, total ) => view.update( done, total, 'Uploading ' + file.name + ': ' + bytes( done ) + ' of ' + bytes( total ) ) );
+			const name = await uploadFile( file, ( done, total ) =>
+				view.update(
+					done,
+					total,
+					sprintf(
+						/* translators: 1: name of the file being uploaded, 2: size uploaded so far, such as 12 MB, 3: size of the file */
+						__( 'Uploading %1$s: %2$s of %3$s', 'siteferry' ),
+						file.name,
+						bytes( done ),
+						bytes( total )
+					)
+				)
+			);
 			await loadLocalBackups();
 			const item = items().find( ( entry ) => entry.name === name );
-			const nodes = [ el( 'p', {}, [ el( 'span', { class: 'sf-result-name', text: name } ), ' is in the list below. Nothing on this site has changed.' ] ) ];
+			const nodes = [
+				el(
+					'p',
+					{},
+					around(
+						sprintf(
+							/* translators: %s: file name of the uploaded backup */
+							__( '%s is in the list below. Nothing on this site has changed.', 'siteferry' ),
+							NODE_MARK
+						),
+						el( 'span', { class: 'sf-result-name', text: name } )
+					)
+				),
+			];
 			if ( item && ! item.error ) {
-				nodes.push( el( 'p', { class: 'sf-actions' }, [ button( ours( item ) ? 'Restore it' : 'Move it here', () => openRestore( item ), 'button button-primary' ) ] ) );
+				nodes.push( el( 'p', { class: 'sf-actions' }, [ button( ours( item ) ? __( 'Restore it', 'siteferry' ) : __( 'Move it here', 'siteferry' ), () => openRestore( item ), 'button button-primary' ) ] ) );
 			} else if ( item && item.error ) {
 				nodes.push( el( 'p', { text: item.error } ) );
 			}
-			view.finish( true, 'Uploaded and checked', nodes );
+			view.finish( true, __( 'Uploaded and checked', 'siteferry' ), nodes );
 		} catch ( error ) {
-			view.finish( false, 'Upload stopped', [ el( 'p', { text: error.message + ' Choose the same file again to continue where it stopped.' } ) ] );
+			view.finish( false, __( 'Upload stopped', 'siteferry' ), [
+				el( 'p', {
+					text: sprintf(
+						/* translators: %s: error message */
+						__( '%s Choose the same file again to continue where it stopped.', 'siteferry' ),
+						error.message
+					),
+				} ),
+			] );
 		}
 	}
 
@@ -1688,7 +2246,8 @@
 			);
 		};
 		size.onchange = render;
-		$( 'siteferry-parts-dialog-title' ).textContent = 'Download ' + called( item ) + ' in parts';
+		/* translators: %s: name of the backup */
+		$( 'siteferry-parts-dialog-title' ).textContent = sprintf( __( 'Download %s in parts', 'siteferry' ), called( item ) );
 		render();
 		dialog.showModal();
 	}
@@ -1705,13 +2264,21 @@
 		const parts = list.map( ( file ) => /^(.+)\.(\d{3})$/.exec( file.name ) );
 		const base = parts[ 0 ] && parts[ 0 ][ 1 ];
 		if ( ! base || parts.some( ( match ) => ! match || match[ 1 ] !== base ) ) {
-			notice( 'Choose one backup file, or all the parts of one backup (name.001, name.002, ...).', 'error' );
+			notice( __( 'Choose one backup file, or all the parts of one backup (name.001, name.002, ...).', 'siteferry' ), 'error' );
 			return null;
 		}
 		const sorted = list.map( ( file, i ) => [ Number( parts[ i ][ 2 ] ), file ] ).sort( ( a, b ) => a[ 0 ] - b[ 0 ] );
 		const missing = sorted.findIndex( ( [ number ], i ) => number !== i + 1 );
 		if ( missing !== -1 ) {
-			notice( 'Part ' + String( missing + 1 ).padStart( 3, '0' ) + ' of ' + base + ' is missing: choose all its parts.', 'error' );
+			notice(
+				sprintf(
+					/* translators: 1: number of the missing part, such as 002, 2: file name of the backup */
+					__( 'Part %1$s of %2$s is missing: choose all its parts.', 'siteferry' ),
+					String( missing + 1 ).padStart( 3, '0' ),
+					base
+				),
+				'error'
+			);
 			return null;
 		}
 		return new File( sorted.map( ( [ , file ] ) => file ), base, { type: 'application/octet-stream' } );
@@ -1755,7 +2322,7 @@
 	 */
 	function openRestore( item, partial ) {
 		if ( restore && ( restore.phase === 'running' || restore.phase === 'fetch' ) ) {
-			notice( 'A restore is already under way.', 'error' );
+			notice( __( 'A restore is already under way.', 'siteferry' ), 'error' );
 			$( 'siteferry-restore' ).scrollIntoView( { block: 'nearest' } );
 			return;
 		}
@@ -1771,7 +2338,13 @@
 		$( 'siteferry-include-mu' ).checked = paths.indexOf( 'mu-plugins' ) !== -1;
 		$( 'siteferry-include-dropins' ).checked = paths.some( ( path ) => DROP_INS.indexOf( path ) !== -1 );
 		$( 'siteferry-restore-what-chosen' ).hidden = ! partial;
-		$( 'siteferry-restore-what-label' ).textContent = partial ? 'Only what was ticked: ' + partial.label : '';
+		$( 'siteferry-restore-what-label' ).textContent = partial
+			? sprintf(
+					/* translators: %s: list of the parts ticked in "Look inside", such as the table wp_posts and the plugin akismet */
+					__( 'Only what was ticked: %s', 'siteferry' ),
+					partial.label
+			  )
+			: '';
 		document.querySelector( 'input[name=siteferry_restore_what][value=' + ( partial ? 'chosen' : 'all' ) + ']' ).checked = true;
 		$( 'siteferry-restore-advanced' ).open = !! partial;
 		$( 'siteferry-restore-advanced' ).hidden = false;
@@ -1779,7 +2352,7 @@
 		$( 'siteferry-inspection-warnings' ).replaceChildren();
 		$( 'siteferry-crossing' ).hidden = true;
 		$( 'siteferry-import-cancel' ).hidden = false;
-		$( 'siteferry-import-cancel' ).textContent = 'Cancel';
+		$( 'siteferry-import-cancel' ).textContent = __( 'Cancel', 'siteferry' );
 		setWording( restore.mine, restore.host );
 		setConfirm( false );
 		const panel = $( 'siteferry-restore' );
@@ -1796,34 +2369,106 @@
 	/** Title, explanation and button text: restoring this site, or moving another one here. */
 	function setWording( mine, host ) {
 		const item = restore.item;
-		const fromStorage = item && ! item.local && item.places.length ? ' It is downloaded from ' + ( destination( item.places[ 0 ] ) || { label: 'the storage' } ).label + ' to this server first.' : '';
+		let fromStorage = '';
+		if ( item && ! item.local && item.places.length ) {
+			const source = destination( item.places[ 0 ] );
+			fromStorage =
+				' ' +
+				( source
+					? sprintf(
+							/* translators: %s: name of the storage, such as Dropbox */
+							__( 'It is downloaded from %s to this server first.', 'siteferry' ),
+							source.label
+					  )
+					: __( 'It is downloaded from the storage to this server first.', 'siteferry' ) );
+		}
 		const part = restoreWhat().label;
-		const then = item ? ( item.title ? '“' + item.title + '” (' + when( item.time, true ) + ')' : when( item.time, true ) ) : '';
+		let then = '';
+		if ( item ) {
+			then = item.title
+				? sprintf(
+						/* translators: 1: name given to the backup, 2: when it was made, such as today, 7:21 PM */
+						__( '“%1$s” (%2$s)', 'siteferry' ),
+						item.title,
+						when( item.time, true )
+				  )
+				: when( item.time, true );
+		}
+		// The other site's address, or words for it when the backup does not say.
+		/* translators: used inside sentences such as "Move the other site here" when the backup does not name its site */
+		const name = host || __( 'the other site', 'siteferry' );
 		if ( mine && part ) {
-			$( 'siteferry-restore-title' ).textContent = item ? 'Restore part of this site from ' + then : 'Restore part of a backup';
-			$( 'siteferry-restore-lead' ).textContent = 'This restores only ' + part + ', as it was then; everything else on this site stays as it is now.' + fromStorage;
-			$( 'siteferry-confirm' ).textContent = 'Restore now';
-			$( 'siteferry-confirm-text' ).textContent = 'I understand that this replaces ' + part + ' on this site with the backup’s.';
+			$( 'siteferry-restore-title' ).textContent = item
+				? sprintf(
+						/* translators: %s: the backup, such as “Before the update” (today, 7:21 PM) */
+						__( 'Restore part of this site from %s', 'siteferry' ),
+						then
+				  )
+				: __( 'Restore part of a backup', 'siteferry' );
+			$( 'siteferry-restore-lead' ).textContent =
+				sprintf(
+					/* translators: %s: what is restored, such as the database */
+					__( 'This restores only %s, as it was then; everything else on this site stays as it is now.', 'siteferry' ),
+					part
+				) + fromStorage;
+			$( 'siteferry-confirm' ).textContent = __( 'Restore now', 'siteferry' );
+			$( 'siteferry-confirm-text' ).textContent = sprintf(
+				/* translators: %s: what is restored, such as the database */
+				__( 'I understand that this replaces %s on this site with the backup’s.', 'siteferry' ),
+				part
+			);
 		} else if ( mine ) {
-			$( 'siteferry-restore-title' ).textContent = item ? 'Restore this site to ' + then : 'Restore a backup';
+			$( 'siteferry-restore-title' ).textContent = item
+				? sprintf(
+						/* translators: %s: the backup, such as “Before the update” (today, 7:21 PM) */
+						__( 'Restore this site to %s', 'siteferry' ),
+						then
+				  )
+				: __( 'Restore a backup', 'siteferry' );
 			$( 'siteferry-restore-lead' ).textContent =
-				'Posts, pages, settings, users, plugins, themes and media go back to how they were then; anything added or changed since is lost. SiteFerry and its storage settings stay as they are.' + fromStorage;
-			$( 'siteferry-confirm' ).textContent = 'Restore now';
-			$( 'siteferry-confirm-text' ).textContent = 'I understand that this replaces this site’s content with the backup.';
+				__( 'Posts, pages, settings, users, plugins, themes and media go back to how they were then; anything added or changed since is lost. SiteFerry and its storage settings stay as they are.', 'siteferry' ) + fromStorage;
+			$( 'siteferry-confirm' ).textContent = __( 'Restore now', 'siteferry' );
+			$( 'siteferry-confirm-text' ).textContent = __( 'I understand that this replaces this site’s content with the backup.', 'siteferry' );
 		} else if ( part ) {
-			const name = host || 'the other site';
-			$( 'siteferry-restore-title' ).textContent = 'Copy part of ' + name + ' here';
+			$( 'siteferry-restore-title' ).textContent = sprintf(
+				/* translators: %s: address of the other site, such as example.com */
+				__( 'Copy part of %s here', 'siteferry' ),
+				name
+			);
 			$( 'siteferry-restore-lead' ).textContent =
-				'This copies only ' + part + ' from ' + name + ', replacing what this site has; everything else here stays as it is. Addresses in what is copied are changed to this site’s (' + hostOf( cfg.home ) + ').' + fromStorage;
-			$( 'siteferry-confirm' ).textContent = 'Copy here now';
-			$( 'siteferry-confirm-text' ).textContent = 'I understand that this replaces ' + part + ' on this site with ' + name + '’s.';
+				sprintf(
+					/* translators: 1: what is copied, such as the database, 2: address of the other site, 3: address of this site */
+					__( 'This copies only %1$s from %2$s, replacing what this site has; everything else here stays as it is. Addresses in what is copied are changed to this site’s (%3$s).', 'siteferry' ),
+					part,
+					name,
+					hostOf( cfg.home )
+				) + fromStorage;
+			$( 'siteferry-confirm' ).textContent = __( 'Copy here now', 'siteferry' );
+			$( 'siteferry-confirm-text' ).textContent = sprintf(
+				/* translators: 1: what is copied, such as the database, 2: address of the other site */
+				__( 'I understand that this replaces %1$s on this site with %2$s’s.', 'siteferry' ),
+				part,
+				name
+			);
 		} else {
-			const name = host || 'the other site';
-			$( 'siteferry-restore-title' ).textContent = 'Move ' + name + ' here';
+			$( 'siteferry-restore-title' ).textContent = sprintf(
+				/* translators: %s: address of the other site, such as example.com */
+				__( 'Move %s here', 'siteferry' ),
+				name
+			);
 			$( 'siteferry-restore-lead' ).textContent =
-				'This site’s content is replaced by the content of ' + name + ', and its addresses are changed to this site’s (' + hostOf( cfg.home ) + '). SiteFerry and its storage settings stay as they are. Afterwards you log in with that site’s users.' + fromStorage;
-			$( 'siteferry-confirm' ).textContent = 'Move here now';
-			$( 'siteferry-confirm-text' ).textContent = 'I understand that this replaces this site’s content with ' + name + '’s.';
+				sprintf(
+					/* translators: 1: address of the other site, 2: address of this site */
+					__( 'This site’s content is replaced by the content of %1$s, and its addresses are changed to this site’s (%2$s). SiteFerry and its storage settings stay as they are. Afterwards you log in with that site’s users.', 'siteferry' ),
+					name,
+					hostOf( cfg.home )
+				) + fromStorage;
+			$( 'siteferry-confirm' ).textContent = __( 'Move here now', 'siteferry' );
+			$( 'siteferry-confirm-text' ).textContent = sprintf(
+				/* translators: %s: address of the other site, such as example.com */
+				__( 'I understand that this replaces this site’s content with %s’s.', 'siteferry' ),
+				name
+			);
 		}
 	}
 
@@ -1840,8 +2485,16 @@
 	async function fetchForRestore() {
 		const d = destination( restore.item.places[ 0 ] );
 		restore.phase = 'fetch';
-		const view = progressView( 'siteferry-import-progress', [ d ? d.short : 'Storage', 'This server' ] );
-		view.start( 'Downloading the backup from ' + ( d ? d.label : 'the storage' ) + '...' );
+		const view = progressView( 'siteferry-import-progress', [ d ? d.short : __( 'Storage', 'siteferry' ), __( 'This server', 'siteferry' ) ] );
+		view.start(
+			d
+				? sprintf(
+						/* translators: %s: name of the storage, such as Dropbox */
+						__( 'Downloading the backup from %s...', 'siteferry' ),
+						d.label
+				  )
+				: __( 'Downloading the backup from the storage...', 'siteferry' )
+		);
 		try {
 			const started = await api( 'POST', 'storage/' + d.id + '/fetch', { json: { name: restore.item.name } } );
 			remember( started.job, started.token );
@@ -1851,7 +2504,7 @@
 			restore.job = null;
 			if ( job.status !== 'done' ) {
 				restore.phase = 'failed';
-				view.finish( false, 'The backup could not be downloaded', [ el( 'p', { text: job.error } ) ] );
+				view.finish( false, __( 'The backup could not be downloaded', 'siteferry' ), [ el( 'p', { text: job.error } ) ] );
 				return;
 			}
 			restore.name = job.result.fetched.name;
@@ -1859,7 +2512,7 @@
 			await startCheck();
 		} catch ( error ) {
 			restore.phase = 'failed';
-			view.finish( false, 'The backup could not be downloaded', [ el( 'p', { text: error.message } ) ] );
+			view.finish( false, __( 'The backup could not be downloaded', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
 		}
 	}
 
@@ -1876,7 +2529,7 @@
 			await cancelJob( previous.id, previous.token );
 		}
 		if ( isEncrypted( { ...( restore.item || {} ), name: restore.name || '' } ) && ! restore.password ) {
-			const password = await askPassword( 'Password of the backup', 'This backup is protected with a password. Enter it to check and restore the backup.', restore.locked || '' );
+			const password = await askPassword( __( 'Password of the backup', 'siteferry' ), __( 'This backup is protected with a password. Enter it to check and restore the backup.', 'siteferry' ), restore.locked || '' );
 			if ( ! restore || seq !== restore.seq ) {
 				return;
 			}
@@ -1886,8 +2539,8 @@
 			}
 			restore.password = password;
 		}
-		const view = progressView( 'siteferry-import-progress', [ 'Backup', 'This site' ] );
-		view.start( 'Checking the backup; nothing on this site changes yet...' );
+		const view = progressView( 'siteferry-import-progress', [ __( 'Backup', 'siteferry' ), __( 'This site', 'siteferry' ) ] );
+		view.start( __( 'Checking the backup; nothing on this site changes yet...', 'siteferry' ) );
 		try {
 			const started = await api( 'POST', 'imports', {
 				json: {
@@ -1918,7 +2571,7 @@
 			}
 			if ( restore && seq === restore.seq ) {
 				restore.phase = 'failed';
-				view.finish( false, 'This backup cannot be restored here', [ el( 'p', { text: error.message } ) ] );
+				view.finish( false, __( 'This backup cannot be restored here', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
 			}
 		}
 	}
@@ -1948,11 +2601,11 @@
 		if ( job.status === 'waiting' ) {
 			restore.phase = 'ready';
 			showInspection( job.result.inspection );
-			view.finish( true, 'Checked: ready', [ el( 'p', { text: 'Nothing on this site has changed yet.' } ) ], false );
+			view.finish( true, __( 'Checked: ready', 'siteferry' ), [ el( 'p', { text: __( 'Nothing on this site has changed yet.', 'siteferry' ) } ) ], false );
 			return;
 		}
 		store.remove( JOB_KEY );
-		$( 'siteferry-import-cancel' ).textContent = 'Close';
+		$( 'siteferry-import-cancel' ).textContent = __( 'Close', 'siteferry' );
 		$( 'siteferry-import-cancel' ).hidden = false;
 		$( 'siteferry-confirm' ).hidden = true;
 		$( 'siteferry-confirm-row' ).hidden = true;
@@ -1963,25 +2616,70 @@
 			const safety = job.result.safety;
 			restore.phase = 'done';
 			const moved = siteKey( r.from ) !== siteKey( r.to );
-			const done = r.partial
-				? ( moved ? 'Copied ' : 'Restored ' ) + r.partial.replace( /^Only /, 'only ' ) + ( moved ? ' from ' + hostOf( r.from ) : '' ) + '; everything else on this site stayed as it was.'
-				: moved
-				? 'This site now has the content of ' + hostOf( r.from ) + ', at ' + hostOf( r.to ) + '.'
-				: 'This site is back to how it was when the backup was made.';
-			view.finish( true, r.partial ? ( moved ? 'Copied part of ' + hostOf( r.from ) + ' here' : 'Restored part of the site' ) : moved ? 'Moved ' + hostOf( r.from ) + ' here' : 'Restored', [
+			let done;
+			let title;
+			if ( r.partial ) {
+				// The server's words for the part ("Only the database"), lower-cased inside the sentence in English.
+				const what = r.partial.replace( /^Only /, 'only ' );
+				done = moved
+					? sprintf(
+							/* translators: 1: what was copied, such as only the database, 2: address of the other site */
+							__( 'Copied %1$s from %2$s; everything else on this site stayed as it was.', 'siteferry' ),
+							what,
+							hostOf( r.from )
+					  )
+					: sprintf(
+							/* translators: %s: what was restored, such as only the database */
+							__( 'Restored %s; everything else on this site stayed as it was.', 'siteferry' ),
+							what
+					  );
+				title = moved
+					? sprintf(
+							/* translators: %s: address of the other site, such as example.com */
+							__( 'Copied part of %s here', 'siteferry' ),
+							hostOf( r.from )
+					  )
+					: __( 'Restored part of the site', 'siteferry' );
+			} else if ( moved ) {
+				done = sprintf(
+					/* translators: 1: address of the other site, 2: address of this site */
+					__( 'This site now has the content of %1$s, at %2$s.', 'siteferry' ),
+					hostOf( r.from ),
+					hostOf( r.to )
+				);
+				title = sprintf(
+					/* translators: %s: address of the other site, such as example.com */
+					__( 'Moved %s here', 'siteferry' ),
+					hostOf( r.from )
+				);
+			} else {
+				done = __( 'This site is back to how it was when the backup was made.', 'siteferry' );
+				title = __( 'Restored', 'siteferry' );
+			}
+			view.finish( true, title, [
 				el( 'p', { text: done } ),
-				...( safety ? [ el( 'p', { text: 'A safety backup of the site as it was before (' + bytes( safety.size ) + ') is in the list. To undo, use "Undo this restore" on the Backups tab, or restore that backup.' } ) ] : [] ),
-				el( 'p', { text: moved ? 'Log in with one of that site’s users.' : 'You may need to log in again.' } ),
-				el( 'p', { class: 'sf-actions' }, [ el( 'a', { class: 'button button-primary', href: cfg.loginUrl, text: 'Log in' } ) ] ),
+				...( safety
+					? [
+							el( 'p', {
+								text: sprintf(
+									/* translators: %s: size such as 12 MB */
+									__( 'A safety backup of the site as it was before (%s) is in the list. To undo, use "Undo this restore" on the Backups tab, or restore that backup.', 'siteferry' ),
+									bytes( safety.size )
+								),
+							} ),
+					  ]
+					: [] ),
+				el( 'p', { text: moved ? __( 'Log in with one of that site’s users.', 'siteferry' ) : __( 'You may need to log in again.', 'siteferry' ) } ),
+				el( 'p', { class: 'sf-actions' }, [ el( 'a', { class: 'button button-primary', href: cfg.loginUrl, text: __( 'Log in', 'siteferry' ) } ) ] ),
 				...warningList( job ),
 			] );
 			return;
 		}
 		restore.phase = 'failed';
 		const rolledBack = ! ( job.result && job.result.rollback_errors );
-		view.finish( false, restore.mine ? 'The restore did not finish' : 'The move did not finish', [
+		view.finish( false, restore.mine ? __( 'The restore did not finish', 'siteferry' ) : __( 'The move did not finish', 'siteferry' ), [
 			el( 'p', { text: job.error } ),
-			el( 'p', { text: rolledBack ? 'This site was left as it was before.' : 'Putting the previous site back did not fully succeed; see the Activity tab.' } ),
+			el( 'p', { text: rolledBack ? __( 'This site was left as it was before.', 'siteferry' ) : __( 'Putting the previous site back did not fully succeed; see the Activity tab.', 'siteferry' ) } ),
 			...warningList( job ),
 		] );
 	}
@@ -1995,19 +2693,46 @@
 			setWording( mine, restore.host );
 		}
 		const end = ( label, value ) => el( 'div', { class: 'sf-crossing-end' }, [ el( 'small', { text: label } ), el( 'code', { text: value } ) ] );
-		$( 'siteferry-crossing' ).replaceChildren( end( 'From', info.from ), el( 'span', { class: 'sf-crossing-line', 'aria-hidden': 'true' } ), end( 'Into', info.to ) );
+		$( 'siteferry-crossing' ).replaceChildren( end( __( 'From', 'siteferry' ), info.from ), el( 'span', { class: 'sf-crossing-line', 'aria-hidden': 'true' } ), end( __( 'Into', 'siteferry' ), info.to ) );
 		$( 'siteferry-crossing' ).hidden = mine;
 		const rows = [
-			[ 'Backup made', date( info.created ) ],
-			[ 'Made with', 'WordPress ' + info.wordpress + ', PHP ' + info.php + ', MySQL ' + info.mysql ],
-			[ 'Contents', plural( info.tables, 'table', 'tables' ) + ', ' + plural( info.files, 'file', 'files' ) + ', ' + bytes( info.bytes ) ],
-			[ 'File', info.backup ],
+			[ __( 'Backup made', 'siteferry' ), date( info.created ) ],
+			[
+				__( 'Made with', 'siteferry' ),
+				sprintf(
+					/* translators: 1: WordPress version, 2: PHP version, 3: MySQL version */
+					__( 'WordPress %1$s, PHP %2$s, MySQL %3$s', 'siteferry' ),
+					info.wordpress,
+					info.php,
+					info.mysql
+				),
+			],
+			[
+				__( 'Contents', 'siteferry' ),
+				sprintf(
+					/* translators: 1: number of tables, such as 12 tables, 2: number of files, such as 3400 files, 3: size such as 12 MB */
+					__( '%1$s, %2$s, %3$s', 'siteferry' ),
+					/* translators: %d: number of database tables */
+					sprintf( _n( '%d table', '%d tables', info.tables, 'siteferry' ), info.tables ),
+					/* translators: %d: a number */
+					sprintf( _n( '%d file', '%d files', info.files, 'siteferry' ), info.files ),
+					bytes( info.bytes )
+				),
+			],
+			[ __( 'File', 'siteferry' ), info.backup ],
 		];
 		if ( ! mine ) {
-			rows.splice( 3, 0, [ 'Address changes', plural( info.replacements, 'search/replace pair', 'search/replace pairs' ) ] );
+			rows.splice( 3, 0, [
+				__( 'Address changes', 'siteferry' ),
+				sprintf(
+					/* translators: %d: number of search/replace pairs for the site addresses */
+					_n( '%d search/replace pair', '%d search/replace pairs', info.replacements, 'siteferry' ),
+					info.replacements
+				),
+			] );
 		}
 		if ( info.restores ) {
-			rows.unshift( [ 'Restores', info.restores ] );
+			rows.unshift( [ __( 'Restores', 'siteferry' ), info.restores ] );
 		}
 		$( 'siteferry-inspection-rows' ).replaceChildren( ...rows.map( ( [ k, v ] ) => el( 'tr', {}, [ el( 'th', { scope: 'row', text: k } ), el( 'td', { text: v } ) ] ) ) );
 		$( 'siteferry-inspection' ).hidden = false;
@@ -2020,7 +2745,7 @@
 			return;
 		}
 		restore.phase = 'running';
-		const view = progressView( 'siteferry-import-progress', [ 'Backup', 'This site' ] );
+		const view = progressView( 'siteferry-import-progress', [ __( 'Backup', 'siteferry' ), __( 'This site', 'siteferry' ) ] );
 		const safety = $( 'siteferry-safety' ).checked;
 		$( 'siteferry-confirm' ).hidden = true;
 		$( 'siteferry-confirm-row' ).hidden = true;
@@ -2028,12 +2753,12 @@
 		$( 'siteferry-import-cancel' ).hidden = true;
 		$( 'siteferry-restore-advanced' ).hidden = true;
 		$( 'siteferry-inspection' ).hidden = true;
-		view.start( safety ? 'Making a safety backup of this site first...' : restore.mine ? 'Restoring...' : 'Moving the site here...' );
+		view.start( safety ? __( 'Making a safety backup of this site first...', 'siteferry' ) : restore.mine ? __( 'Restoring...', 'siteferry' ) : __( 'Moving the site here...', 'siteferry' ) );
 		try {
 			await api( 'POST', 'jobs/' + importJob.id + '/confirm', { token: importJob.token, json: { safety } } );
 			await continueImport( view );
 		} catch ( error ) {
-			view.finish( false, 'Stopped', [ el( 'p', { text: error.message } ) ] );
+			view.finish( false, __( 'Stopped', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
 		}
 	}
 
@@ -2042,10 +2767,12 @@
 		const checked = document.querySelector( 'input[name=siteferry_restore_what]:checked' );
 		const what = checked ? checked.value : 'all';
 		if ( what === 'database' ) {
-			return { options: { restore_files: false }, label: 'the database' };
+			/* translators: what is restored; used inside sentences such as "This restores only the database, as it was then" */
+			return { options: { restore_files: false }, label: __( 'the database', 'siteferry' ) };
 		}
 		if ( what === 'files' ) {
-			return { options: { restore_database: false }, label: 'the files' };
+			/* translators: what is restored; used inside sentences such as "This restores only the files, as it was then" */
+			return { options: { restore_database: false }, label: __( 'the files', 'siteferry' ) };
 		}
 		if ( what === 'chosen' && restore && restore.partial ) {
 			return restore.partial;
@@ -2072,7 +2799,8 @@
 			await api( 'POST', 'jobs/' + id + '/cancel', { token } );
 		} catch ( error ) {
 			if ( error.status !== 404 ) {
-				notice( 'Could not cancel: ' + error.message, 'error' );
+				/* translators: %s: error message */
+				notice( sprintf( __( 'Could not cancel: %s', 'siteferry' ), error.message ), 'error' );
 			}
 			return false;
 		}
@@ -2099,10 +2827,16 @@
 					space = data.report;
 					break;
 				}
-				line.textContent = 'Measuring the site... ' + plural( data.files, 'file', 'files' ) + ', ' + bytes( data.bytes ) + ' so far.';
+				line.textContent = sprintf(
+					/* translators: 1: number of files measured so far, 2: size such as 12 MB */
+					_n( 'Measuring the site... %1$d file, %2$s so far.', 'Measuring the site... %1$d files, %2$s so far.', data.files, 'siteferry' ),
+					data.files,
+					bytes( data.bytes )
+				);
 			}
 		} catch ( error ) {
-			line.textContent = 'The site could not be measured: ' + error.message;
+			/* translators: %s: error message */
+			line.textContent = sprintf( __( 'The site could not be measured: %s', 'siteferry' ), error.message );
 		} finally {
 			spaceLoading = false;
 		}
@@ -2151,14 +2885,42 @@
 		const compress = form.querySelector( 'input[name=compress]' );
 		// The archive is written next to the backups; a .wpress file is made from a TAR first.
 		const needed = total * ( wpress ? 2 : 1 ) * 1.02;
-		const parts = [
-			el( 'strong', { text: 'This backup: about ' + bytes( total ) } ),
-			' (database ' + bytes( e.database ) + ', files ' + bytes( e.files ) + ( total < whole ? '; the whole site is ' + bytes( whole ) : '' ) + ')' + ( compress && compress.checked && ! wpress ? ', less once compressed.' : '.' ),
-		];
+		const compressed = compress && compress.checked && ! wpress;
+		let sentence;
+		if ( total < whole ) {
+			sentence = compressed
+				? /* translators: 1: estimated size of the backup, 2: size of the database, 3: size of the files, 4: size of the whole site; sizes such as 12 MB */
+				  __( '%1$s (database %2$s, files %3$s; the whole site is %4$s), less once compressed.', 'siteferry' )
+				: /* translators: 1: estimated size of the backup, 2: size of the database, 3: size of the files, 4: size of the whole site; sizes such as 12 MB */
+				  __( '%1$s (database %2$s, files %3$s; the whole site is %4$s).', 'siteferry' );
+		} else {
+			sentence = compressed
+				? /* translators: 1: estimated size of the backup, 2: size of the database, 3: size of the files; sizes such as 12 MB */
+				  __( '%1$s (database %2$s, files %3$s), less once compressed.', 'siteferry' )
+				: /* translators: 1: estimated size of the backup, 2: size of the database, 3: size of the files; sizes such as 12 MB */
+				  __( '%1$s (database %2$s, files %3$s).', 'siteferry' );
+		}
+		const parts = around(
+			sprintf( sentence, NODE_MARK, bytes( e.database ), bytes( e.files ), bytes( whole ) ),
+			el( 'strong', {
+				text: sprintf(
+					/* translators: %s: estimated size of the backup, such as 12 MB */
+					__( 'This backup: about %s', 'siteferry' ),
+					bytes( total )
+				),
+			} )
+		);
 		if ( null !== space.free ) {
-			parts.push( ' ' + bytes( space.free ) + ' free on this server.' );
+			parts.push(
+				' ' +
+					sprintf(
+						/* translators: %s: free disk space, such as 12 GB */
+						__( '%s free on this server.', 'siteferry' ),
+						bytes( space.free )
+					)
+			);
 			if ( space.free < needed ) {
-				parts.push( ' ', el( 'strong', { class: 'sf-space-short', text: 'That is not enough room for it.' } ) );
+				parts.push( ' ', el( 'strong', { class: 'sf-space-short', text: __( 'That is not enough room for it.', 'siteferry' ) } ) );
 			}
 		}
 		line.replaceChildren( ...parts );
@@ -2184,31 +2946,68 @@
 				  ] )
 				: document.createTextNode( '' );
 		const p = f.parts;
+		/* translators: %d: a number */
+		const files = ( n ) => sprintf( _n( '%d file', '%d files', n, 'siteferry' ), n );
+		/* translators: %d: a number */
+		const rowCount = ( n ) => sprintf( _n( '%d row', '%d rows', n, 'siteferry' ), n );
+		/* translators: %d: number of database tables */
+		const tableCount = sprintf( _n( '%d table', '%d tables', db.tables.length, 'siteferry' ), db.tables.length );
+		/* translators: %s: size of the inactive plugins or themes, such as 12 MB */
+		const inactive = ( n ) => ( n ? sprintf( __( '%s inactive', 'siteferry' ), bytes( n ) ) : '' );
+		const revisions = db.revisions.count
+			? sprintf(
+					/* translators: 1: number of post revisions, 2: their size, such as 12 MB */
+					_n( '%1$d post revision (%2$s)', '%1$d post revisions (%2$s)', db.revisions.count, 'siteferry' ),
+					db.revisions.count,
+					bytes( db.revisions.bytes )
+			  )
+			: __( 'No post revisions', 'siteferry' );
+		const spam = db.spam.count
+			? sprintf(
+					/* translators: 1: number of spam comments, 2: their size, such as 12 MB */
+					_n( '%1$d spam comment (%2$s)', '%1$d spam comments (%2$s)', db.spam.count, 'siteferry' ),
+					db.spam.count,
+					bytes( db.spam.bytes )
+			  )
+			: __( 'no spam comments', 'siteferry' );
 		const body = [
-			bar( 'Database', db.bytes, plural( db.tables.length, 'table', 'tables' ) ),
-			bar( 'Media (uploads)', p.uploads.bytes, plural( p.uploads.files, 'file', 'files' ) ),
-			bar( 'Plugins', p.plugins.bytes, p.plugins.inactive ? bytes( p.plugins.inactive ) + ' inactive' : '' ),
-			bar( 'Themes', p.themes.bytes, p.themes.inactive ? bytes( p.themes.inactive ) + ' inactive' : '' ),
-			bar( 'Cache', p.cache.bytes, 'left out by default' ),
-			bar( 'Everything else', p.other.bytes, plural( p.other.files, 'file', 'files' ) ),
+			bar( __( 'Database', 'siteferry' ), db.bytes, tableCount ),
+			bar( __( 'Media (uploads)', 'siteferry' ), p.uploads.bytes, files( p.uploads.files ) ),
+			bar( __( 'Plugins', 'siteferry' ), p.plugins.bytes, inactive( p.plugins.inactive ) ),
+			bar( __( 'Themes', 'siteferry' ), p.themes.bytes, inactive( p.themes.inactive ) ),
+			bar( __( 'Cache', 'siteferry' ), p.cache.bytes, __( 'left out by default', 'siteferry' ) ),
+			bar( __( 'Everything else', 'siteferry' ), p.other.bytes, files( p.other.files ) ),
 			el( 'div', { class: 'sf-space-lists' }, [
-				list( 'Largest files', f.largest.map( ( x ) => [ x.path, x.bytes ] ) ),
-				list( 'Media by year', f.years.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes ] ) ),
-				list( 'Largest plugins', f.plugins.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes, x.active ? '' : 'inactive' ] ) ),
-				list( 'Largest tables', db.tables.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes, plural( x.rows, 'row', 'rows' ) ] ) ),
-				list( 'Largest themes', f.themes.slice( 0, 5 ).map( ( x ) => [ x.name, x.bytes, x.active ? '' : 'inactive' ] ) ),
-				list( 'Largest folders in wp-content', f.items.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes ] ) ),
+				list( __( 'Largest files', 'siteferry' ), f.largest.map( ( x ) => [ x.path, x.bytes ] ) ),
+				list( __( 'Media by year', 'siteferry' ), f.years.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes ] ) ),
+				list( __( 'Largest plugins', 'siteferry' ), f.plugins.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes, x.active ? '' : __( 'inactive', 'siteferry' ) ] ) ),
+				list( __( 'Largest tables', 'siteferry' ), db.tables.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes, rowCount( x.rows ) ] ) ),
+				list( __( 'Largest themes', 'siteferry' ), f.themes.slice( 0, 5 ).map( ( x ) => [ x.name, x.bytes, x.active ? '' : __( 'inactive', 'siteferry' ) ] ) ),
+				list( __( 'Largest folders in wp-content', 'siteferry' ), f.items.slice( 0, 10 ).map( ( x ) => [ x.name, x.bytes ] ) ),
 			] ),
 			el( 'p', { class: 'description' }, [
-				( db.revisions.count ? plural( db.revisions.count, 'post revision', 'post revisions' ) + ' (' + bytes( db.revisions.bytes ) + ')' : 'No post revisions' ) +
-					' and ' +
-					( db.spam.count ? plural( db.spam.count, 'spam comment', 'spam comments' ) + ' (' + bytes( db.spam.bytes ) + ')' : 'no spam comments' ) +
-					'. Backups on this server take ' +
-					bytes( space.backups ) +
-					'. Sizes are of the files as they are, before any compression. Measured ' +
-					when( space.time, true ) +
-					'. ',
-				button( 'Measure again', () => loadSpace( true ), 'button-link' ),
+				sprintf(
+					/* translators: 1: post revisions, such as 12 post revisions (3 MB) or No post revisions, 2: spam comments, such as 4 spam comments (1 MB) or no spam comments */
+					__( '%1$s and %2$s.', 'siteferry' ),
+					revisions,
+					spam
+				) +
+					' ' +
+					sprintf(
+						/* translators: %s: size such as 12 MB */
+						__( 'Backups on this server take %s.', 'siteferry' ),
+						bytes( space.backups )
+					) +
+					' ' +
+					__( 'Sizes are of the files as they are, before any compression.', 'siteferry' ) +
+					' ' +
+					sprintf(
+						/* translators: %s: when the site was measured, such as today, 7:21 PM */
+						__( 'Measured %s.', 'siteferry' ),
+						when( space.time, true )
+					) +
+					' ',
+				button( __( 'Measure again', 'siteferry' ), () => loadSpace( true ), 'button-link' ),
 			] ),
 		];
 		$( 'siteferry-space-body' ).replaceChildren( ...body );
@@ -2231,17 +3030,17 @@
 			}
 		}
 		clearTimeout( receivePoll );
-		const make = button( data.state === 'none' || data.state === 'expired' ? 'Make a key' : 'Make a new key', makeKey, 'button button-primary' );
+		const make = button( data.state === 'none' || data.state === 'expired' ? __( 'Make a key', 'siteferry' ) : __( 'Make a new key', 'siteferry' ), makeKey, 'button button-primary' );
 		const nodes = [];
 		if ( data.key ) {
 			const field = el( 'textarea', { class: 'sf-move-key', rows: '3', readonly: 'readonly', spellcheck: 'false' } );
 			field.value = data.key;
 			nodes.push( field, el( 'p', { class: 'sf-actions' }, [
-				button( 'Copy the key', async () => {
+				button( __( 'Copy the key', 'siteferry' ), async () => {
 					field.select();
 					try {
 						await navigator.clipboard.writeText( data.key );
-						notice( 'The key is copied. Paste it on the old site, under Move.', 'success' );
+						notice( __( 'The key is copied. Paste it on the old site, under Move.', 'siteferry' ), 'success' );
 					} catch ( e ) {
 						document.execCommand( 'copy' );
 					}
@@ -2249,16 +3048,40 @@
 			] ) );
 		}
 		if ( data.state === 'waiting' ) {
-			nodes.push( el( 'p', { text: 'Waiting for the old site. The key works until ' + date( data.expires ) + '.' } ) );
+			nodes.push(
+				el( 'p', {
+					text: sprintf(
+						/* translators: %s: date and time the key expires */
+						__( 'Waiting for the old site. The key works until %s.', 'siteferry' ),
+						date( data.expires )
+					),
+				} )
+			);
 		} else if ( data.state === 'receiving' ) {
-			nodes.push( el( 'p', { text: 'Arriving: ' + bytes( data.progress.offset ) + ' of ' + bytes( data.progress.size ) + '.' } ) );
+			nodes.push(
+				el( 'p', {
+					text: sprintf(
+						/* translators: 1: size received so far, 2: size of the whole backup; sizes such as 12 MB */
+						__( 'Arriving: %1$s of %2$s.', 'siteferry' ),
+						bytes( data.progress.offset ),
+						bytes( data.progress.size )
+					),
+				} )
+			);
 		} else if ( data.state === 'expired' ) {
-			nodes.push( el( 'p', { text: 'The last key has expired.' } ) );
+			nodes.push( el( 'p', { text: __( 'The last key has expired.', 'siteferry' ) } ) );
 		} else if ( data.state === 'received' ) {
 			const name = data.received.name;
 			nodes.push(
-				el( 'p', { text: 'The site from ' + hostOf( data.received.from ) + ' has arrived (' + bytes( data.received.size ) + '). Nothing on this site has changed yet.' } ),
-				el( 'p', { class: 'sf-actions' }, [ button( 'Move it here', () => {
+				el( 'p', {
+					text: sprintf(
+						/* translators: 1: address of the old site, 2: size such as 12 MB */
+						__( 'The site from %1$s has arrived (%2$s). Nothing on this site has changed yet.', 'siteferry' ),
+						hostOf( data.received.from ),
+						bytes( data.received.size )
+					),
+				} ),
+				el( 'p', { class: 'sf-actions' }, [ button( __( 'Move it here', 'siteferry' ), () => {
 					const item = items().find( ( entry ) => entry.name === name );
 					if ( item ) {
 						toggleDrawer( 'move', false );
@@ -2269,7 +3092,7 @@
 			loadBackups();
 		}
 		if ( data.state === 'waiting' || data.state === 'receiving' ) {
-			nodes.push( el( 'p', { class: 'sf-actions' }, [ button( 'Cancel the key', async () => loadReceive( await api( 'DELETE', 'receive' ) ), 'button sf-quiet' ) ] ) );
+			nodes.push( el( 'p', { class: 'sf-actions' }, [ button( __( 'Cancel the key', 'siteferry' ), async () => loadReceive( await api( 'DELETE', 'receive' ) ), 'button sf-quiet' ) ] ) );
 			receivePoll = setTimeout( () => ! $( 'siteferry-move' ).hidden && loadReceive( data.key ? { ...data, key: data.key } : null ), 5000 );
 		} else {
 			nodes.push( el( 'p', { class: 'sf-actions' }, [ make ] ) );
@@ -2281,7 +3104,8 @@
 		try {
 			loadReceive( await api( 'POST', 'receive', { json: {} } ) );
 		} catch ( error ) {
-			notice( 'No key was made: ' + error.message, 'error' );
+			/* translators: %s: error message */
+			notice( sprintf( __( 'No key was made: %s', 'siteferry' ), error.message ), 'error' );
 		}
 	}
 
@@ -2290,7 +3114,7 @@
 		const target = $( 'siteferry-move-target' );
 		const key = $( 'siteferry-move-key' ).value.trim();
 		target.hidden = false;
-		target.replaceChildren( el( 'p', { text: 'Asking the other site...' } ) );
+		target.replaceChildren( el( 'p', { text: __( 'Asking the other site...', 'siteferry' ) } ) );
 		let hello;
 		try {
 			hello = await api( 'POST', 'move/check', { json: { key } } );
@@ -2302,20 +3126,39 @@
 		target.replaceChildren(
 			el( 'table', { class: 'sf-facts-table' }, [
 				el( 'tbody', {}, [
-					[ 'Moving to', hello.site + ( hello.name ? ' (' + hello.name + ')' : '' ) ],
-					[ 'Runs', 'WordPress ' + hello.wordpress + ', PHP ' + hello.php + ', SiteFerry ' + hello.siteferry ],
-					[ 'Free there', null === hello.free ? 'unknown' : bytes( hello.free ) ],
+					[
+						__( 'Moving to', 'siteferry' ),
+						hello.name
+							? sprintf(
+									/* translators: 1: address of the other site, 2: its title */
+									__( '%1$s (%2$s)', 'siteferry' ),
+									hello.site,
+									hello.name
+							  )
+							: hello.site,
+					],
+					[
+						__( 'Runs', 'siteferry' ),
+						sprintf(
+							/* translators: 1: WordPress version, 2: PHP version, 3: SiteFerry version */
+							__( 'WordPress %1$s, PHP %2$s, SiteFerry %3$s', 'siteferry' ),
+							hello.wordpress,
+							hello.php,
+							hello.siteferry
+						),
+					],
+					[ __( 'Free there', 'siteferry' ), null === hello.free ? __( 'unknown', 'siteferry' ) : bytes( hello.free ) ],
 				].map( ( [ k, v ] ) => el( 'tr', {}, [ el( 'th', { scope: 'row', text: k } ), el( 'td', { text: v } ) ] ) ) ),
 			] ),
-			el( 'p', {}, [ el( 'label', {}, [ keep, ' Also keep the backup on this server' ] ) ] ),
-			el( 'p', { class: 'sf-actions' }, [ button( 'Move this site there', () => startMove( key, keep.checked, hello.site ), 'button button-primary' ) ] )
+			el( 'p', {}, [ el( 'label', {}, [ keep, ' ' + __( 'Also keep the backup on this server', 'siteferry' ) ] ) ] ),
+			el( 'p', { class: 'sf-actions' }, [ button( __( 'Move this site there', 'siteferry' ), () => startMove( key, keep.checked, hello.site ), 'button button-primary' ) ] )
 		);
 	}
 
 	async function startMove( key, keepLocal, site ) {
 		toggleDrawer( 'move', false );
-		const view = progressView( 'siteferry-job-progress', [ 'This site', hostOf( site ) ] );
-		view.start( 'Backing up this site for the move...' );
+		const view = progressView( 'siteferry-job-progress', [ __( 'This site', 'siteferry' ), hostOf( site ) ] );
+		view.start( __( 'Backing up this site for the move...', 'siteferry' ) );
 		try {
 			const started = await api( 'POST', 'move/send', { json: { key, keep_local: keepLocal } } );
 			remember( started.job, started.token );
@@ -2323,7 +3166,7 @@
 			$( 'siteferry-move-target' ).hidden = true;
 			await finishExport( started.job.id, started.token, view, false );
 		} catch ( error ) {
-			view.finish( false, 'The site was not moved', [ el( 'p', { text: error.message } ) ] );
+			view.finish( false, __( 'The site was not moved', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
 		}
 	}
 
@@ -2340,7 +3183,15 @@
 		closeMenus();
 		let unlock = '';
 		if ( isEncrypted( item ) ) {
-			const password = await askPassword( 'Look inside ' + called( item ), 'This backup is protected with a password. Enter it to see what is inside.', error );
+			const password = await askPassword(
+				sprintf(
+					/* translators: %s: name of the backup */
+					__( 'Look inside %s', 'siteferry' ),
+					called( item )
+				),
+				__( 'This backup is protected with a password. Enter it to see what is inside.', 'siteferry' ),
+				error
+			);
 			if ( null === password ) {
 				return;
 			}
@@ -2356,9 +3207,10 @@
 			}
 		}
 		inside = { item, dir: '', seq: 0, tables: null, hasDatabase: false, picks: new Map(), unlock };
-		$( 'siteferry-contents-title' ).textContent = 'Inside ' + called( item );
+		/* translators: %s: name of the backup */
+		$( 'siteferry-contents-title' ).textContent = sprintf( __( 'Inside %s', 'siteferry' ), called( item ) );
 		$( 'siteferry-contents-crumbs' ).replaceChildren();
-		$( 'siteferry-contents-body' ).replaceChildren( el( 'p', { class: 'sf-contents-wait', text: 'Reading the list of files in the backup...' } ) );
+		$( 'siteferry-contents-body' ).replaceChildren( el( 'p', { class: 'sf-contents-wait', text: __( 'Reading the list of files in the backup...', 'siteferry' ) } ) );
 		renderPicks();
 		const panel = $( 'siteferry-contents' );
 		panel.hidden = false;
@@ -2385,7 +3237,16 @@
 				data = await api( 'GET', 'backups/' + encodeURIComponent( inside.item.name ) + '/contents', { query: inside.unlock ? { dir, unlock: inside.unlock } : { dir } } );
 			} catch ( error ) {
 				if ( inside && seq === inside.seq ) {
-					body.replaceChildren( el( 'p', { class: 'sf-row-error', text: 'The backup cannot be read: ' + error.message } ) );
+					body.replaceChildren(
+						el( 'p', {
+							class: 'sf-row-error',
+							text: sprintf(
+								/* translators: %s: error message */
+								__( 'The backup cannot be read: %s', 'siteferry' ),
+								error.message
+							),
+						} )
+					);
 				}
 				return;
 			}
@@ -2396,7 +3257,17 @@
 				break;
 			}
 			const share = data.size ? Math.min( 99, Math.floor( ( 100 * data.read ) / data.size ) ) : 0;
-			body.replaceChildren( el( 'p', { class: 'sf-contents-wait', text: 'Reading the list of files in the backup... ' + share + '% (' + plural( data.count, 'entry', 'entries' ) + ' so far)' } ) );
+			body.replaceChildren(
+				el( 'p', {
+					class: 'sf-contents-wait',
+					text: sprintf(
+						/* translators: 1: percentage read, 2: number of entries found so far */
+						_n( 'Reading the list of files in the backup... %1$d%% (%2$d entry so far)', 'Reading the list of files in the backup... %1$d%% (%2$d entries so far)', data.count, 'siteferry' ),
+						share,
+						data.count
+					),
+				} )
+			);
 		}
 		inside.dir = data.dir;
 		if ( data.dir === '' ) {
@@ -2411,7 +3282,7 @@
 		const parts = dir ? dir.split( '/' ) : [];
 		const crumb = ( text, target, current ) =>
 			current ? el( 'span', { class: 'sf-crumb is-current', 'aria-current': 'location', text } ) : el( 'button', { type: 'button', class: 'sf-crumb', text, onclick: () => browse( target ) } );
-		const nodes = [ crumb( 'Backup', '', ! parts.length ) ];
+		const nodes = [ crumb( __( 'Backup', 'siteferry' ), '', ! parts.length ) ];
 		parts.forEach( ( part, i ) => {
 			nodes.push( el( 'span', { class: 'sf-crumb-sep', 'aria-hidden': 'true', text: '/' } ), crumb( part, parts.slice( 0, i + 1 ).join( '/' ), i === parts.length - 1 ) );
 		} );
@@ -2426,7 +3297,7 @@
 		if ( data.entries.length ) {
 			nodes.push( el( 'table', { class: 'sf-tree' }, [ el( 'tbody', {}, data.entries.map( entryRow ) ) ] ) );
 		} else {
-			nodes.push( el( 'p', { class: 'description', text: 'This folder is empty.' } ) );
+			nodes.push( el( 'p', { class: 'description', text: __( 'This folder is empty.', 'siteferry' ) } ) );
 		}
 		$( 'siteferry-contents-body' ).replaceChildren( ...nodes );
 	}
@@ -2436,20 +3307,41 @@
 		const rows = tables ? tables.reduce( ( n, t ) => n + t.rows, 0 ) : 0;
 		const block = el( 'div', { class: 'sf-contents-db' }, [
 			el( 'label', { class: 'sf-contents-db-all' }, [
-				pickBox( 'db', 'the whole database' ),
+				/* translators: a part of a backup; used inside sentences such as "Restore the whole database" */
+				pickBox( 'db', __( 'the whole database', 'siteferry' ) ),
 				el( 'span', { class: 'dashicons dashicons-database', 'aria-hidden': 'true' } ),
-				el( 'strong', { text: 'Database' } ),
-				el( 'span', { class: 'sf-tree-what', text: tables ? plural( tables.length, 'table', 'tables' ) + ', ' + plural( rows, 'row', 'rows' ) : 'its tables are listed when the backup is checked for restoring' } ),
+				el( 'strong', { text: __( 'Database', 'siteferry' ) } ),
+				el( 'span', {
+					class: 'sf-tree-what',
+					text: tables
+						? sprintf(
+								/* translators: 1: number of tables, such as 12 tables, 2: number of rows, such as 3400 rows */
+								_x( '%1$s, %2$s', 'tables and rows', 'siteferry' ),
+								/* translators: %d: number of database tables */
+								sprintf( _n( '%d table', '%d tables', tables.length, 'siteferry' ), tables.length ),
+								/* translators: %d: a number */
+								sprintf( _n( '%d row', '%d rows', rows, 'siteferry' ), rows )
+						  )
+						: __( 'its tables are listed when the backup is checked for restoring', 'siteferry' ),
+				} ),
 			] ),
 		] );
 		if ( tables && tables.length ) {
 			block.appendChild(
 				el( 'details', { class: 'sf-more' }, [
-					el( 'summary', { text: 'Single tables' } ),
+					el( 'summary', { text: __( 'Single tables', 'siteferry' ) } ),
 					el(
 						'div',
 						{ class: 'sf-tables' },
-						tables.map( ( t ) => el( 'label', {}, [ pickBox( 't:' + t.name, 'table ' + t.name ), ' ' + t.name + ' ', el( 'span', { class: 'sf-table-size', text: plural( t.rows, 'row', 'rows' ) } ) ] ) )
+						tables.map( ( t ) =>
+							el( 'label', {}, [
+								/* translators: %s: name of a database table; used inside sentences such as "Restore table wp_posts" */
+								pickBox( 't:' + t.name, sprintf( __( 'table %s', 'siteferry' ), t.name ) ),
+								' ' + t.name + ' ',
+								/* translators: %d: a number */
+								el( 'span', { class: 'sf-table-size', text: sprintf( _n( '%d row', '%d rows', t.rows, 'siteferry' ), t.rows ) } ),
+							] )
+						)
 					),
 				] )
 			);
@@ -2472,11 +3364,28 @@
 			? el( 'button', { type: 'button', class: 'sf-tree-open', text: entry.name, onclick: () => browse( entry.path ) } )
 			: el( 'span', { class: 'sf-tree-file', text: entry.name } );
 		const action =
-			entry.type === 'file' ? el( 'a', { class: 'sf-tree-download', href: fileUrl( inside.item.name, entry.path ), text: 'Download', 'aria-label': 'Download ' + entry.name } ) : document.createTextNode( '' );
+			entry.type === 'file'
+				? el( 'a', {
+						class: 'sf-tree-download',
+						href: fileUrl( inside.item.name, entry.path ),
+						text: __( 'Download', 'siteferry' ),
+						/* translators: %s: name of a file in the backup */
+						'aria-label': sprintf( __( 'Download %s', 'siteferry' ), entry.name ),
+				  } )
+				: document.createTextNode( '' );
+		let what;
+		if ( dir ) {
+			/* translators: %d: a number */
+			what = sprintf( _n( '%d file', '%d files', entry.files, 'siteferry' ), entry.files );
+		} else {
+			/* translators: a symbolic link in a list of files */
+			what = entry.type === 'link' ? __( 'link', 'siteferry' ) : date( entry.mtime );
+		}
 		return el( 'tr', { class: dir ? 'is-dir' : 'is-file' }, [
-			el( 'td', { class: 'sf-tree-pick' }, [ key ? pickBox( key, key === 'files' ? 'all files' : entry.path ) : document.createTextNode( '' ) ] ),
+			/* translators: a part of a backup; used inside sentences such as "Restore all files" */
+			el( 'td', { class: 'sf-tree-pick' }, [ key ? pickBox( key, key === 'files' ? __( 'all files', 'siteferry' ) : entry.path ) : document.createTextNode( '' ) ] ),
 			el( 'td', { class: 'sf-tree-name' }, [ el( 'span', { class: 'dashicons ' + ( dir ? 'dashicons-category' : 'dashicons-media-default' ), 'aria-hidden': 'true' } ), name ] ),
-			el( 'td', { class: 'sf-tree-what', text: dir ? plural( entry.files, 'file', 'files' ) : entry.type === 'link' ? 'link' : date( entry.mtime ) } ),
+			el( 'td', { class: 'sf-tree-what', text: what } ),
 			el( 'td', { class: 'sf-tree-size', text: bytes( entry.size ) } ),
 			el( 'td', { class: 'sf-tree-action' }, [ action ] ),
 		] );
@@ -2515,7 +3424,8 @@
 	}
 
 	function pickBox( key, label ) {
-		const box = el( 'input', { type: 'checkbox', 'data-key': key, 'aria-label': 'Restore ' + label } );
+		/* translators: %s: a part of the backup, such as the whole database, table wp_posts or wp-content/plugins/akismet */
+		const box = el( 'input', { type: 'checkbox', 'data-key': key, 'aria-label': sprintf( __( 'Restore %s', 'siteferry' ), label ) } );
 		box.addEventListener( 'change', () => setPick( key, box.checked, label ) );
 		syncBox( box );
 		return box;
@@ -2525,7 +3435,13 @@
 		const wider = coveredBy( box.dataset.key );
 		box.checked = wider !== '' || inside.picks.has( box.dataset.key );
 		box.disabled = wider !== '';
-		box.title = wider ? 'Included in ' + inside.picks.get( wider ) : '';
+		box.title = wider
+			? sprintf(
+					/* translators: %s: a wider part of the backup that is ticked, such as the whole database or all files */
+					__( 'Included in %s', 'siteferry' ),
+					inside.picks.get( wider )
+			  )
+			: '';
 	}
 
 	function setPick( key, on, label ) {
@@ -2560,13 +3476,27 @@
 		const names = [ ...picks.values() ];
 		const shown = names.slice( 0, 6 );
 		const more = names.length - shown.length;
-		return shown.join( ', ' ) + ( more > 0 ? ' and ' + more + ' more' : '' );
+		if ( more > 0 ) {
+			return sprintf(
+				/* translators: 1: a comma-separated list of names, 2: how many more are not listed */
+				_n( '%1$s and %2$d more', '%1$s and %2$d more', more, 'siteferry' ),
+				shown.join( ', ' ),
+				more
+			);
+		}
+		return shown.join( ', ' );
 	}
 
 	function renderPicks() {
 		const count = inside ? inside.picks.size : 0;
 		$( 'siteferry-contents-foot' ).hidden = ! count;
-		$( 'siteferry-contents-picked' ).textContent = count ? 'To restore: ' + describePicks( inside.picks ) + '.' : '';
+		$( 'siteferry-contents-picked' ).textContent = count
+			? sprintf(
+					/* translators: %s: list of the ticked parts of the backup, such as the whole database, wp-content/plugins/akismet */
+					__( 'To restore: %s.', 'siteferry' ),
+					describePicks( inside.picks )
+			  )
+			: '';
 	}
 
 	/** The import options for the picks. */
@@ -2624,14 +3554,24 @@
 				input.value = String( s[ input.name ] );
 			}
 		} );
-		form.elements.email.placeholder = schedule.admin_email ? schedule.admin_email + ' (the site\'s admin email)' : '';
+		form.elements.email.placeholder = schedule.admin_email
+			? sprintf(
+					/* translators: %s: the site's admin email address */
+					__( '%s (the site\'s admin email)', 'siteferry' ),
+					schedule.admin_email
+			  )
+			: '';
 		if ( form.elements.password ) {
 			form.elements.password.value = '';
-			form.elements.password.placeholder = schedule.has_password ? 'Saved; leave empty to keep it' : '';
+			form.elements.password.placeholder = schedule.has_password ? __( 'Saved; leave empty to keep it', 'siteferry' ) : '';
 		}
 		// WordPress names a plain offset "+05:00"; show it as UTC+05:00 (and "+00:00" as UTC).
 		const zone = /^[+-]\d{2}:\d{2}$/.test( schedule.timezone ) ? 'UTC' + ( schedule.timezone === '+00:00' ? '' : schedule.timezone ) : schedule.timezone;
-		$( 'siteferry-schedule-zone' ).textContent = 'In the site\'s time zone (' + zone + ', set under Settings, General). WordPress starts scheduled tasks when the site gets a visit, so on a quiet site a backup can start a little late.';
+		$( 'siteferry-schedule-zone' ).textContent = sprintf(
+			/* translators: %s: the site's time zone, such as Europe/Berlin or UTC+05:00 */
+			__( 'In the site\'s time zone (%s, set under Settings, General). WordPress starts scheduled tasks when the site gets a visit, so on a quiet site a backup can start a little late.', 'siteferry' ),
+			zone
+		);
 		$( 'siteferry-schedule-cron-off' ).hidden = ! schedule.cron_disabled;
 		renderScheduleWhere( true );
 		syncScheduleForm();
@@ -2710,14 +3650,40 @@
 		return data;
 	}
 
-	/** "every Monday at 03:00, to Dropbox, keeping the newest 7". */
+	/** "every Monday at 03:00, to Dropbox, keeping the newest 7." */
 	function describeSchedule( s ) {
-		const at = ' at ' + s.time;
-		const when = s.frequency === 'weekly' ? 'every ' + WEEKDAYS[ s.weekday ] + at : s.frequency === 'monthly' ? 'on day ' + s.monthday + ' of every month' + at : 'every day' + at;
+		let when;
+		if ( s.frequency === 'weekly' ) {
+			/* translators: 1: day of the week, such as Monday, 2: time of day, such as 03:00 */
+			when = sprintf( __( 'every %1$s at %2$s', 'siteferry' ), WEEKDAYS[ s.weekday ], s.time );
+		} else if ( s.frequency === 'monthly' ) {
+			/* translators: 1: day of the month, such as 15, 2: time of day, such as 03:00 */
+			when = sprintf( __( 'on day %1$s of every month at %2$s', 'siteferry' ), s.monthday, s.time );
+		} else {
+			/* translators: %s: time of day, such as 03:00 */
+			when = sprintf( __( 'every day at %s', 'siteferry' ), s.time );
+		}
 		const target = s.send_to ? destination( s.send_to ) : null;
-		const where = s.send_to ? 'to ' + ( target ? target.short : s.send_to ) + ( s.keep_local ? ' and this server' : '' ) : 'on this server';
-		const keep = s.retain > 0 ? 'keeping the newest ' + s.retain : 'keeping them all';
-		return when + ', ' + where + ', ' + keep;
+		let where = __( 'on this server', 'siteferry' );
+		if ( s.send_to ) {
+			where = s.keep_local
+				? /* translators: %s: name of the storage, such as Dropbox */
+				  sprintf( __( 'to %s and this server', 'siteferry' ), target ? target.short : s.send_to )
+				: /* translators: %s: name of the storage, such as Dropbox */
+				  sprintf( __( 'to %s', 'siteferry' ), target ? target.short : s.send_to );
+		}
+		const keep =
+			s.retain > 0
+				? /* translators: %d: number of scheduled backups kept */
+				  sprintf( _n( 'keeping the newest %d', 'keeping the newest %d', s.retain, 'siteferry' ), s.retain )
+				: __( 'keeping them all', 'siteferry' );
+		return sprintf(
+			/* translators: 1: how often, such as every Monday at 03:00, 2: where, such as to Dropbox, 3: how many are kept, such as keeping the newest 7 */
+			__( '%1$s, %2$s, %3$s.', 'siteferry' ),
+			when,
+			where,
+			keep
+		);
 	}
 
 	/** The line under "Back up now": the schedule, the next and the last run. */
@@ -2727,26 +3693,47 @@
 		const open = () => toggleDrawer( 'schedule', true );
 		const parts = [];
 		if ( ! s.enabled ) {
-			parts.push( el( 'span', { class: 'sf-chip', text: 'Automatic backups off' } ), ' ', button( 'Set up a schedule', open, 'button sf-quiet sf-quiet-small' ) );
+			parts.push( el( 'span', { class: 'sf-chip', text: __( 'Automatic backups off', 'siteferry' ) } ), ' ', button( __( 'Set up a schedule', 'siteferry' ), open, 'button sf-quiet sf-quiet-small' ) );
 		} else {
-			parts.push( el( 'span', { class: 'sf-chip is-good', text: 'Automatic backups on' } ), ' ' + describeSchedule( s ) + '.' );
+			parts.push( el( 'span', { class: 'sf-chip is-good', text: __( 'Automatic backups on', 'siteferry' ) } ), ' ' + describeSchedule( s ) );
 			if ( schedule.next ) {
-				parts.push( ' Next: ' + nextRun() + '.' );
+				/* translators: %s: when the next scheduled backup runs, such as tomorrow, 3:00 AM */
+				parts.push( ' ' + sprintf( __( 'Next: %s.', 'siteferry' ), nextRun() ) );
 			}
 			if ( schedule.retry ) {
-				parts.push( ' Waiting for another job to finish; trying again ' + upcoming( schedule.retry ) + '.' );
+				parts.push(
+					' ' +
+						sprintf(
+							/* translators: %s: when the next try is, such as today, 9:00 AM */
+							__( 'Waiting for another job to finish; trying again %s.', 'siteferry' ),
+							upcoming( schedule.retry )
+						)
+				);
 			}
-			parts.push( ' ', button( 'Change', open, 'button sf-quiet sf-quiet-small' ) );
+			parts.push( ' ', button( __( 'Change', 'siteferry' ), open, 'button sf-quiet sf-quiet-small' ) );
 		}
 		if ( s.before_updates ) {
-			parts.push( el( 'span', { class: 'sf-schedule-last', text: 'A backup is also made before WordPress, a plugin or a theme updates.' } ) );
+			parts.push( el( 'span', { class: 'sf-schedule-last', text: __( 'A backup is also made before WordPress, a plugin or a theme updates.', 'siteferry' ) } ) );
 		}
 		const last = schedule.last;
 		if ( last ) {
 			const failed = last.status !== 'done';
-			parts.push(
-				el( 'span', { class: 'sf-schedule-last' + ( failed ? ' is-bad' : '' ), text: 'Last scheduled backup ' + when( last.time, true ) + ': ' + ( failed ? ( last.status === 'skipped' ? 'skipped. ' : 'failed. ' ) + last.message : 'done' + ( last.where ? ', stored on ' + last.where : '' ) + '.' ) } )
-			);
+			const at = when( last.time, true );
+			let text;
+			if ( failed && last.status === 'skipped' ) {
+				/* translators: 1: when, such as today, 3:00 AM, 2: the reason */
+				text = sprintf( __( 'Last scheduled backup %1$s: skipped. %2$s', 'siteferry' ), at, last.message );
+			} else if ( failed ) {
+				/* translators: 1: when, such as today, 3:00 AM, 2: error message */
+				text = sprintf( __( 'Last scheduled backup %1$s: failed. %2$s', 'siteferry' ), at, last.message );
+			} else if ( last.where ) {
+				/* translators: 1: when, such as today, 3:00 AM, 2: where it is stored, such as Dropbox */
+				text = sprintf( __( 'Last scheduled backup %1$s: done, stored on %2$s.', 'siteferry' ), at, last.where );
+			} else {
+				/* translators: %s: when, such as today, 3:00 AM */
+				text = sprintf( __( 'Last scheduled backup %s: done.', 'siteferry' ), at );
+			}
+			parts.push( el( 'span', { class: 'sf-schedule-last' + ( failed ? ' is-bad' : '' ), text } ) );
 		}
 		line.replaceChildren( ...parts );
 		line.hidden = false;
@@ -2758,10 +3745,12 @@
 		const s = schedule.settings;
 		const bits = [];
 		if ( s.enabled && schedule.next ) {
-			bits.push( 'Next backup: ' + nextRun() + '.' );
+			/* translators: %s: when the next scheduled backup runs, such as tomorrow, 3:00 AM */
+			bits.push( sprintf( __( 'Next backup: %s.', 'siteferry' ), nextRun() ) );
 		}
 		if ( schedule.kept ) {
-			bits.push( plural( schedule.kept, 'scheduled backup', 'scheduled backups' ) + ' kept so far.' );
+			/* translators: %d: number of scheduled backups kept */
+			bits.push( sprintf( _n( '%d scheduled backup kept so far.', '%d scheduled backups kept so far.', schedule.kept, 'siteferry' ), schedule.kept ) );
 		}
 		box.textContent = bits.join( ' ' );
 
@@ -2769,8 +3758,28 @@
 		const line = $( 'siteferry-update-last' );
 		line.hidden = ! update;
 		if ( update ) {
-			const outcome = update.status === 'done' ? 'made (' + bytes( update.size ) + ')' : update.status === 'skipped' ? 'skipped: ' + update.message : 'failed: ' + update.message;
-			line.textContent = 'Last backup before an update: ' + update.what + ', ' + when( update.time, true ) + ', ' + outcome + '.' + ( schedule.update_kept ? ' ' + plural( schedule.update_kept, 'backup made before updates is', 'backups made before updates are' ) + ' kept.' : '' );
+			const at = when( update.time, true );
+			let text;
+			if ( update.status === 'done' ) {
+				/* translators: 1: what was updated, such as the plugin Akismet, 2: when, such as today, 3:00 AM, 3: size such as 12 MB */
+				text = sprintf( __( 'Last backup before an update: %1$s, %2$s, made (%3$s).', 'siteferry' ), update.what, at, bytes( update.size ) );
+			} else if ( update.status === 'skipped' ) {
+				/* translators: 1: what was updated, such as the plugin Akismet, 2: when, such as today, 3:00 AM, 3: the reason */
+				text = sprintf( __( 'Last backup before an update: %1$s, %2$s, skipped: %3$s.', 'siteferry' ), update.what, at, update.message );
+			} else {
+				/* translators: 1: what was updated, such as the plugin Akismet, 2: when, such as today, 3:00 AM, 3: error message */
+				text = sprintf( __( 'Last backup before an update: %1$s, %2$s, failed: %3$s.', 'siteferry' ), update.what, at, update.message );
+			}
+			if ( schedule.update_kept ) {
+				text +=
+					' ' +
+					sprintf(
+						/* translators: %d: number of backups made before updates that are kept */
+						_n( '%d backup made before updates is kept.', '%d backups made before updates are kept.', schedule.update_kept, 'siteferry' ),
+						schedule.update_kept
+					);
+			}
+			line.textContent = text;
 		}
 	}
 
@@ -2792,10 +3801,20 @@
 			schedule = await api( 'POST', 'schedule', { json: collectSchedule() } );
 			fillScheduleForm();
 			renderScheduleLine();
-			scheduleResult( true, schedule.settings.enabled ? 'Saved. Next backup: ' + nextRun() + '.' : 'Saved. Automatic backups are off.' );
+			scheduleResult(
+				true,
+				schedule.settings.enabled
+					? sprintf(
+							/* translators: %s: when the next scheduled backup runs, such as tomorrow, 3:00 AM */
+							__( 'Saved. Next backup: %s.', 'siteferry' ),
+							nextRun()
+					  )
+					: __( 'Saved. Automatic backups are off.', 'siteferry' )
+			);
 			return true;
 		} catch ( error ) {
-			scheduleResult( false, 'Not saved: ' + error.message );
+			/* translators: %s: error message */
+			scheduleResult( false, sprintf( __( 'Not saved: %s', 'siteferry' ), error.message ) );
 			return false;
 		} finally {
 			submit.disabled = false;
@@ -2815,7 +3834,8 @@
 			toggleDrawer( 'schedule', false );
 			watchScheduled( result.job );
 		} catch ( error ) {
-			scheduleResult( false, 'Not started: ' + error.message );
+			/* translators: %s: error message */
+			scheduleResult( false, sprintf( __( 'Not started: %s', 'siteferry' ), error.message ) );
 		} finally {
 			run.disabled = false;
 		}
@@ -2832,20 +3852,27 @@
 		watching = job.id;
 		const s = schedule ? schedule.settings : { send_to: '' };
 		const target = destination( s.send_to );
-		const view = progressView( 'siteferry-job-progress', [ 'This site', target ? target.short : 'This server' ] );
-		view.start( 'Scheduled backup running...' );
+		const view = progressView( 'siteferry-job-progress', [ __( 'This site', 'siteferry' ), target ? target.short : __( 'This server', 'siteferry' ) ] );
+		view.start( __( 'Scheduled backup running...', 'siteferry' ) );
 		const banner = $( 'siteferry-active' );
 		$( 'siteferry-active-resume' ).hidden = true;
-		$( 'siteferry-active-cancel' ).textContent = 'Stop it';
+		$( 'siteferry-active-cancel' ).textContent = __( 'Stop it', 'siteferry' );
 		$( 'siteferry-active-cancel' ).onclick = async () => {
 			// eslint-disable-next-line no-alert
-			if ( window.confirm( 'Stop the scheduled backup? What it has done so far is removed; earlier backups stay.' ) && ( await cancelJob( job.id, null ) ) ) {
-				notice( 'The scheduled backup was stopped.', 'success' );
+			if ( window.confirm( __( 'Stop the scheduled backup? What it has done so far is removed; earlier backups stay.', 'siteferry' ) ) && ( await cancelJob( job.id, null ) ) ) {
+				notice( __( 'The scheduled backup was stopped.', 'siteferry' ), 'success' );
 			}
 		};
 		let failures = 0;
 		while ( watching === job.id ) {
-			$( 'siteferry-active-text' ).textContent = 'A scheduled backup is running (' + ( ( job.progress && job.progress.message ) || 'starting' ) + '). It runs by itself on the server; you can leave this page.';
+			const message = job.progress && job.progress.message;
+			$( 'siteferry-active-text' ).textContent = message
+				? sprintf(
+						/* translators: %s: what the backup is doing, such as Packing files */
+						__( 'A scheduled backup is running (%s). It runs by itself on the server; you can leave this page.', 'siteferry' ),
+						message
+				  )
+				: __( 'A scheduled backup is running (starting). It runs by itself on the server; you can leave this page.', 'siteferry' );
 			banner.hidden = false;
 			view.job( job );
 			if ( job.status === 'done' || job.status === 'failed' ) {
@@ -2857,7 +3884,15 @@
 				failures = 0;
 			} catch ( error ) {
 				if ( ++failures > 5 ) {
-					view.finish( false, 'Lost track of the scheduled backup', [ el( 'p', { text: error.message + ' It may still be running; reload the page to check.' } ) ] );
+					view.finish( false, __( 'Lost track of the scheduled backup', 'siteferry' ), [
+						el( 'p', {
+							text: sprintf(
+								/* translators: %s: error message */
+								__( '%s It may still be running; reload the page to check.', 'siteferry' ),
+								error.message
+							),
+						} ),
+					] );
 					watching = '';
 					banner.hidden = true;
 					return;
@@ -2866,18 +3901,37 @@
 		}
 		watching = '';
 		banner.hidden = true;
-		$( 'siteferry-active-cancel' ).textContent = 'Cancel it';
+		$( 'siteferry-active-cancel' ).textContent = __( 'Cancel it', 'siteferry' );
 		if ( job.status === 'done' ) {
 			const r = job.result;
-			const where = r.sent ? ( r.deleted_local ? 'on ' + r.sent.where : 'on this server and on ' + r.sent.where ) : 'on this server';
+			let stored;
+			if ( ! r.sent ) {
+				/* translators: %s: size such as 12 MB */
+				stored = sprintf( __( '%s · stored on this server.', 'siteferry' ), bytes( r.size ) );
+			} else if ( r.deleted_local ) {
+				/* translators: 1: size such as 12 MB, 2: name of the storage, such as Dropbox */
+				stored = sprintf( __( '%1$s · stored on %2$s.', 'siteferry' ), bytes( r.size ), r.sent.where );
+			} else {
+				/* translators: 1: size such as 12 MB, 2: name of the storage, such as Dropbox */
+				stored = sprintf( __( '%1$s · stored on this server and on %2$s.', 'siteferry' ), bytes( r.size ), r.sent.where );
+			}
 			const deleted = r.schedule && r.schedule.deleted ? r.schedule.deleted.length : 0;
-			view.finish( true, 'Scheduled backup ready', [
-				el( 'p', { text: bytes( r.size ) + ' · stored ' + where + '.' + ( deleted ? ' ' + plural( deleted, 'older scheduled backup was', 'older scheduled backups were' ) + ' deleted.' : '' ) } ),
+			if ( deleted ) {
+				stored +=
+					' ' +
+					sprintf(
+						/* translators: %d: number of older scheduled backups deleted */
+						_n( '%d older scheduled backup was deleted.', '%d older scheduled backups were deleted.', deleted, 'siteferry' ),
+						deleted
+					);
+			}
+			view.finish( true, __( 'Scheduled backup ready', 'siteferry' ), [
+				el( 'p', { text: stored } ),
 				el( 'p', {}, [ el( 'span', { class: 'sf-result-name', text: r.name } ) ] ),
 				...warningList( job ),
 			] );
 		} else {
-			view.finish( false, /^cancel/i.test( job.error || '' ) ? 'The scheduled backup was stopped' : 'The scheduled backup failed', [ el( 'p', { text: job.error } ), ...warningList( job ) ] );
+			view.finish( false, /^cancel/i.test( job.error || '' ) ? __( 'The scheduled backup was stopped', 'siteferry' ) : __( 'The scheduled backup failed', 'siteferry' ), [ el( 'p', { text: job.error } ), ...warningList( job ) ] );
 		}
 		loadBackups();
 		loadSchedule();
@@ -2895,19 +3949,24 @@
 			return;
 		}
 		if ( ! jobs.length ) {
-			list.replaceChildren( el( 'li', { class: 'sf-empty', text: 'Nothing has run yet. Backups, restores and transfers show up here, each with its log.' } ) );
+			list.replaceChildren( el( 'li', { class: 'sf-empty', text: __( 'Nothing has run yet. Backups, restores and transfers show up here, each with its log.', 'siteferry' ) } ) );
 			return;
 		}
+		const origins = {
+			schedule: __( 'Scheduled backup', 'siteferry' ),
+			safety: __( 'Safety backup', 'siteferry' ),
+			update: __( 'Backup before update', 'siteferry' ),
+		};
 		list.replaceChildren(
 			...jobs.map( ( job ) => {
 				const cancelled = job.status === 'failed' && /^cancel/i.test( job.error || '' );
-				const [ label, tone ] = cancelled ? [ 'Cancelled', '' ] : JOB_STATES[ job.status ] || [ job.status, '' ];
+				const [ label, tone ] = cancelled ? [ __( 'Cancelled', 'siteferry' ), '' ] : JOB_STATES[ job.status ] || [ job.status, '' ];
 				const row = el( 'li', { class: 'sf-row sf-job' } );
-				const view = button( 'View log', () => toggleLog( row, job.id, view ), 'button sf-quiet' );
+				const view = button( __( 'View log', 'siteferry' ), () => toggleLog( row, job.id, view ), 'button sf-quiet' );
 				row.append(
 					el( 'span', { class: 'sf-job-when', text: date( job.created ) } ),
 					el( 'div', { class: 'sf-job-what' }, [
-						el( 'span', { class: 'sf-job-type', text: { schedule: 'Scheduled backup', safety: 'Safety backup', update: 'Backup before update' }[ job.origin ] || JOB_TYPES[ job.type ] || job.type } ),
+						el( 'span', { class: 'sf-job-type', text: origins[ job.origin ] || JOB_TYPES[ job.type ] || job.type } ),
 						el( 'span', { class: 'sf-chip ' + tone, text: label } ),
 						el( 'span', { class: 'sf-job-detail', text: job.error || ( job.progress && job.progress.message ) || '' } ),
 					] ),
@@ -2922,15 +3981,15 @@
 		const open = row.querySelector( '.sf-log' );
 		if ( open ) {
 			open.remove();
-			toggle.textContent = 'View log';
+			toggle.textContent = __( 'View log', 'siteferry' );
 			return;
 		}
-		const view = el( 'pre', { class: 'sf-log', text: 'Loading...' } );
+		const view = el( 'pre', { class: 'sf-log', text: __( 'Loading...', 'siteferry' ) } );
 		row.appendChild( view );
-		toggle.textContent = 'Hide log';
+		toggle.textContent = __( 'Hide log', 'siteferry' );
 		try {
 			const result = await api( 'GET', 'jobs/' + id + '/log' );
-			view.textContent = ( result.truncated ? '[earlier lines omitted]\n' : '' ) + result.log;
+			view.textContent = ( result.truncated ? __( '[earlier lines omitted]', 'siteferry' ) + '\n' : '' ) + result.log;
 		} catch ( error ) {
 			view.textContent = error.message;
 		}
@@ -2995,12 +4054,25 @@
 		const moved = siteKey( undo.from ) !== siteKey( undo.to );
 		box.replaceChildren(
 			el( 'p', {}, [
-				el( 'strong', { text: ( moved ? 'Moved ' + hostOf( undo.from ) + ' here ' : 'Restored ' ) + when( undo.time, true ) + '.' } ),
-				' A safety backup of the site as it was just before is kept. Changed your mind?',
+				el( 'strong', {
+					text: moved
+						? sprintf(
+								/* translators: 1: address of the other site, 2: when, such as today, 7:21 PM */
+								__( 'Moved %1$s here %2$s.', 'siteferry' ),
+								hostOf( undo.from ),
+								when( undo.time, true )
+						  )
+						: sprintf(
+								/* translators: %s: when, such as today, 7:21 PM */
+								__( 'Restored %s.', 'siteferry' ),
+								when( undo.time, true )
+						  ),
+				} ),
+				' ' + __( 'A safety backup of the site as it was just before is kept. Changed your mind?', 'siteferry' ),
 			] ),
 			el( 'p', { class: 'sf-actions' }, [
-				button( 'Undo this restore', () => undoRestore( undo ), 'button button-primary' ),
-				button( 'Keep it as it is', dismissUndo, 'button sf-quiet' ),
+				button( __( 'Undo this restore', 'siteferry' ), () => undoRestore( undo ), 'button button-primary' ),
+				button( __( 'Keep it as it is', 'siteferry' ), dismissUndo, 'button sf-quiet' ),
 			] )
 		);
 		box.hidden = false;
@@ -3009,14 +4081,23 @@
 	/** Opens the restore panel for the safety backup made before the last restore. */
 	function undoRestore( undo ) {
 		showTab( 'backups' );
-		openRestore( { name: undo.safety, local: true, places: [], source: cfg.home, time: undo.time, title: 'the site before the last restore', size: 0 } );
+		openRestore( {
+			name: undo.safety,
+			local: true,
+			places: [],
+			source: cfg.home,
+			time: undo.time,
+			/* translators: name of the safety backup; used inside sentences such as Restore this site to “the site before the last restore” */
+			title: __( 'the site before the last restore', 'siteferry' ),
+			size: 0,
+		} );
 	}
 
 	async function dismissUndo() {
 		try {
 			await api( 'POST', 'undo/dismiss' );
 			$( 'siteferry-undo' ).hidden = true;
-			notice( 'Kept as it is. The safety backup stays in the list until you delete it.', 'success' );
+			notice( __( 'Kept as it is. The safety backup stays in the list until you delete it.', 'siteferry' ), 'success' );
 		} catch ( error ) {
 			notice( error.message, 'error' );
 		}
@@ -3028,14 +4109,29 @@
 		try {
 			status = await api( 'GET', 'status' );
 		} catch ( error ) {
-			notice( 'SiteFerry cannot reach its REST API: ' + error.message, 'error' );
+			/* translators: %s: error message */
+			notice( sprintf( __( 'SiteFerry cannot reach its REST API: %s', 'siteferry' ), error.message ), 'error' );
 			return;
 		}
 		renderUndo( status.undo );
 		const unfinished = status.uploads || [];
 		if ( unfinished.length ) {
 			const box = $( 'siteferry-unfinished-uploads' );
-			box.textContent = 'Unfinished upload: ' + unfinished.map( ( u ) => u.name + ' (' + bytes( u.offset ) + ' of ' + bytes( u.size ) + ')' ).join( ', ' ) + '. Choose the same file to continue.';
+			box.textContent = sprintf(
+				/* translators: %s: comma-separated list of unfinished uploads, such as backup.tar (12 MB of 40 MB) */
+				__( 'Unfinished upload: %s. Choose the same file to continue.', 'siteferry' ),
+				unfinished
+					.map( ( u ) =>
+						sprintf(
+							/* translators: 1: file name, 2: size uploaded so far, 3: size of the file; sizes such as 12 MB */
+							__( '%1$s (%2$s of %3$s)', 'siteferry' ),
+							u.name,
+							bytes( u.offset ),
+							bytes( u.size )
+						)
+					)
+					.join( ', ' )
+			);
 			box.hidden = false;
 		}
 		const active = status.active;
@@ -3049,31 +4145,37 @@
 		}
 		const saved = store.get( JOB_KEY );
 		const token = saved && saved.id === active.id ? saved.token : null;
-		const what = JOB_NAMES[ active.type ] || 'A job';
+		const what = JOB_NAMES[ active.type ] || __( 'A job', 'siteferry' );
 		$( 'siteferry-active-text' ).textContent =
-			what + ' started ' + date( active.created ) + ' is not finished (' + ( active.progress.message || active.status ) + ').' + ( token ? '' : ' This browser did not start it, so it can only be cancelled here.' );
+			sprintf(
+				/* translators: 1: the kind of job, such as A backup, 2: date and time it started, 3: what it was doing */
+				__( '%1$s started %2$s is not finished (%3$s).', 'siteferry' ),
+				what,
+				date( active.created ),
+				active.progress.message || active.status
+			) + ( token ? '' : ' ' + __( 'This browser did not start it, so it can only be cancelled here.', 'siteferry' ) );
 		$( 'siteferry-active' ).hidden = false;
 		$( 'siteferry-active-resume' ).hidden = ! token;
 		$( 'siteferry-active-resume' ).onclick = async () => {
 			$( 'siteferry-active' ).hidden = true;
 			showTab( 'backups' );
 			if ( active.type === 'send' || active.type === 'fetch' || active.type === 'check' ) {
-				await runTransfer( active.id, token, 'Resuming...' );
+				await runTransfer( active.id, token, __( 'Resuming...', 'siteferry' ) );
 			} else if ( active.type === 'export' ) {
 				const view = progressView( 'siteferry-job-progress' );
-				view.start( 'Resuming the backup...' );
+				view.start( __( 'Resuming the backup...', 'siteferry' ) );
 				await finishExport( active.id, token, view, false );
 			} else {
 				importJob = { id: active.id, token };
 				restore = { item: null, mine: true, name: null, job: importJob, phase: active.status === 'waiting' ? 'check' : 'running', seq: 0 };
 				setWording( true, '' );
-				$( 'siteferry-restore-title' ).textContent = active.status === 'waiting' ? 'Restore a backup' : 'Finishing the restore';
+				$( 'siteferry-restore-title' ).textContent = active.status === 'waiting' ? __( 'Restore a backup', 'siteferry' ) : __( 'Finishing the restore', 'siteferry' );
 				$( 'siteferry-restore-advanced' ).hidden = true;
 				$( 'siteferry-import-cancel' ).hidden = active.status !== 'waiting';
 				setConfirm( false );
 				$( 'siteferry-restore' ).hidden = false;
-				const view = progressView( 'siteferry-import-progress', [ 'Backup', 'This site' ] );
-				view.start( 'Resuming...' );
+				const view = progressView( 'siteferry-import-progress', [ __( 'Backup', 'siteferry' ), __( 'This site', 'siteferry' ) ] );
+				view.start( __( 'Resuming...', 'siteferry' ) );
 				await continueImport( view, 0 );
 			}
 		};
@@ -3081,7 +4183,8 @@
 			if ( await cancelJob( active.id, token ) ) {
 				// (A restore stopped here also stops its safety backup and removes it.)
 				$( 'siteferry-active' ).hidden = true;
-				notice( what + ' was cancelled and its work undone.', 'success' );
+				/* translators: %s: the kind of job, such as A backup */
+				notice( sprintf( __( '%s was cancelled and its work undone.', 'siteferry' ), what ), 'success' );
 			}
 		};
 	}
@@ -3198,7 +4301,7 @@
 					applyMode( form );
 					const d = destination( form.dataset.destination );
 					if ( d && d.oauth && d.oauth.connected && d.settings && d.settings.mode !== form.elements.mode.value ) {
-						storageResult( form, null, [ el( 'p', { text: 'Saving or signing in this way replaces the current connection.' } ) ] );
+						storageResult( form, null, [ el( 'p', { text: __( 'Saving or signing in this way replaces the current connection.', 'siteferry' ) } ) ] );
 					}
 				} );
 			}
@@ -3207,7 +4310,7 @@
 				copy.addEventListener( 'click', () => {
 					if ( navigator.clipboard ) {
 						navigator.clipboard.writeText( copy.dataset.copy ).then( () => {
-							copy.textContent = 'Copied';
+							copy.textContent = __( 'Copied', 'siteferry' );
 						} );
 					}
 				} );

@@ -110,7 +110,7 @@ final class Sql_In {
 		$in  = new Statement_Reader( $this->source, (int) $this->state['offset'] );
 		try {
 			if ( ! ftruncate( $out, (int) $this->state['written'] ) || 0 !== fseek( $out, (int) $this->state['written'] ) ) {
-				throw new Archive_Exception( 'Cannot continue writing the converted database dump.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot continue writing the converted database dump.', 'siteferry' ), Archive_Exception::IO );
 			}
 			if ( 0 === (int) $this->state['written'] ) {
 				Io::write_all( $out, "-- SiteFerry database dump\n-- Converted from the database.sql of a .wpress backup\n\nSET FOREIGN_KEY_CHECKS = 0;\nSET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';\n" );
@@ -187,7 +187,7 @@ final class Sql_In {
 		if ( preg_match( '/^INSERT\s+INTO\s+`((?:[^`]|``)+)`\s*(\([^)]*\)\s*)?VALUES\s*/i', $sql, $match ) ) {
 			$table = str_replace( '``', '`', $match[1] );
 			if ( ! isset( $this->state['tables'][ $table ] ) ) {
-				throw new Archive_Exception( sprintf( 'The database dump inserts into the table %s before creating it.', $table ), Archive_Exception::UNSUPPORTED );
+				throw new Archive_Exception( sprintf( /* translators: %s: a table name */ __( 'The database dump inserts into the table %s before creating it.', 'siteferry' ), $table ), Archive_Exception::UNSUPPORTED );
 			}
 			$values = substr( $sql, strlen( $match[0] ) );
 			$rows   = Sql_Values::rows( $values );
@@ -207,7 +207,7 @@ final class Sql_In {
 		}
 
 		$preview = (string) preg_replace( '/[^\x20-\x7e]/', '?', (string) preg_replace( '/\s+/', ' ', substr( $statement, 0, 100 ) ) );
-		throw new Archive_Exception( sprintf( 'The database dump in the .wpress backup contains a statement SiteFerry does not import: "%s".', $preview ), Archive_Exception::UNSUPPORTED );
+		throw new Archive_Exception( sprintf( /* translators: %s: preview */ __( 'The database dump in the .wpress backup contains a statement SiteFerry does not import: "%s".', 'siteferry' ), $preview ), Archive_Exception::UNSUPPORTED );
 	}
 
 	/**

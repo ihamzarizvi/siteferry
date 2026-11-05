@@ -42,7 +42,7 @@ final class Extract_Step implements Step {
 		$state   = $job->state( 'extract' );
 		$staging = self::staging( $job );
 		if ( ! is_dir( $staging ) && ! mkdir( $staging, 0755, true ) && ! is_dir( $staging ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
-			throw new Archive_Exception( 'Cannot create the staging folder.', Archive_Exception::IO );
+			throw new Archive_Exception( __( 'Cannot create the staging folder.', 'siteferry' ), Archive_Exception::IO );
 		}
 
 		$saved     = isset( $state['extractor'] ) ? $state['extractor']['reader'] : null;
@@ -75,7 +75,7 @@ final class Extract_Step implements Step {
 
 		try {
 			if ( ! ftruncate( $sums, $size ) || 0 !== fseek( $sums, $size ) ) {
-				throw new Archive_Exception( 'Cannot rewind the list of extracted files.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot rewind the list of extracted files.', 'siteferry' ), Archive_Exception::IO );
 			}
 			$done = $extractor->run(
 				$budget,
@@ -103,7 +103,7 @@ final class Extract_Step implements Step {
 		);
 		$inspect = $job->state( 'inspect' );
 		$total   = $inspect['bytes'] + $inspect['db_size'];
-		$job->set_progress( sprintf( 'Unpacking: %s of %s', size_format( $bytes, 1 ), size_format( $total, 1 ) ), $bytes, $total );
+		$job->set_progress( sprintf( /* translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB */ __( 'Unpacking: %1$s of %2$s', 'siteferry' ), size_format( $bytes, 1 ), size_format( $total, 1 ) ), $bytes, $total );
 		if ( $done && $wpress ) {
 			Import_Step::stage( $job, $staging, $job->path( 'extracted.sha256' ) );
 		}

@@ -73,7 +73,7 @@ final class Resumable_Hash {
 	 */
 	public function update( string $data ): void {
 		if ( null !== $this->digest ) {
-			throw new Archive_Exception( 'Hash already finalized.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'Hash already finalized.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		if ( '' === $data ) {
 			return;

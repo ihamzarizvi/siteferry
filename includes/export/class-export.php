@@ -83,7 +83,7 @@ final class Export {
 			$output = rtrim( str_replace( '\\', '/', $work_dir ), '/' );
 			$jobs   = $output . '/jobs';
 			if ( ! is_dir( $jobs ) && ! mkdir( $jobs, 0755, true ) && ! is_dir( $jobs ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
-				throw new Job_Exception( sprintf( 'Cannot create the folder "%s".', $jobs ), Job_Exception::STEP );
+				throw new Job_Exception( sprintf( /* translators: %s: a folder path */ __( 'Cannot create the folder "%s".', 'siteferry' ), $jobs ), Job_Exception::STEP );
 			}
 		}
 
@@ -133,13 +133,13 @@ final class Export {
 		array $options
 	): array {
 		if ( 'tar' !== $options['format'] ) {
-			throw new Job_Exception( 'A .wpress file cannot be protected with a password by SiteFerry; choose the SiteFerry format.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'A .wpress file cannot be protected with a password by SiteFerry; choose the SiteFerry format.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( strlen( $password ) < \SiteFerry\Archive\Crypto::MIN_PASSWORD ) {
-			throw new Job_Exception( sprintf( 'The password needs at least %d characters.', \SiteFerry\Archive\Crypto::MIN_PASSWORD ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %d: a number */ __( 'The password needs at least %d characters.', 'siteferry' ), \SiteFerry\Archive\Crypto::MIN_PASSWORD ), Job_Exception::STEP );
 		}
 		if ( ! \SiteFerry\Archive\Crypto::available() ) {
-			throw new Job_Exception( 'Encrypted backups need the PHP OpenSSL extension with AES-256-GCM, which this server does not have.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Encrypted backups need the PHP OpenSSL extension with AES-256-GCM, which this server does not have.', 'siteferry' ), Job_Exception::STEP );
 		}
 		return \SiteFerry\Archive\Crypto::create( $password );
 	}
@@ -153,7 +153,7 @@ final class Export {
 	public static function normalize( array $options ): array {
 		$unknown = array_diff( array_keys( $options ), array_keys( self::DEFAULTS ) );
 		if ( array() !== $unknown ) {
-			throw new Job_Exception( 'Unknown export option: ' . implode( ', ', $unknown ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: option names, separated by commas */ __( 'Unknown export option: %s', 'siteferry' ), implode( ', ', $unknown ) ), Job_Exception::STEP );
 		}
 
 		$normalized = array();
@@ -178,19 +178,19 @@ final class Export {
 		$normalized['tags']  = $label['tags'];
 		$normalized['format'] = strtolower( $normalized['format'] );
 		if ( ! in_array( $normalized['format'], array( 'tar', 'wpress' ), true ) ) {
-			throw new Job_Exception( 'Unknown backup format; use "tar" or "wpress".', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Unknown backup format; use "tar" or "wpress".', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( 'wpress' === $normalized['format'] ) {
 			$normalized['compress'] = false; // A .wpress file is made from a plain TAR.
 		}
 		if ( '' !== $normalized['send_to'] && ! preg_match( '/^[a-z0-9]{1,20}$/', $normalized['send_to'] ) ) {
-			throw new Job_Exception( 'Unknown storage to send the backup to.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Unknown storage to send the backup to.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( '' === $normalized['send_to'] ) {
 			$normalized['delete_after_send'] = false;
 		}
 		if ( $normalized['compress'] && ! function_exists( 'deflate_init' ) ) {
-			throw new Job_Exception( 'Compression needs the PHP zlib extension.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Compression needs the PHP zlib extension.', 'siteferry' ), Job_Exception::STEP );
 		}
 
 		$paths = array();
@@ -203,7 +203,7 @@ final class Export {
 				// "*" is allowed as a wildcard; everything else must be a safe relative path.
 				Path_Guard::check( str_replace( '*', 'x', $path ), false );
 			} catch ( Archive_Exception $e ) {
-				throw new Job_Exception( sprintf( 'Invalid path to leave out: "%s". Use paths inside wp-content, such as uploads/2019.', Path_Guard::printable( $path ) ), Job_Exception::STEP );
+				throw new Job_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Invalid path to leave out: "%s". Use paths inside wp-content, such as uploads/2019.', 'siteferry' ), Path_Guard::printable( $path ) ), Job_Exception::STEP );
 			}
 			$paths[] = $path;
 		}

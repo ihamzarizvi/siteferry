@@ -89,7 +89,7 @@ final class Scanner {
 		$handle = Io::open_or_fail( $list, 'c+b' );
 		try {
 			if ( ! ftruncate( $handle, $state['list_size'] ) || 0 !== fseek( $handle, $state['list_size'] ) ) {
-				throw new Archive_Exception( 'Cannot rewind the file list.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot rewind the file list.', 'siteferry' ), Archive_Exception::IO );
 			}
 			while ( array() !== $state['stack'] ) {
 				$this->scan_folder( (string) array_pop( $state['stack'] ), $handle, $state, $warn );

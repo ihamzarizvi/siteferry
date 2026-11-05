@@ -43,34 +43,34 @@ final class Inspect_Step implements Step {
 		$warnings = array();
 
 		if ( (int) $manifest['format_version'] > Manifest::FORMAT_VERSION ) {
-			throw new Job_Exception( 'This backup was made by a newer version of SiteFerry. Update SiteFerry on this site first.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This backup was made by a newer version of SiteFerry. Update SiteFerry on this site first.', 'siteferry' ), Job_Exception::STEP );
 		}
 		// Networks: a whole network goes into a network of the same kind, and nothing else does.
 		$from_network = isset( $manifest['site']['network'] ) && is_array( $manifest['site']['network'] ) ? $manifest['site']['network'] : null;
 		$to_network   = isset( $site['network'] ) && is_array( $site['network'] ) ? $site['network'] : null;
 		if ( ! empty( $manifest['site']['multisite'] ) && null === $from_network ) {
-			throw new Job_Exception( 'This backup comes from a multisite network but was made by an older SiteFerry that does not record the network; it cannot be restored.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This backup comes from a multisite network but was made by an older SiteFerry that does not record the network; it cannot be restored.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( null !== $from_network && null === $to_network ) {
-			throw new Job_Exception( 'This backup is of a whole multisite network. Restore it into a multisite network (of the same kind) instead of a single site.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This backup is of a whole multisite network. Restore it into a multisite network (of the same kind) instead of a single site.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( null === $from_network && null !== $to_network ) {
-			throw new Job_Exception( 'This site is a multisite network; it can only take a backup of a whole network. Restoring a single site into a network is not supported yet.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This site is a multisite network; it can only take a backup of a whole network. Restoring a single site into a network is not supported yet.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( null !== $from_network ) {
 			if ( (bool) $from_network['subdomain_install'] !== (bool) $to_network['subdomain_install'] ) {
-				throw new Job_Exception( sprintf( 'The backup\'s network uses %s for its sites, this network uses %s; they must be the same.', $from_network['subdomain_install'] ? 'subdomains' : 'subfolders', $to_network['subdomain_install'] ? 'subdomains' : 'subfolders' ), Job_Exception::STEP );
+				throw new Job_Exception( sprintf( /* translators: 1: "subdomains" or "subfolders", 2: "subdomains" or "subfolders" */ __( 'The backup\'s network uses %1$s for its sites, this network uses %2$s; they must be the same.', 'siteferry' ), $from_network['subdomain_install'] ? __( 'subdomains', 'siteferry' ) : __( 'subfolders', 'siteferry' ), $to_network['subdomain_install'] ? __( 'subdomains', 'siteferry' ) : __( 'subfolders', 'siteferry' ) ), Job_Exception::STEP );
 			}
 			if ( '' !== (string) $job->option( 'replace_url' ) ) {
-				throw new Job_Exception( 'A network keeps the address set in wp-config.php; a new address cannot be set for it here.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'A network keeps the address set in wp-config.php; a new address cannot be set for it here.', 'siteferry' ), Job_Exception::STEP );
 			}
 			if ( Import::partial( $job ) ) {
-				throw new Job_Exception( 'A network is restored whole; restoring only parts of it is not supported yet.', Job_Exception::STEP );
+				throw new Job_Exception( __( 'A network is restored whole; restoring only parts of it is not supported yet.', 'siteferry' ), Job_Exception::STEP );
 			}
 		}
 		$prefix = (string) $manifest['database']['prefix'];
 		if ( ! preg_match( '/^[A-Za-z0-9_]+$/', $prefix ) ) {
-			throw new Job_Exception( 'The backup has an invalid table prefix.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The backup has an invalid table prefix.', 'siteferry' ), Job_Exception::STEP );
 		}
 
 		// A database from a newer WordPress may not work with this site's older WordPress files.
@@ -93,7 +93,7 @@ final class Inspect_Step implements Step {
 			$suffix = substr( (string) $table['name'], strlen( $prefix ) );
 			foreach ( array( $job->option( 'temp_prefix' ), $job->option( 'old_prefix' ), $site['prefix'] ) as $new_prefix ) {
 				if ( strlen( $new_prefix . $suffix ) > 64 ) {
-					throw new Job_Exception( sprintf( 'The table name %s would be too long with this site\'s prefix.', $table['name'] ), Job_Exception::STEP );
+					throw new Job_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'The table name %s would be too long with this site\'s prefix.', 'siteferry' ), $table['name'] ), Job_Exception::STEP );
 				}
 			}
 		}
@@ -104,17 +104,17 @@ final class Inspect_Step implements Step {
 		$chosen_tables = (array) $job->option( 'restore_tables', array() );
 		foreach ( $chosen_tables as $table ) {
 			if ( ! in_array( $table, $names, true ) ) {
-				throw new Job_Exception( sprintf( 'The backup has no table "%s".', $table ), Job_Exception::STEP );
+				throw new Job_Exception( sprintf( /* translators: %s: a table name */ __( 'The backup has no table "%s".', 'siteferry' ), $table ), Job_Exception::STEP );
 			}
 		}
 		$restore_db    = (bool) $job->option( 'restore_database', true );
 		$restore_files = (bool) $job->option( 'restore_files', true );
 		if ( ! $restore_db && ! $restore_files ) {
-			throw new Job_Exception( 'Choose something to restore: the database, the files, or both.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Choose something to restore: the database, the files, or both.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$options_restored = $restore_db && ( array() === $chosen_tables || in_array( $prefix . 'options', $chosen_tables, true ) );
 		if ( ! $options_restored && '' !== (string) $job->option( 'replace_url' ) ) {
-			throw new Job_Exception( 'A new site address can only be set when the options table is restored too.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'A new site address can only be set when the options table is restored too.', 'siteferry' ), Job_Exception::STEP );
 		}
 
 		$needed = (int) $manifest['files']['bytes'] + 2 * (int) $manifest['database']['size'] + self::SPACE_MARGIN;
@@ -125,7 +125,7 @@ final class Inspect_Step implements Step {
 			}
 		) : false;
 		if ( false !== $free && $free < $needed ) {
-			throw new Job_Exception( sprintf( 'Not enough disk space: the import needs about %s, but only %s is free.', size_format( $needed, 1 ), size_format( $free, 1 ) ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB */ __( 'Not enough disk space: the import needs about %1$s, but only %2$s is free.', 'siteferry' ), size_format( $needed, 1 ), size_format( $free, 1 ) ), Job_Exception::STEP );
 		}
 
 		$target = self::target( $site, (string) $job->option( 'replace_url' ) );
@@ -194,7 +194,7 @@ final class Inspect_Step implements Step {
 				),
 			)
 		);
-		$job->set_progress( 'Backup checked' );
+		$job->set_progress( __( 'Backup checked', 'siteferry' ) );
 		$job->log( 'info', sprintf( 'Backup checked: %s from %s, %d replacement pairs.', basename( (string) $job->option( 'archive' ) ), $source['home'], count( $pairs ) ) );
 		return true;
 	}
@@ -291,13 +291,14 @@ final class Inspect_Step implements Step {
 		$chosen = (array) $job->option( 'restore_tables', array() );
 		if ( $job->option( 'restore_database', true ) ) {
 			$what[] = array() === $chosen
-				? 'the database'
-				: sprintf( '%d of %d tables (%s%s)', count( $chosen ), $tables, implode( ', ', array_slice( $chosen, 0, 5 ) ), count( $chosen ) > 5 ? ', ...' : '' );
+				? __( 'the database', 'siteferry' )
+				/* translators: 1: tables chosen, 2: tables in the backup, 3: their names */
+				: sprintf( __( '%1$d of %2$d tables (%3$s)', 'siteferry' ), count( $chosen ), $tables, implode( ', ', array_slice( $chosen, 0, 5 ) ) . ( count( $chosen ) > 5 ? ', ...' : '' ) );
 		}
 		if ( $job->option( 'restore_files', true ) ) {
 			$paths  = (array) $job->option( 'restore_paths', array() );
 			$what[] = array() === $paths
-				? 'the files'
+				? __( 'the files', 'siteferry' )
 				: implode(
 					', ',
 					array_map(
@@ -308,7 +309,7 @@ final class Inspect_Step implements Step {
 					)
 				) . ( count( $paths ) > 8 ? ', ...' : '' );
 		}
-		return 'Only ' . implode( ' and ', $what );
+		return 2 === count( $what ) ? sprintf( /* translators: 1: a part of a backup, such as "the database", 2: another part */ __( 'Only %1$s and %2$s', 'siteferry' ), $what[0], $what[1] ) : sprintf( /* translators: %s: a part of a backup, such as "the database" */ __( 'Only %s', 'siteferry' ), $what[0] );
 	}
 
 	/**

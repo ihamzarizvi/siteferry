@@ -26,6 +26,6 @@ final class Null_Transport implements Transport {
 	 * @throws Storage_Exception Always.
 	 */
 	public function request( string $method, string $url, array $headers, string $body = '', int $timeout = 60 ): array {
-		throw new Storage_Exception( 'No requests are made here.', Storage_Exception::CONFIG );
+		throw new Storage_Exception( __( 'No requests are made here.', 'siteferry' ), Storage_Exception::CONFIG );
 	}
 }

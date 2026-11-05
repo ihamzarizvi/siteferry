@@ -94,7 +94,7 @@ final class Tar_Reader implements Entry_Reader {
 		}
 
 		if ( ! isset( $state['version'], $state['input'] ) || 1 !== $state['version'] ) {
-			throw new Archive_Exception( 'Invalid saved reader state.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'Invalid saved reader state.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		$compressed        = ! empty( $state['compressed'] );
 		$input             = $compressed ? new Gzip_Input( $path, (array) $state['input'] ) : new File_Input( $path, (array) $state['input'] );
@@ -145,7 +145,7 @@ final class Tar_Reader implements Entry_Reader {
 		while ( true ) {
 			$block = $this->in->read( Tar_Header::BLOCK );
 			if ( '' === $block ) {
-				throw new Archive_Exception( 'The archive has no end marker; the file is incomplete.', Archive_Exception::TRUNCATED );
+				throw new Archive_Exception( __( 'The archive has no end marker; the file is incomplete.', 'siteferry' ), Archive_Exception::TRUNCATED );
 			}
 			if ( strlen( $block ) < Tar_Header::BLOCK ) {
 				throw $this->truncated();
@@ -158,7 +158,7 @@ final class Tar_Reader implements Entry_Reader {
 					$this->ended = true;
 					return null;
 				}
-				throw new Archive_Exception( 'Unexpected data after an empty TAR block.', Archive_Exception::CORRUPT );
+				throw new Archive_Exception( __( 'Unexpected data after an empty TAR block.', 'siteferry' ), Archive_Exception::CORRUPT );
 			}
 
 			$header = Tar_Header::parse( $block );
@@ -314,7 +314,7 @@ final class Tar_Reader implements Entry_Reader {
 		}
 		if ( isset( $pax['size'] ) ) {
 			if ( ! preg_match( '/^[0-9]{1,18}$/', $pax['size'] ) ) {
-				throw new Archive_Exception( 'Malformed size in pax header.', Archive_Exception::CORRUPT );
+				throw new Archive_Exception( __( 'Malformed size in pax header.', 'siteferry' ), Archive_Exception::CORRUPT );
 			}
 			$entry->size = (int) $pax['size'];
 		}
@@ -353,7 +353,7 @@ final class Tar_Reader implements Entry_Reader {
 	 */
 	private function read_meta( int $size ): string {
 		if ( $size > self::MAX_META_SIZE ) {
-			throw new Archive_Exception( 'Extended TAR header is too large.', Archive_Exception::CORRUPT );
+			throw new Archive_Exception( __( 'Extended TAR header is too large.', 'siteferry' ), Archive_Exception::CORRUPT );
 		}
 		$data = $size > 0 ? $this->in->read( $size ) : '';
 		if ( strlen( $data ) !== $size ) {
@@ -389,7 +389,7 @@ final class Tar_Reader implements Entry_Reader {
 	 */
 	private function truncated(): Archive_Exception {
 		$where = null === $this->entry ? '' : sprintf( ' inside "%s"', Path_Guard::printable( $this->entry->name ) );
-		return new Archive_Exception( 'The archive ends unexpectedly' . $where . '; the file is incomplete.', Archive_Exception::TRUNCATED );
+		return new Archive_Exception( sprintf( /* translators: %s: empty, or where it ends, such as " after wp-content/uploads/a.jpg" */ __( 'The archive ends unexpectedly%s; the file is incomplete.', 'siteferry' ), $where ), Archive_Exception::TRUNCATED );
 	}
 
 	/**

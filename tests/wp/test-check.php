@@ -108,7 +108,7 @@ Sf_Test::run(
 		$job = sf_rest_drive( $data['job']['id'], $data['token'], 0 );
 		Sf_Test::same( 'done', $job['status'], 'check: ' . (string) $job['error'] );
 		Sf_Test::same( 'check', $job['type'] );
-		Sf_Test::ok( 0 === strpos( $job['result']['checked']['summary'], 'All ' ), 'summary: ' . $job['result']['checked']['summary'] );
+		Sf_Test::ok( false !== strpos( $job['result']['checked']['summary'], 'match' ) && false !== strpos( $job['result']['checked']['summary'], 'the database dump is complete' ), 'summary: ' . $job['result']['checked']['summary'] );
 
 		list( $status, $all ) = sf_rest( 'GET', '/checks', $admin );
 		Sf_Test::same( 200, $status );
@@ -130,7 +130,7 @@ Sf_Test::run(
 		Sf_Test::same( 200, $status, 'start: ' . wp_json_encode( $data ) );
 		$job = sf_rest_drive( $data['job']['id'], $data['token'] );
 		Sf_Test::same( 'failed', $job['status'] );
-		Sf_Test::same( 'The copy on this server is damaged: 1 files do not match their checksums: database.sql.', $job['error'] );
+		Sf_Test::same( 'The copy on this server is damaged: 1 file does not match its checksum: database.sql.', $job['error'] );
 		Sf_Test::same( false, $job['result']['checked']['ok'] );
 		Sf_Test::same( false, Check::all()[ $damaged ]['local']['ok'], 'recorded:' );
 

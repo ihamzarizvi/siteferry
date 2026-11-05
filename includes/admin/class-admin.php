@@ -65,7 +65,8 @@ final class Admin {
 		// This page only (load-{page} hook): credit the maker in the admin footer.
 		add_filter( 'admin_footer_text', array( self::class, 'footer_text' ) );
 		wp_enqueue_style( 'siteferry-admin', $url . 'admin.css', array(), $version( 'admin.css' ) );
-		wp_enqueue_script( 'siteferry-admin', $url . 'admin.js', array(), $version( 'admin.js' ), true );
+		wp_enqueue_script( 'siteferry-admin', $url . 'admin.js', array( 'wp-i18n' ), $version( 'admin.js' ), true );
+		wp_set_script_translations( 'siteferry-admin', 'siteferry' ); // The page's texts, in the site's language.
 		// WordPress removes "error" from the address bar before the script runs, so a refusal from
 		// the OAuth provider is passed along here. Display only: nothing is saved from a GET.
 		$oauth_error = isset( $_GET['oauth'], $_GET['error'] ) ? sanitize_key( wp_unslash( $_GET['error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended

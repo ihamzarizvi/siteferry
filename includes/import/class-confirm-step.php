@@ -31,7 +31,7 @@ final class Confirm_Step implements Step {
 			return true;
 		}
 		$job->set_status( Job::STATUS_WAITING );
-		$job->set_progress( 'Waiting for confirmation' );
+		$job->set_progress( __( 'Waiting for confirmation', 'siteferry' ) );
 		return false;
 	}
 

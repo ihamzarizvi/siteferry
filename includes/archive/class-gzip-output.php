@@ -99,7 +99,7 @@ final class Gzip_Output implements Output_Stream {
 	 */
 	public static function open( string $path, ?array $state = null, int $level = self::DEFAULT_LEVEL, int $block_size = self::DEFAULT_BLOCK_SIZE ): self {
 		if ( ! function_exists( 'deflate_init' ) ) {
-			throw new Archive_Exception( 'Compression needs the PHP zlib extension.', Archive_Exception::IO );
+			throw new Archive_Exception( __( 'Compression needs the PHP zlib extension.', 'siteferry' ), Archive_Exception::IO );
 		}
 		if ( null === $state ) {
 			return new self( Io::open_or_fail( $path, 'xb' ), 0, 0, $level, $block_size );
@@ -109,11 +109,11 @@ final class Gzip_Output implements Output_Stream {
 		$handle = Io::open_or_fail( $path, 'r+b' );
 		if ( Io::size( $handle ) < $size ) {
 			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-			throw new Archive_Exception( 'The archive is shorter than its saved progress; it was changed by something else.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'The archive is shorter than its saved progress; it was changed by something else.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		if ( ! ftruncate( $handle, $size ) || 0 !== fseek( $handle, $size ) ) {
 			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-			throw new Archive_Exception( 'Cannot rewind the archive to its saved progress.', Archive_Exception::IO );
+			throw new Archive_Exception( __( 'Cannot rewind the archive to its saved progress.', 'siteferry' ), Archive_Exception::IO );
 		}
 		return new self( $handle, $size, (int) $state['position'], $level, $block_size );
 	}
@@ -131,7 +131,7 @@ final class Gzip_Output implements Output_Stream {
 		if ( null === $this->deflate ) {
 			$this->deflate = deflate_init( ZLIB_ENCODING_GZIP, array( 'level' => $this->level ) );
 			if ( false === $this->deflate ) {
-				throw new Archive_Exception( 'Cannot start gzip compression.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Cannot start gzip compression.', 'siteferry' ), Archive_Exception::IO );
 			}
 		}
 
@@ -193,7 +193,7 @@ final class Gzip_Output implements Output_Stream {
 	 */
 	private function emit( $compressed ): void {
 		if ( false === $compressed ) {
-			throw new Archive_Exception( 'gzip compression failed.', Archive_Exception::IO );
+			throw new Archive_Exception( __( 'gzip compression failed.', 'siteferry' ), Archive_Exception::IO );
 		}
 		if ( '' !== $compressed ) {
 			Io::write_all( $this->handle, $compressed );

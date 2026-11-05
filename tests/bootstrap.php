@@ -28,6 +28,7 @@ set_error_handler(
 define( 'ABSPATH', __DIR__ . '/' );
 
 require dirname( __DIR__ ) . '/includes/class-autoloader.php';
+require __DIR__ . '/lib/i18n-stub.php';
 SiteFerry\Autoloader::register();
 
 require __DIR__ . '/lib/class-sf-test.php';

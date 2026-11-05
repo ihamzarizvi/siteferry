@@ -58,11 +58,11 @@ final class File_Output implements Output_Stream {
 		$handle = Io::open_or_fail( $path, 'r+b' );
 		if ( Io::size( $handle ) < $size ) {
 			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-			throw new Archive_Exception( 'The archive is shorter than its saved progress; it was changed by something else.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'The archive is shorter than its saved progress; it was changed by something else.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 		if ( ! ftruncate( $handle, $size ) || 0 !== fseek( $handle, $size ) ) {
 			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-			throw new Archive_Exception( 'Cannot rewind the archive to its saved progress.', Archive_Exception::IO );
+			throw new Archive_Exception( __( 'Cannot rewind the archive to its saved progress.', 'siteferry' ), Archive_Exception::IO );
 		}
 		return new self( $handle, $size );
 	}

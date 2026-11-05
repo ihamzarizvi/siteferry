@@ -49,7 +49,7 @@ final class File_Input implements Input_Stream {
 		$this->position = null === $state ? 0 : (int) $state['position'];
 		if ( $this->position > $this->size || 0 !== fseek( $this->handle, $this->position ) ) {
 			$this->close();
-			throw new Archive_Exception( 'Saved read position is past the end of the archive.', Archive_Exception::BAD_STATE );
+			throw new Archive_Exception( __( 'Saved read position is past the end of the archive.', 'siteferry' ), Archive_Exception::BAD_STATE );
 		}
 	}
 

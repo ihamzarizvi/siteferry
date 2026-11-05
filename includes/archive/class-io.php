@@ -63,7 +63,7 @@ final class Io {
 	public static function open_or_fail( string $path, string $mode ) {
 		$handle = self::open( $path, $mode );
 		if ( false === $handle ) {
-			throw new Archive_Exception( sprintf( 'Cannot open "%s".', $path ), Archive_Exception::IO );
+			throw new Archive_Exception( sprintf( /* translators: %s: a file or backup name */ __( 'Cannot open "%s".', 'siteferry' ), $path ), Archive_Exception::IO );
 		}
 		return $handle;
 	}
@@ -96,7 +96,7 @@ final class Io {
 		while ( $done < $length ) {
 			$written = fwrite( $handle, 0 === $done ? $data : substr( $data, $done ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
 			if ( false === $written || 0 === $written ) {
-				throw new Archive_Exception( 'Write failed. The disk may be full.', Archive_Exception::IO );
+				throw new Archive_Exception( __( 'Write failed. The disk may be full.', 'siteferry' ), Archive_Exception::IO );
 			}
 			$done += $written;
 		}

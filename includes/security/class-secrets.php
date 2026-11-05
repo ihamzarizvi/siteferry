@@ -98,11 +98,11 @@ final class Secrets {
 			$tag    = '';
 			$cipher = openssl_encrypt( $plain, 'aes-256-gcm', $this->key, OPENSSL_RAW_DATA, $iv, $tag, self::INFO, 16 );
 			if ( false === $cipher ) {
-				throw new Secret_Exception( 'The secret could not be encrypted.' );
+				throw new Secret_Exception( __( 'The secret could not be encrypted.', 'siteferry' ) );
 			}
 			return self::OPENSSL . base64_encode( $iv . $tag . $cipher ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 		}
-		throw new Secret_Exception( 'Saving secrets needs the PHP sodium or OpenSSL extension.' );
+		throw new Secret_Exception( __( 'Saving secrets needs the PHP sodium or OpenSSL extension.', 'siteferry' ) );
 	}
 
 	/**
@@ -119,7 +119,7 @@ final class Secrets {
 		// Sodium: 24-byte nonce + 16-byte MAC + ciphertext. OpenSSL: 12-byte IV + 16-byte tag + ciphertext.
 		if ( false !== $data && self::SODIUM === $prefix && strlen( $data ) >= 40 ) {
 			if ( ! function_exists( 'sodium_crypto_secretbox_open' ) ) {
-				throw new Secret_Exception( 'This saved secret needs the PHP sodium extension.' );
+				throw new Secret_Exception( __( 'This saved secret needs the PHP sodium extension.', 'siteferry' ) );
 			}
 			try {
 				$plain = sodium_crypto_secretbox_open( substr( $data, 24 ), substr( $data, 0, 24 ), $this->key );
@@ -128,13 +128,13 @@ final class Secrets {
 			}
 		} elseif ( false !== $data && self::OPENSSL === $prefix && strlen( $data ) >= 28 ) {
 			if ( ! function_exists( 'openssl_decrypt' ) ) {
-				throw new Secret_Exception( 'This saved secret needs the PHP OpenSSL extension.' );
+				throw new Secret_Exception( __( 'This saved secret needs the PHP OpenSSL extension.', 'siteferry' ) );
 			}
 			$plain = openssl_decrypt( substr( $data, 28 ), 'aes-256-gcm', $this->key, OPENSSL_RAW_DATA, substr( $data, 0, 12 ), substr( $data, 12, 16 ), self::INFO );
 		}
 
 		if ( ! is_string( $plain ) ) {
-			throw new Secret_Exception( 'A saved secret cannot be read (the WordPress salts may have changed). Enter it again on the Storage tab.' );
+			throw new Secret_Exception( __( 'A saved secret cannot be read (the WordPress salts may have changed). Enter it again on the Storage tab.', 'siteferry' ) );
 		}
 		return $plain;
 	}

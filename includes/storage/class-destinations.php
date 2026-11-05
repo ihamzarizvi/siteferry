@@ -117,10 +117,10 @@ final class Destinations {
 	public static function require_ready( string $id ): void {
 		self::driver_class( $id );
 		if ( ! self::configured( $id ) ) {
-			throw new Job_Exception( sprintf( '%s is not set up yet (Storage tab).', self::LABELS[ $id ][0] ), Job_Exception::NOT_FOUND );
+			throw new Job_Exception( sprintf( /* translators: %s: a storage, such as Dropbox */ __( '%s is not set up yet (Storage tab).', 'siteferry' ), self::LABELS[ $id ][0] ), Job_Exception::NOT_FOUND );
 		}
 		if ( ! self::ready( $id ) ) {
-			throw new Job_Exception( sprintf( '%s is not connected yet: click "Connect" on the Storage tab.', self::LABELS[ $id ][0] ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: a storage, such as Dropbox */ __( '%s is not connected yet: click "Connect" on the Storage tab.', 'siteferry' ), self::LABELS[ $id ][0] ), Job_Exception::STEP );
 		}
 	}
 
@@ -153,7 +153,7 @@ final class Destinations {
 			} elseif ( isset( $previous[ $name ] ) ) {
 				$secrets[ $name ] = $previous[ $name ];
 			} else {
-				throw new Storage_Exception( sprintf( 'Enter the %s.', $label ), Storage_Exception::CONFIG );
+				throw new Storage_Exception( sprintf( /* translators: %s: a field name, such as "host name" */ __( 'Enter the %s.', 'siteferry' ), $label ), Storage_Exception::CONFIG );
 			}
 		}
 
@@ -233,7 +233,7 @@ final class Destinations {
 	public static function connect( string $id, string $code, string $state ): void {
 		$verifier = Oauth_State::finish( $id, $state );
 		if ( '' === $code || strlen( $code ) > 2048 || preg_match( '/[\x00-\x20\x7f]/', $code ) ) {
-			throw new Job_Exception( 'The answer from the provider has no valid authorization code.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'The answer from the provider has no valid authorization code.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$driver = self::oauth_driver( $id );
 		self::save_auth( $id, $driver->connect( $code, $verifier, self::redirect_uri( $id ) ) );
@@ -285,7 +285,7 @@ final class Destinations {
 		$class  = self::driver_class( $id );
 		$stored = self::stored();
 		if ( ! isset( $stored[ $id ] ) ) {
-			throw new Job_Exception( sprintf( '%s is not set up yet (Storage tab).', self::LABELS[ $id ][0] ), Job_Exception::NOT_FOUND );
+			throw new Job_Exception( sprintf( /* translators: %s: a storage, such as Dropbox */ __( '%s is not set up yet (Storage tab).', 'siteferry' ), self::LABELS[ $id ][0] ), Job_Exception::NOT_FOUND );
 		}
 		$describe_only = $transport instanceof Null_Transport;
 		$secrets       = array();
@@ -341,7 +341,7 @@ final class Destinations {
 	private static function oauth_driver( string $id ): Oauth_Driver {
 		$driver = self::driver( $id );
 		if ( ! $driver instanceof Oauth_Driver ) {
-			throw new Job_Exception( 'This storage does not use a sign-in.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'This storage does not use a sign-in.', 'siteferry' ), Job_Exception::STEP );
 		}
 		return $driver;
 	}
@@ -375,7 +375,7 @@ final class Destinations {
 	 */
 	private static function driver_class( string $id ): string {
 		if ( ! isset( self::DRIVERS[ $id ] ) ) {
-			throw new Job_Exception( 'Unknown storage.', Job_Exception::NOT_FOUND );
+			throw new Job_Exception( __( 'Unknown storage.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		return self::DRIVERS[ $id ];
 	}

@@ -42,7 +42,7 @@ final class Wp_Transport implements Transport {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
-			throw new Storage_Exception( 'Network error: ' . $response->get_error_message(), Storage_Exception::TRANSIENT );
+			throw new Storage_Exception( sprintf( /* translators: %s: the reason */ __( 'Network error: %s', 'siteferry' ), $response->get_error_message() ), Storage_Exception::TRANSIENT );
 		}
 		$headers = array();
 		foreach ( wp_remote_retrieve_headers( $response ) as $name => $value ) {

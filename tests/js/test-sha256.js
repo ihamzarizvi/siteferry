@@ -10,10 +10,22 @@ const path = require( 'path' );
 const vm = require( 'vm' );
 const crypto = require( 'crypto' );
 
+// WordPress's wp.i18n, as far as loading the script needs it (texts stay in English).
+const format = ( text, ...values ) => {
+	let i = 0;
+	return text.replace( /%(?:(\d+)\$)?[sd]/g, ( match, position ) => String( values[ position ? position - 1 : i++ ] ) );
+};
 const sandbox = {
 	window: {},
 	document: { addEventListener() {}, getElementById() { return null; } },
 	TextEncoder,
+	wp: {
+		i18n: {
+			__: ( text ) => text,
+			_n: ( one, many, n ) => ( 1 === n ? one : many ),
+			sprintf: format,
+		},
+	},
 };
 const source = fs.readFileSync( path.join( __dirname, '..', '..', 'assets', 'admin.js' ), 'utf8' );
 vm.runInNewContext( source, sandbox, { filename: 'admin.js' } );

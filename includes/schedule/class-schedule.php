@@ -148,7 +148,7 @@ final class Schedule {
 				$value = filter_var( $value, FILTER_VALIDATE_BOOLEAN );
 			} elseif ( is_int( $default ) ) {
 				if ( ! is_numeric( $value ) ) {
-					throw new Job_Exception( sprintf( 'The schedule setting "%s" must be a number.', $key ), Job_Exception::STEP );
+					throw new Job_Exception( sprintf( /* translators: %s: a setting name */ __( 'The schedule setting "%s" must be a number.', 'siteferry' ), $key ), Job_Exception::STEP );
 				}
 				$value = (int) $value;
 			} else {
@@ -157,41 +157,41 @@ final class Schedule {
 			$out[ $key ] = $value;
 		}
 		if ( ! in_array( $out['frequency'], self::FREQUENCIES, true ) ) {
-			throw new Job_Exception( 'Choose how often to back up: every day, week or month.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Choose how often to back up: every day, week or month.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $out['time'] ) ) {
-			throw new Job_Exception( 'Enter the time as hours and minutes, for example 03:00.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Enter the time as hours and minutes, for example 03:00.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( $out['weekday'] < 0 || $out['weekday'] > 6 ) {
-			throw new Job_Exception( 'Choose a day of the week.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Choose a day of the week.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( $out['monthday'] < 1 || $out['monthday'] > 28 ) {
-			throw new Job_Exception( 'Choose a day of the month from 1 to 28 (every month has those).', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Choose a day of the month from 1 to 28 (every month has those).', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( ! in_array( $out['format'], array( 'tar', 'wpress' ), true ) ) {
-			throw new Job_Exception( 'Unknown backup format; use "tar" or "wpress".', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Unknown backup format; use "tar" or "wpress".', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( 'wpress' === $out['format'] ) {
 			$out['compress'] = false;
 			$out['encrypt']  = false; // SiteFerry encrypts only its own format.
 		}
 		if ( '' !== $out['send_to'] && ! in_array( $out['send_to'], $ready, true ) ) {
-			throw new Job_Exception( 'That storage is not set up (or not connected) yet. Set it up on the Storage tab, or keep the backups on this server.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'That storage is not set up (or not connected) yet. Set it up on the Storage tab, or keep the backups on this server.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( '' === $out['send_to'] ) {
 			$out['keep_local'] = true;
 		}
 		if ( $out['retain'] < 0 || $out['retain'] > 100 ) {
-			throw new Job_Exception( 'Keep between 1 and 100 scheduled backups, or 0 to keep them all.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Keep between 1 and 100 scheduled backups, or 0 to keep them all.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( ! in_array( $out['notify'], self::NOTIFY, true ) ) {
-			throw new Job_Exception( 'Choose when to send an email.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Choose when to send an email.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( '' !== $out['email'] && ( strlen( $out['email'] ) > 200 || false === filter_var( $out['email'], FILTER_VALIDATE_EMAIL ) ) ) {
-			throw new Job_Exception( 'Enter one email address, or leave it empty for the site\'s admin email.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Enter one email address, or leave it empty for the site\'s admin email.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( $out['update_retain'] < 1 || $out['update_retain'] > 50 ) {
-			throw new Job_Exception( 'Keep between 1 and 50 backups made before updates.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Keep between 1 and 50 backups made before updates.', 'siteferry' ), Job_Exception::STEP );
 		}
 		return $out;
 	}
@@ -217,7 +217,7 @@ final class Schedule {
 	): array {
 		if ( null !== $password && '' !== $password ) {
 			if ( strlen( $password ) < \SiteFerry\Archive\Crypto::MIN_PASSWORD ) {
-				throw new Job_Exception( sprintf( 'The password needs at least %d characters.', \SiteFerry\Archive\Crypto::MIN_PASSWORD ), Job_Exception::STEP );
+				throw new Job_Exception( sprintf( /* translators: %d: a number */ __( 'The password needs at least %d characters.', 'siteferry' ), \SiteFerry\Archive\Crypto::MIN_PASSWORD ), Job_Exception::STEP );
 			}
 			update_option( self::PASSWORD, Secrets::site()->encrypt( $password ), false );
 		}
@@ -229,10 +229,10 @@ final class Schedule {
 		}
 		$settings = self::normalize( $input + self::settings(), $ready );
 		if ( $settings['encrypt'] && null === self::password() ) {
-			throw new Job_Exception( 'Enter a password for the automatic backups, or untick the encryption.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Enter a password for the automatic backups, or untick the encryption.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( $settings['encrypt'] && ! \SiteFerry\Archive\Crypto::available() ) {
-			throw new Job_Exception( 'Encrypted backups need the PHP OpenSSL extension with AES-256-GCM, which this server does not have.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Encrypted backups need the PHP OpenSSL extension with AES-256-GCM, which this server does not have.', 'siteferry' ), Job_Exception::STEP );
 		}
 		update_option( self::OPTION, $settings, false );
 		self::reschedule( $settings );
@@ -348,7 +348,7 @@ final class Schedule {
 	public static function start_job(): Job {
 		$active = Job::active( Storage::jobs_dir() );
 		if ( null !== $active ) {
-			throw new Job_Exception( sprintf( 'Another %s is still in progress (job %s). Finish or cancel it first.', $active->type(), $active->id() ), Job_Exception::BUSY );
+			throw new Job_Exception( sprintf( /* translators: 1: a kind of job, such as "export" or "import", 2: the job's ID */ __( 'Another %1$s is still in progress (job %2$s). Finish or cancel it first.', 'siteferry' ), $active->type(), $active->id() ), Job_Exception::BUSY );
 		}
 		list( $job, $token ) = Export::start( self::with_password( self::export_options( self::settings() ) ), null, 'schedule' );
 		$job->log( 'info', 'Started by the backup schedule.' );
@@ -644,31 +644,39 @@ final class Schedule {
 		}
 		$lines = array();
 		if ( 'done' === $outcome ) {
-			$subject = sprintf( '[%s] Scheduled backup done', $site );
-			$lines[] = sprintf( 'SiteFerry made the scheduled backup of %s.', home_url() );
-			$lines[] = '';
-			$lines[] = 'Backup: ' . $details['name'] . ( empty( $details['size'] ) ? '' : ' (' . size_format( (int) $details['size'], 1 ) . ')' );
-			$lines[] = 'Stored: ' . $details['where'];
+			/* translators: %s: site address */
+			$subject = sprintf( __( '[%s] Scheduled backup done', 'siteferry' ), $site );
+			$lines[] = sprintf( /* translators: %s: the site's address */ __( 'SiteFerry made the scheduled backup of %s.', 'siteferry' ), home_url() );
+			$lines[] = __( '', 'siteferry' );
+			/* translators: %s: backup name (and size) */
+			$lines[] = sprintf( __( 'Backup: %s', 'siteferry' ), $details['name'] . ( empty( $details['size'] ) ? '' : ' (' . size_format( (int) $details['size'], 1 ) . ')' ) );
+			/* translators: %s: where it is stored */
+			$lines[] = sprintf( __( 'Stored: %s', 'siteferry' ), $details['where'] );
 			if ( ! empty( $details['seconds'] ) ) {
-				$lines[] = 'Took: ' . human_time_diff( 0, (int) $details['seconds'] );
+				/* translators: %s: how long, such as 5 mins */
+				$lines[] = sprintf( __( 'Took: %s', 'siteferry' ), human_time_diff( 0, (int) $details['seconds'] ) );
 			}
 			if ( ! empty( $details['warnings'] ) ) {
-				$lines[] = sprintf( 'Warnings: %d (see the job log on the Activity tab)', (int) $details['warnings'] );
+				$lines[] = sprintf( /* translators: %d: a number */ __( 'Warnings: %d (see the job log on the Activity tab)', 'siteferry' ), (int) $details['warnings'] );
 			}
 			if ( ! empty( $details['deleted'] ) ) {
-				$lines[] = 'Older scheduled backups deleted: ' . implode( ', ', $details['deleted'] );
+				/* translators: %s: backup names */
+				$lines[] = sprintf( __( 'Older scheduled backups deleted: %s', 'siteferry' ), implode( ', ', $details['deleted'] ) );
 			}
 			foreach ( isset( $details['problems'] ) ? (array) $details['problems'] : array() as $problem ) {
-				$lines[] = 'Problem: ' . $problem;
+				/* translators: %s: what went wrong */
+				$lines[] = sprintf( __( 'Problem: %s', 'siteferry' ), $problem );
 			}
 		} else {
-			$subject = sprintf( '[%s] Scheduled backup FAILED', $site );
-			$lines[] = sprintf( 'SiteFerry could not make the scheduled backup of %s.', home_url() );
-			$lines[] = '';
-			$lines[] = 'Reason: ' . ( isset( $details['error'] ) ? $details['error'] : 'unknown' );
-			$lines[] = 'Earlier backups were not touched.';
+			/* translators: %s: site address */
+			$subject = sprintf( __( '[%s] Scheduled backup FAILED', 'siteferry' ), $site );
+			$lines[] = sprintf( /* translators: %s: the site's address */ __( 'SiteFerry could not make the scheduled backup of %s.', 'siteferry' ), home_url() );
+			$lines[] = __( '', 'siteferry' );
+			/* translators: %s: what went wrong */
+			$lines[] = sprintf( __( 'Reason: %s', 'siteferry' ), isset( $details['error'] ) ? $details['error'] : __( 'unknown', 'siteferry' ) );
+			$lines[] = __( 'Earlier backups were not touched.', 'siteferry' );
 		}
-		$lines[] = '';
+		$lines[] = __( '', 'siteferry' );
 		$lines[] = 'SiteFerry: ' . admin_url( 'admin.php?page=siteferry' );
 		return (bool) wp_mail( $to, $subject, implode( "\n", $lines ) );
 	}
@@ -738,7 +746,7 @@ final class Schedule {
 		}
 		$password = self::password();
 		if ( null === $password ) {
-			throw new Job_Exception( 'Automatic backups are set to be encrypted, but their password cannot be read (were the WordPress salts changed?). Enter it again in the Schedule panel.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Automatic backups are set to be encrypted, but their password cannot be read (were the WordPress salts changed?). Enter it again in the Schedule panel.', 'siteferry' ), Job_Exception::STEP );
 		}
 		return $options + array( 'password' => $password );
 	}

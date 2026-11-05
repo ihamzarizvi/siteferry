@@ -35,17 +35,17 @@ final class Raw_Query {
 		if ( null === $link ) {
 			$db->query( $sql );
 			if ( '' !== $db->last_error ) {
-				throw new Job_Exception( 'Database error: ' . $db->last_error, Job_Exception::STEP );
+				throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), $db->last_error ), Job_Exception::STEP );
 			}
 			return (int) $db->rows_affected;
 		}
 		try {
 			$ok = mysqli_query( $link, $sql );
 		} catch ( \mysqli_sql_exception $e ) {
-			throw new Job_Exception( 'Database error: ' . $e->getMessage(), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), $e->getMessage() ), Job_Exception::STEP );
 		}
 		if ( false === $ok ) {
-			throw new Job_Exception( 'Database error: ' . mysqli_error( $link ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), mysqli_error( $link ) ), Job_Exception::STEP );
 		}
 		if ( $ok instanceof \mysqli_result ) {
 			mysqli_free_result( $ok );
@@ -66,17 +66,17 @@ final class Raw_Query {
 		if ( null === $link ) {
 			$rows = $db->get_results( $sql, ARRAY_N );
 			if ( '' !== $db->last_error ) {
-				throw new Job_Exception( 'Database error: ' . $db->last_error, Job_Exception::STEP );
+				throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), $db->last_error ), Job_Exception::STEP );
 			}
 			return is_array( $rows ) ? $rows : array();
 		}
 		try {
 			$result = mysqli_query( $link, $sql );
 		} catch ( \mysqli_sql_exception $e ) {
-			throw new Job_Exception( 'Database error: ' . $e->getMessage(), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), $e->getMessage() ), Job_Exception::STEP );
 		}
 		if ( ! $result instanceof \mysqli_result ) {
-			throw new Job_Exception( 'Database error: ' . mysqli_error( $link ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), mysqli_error( $link ) ), Job_Exception::STEP );
 		}
 		$rows = array();
 		while ( null !== ( $row = mysqli_fetch_row( $result ) ) ) { // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition

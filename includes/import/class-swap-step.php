@@ -113,13 +113,13 @@ final class Swap_Step implements Step {
 		$job->log( 'info', sprintf( 'Files moved into place (%d items).', $moved ) );
 
 		if ( defined( 'SITEFERRY_TEST_FAIL_AFTER_SWAP' ) && SITEFERRY_TEST_FAIL_AFTER_SWAP ) {
-			throw new Job_Exception( 'Simulated failure after the swap (test).', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Simulated failure after the swap (test).', 'siteferry' ), Job_Exception::STEP );
 		}
 
 		// 4. Check, clean caches, reopen the site.
 		$home = Raw_Query::column( $wpdb, 'SELECT option_value FROM ' . Sql::identifier( $live . 'options' ) . " WHERE option_name = 'home'" );
 		if ( ! isset( $home[0] ) || untrailingslashit( (string) $home[0] ) !== untrailingslashit( (string) $inspect['target']['home'] ) ) {
-			throw new Job_Exception( 'After the swap the site address is not the expected one; rolling back.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'After the swap the site address is not the expected one; rolling back.', 'siteferry' ), Job_Exception::STEP );
 		}
 		Raw_Query::run( $wpdb, 'DELETE FROM ' . Sql::identifier( $live . 'options' ) . " WHERE option_name = 'rewrite_rules'" );
 		wp_cache_flush();
@@ -130,7 +130,7 @@ final class Swap_Step implements Step {
 
 		$state['done'] = true;
 		$job->set_state( 'swap', $state );
-		$job->set_progress( 'Site switched over' );
+		$job->set_progress( __( 'Site switched over', 'siteferry' ) );
 		$job->log( 'info', 'Swap complete; maintenance mode off.' );
 		return true;
 	}
@@ -235,7 +235,7 @@ final class Swap_Step implements Step {
 		}
 		$rollback = $job->path( 'rollback' );
 		if ( ! is_dir( $rollback ) && ! mkdir( $rollback, 0755, true ) && ! is_dir( $rollback ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
-			throw new Job_Exception( 'Cannot create the rollback folder.', Job_Exception::STEP );
+			throw new Job_Exception( __( 'Cannot create the rollback folder.', 'siteferry' ), Job_Exception::STEP );
 		}
 		$journal = new Journal( $job->path( self::JOURNAL ) );
 
@@ -262,7 +262,7 @@ final class Swap_Step implements Step {
 				continue;
 			}
 			if ( in_array( $name, Import::DROP_INS, true ) && ! $job->option( 'include_drop_ins' ) ) {
-				$job->warn( sprintf( 'The drop-in wp-content/%s was not copied; it is tied to the old server. Copy it yourself if this server needs it.', $name ) );
+				$job->warn( sprintf( /* translators: %s: a file or backup name */ __( 'The drop-in wp-content/%s was not copied; it is tied to the old server. Copy it yourself if this server needs it.', 'siteferry' ), $name ) );
 				continue;
 			}
 			if ( isset( $groups[ $name ] ) ) {
@@ -304,7 +304,7 @@ final class Swap_Step implements Step {
 		}
 		$parent = dirname( $to );
 		if ( ! is_dir( $parent ) && ! mkdir( $parent, 0755, true ) && ! is_dir( $parent ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
-			throw new Job_Exception( sprintf( 'Cannot create the folder %s.', $parent ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: %s: parent */ __( 'Cannot create the folder %s.', 'siteferry' ), $parent ), Job_Exception::STEP );
 		}
 		self::rename( $from, $to );
 		$journal->add( 'install', $from, $to );
@@ -324,7 +324,7 @@ final class Swap_Step implements Step {
 			}
 		);
 		if ( ! $done ) {
-			throw new Job_Exception( sprintf( 'Cannot move %s to %s (a file inside may be in use).', $from, $to ), Job_Exception::STEP );
+			throw new Job_Exception( sprintf( /* translators: 1: a folder path, 2: a folder path */ __( 'Cannot move %1$s to %2$s (a file inside may be in use).', 'siteferry' ), $from, $to ), Job_Exception::STEP );
 		}
 	}
 
