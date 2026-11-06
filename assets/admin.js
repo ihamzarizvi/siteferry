@@ -150,9 +150,24 @@
 		}
 		const response = await fetch( url( path, options.query ), { method, headers, body, credentials: 'same-origin' } );
 		let data = null;
+		const answer = await response.text();
 		try {
-			data = await response.json();
-		} catch ( e ) {}
+			data = JSON.parse( answer );
+		} catch ( e ) {
+			if ( response.ok ) {
+				// An answer that is not JSON (often a PHP warning printed before it): say what came back.
+				const error = new Error(
+					sprintf(
+						/* translators: %s: the start of the server's answer */
+						__( 'The server sent an answer SiteFerry cannot read: %s', 'siteferry' ),
+						answer.replace( /<[^>]*>/g, ' ' ).replace( /\s+/g, ' ' ).trim().slice( 0, 300 ) || __( '(an empty answer)', 'siteferry' )
+					)
+				);
+				error.status = response.status;
+				error.code = 'siteferry_unreadable';
+				throw error;
+			}
+		}
 		if ( ! response.ok ) {
 			const error = new Error(
 				( data && data.message ) ||
@@ -1586,10 +1601,10 @@
 			}
 		} )();
 		try {
-			const result = await api( 'POST', 'storage/' + id + '/test' );
+			const result = ( await api( 'POST', 'storage/' + id + '/test' ) ) || {};
 			running = false;
 			await watch;
-			storageResult( form, true, [ el( 'p', {}, [ el( 'strong', { text: __( 'The storage works.', 'siteferry' ) } ) ] ), el( 'ul', { class: 'sf-test-lines' }, result.lines.map( ( line ) => el( 'li', { text: line } ) ) ) ] );
+			storageResult( form, true, [ el( 'p', {}, [ el( 'strong', { text: __( 'The storage works.', 'siteferry' ) } ) ] ), el( 'ul', { class: 'sf-test-lines' }, ( result.lines || [] ).map( ( line ) => el( 'li', { text: line } ) ) ) ] );
 			return true;
 		} catch ( error ) {
 			running = false;

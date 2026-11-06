@@ -2745,7 +2745,7 @@ details.sf-dest[open] > .sf-dest-head::after {
 	transition: width 0.3s ease-out;
 }
 
-.is-failed .sf-test-bar span {
+.sf-result.is-failed .sf-test-bar span {
 	background: var(--sf-port);
 }
 
@@ -2781,18 +2781,18 @@ details.sf-dest[open] > .sf-dest-head::after {
 	line-height: 1;
 }
 
-.is-done .sf-test-mark {
+.sf-test-steps .is-done .sf-test-mark {
 	background: var(--sf-starboard-wash);
 	color: var(--sf-starboard);
 }
 
-.is-failed .sf-test-mark {
+.sf-test-steps .is-failed .sf-test-mark {
 	background: var(--sf-port-wash);
 	color: var(--sf-port);
 }
 
 /* The running check: a turning ring. */
-.is-running .sf-test-mark {
+.sf-test-steps .is-running .sf-test-mark {
 	border: 2px solid var(--sf-rope);
 	border-top-color: var(--sf-accent);
 	animation: sf-turn 0.8s linear infinite;

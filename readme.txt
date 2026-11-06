@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.24.0
+Stable tag: 0.24.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -438,6 +438,10 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.24.1 =
+* When the server answers with something that is not readable (for example a PHP warning printed before the answer), the page says so and shows the start of that answer instead of a script error.
+* Connection test: passed checks stay green when a later one fails.
 
 = 0.24.0 =
 * Storage: the connection test shows live what it is doing: a bar and each check as it runs (connecting, opening the folder, writing, reading, listing, deleting), ticked when done and marked where it failed. The names of the checks are translatable.
