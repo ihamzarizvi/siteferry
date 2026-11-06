@@ -53,6 +53,13 @@ final class Job {
 	private $lock = null;
 
 	/**
+	 * When live.json was last written (microtime).
+	 *
+	 * @var float
+	 */
+	private $live_at = 0.0;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param string $dir  Job folder.
@@ -202,8 +209,15 @@ final class Job {
 	 * @return array
 	 */
 	public function summary(): array {
-		$steps = $this->data['steps'];
-		$index = min( (int) $this->data['step'], count( $steps ) );
+		$steps    = $this->data['steps'];
+		$index    = min( (int) $this->data['step'], count( $steps ) );
+		$progress = $this->data['progress'];
+		// A slice that is running: its live step and progress (newer than job.json).
+		$live = in_array( $this->data['status'], array( self::STATUS_PENDING, self::STATUS_RUNNING ), true ) ? $this->read_live() : null;
+		if ( null !== $live && (int) $live['step'] >= $index ) {
+			$index    = min( (int) $live['step'], count( $steps ) );
+			$progress = $live['progress'];
+		}
 		return array(
 			'id'       => $this->data['id'],
 			'type'     => $this->data['type'],
@@ -221,7 +235,7 @@ final class Job {
 				// The step names, so the admin screen can draw the whole route of the job.
 				'names' => array_values( $steps ),
 			),
-			'progress' => $this->data['progress'],
+			'progress' => $progress,
 			'warnings' => array(
 				'count' => (int) $this->data['warning_count'],
 				'first' => array_slice( $this->data['warnings'], 0, 20 ),
@@ -413,6 +427,51 @@ final class Job {
 			'done'    => $done,
 			'total'   => $total,
 		);
+		$this->write_live();
+	}
+
+	/**
+	 * Writes the current step and progress to live.json, at most twice a second, so the admin page
+	 * can show a slice's progress while it runs (job.json is only saved at the end of a slice). A
+	 * write that collides with a reader is skipped; the next one comes half a second later.
+	 */
+	private function write_live(): void {
+		$now = microtime( true );
+		if ( $now - $this->live_at < 0.5 ) {
+			return;
+		}
+		$this->live_at = $now;
+		$live          = $this->path( 'live.json' );
+		$temp          = $live . '.tmp';
+		$json          = (string) json_encode(
+			array(
+				'step'     => (int) $this->data['step'],
+				'progress' => $this->data['progress'],
+			),
+			JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+		);
+		Io::quiet(
+			static function () use ( $temp, $live, $json ) {
+				return false !== file_put_contents( $temp, $json ) && rename( $temp, $live ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+			}
+		);
+	}
+
+	/**
+	 * The live step and progress of a running job, or null.
+	 */
+	private function read_live(): ?array {
+		$live = $this->path( 'live.json' );
+		if ( ! is_file( $live ) ) {
+			return null;
+		}
+		$json = Io::quiet(
+			static function () use ( $live ) {
+				return file_get_contents( $live ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			}
+		);
+		$data = is_string( $json ) ? json_decode( $json, true ) : null;
+		return is_array( $data ) && isset( $data['step'], $data['progress'] ) && is_array( $data['progress'] ) ? $data : null;
 	}
 
 	/**
@@ -533,6 +592,16 @@ final class Job {
 			);
 			throw new Job_Exception( __( 'Cannot save the job state. The disk may be full.', 'siteferry' ), Job_Exception::INVALID );
 		}
+		// job.json is now the newest state: a live file from this slice must not override it.
+		$live = $this->path( 'live.json' );
+		if ( is_file( $live ) ) {
+			Io::quiet(
+				static function () use ( $live ) {
+					return unlink( $live ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+				}
+			);
+		}
+		$this->live_at = 0.0;
 	}
 
 	/**

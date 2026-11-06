@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.25.0
+Stable tag: 0.25.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -438,6 +438,9 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.25.1 =
+* Progress: the crossing moves as the work goes, not only at the end of each 15-second slice. A running slice writes its step and progress to a small live file, which the page reads every 0.7 seconds; slices start at 3 seconds and become full length once the server shows it answers those reads in parallel (on servers that handle one request at a time they stay short).
 
 = 0.25.0 =
 * Storage badges tell what is known: "Not tested" for complete settings that were never tested (or changed since), "Working" with the time of the last passed connection test, "Test failed" after a failed one. "Ready" is gone: it only meant that the settings were complete. Saving new settings, signing in again or disconnecting forgets the last result.

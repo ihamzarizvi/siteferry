@@ -577,12 +577,39 @@
 	 */
 	async function driveJob( id, token, onProgress ) {
 		let failures = 0;
+		// Slices start short (3 s), so the first steps show as they happen. Where the server answers
+		// the live reads while a slice runs, slices go back to full length (the live reads show the
+		// progress); where it handles one request at a time, they stay short.
+		let seconds = 3;
 		for ( ;; ) {
 			let job;
+			let gotLive = false;
+			// While a slice runs (up to 15 seconds), its live step and progress are read every 0.7
+			// seconds, so the ferry crosses leg by leg instead of jumping at the end of the slice.
+			let inFlight = true;
+			( async () => {
+				while ( inFlight ) {
+					await sleep( 700 );
+					if ( ! inFlight ) {
+						break;
+					}
+					try {
+						const live = await api( 'GET', 'jobs/' + id, { token, nonce: false } );
+						if ( inFlight && live && ( live.status === 'running' || live.status === 'pending' ) ) {
+							gotLive = true;
+							onProgress( live );
+						}
+					} catch ( error ) {} // Only the picture; the slice itself goes on.
+				}
+			} )();
 			try {
-				job = await api( 'POST', 'jobs/' + id + '/run', { token, nonce: false } );
+				job = await api( 'POST', 'jobs/' + id + '/run', seconds ? { token, nonce: false, json: { seconds } } : { token, nonce: false } );
 				failures = 0;
+				if ( gotLive ) {
+					seconds = 0; // Live reads work here: full-length slices.
+				}
 			} catch ( error ) {
+				inFlight = false;
 				if ( error.status === 409 ) {
 					await sleep( 2000 );
 					continue;
@@ -601,6 +628,7 @@
 				await sleep( Math.min( 30000, 1000 * 2 ** failures ) );
 				continue;
 			}
+			inFlight = false;
 			onProgress( job );
 			if ( job.status === 'done' || job.status === 'failed' || job.status === 'waiting' ) {
 				return job;
