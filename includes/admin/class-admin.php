@@ -164,36 +164,23 @@ final class Admin {
 							<h2 class="sf-card-title"><?php esc_html_e( 'Backups', 'siteferry' ); ?></h2>
 							<p class="sf-home-summary" id="siteferry-summary"><?php esc_html_e( 'Make a backup of this whole site, or restore one from the list below.', 'siteferry' ); ?></p>
 						</div>
-						<div class="sf-home-actions">
-							<span class="sf-split">
-								<button type="submit" form="siteferry-export-form" class="button button-primary button-large" id="siteferry-backup-now"><?php esc_html_e( 'Back up now', 'siteferry' ); ?></button>
-								<button type="button" class="button button-large" id="siteferry-options-toggle" aria-expanded="false" aria-controls="siteferry-export-form"><?php esc_html_e( 'Backup options', 'siteferry' ); ?></button>
-							</span>
-							<button type="button" class="button button-large" id="siteferry-upload-toggle" aria-expanded="false" aria-controls="siteferry-upload"><?php esc_html_e( 'Upload a backup', 'siteferry' ); ?></button>
-							<button type="button" class="button button-large" id="siteferry-schedule-toggle" aria-expanded="false" aria-controls="siteferry-schedule-form"><?php esc_html_e( 'Schedule', 'siteferry' ); ?></button>
-							<button type="button" class="button button-large" id="siteferry-move-toggle" aria-expanded="false" aria-controls="siteferry-move"><?php esc_html_e( 'Move a site', 'siteferry' ); ?></button>
+						<div class="sf-tools">
+							<button type="button" class="button sf-btn" id="siteferry-upload-toggle" aria-expanded="false" aria-controls="siteferry-upload"><span class="dashicons dashicons-upload" aria-hidden="true"></span><?php esc_html_e( 'Upload a backup', 'siteferry' ); ?></button>
+							<button type="button" class="button sf-btn" id="siteferry-schedule-toggle" aria-expanded="false" aria-controls="siteferry-schedule-form"><span class="dashicons dashicons-clock" aria-hidden="true"></span><?php esc_html_e( 'Schedule', 'siteferry' ); ?><span class="sf-btn-state" id="siteferry-schedule-state" hidden></span></button>
+							<button type="button" class="button sf-btn" id="siteferry-move-toggle" aria-expanded="false" aria-controls="siteferry-move"><span class="dashicons dashicons-migrate" aria-hidden="true"></span><?php esc_html_e( 'Move a site', 'siteferry' ); ?></button>
 						</div>
 					</div>
-					<p class="sf-schedule-line sf-now-line" id="siteferry-now-line" hidden></p>
+					<div class="sf-now">
+						<button type="submit" form="siteferry-export-form" class="button button-primary sf-btn sf-btn-now" id="siteferry-backup-now"><span class="dashicons dashicons-backup" aria-hidden="true"></span><span class="sf-btn-label"><?php esc_html_e( 'Back up now', 'siteferry' ); ?></span></button>
+						<p class="sf-now-line" id="siteferry-now-line" aria-live="polite"></p>
+						<button type="button" class="button sf-btn" id="siteferry-options-toggle" aria-expanded="false" aria-controls="siteferry-export-form"><span class="dashicons dashicons-edit" aria-hidden="true"></span><?php esc_html_e( 'Customize', 'siteferry' ); ?></button>
+					</div>
 					<p class="sf-schedule-line" id="siteferry-schedule-line" hidden></p>
 
 					<form id="siteferry-export-form" class="sf-drawer" hidden>
-						<p class="sf-drawer-note"><?php esc_html_e( '"Back up now" uses these choices, and SiteFerry remembers them for your next backups. The defaults back up the whole site to this server.', 'siteferry' ); ?></p>
-						<h3 class="sf-sub"><?php esc_html_e( 'Name, note and tags', 'siteferry' ); ?></h3>
-						<div class="sf-label-fields">
-							<p class="sf-field">
-								<label for="siteferry-title"><?php esc_html_e( 'Name (optional)', 'siteferry' ); ?></label>
-								<input type="text" id="siteferry-title" name="title" maxlength="100" placeholder="<?php esc_attr_e( 'Before the theme update', 'siteferry' ); ?>">
-							</p>
-							<p class="sf-field">
-								<label for="siteferry-tags"><?php esc_html_e( 'Tags (optional)', 'siteferry' ); ?></label>
-								<input type="text" id="siteferry-tags" name="tags" maxlength="200" placeholder="<?php esc_attr_e( 'before-update, monthly', 'siteferry' ); ?>">
-								<span class="description"><?php esc_html_e( 'Separate tags with commas. Click a tag in the list to show only backups with it.', 'siteferry' ); ?></span>
-							</p>
-							<p class="sf-field sf-field-wide">
-								<label for="siteferry-note"><?php esc_html_e( 'Note (optional)', 'siteferry' ); ?></label>
-								<textarea id="siteferry-note" name="note" rows="2" maxlength="1000" placeholder="<?php esc_attr_e( 'What changed, or why you made this backup', 'siteferry' ); ?>"></textarea>
-							</p>
+						<div class="sf-drawer-head">
+							<h3 class="sf-drawer-title"><?php esc_html_e( 'Customize “Back up now”', 'siteferry' ); ?></h3>
+							<p class="sf-drawer-note"><?php esc_html_e( 'Changes here apply to your next backup. Click “Save as my settings” to keep them for every backup you make with “Back up now”.', 'siteferry' ); ?></p>
 						</div>
 						<h3 class="sf-sub"><?php esc_html_e( 'What goes into the backup', 'siteferry' ); ?></h3>
 						<p class="sf-lead"><?php esc_html_e( 'The database and everything in wp-content, as one file. Other backup plugins\' folders, upgrade folders, .git and node_modules are always left out.', 'siteferry' ); ?></p>
@@ -272,11 +259,28 @@ final class Admin {
 						</p>
 						<p class="sf-download-ready"><label><input type="checkbox" id="siteferry-download-ready"> <?php esc_html_e( 'Also download it to my computer when it is ready', 'siteferry' ); ?></label></p>
 
+						<h3 class="sf-sub"><?php esc_html_e( 'This backup only: name, note and tags', 'siteferry' ); ?></h3>
+						<div class="sf-label-fields">
+							<p class="sf-field">
+								<label for="siteferry-title"><?php esc_html_e( 'Name (optional)', 'siteferry' ); ?></label>
+								<input type="text" id="siteferry-title" name="title" maxlength="100" placeholder="<?php esc_attr_e( 'Before the theme update', 'siteferry' ); ?>">
+							</p>
+							<p class="sf-field">
+								<label for="siteferry-tags"><?php esc_html_e( 'Tags (optional)', 'siteferry' ); ?></label>
+								<input type="text" id="siteferry-tags" name="tags" maxlength="200" placeholder="<?php esc_attr_e( 'before-update, monthly', 'siteferry' ); ?>">
+								<span class="description"><?php esc_html_e( 'Separate tags with commas. Click a tag in the list to show only backups with it.', 'siteferry' ); ?></span>
+							</p>
+							<p class="sf-field sf-field-wide">
+								<label for="siteferry-note"><?php esc_html_e( 'Note (optional)', 'siteferry' ); ?></label>
+								<textarea id="siteferry-note" name="note" rows="2" maxlength="1000" placeholder="<?php esc_attr_e( 'What changed, or why you made this backup', 'siteferry' ); ?>"></textarea>
+							</p>
+						</div>
 						<div class="sf-drawer-actions">
-							<button type="submit" class="button button-primary button-large"><?php esc_html_e( 'Back up now', 'siteferry' ); ?></button>
-							<button type="button" class="button sf-quiet" id="siteferry-options-close"><?php esc_html_e( 'Close options', 'siteferry' ); ?></button>
-							<button type="button" class="button sf-quiet" id="siteferry-options-defaults"><?php esc_html_e( 'Use the defaults', 'siteferry' ); ?></button>
-							<span class="description"><?php esc_html_e( 'The choices above are remembered for your next backups. The name, note, tags and password are for this backup only.', 'siteferry' ); ?></span>
+							<button type="submit" class="button button-primary sf-btn"><span class="dashicons dashicons-backup" aria-hidden="true"></span><?php esc_html_e( 'Back up now', 'siteferry' ); ?></button>
+							<button type="button" class="button sf-btn" id="siteferry-options-save" disabled><?php esc_html_e( 'Save as my settings', 'siteferry' ); ?></button>
+							<button type="button" class="button sf-quiet" id="siteferry-options-defaults"><?php esc_html_e( 'Reset to defaults', 'siteferry' ); ?></button>
+							<button type="button" class="button sf-quiet sf-push" id="siteferry-options-close"><?php esc_html_e( 'Close', 'siteferry' ); ?></button>
+							<span class="description sf-drawer-foot" id="siteferry-options-state"><?php esc_html_e( 'The name, note, tags and password are only ever used for one backup.', 'siteferry' ); ?></span>
 						</div>
 					</form>
 

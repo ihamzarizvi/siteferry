@@ -93,6 +93,7 @@
 	let choicesTimer = null;
 	let wantedSendTo = null; // A remembered storage, kept until the list of storages has loaded.
 	let destinationsLoaded = false;
+	let justMade = ''; // The backup made on this page, marked New in the list.
 	let tablesLoaded = false;
 
 	// ---------------------------------------------------------------- helpers
@@ -441,6 +442,10 @@
 					}
 				}
 				part( 'sf-progress-body' ).replaceChildren( ...( nodes || [] ) );
+				// A finished crossing can be put away (it also goes when another panel opens).
+				if ( ! part( 'sf-progress-close' ) ) {
+					part( 'sf-progress-head' ).appendChild( el( 'button', { type: 'button', class: 'sf-notice-close sf-progress-close', 'aria-label': __( 'Close', 'siteferry' ), text: '×', onclick: () => ( box.hidden = true ) } ) );
+				}
 			},
 			hide() {
 				box.hidden = true;
@@ -823,6 +828,8 @@
 		const view = progressView( 'siteferry-job-progress', [ __( 'This site', 'siteferry' ), target ? target.short : __( 'This server', 'siteferry' ) ] );
 		const starters = [ $( 'siteferry-backup-now' ), ...form.querySelectorAll( 'button[type=submit]' ) ];
 		starters.forEach( ( starter ) => ( starter.disabled = true ) );
+		const nowLabel = $( 'siteferry-backup-now' ).querySelector( '.sf-btn-label' );
+		nowLabel.textContent = __( 'Backing up...', 'siteferry' );
 		// The choices are made; close Options so the progress shows right under the header.
 		toggleDrawer( 'options', false );
 		view.start( __( 'Starting the backup...', 'siteferry' ) );
@@ -838,6 +845,7 @@
 			view.finish( false, __( 'The backup was not made', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
 		} finally {
 			starters.forEach( ( starter ) => ( starter.disabled = false ) );
+			nowLabel.textContent = __( 'Back up now', 'siteferry' );
 		}
 	}
 
@@ -913,7 +921,7 @@
 		];
 		const actions = [];
 		if ( ! r.deleted_local ) {
-			actions.push( el( 'a', { class: 'button button-primary', href: downloadUrl( r.name ), text: __( 'Download to your computer', 'siteferry' ) } ) );
+			actions.push( el( 'a', { class: 'button button-primary', href: downloadUrl( r.name ), text: __( 'Download', 'siteferry' ) } ) );
 			destinations
 				.filter( ( d ) => d.ready && ! ( r.sent && r.sent.destination === d.id ) )
 				.forEach( ( d ) =>
@@ -930,10 +938,11 @@
 					)
 				);
 		}
-		actions.push( button( __( 'Name, note and tags', 'siteferry' ), () => editByName( r.sent && r.deleted_local ? r.sent.name : r.name ), 'button sf-quiet' ) );
+		actions.push( button( __( 'Add a name or note', 'siteferry' ), () => editByName( r.sent && r.deleted_local ? r.sent.name : r.name ), 'button sf-quiet' ) );
 		if ( actions.length ) {
 			nodes.push( el( 'p', { class: 'sf-actions' }, actions ) );
 		}
+		justMade = r.deleted_local ? '' : r.name;
 		view.finish( true, __( 'Backup ready', 'siteferry' ), [ ...nodes, ...warningList( job ) ] );
 		loadBackups();
 		if ( downloadWhenReady && ! r.deleted_local ) {
@@ -1013,9 +1022,7 @@
 		if ( target && target.name === 'send_to' ) {
 			wantedSendTo = null;
 		}
-		renderNowLine();
-		clearTimeout( choicesTimer );
-		choicesTimer = setTimeout( saveChoices, 400 );
+		renderNowLine(); // Kept only when "Save as my settings" is clicked.
 	}
 
 	let choicesSaving = Promise.resolve(); // Saves go one after the other, so the last one wins.
@@ -1030,6 +1037,8 @@
 	async function storeChoices( json ) {
 		try {
 			choices = await api( 'POST', 'choices', { json } );
+			renderNowLine();
+			notice( __( 'Saved. “Back up now” uses these settings from now on.', 'siteferry' ), 'success' );
 		} catch ( error ) {
 			notice(
 				sprintf(
@@ -1048,7 +1057,7 @@
 		await choicesSaving; // A save still on its way must not bring the old choices back.
 		try {
 			applyChoices( await api( 'DELETE', 'choices' ) );
-			notice( __( 'Back to the defaults: the whole site, kept on this server.', 'siteferry' ), 'success' );
+			notice( __( 'Reset to defaults: the whole site, kept on this server.', 'siteferry' ), 'success' );
 		} catch ( error ) {
 			notice( error.message, 'error' );
 		}
@@ -1118,12 +1127,71 @@
 			file,
 			where
 		);
-		if ( c.download && ! ( target && c.delete_after_send ) ) {
-			// (A backup deleted here after sending is not there to download.)
+		const downloads = c.download && ! ( target && c.delete_after_send ); // (A backup deleted here is not there to download.)
+		if ( downloads ) {
 			text += ' ' + __( 'It is also downloaded to your computer.', 'siteferry' );
 		}
-		line.replaceChildren( el( 'span', { text } ), ' ', button( __( 'Change', 'siteferry' ), () => toggleDrawer( 'options', true ), 'button sf-quiet sf-quiet-small' ) );
+		// What it makes, at a glance: one chip per choice. The full sentence is for screen readers.
+		const chip = ( label, icon, extra ) => el( 'span', { class: 'sf-pill' + ( extra ? ' ' + extra : '' ) }, [ el( 'span', { class: 'dashicons dashicons-' + icon, 'aria-hidden': 'true' } ), label ] );
+		const chips = [
+			chip(
+				left.length
+					? sprintf(
+							/* translators: %s: list of left-out parts, such as "media and plugins" */
+							__( 'Without %s', 'siteferry' ),
+							listOf( left )
+					  )
+					: __( 'Whole site', 'siteferry' ),
+				'admin-site-alt3'
+			),
+			chip( c.format === 'wpress' ? __( '.wpress file', 'siteferry' ) : c.compress ? __( '.tar.gz file', 'siteferry' ) : __( '.tar file', 'siteferry' ), 'media-archive' ),
+		];
+		if ( c.encrypt ) {
+			chips.push( chip( __( 'Password', 'siteferry' ), 'lock' ) );
+		}
+		if ( target ) {
+			chips.push(
+				chip(
+					c.delete_after_send
+						? target.short
+						: sprintf(
+								/* translators: %s: name of the storage, such as Dropbox */
+								__( '%s and this server', 'siteferry' ),
+								target.short
+						  ),
+					'cloud-upload'
+				)
+			);
+		} else {
+			chips.push( chip( __( 'This server', 'siteferry' ), 'database' ) );
+		}
+		if ( downloads ) {
+			chips.push( chip( __( 'Downloaded too', 'siteferry' ), 'download' ) );
+		}
+		if ( choicesDirty() ) {
+			chips.push( el( 'span', { class: 'sf-pill is-unsaved', text: __( 'Not saved', 'siteferry' ) } ) );
+		}
+		line.replaceChildren( el( 'span', { class: 'screen-reader-text', text } ), ...chips );
 		line.hidden = false;
+		syncChoicesState();
+	}
+
+	/** Whether the choices in Customize differ from the saved ones. */
+	function choicesDirty() {
+		if ( ! choices ) {
+			return false;
+		}
+		const now = currentChoices();
+		return Object.keys( now ).some( ( key ) => JSON.stringify( now[ key ] ) !== JSON.stringify( choices[ key ] ) );
+	}
+
+	/** The Save button and the note at the end of Customize. */
+	function syncChoicesState() {
+		const dirty = choicesDirty();
+		$( 'siteferry-options-save' ).disabled = ! dirty;
+		$( 'siteferry-options-state' ).textContent = dirty
+			? __( 'These changes apply to your next backup only, until you save them.', 'siteferry' )
+			: __( 'These are your saved settings. The name, note, tags and password are only ever used for one backup.', 'siteferry' );
 	}
 
 	// ------------------------------------------------------------ storage
@@ -2030,6 +2098,9 @@
 		meta.push( el( 'span', { class: 'sf-narrow-only', text: format.ext } ), el( 'span', { class: 'sf-narrow-only', text: bytes( item.size ) } ) );
 
 		const flags = [];
+		if ( item.name === justMade ) {
+			flags.push( badge( __( 'New', 'siteferry' ), 'is-good' ) );
+		}
 		if ( ! mine ) {
 			flags.push( badge( __( 'From another site', 'siteferry' ), 'is-warn' ) );
 		}
@@ -2093,7 +2164,7 @@
 		);
 
 		const icon = item.error ? 'dashicons-warning' : mine ? 'dashicons-backup' : 'dashicons-migrate';
-		return el( 'li', { class: 'sf-row sf-backup' + ( mine ? '' : ' is-foreign' ) + ( item.error ? ' is-broken' : '' ), 'data-name': item.name }, [
+		return el( 'li', { class: 'sf-row sf-backup' + ( item.name === justMade ? ' is-new' : '' ) + ( mine ? '' : ' is-foreign' ) + ( item.error ? ' is-broken' : '' ), 'data-name': item.name }, [
 			el( 'span', { class: 'sf-backup-icon dashicons ' + icon, 'aria-hidden': 'true' } ),
 			el( 'div', { class: 'sf-backup-main' }, [
 				el( 'div', { class: 'sf-backup-headline' }, [ el( 'span', { class: 'sf-row-title', text: title } ), ...flags ] ),
@@ -2201,11 +2272,11 @@
 
 	/** The "..." menu of a row: look inside, download, send, check, delete. */
 	function menu( item ) {
-		const entries = [ menuItem( __( 'Name, note and tags', 'siteferry' ), () => openEditor( item ) ) ];
+		const entries = [ menuItem( __( 'Edit name and note', 'siteferry' ), () => openEditor( item ) ) ];
 		const ready = destinations.filter( ( d ) => d.ready );
 		if ( item.local ) {
 			entries.push( menuItem( __( 'Look inside', 'siteferry' ), () => openContents( item ) ) );
-			entries.push( el( 'a', { class: 'sf-menu-item', href: downloadUrl( item.name ), text: __( 'Download to your computer', 'siteferry' ), role: 'menuitem' } ) );
+			entries.push( el( 'a', { class: 'sf-menu-item', href: downloadUrl( item.name ), text: __( 'Download', 'siteferry' ), role: 'menuitem' } ) );
 			if ( item.size > 100 * 1048576 ) {
 				entries.push( menuItem( __( 'Download in parts', 'siteferry' ), () => openParts( item ) ) );
 			}
@@ -2233,7 +2304,7 @@
 			}
 		} );
 		if ( item.local ) {
-			entries.push( menuItem( __( 'Check the copy on this server', 'siteferry' ), () => checkCopy( item, 'local' ) ) );
+			entries.push( menuItem( item.places.length ? __( 'Check the copy on this server', 'siteferry' ) : __( 'Check for damage', 'siteferry' ), () => checkCopy( item, 'local' ) ) );
 		}
 		item.places.forEach( ( id ) => {
 			const d = destination( id );
@@ -4230,7 +4301,12 @@
 			parts.push( el( 'span', { class: 'sf-schedule-last' + ( failed ? ' is-bad' : '' ), text } ) );
 		}
 		line.replaceChildren( ...parts );
-		line.hidden = false;
+		// Off and nothing to report: the Schedule button says so on its own.
+		line.hidden = ! s.enabled && ! s.before_updates && ! last;
+		const state = $( 'siteferry-schedule-state' );
+		state.textContent = s.enabled ? __( 'On', 'siteferry' ) : __( 'Off', 'siteferry' );
+		state.className = 'sf-btn-state' + ( s.enabled ? ' is-on' : '' );
+		state.hidden = false;
 	}
 
 	/** Next and last run inside the drawer. */
@@ -4525,6 +4601,12 @@
 	 * @param {string} keep 'drawers', 'contents' or 'restore'.
 	 */
 	function closePanels( keep ) {
+		[ 'siteferry-job-progress', 'siteferry-upload-progress' ].forEach( ( id ) => {
+			const box = $( id );
+			if ( box && ( box.classList.contains( 'is-done' ) || box.classList.contains( 'is-failed' ) ) ) {
+				box.hidden = true; // A finished backup or upload makes room.
+			}
+		} );
 		if ( keep !== 'drawers' ) {
 			toggleDrawer( null );
 		}
@@ -4721,6 +4803,7 @@
 		$( 'siteferry-export-form' ).addEventListener( 'change', () => space && renderSpace() );
 		$( 'siteferry-export-form' ).addEventListener( 'change', choicesChanged );
 		$( 'siteferry-options-defaults' ).addEventListener( 'click', useDefaultChoices );
+		$( 'siteferry-options-save' ).addEventListener( 'click', saveChoices );
 		$( 'siteferry-options-toggle' ).addEventListener( 'click', () => toggleDrawer( 'options' ) );
 		$( 'siteferry-options-close' ).addEventListener( 'click', () => {
 			toggleDrawer( 'options', false );
@@ -4777,23 +4860,6 @@
 		$( 'siteferry-contents-clear' ).addEventListener( 'click', clearPicks );
 		$( 'siteferry-contents-restore' ).addEventListener( 'click', restorePicked );
 		$( 'siteferry-jobs-refresh' ).addEventListener( 'click', loadJobs );
-
-		// A choice changed just before leaving the page is still remembered.
-		window.addEventListener( 'pagehide', () => {
-			if ( choicesTimer ) {
-				clearTimeout( choicesTimer );
-				choicesTimer = null;
-				try {
-					fetch( url( 'choices' ), {
-						method: 'POST',
-						keepalive: true,
-						credentials: 'same-origin',
-						headers: { 'X-WP-Nonce': cfg.nonce, 'Content-Type': 'application/json' },
-						body: JSON.stringify( currentChoices() ),
-					} );
-				} catch ( error ) {}
-			}
-		} );
 
 		// A restore check nobody confirmed would block the next backup: leaving the page cancels it.
 		window.addEventListener( 'pagehide', () => {
@@ -4873,6 +4939,12 @@
 
 		const hash = window.location.hash.replace( '#', '' );
 		const asked = OLD_TABS[ hash ] || hash;
+		// Show the page at once; its lists fill in as they load.
+		const early = TABS.indexOf( asked ) === -1 ? 'backups' : asked;
+		document.querySelectorAll( '.siteferry-panel' ).forEach( ( panel ) => {
+			panel.hidden = panel.dataset.panel !== early;
+		} );
+		document.querySelectorAll( '.siteferry .nav-tab' ).forEach( ( tab ) => tab.classList.toggle( 'nav-tab-active', tab.dataset.tab === early ) );
 		loadDestinations()
 			.then( () => loadSchedule() )
 			.then( () => finishOauth() )

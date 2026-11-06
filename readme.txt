@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.22.0
+Stable tag: 0.23.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -438,6 +438,13 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.23.0 =
+* Backups: "Back up now" sits in its own bar with what it will make shown as tags (whole site or what is left out, the file, where it goes) and a "Customize" button. Upload, Schedule (with its On/Off state) and Move a site are one row of matching buttons with icons; every page button has the same height and shape.
+* Customize: changes apply to the next backup; "Save as my settings" keeps them for every "Back up now", "Reset to defaults" goes back to the whole site on this server, and a "Not saved" tag shows unsaved changes. The name, note and tags (for one backup only) come last.
+* While a backup runs its button says "Backing up..."; the finished card can be closed and makes room when another panel opens; the new backup is marked New in the list.
+* Shorter action names: Download, Add a name or note, Edit name and note, Check for damage.
+* The page shows at once instead of after the storages have loaded; on phones "Back up now" comes first.
 
 = 0.22.0 =
 * Restore progress shows four stages (Check, Safety backup, Restore, Finish) instead of nine steps; the caption still names the step.

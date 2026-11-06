@@ -762,29 +762,115 @@
 	color: var(--sf-ink-soft);
 }
 
-.sf-home-actions {
+/* The other things to do with backups: one row of equal, outlined buttons. */
+.sf-tools {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
 }
 
-/* "Back up now" and its options read as one control. */
-.sf-split {
+/*
+ * The boarding bar: "Back up now", what it will make (one pill per choice) and the way to
+ * change that. It is the one place on the page with a tinted ground, so the main action and
+ * its settings read as one thing.
+ */
+.sf-now {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 12px;
+	margin: 16px 0 0;
+	padding: 10px;
+	border: 1px solid var(--sf-rope);
+	border-radius: calc(var(--sf-radius) + 4px);
+	background: var(--sf-fog);
+}
+
+.sf-now-line {
+	display: flex;
+	flex: 1 1 260px;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	margin: 0;
+}
+
+.sf-pill {
 	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 10px 3px 8px;
+	border: 1px solid var(--sf-rope);
+	border-radius: 999px;
+	background: var(--sf-deck);
+	font-size: 12px;
+	line-height: 18px;
+	color: var(--sf-ink);
+	white-space: nowrap;
 }
 
-.siteferry .sf-split .button:first-child {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
+.sf-pill .dashicons {
+	width: 14px;
+	height: 14px;
+	font-size: 14px;
+	color: var(--sf-accent);
 }
 
-.siteferry .sf-split .button + .button {
-	margin-left: -1px;
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
+.sf-pill.is-unsaved {
+	padding-left: 10px;
+	border-color: transparent;
+	background: var(--sf-amber-wash);
+	color: var(--sf-amber);
+	font-weight: 600;
 }
 
-.siteferry .sf-home-actions .button.is-open {
+/* Every page button: one height, one radius, icon and words side by side. */
+.siteferry .button.sf-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 36px;
+	padding: 0 14px;
+	border-radius: var(--sf-radius);
+	line-height: 1;
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+.siteferry .button.sf-btn .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+	line-height: 1;
+}
+
+.siteferry .button.sf-btn-now {
+	min-height: 40px;
+	padding: 0 18px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+/* A state inside a button, such as Schedule's "Off". */
+.sf-btn-state {
+	margin-left: 2px;
+	padding: 1px 7px;
+	border-radius: 999px;
+	background: #f0f0f1;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--sf-ink-soft);
+}
+
+.sf-btn-state.is-on {
+	background: var(--sf-starboard-wash);
+	color: var(--sf-starboard);
+}
+
+.siteferry .sf-tools .button.is-open,
+.siteferry .sf-now .button.is-open {
 	border-color: var(--sf-ink);
 	color: var(--sf-ink);
 	background: var(--sf-fog);
@@ -799,6 +885,52 @@
 .sf-drawer-note {
 	margin: 0 0 4px;
 	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-drawer-title {
+	margin: 0 0 4px;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--sf-text);
+}
+
+/* Close sits apart from the actions that do something. */
+.siteferry .sf-drawer-actions .sf-push {
+	margin-left: auto;
+}
+
+.sf-drawer-foot {
+	flex-basis: 100%;
+}
+
+/* The backup just made: marked New, with a brief light on arrival. */
+.sf-backup.is-new {
+	box-shadow: inset 3px 0 0 var(--sf-starboard);
+	animation: sf-arrive 2.4s ease-out 1;
+}
+
+@keyframes sf-arrive {
+	from {
+		background: var(--sf-starboard-wash);
+	}
+	to {
+		background: transparent;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.sf-backup.is-new {
+		animation: none;
+	}
+}
+
+/* A finished crossing can be closed. */
+.sf-progress-head {
+	position: relative;
+}
+
+.sf-progress-close {
+	margin-left: 8px;
 }
 
 .sf-drawer > .sf-sub:first-of-type {
@@ -1197,7 +1329,6 @@
 /* ------------------------------------------------------------- buttons */
 
 /* One height per role: page actions 36px, row and form actions 32px. */
-.siteferry .sf-home-actions .button,
 .siteferry .sf-restore-actions .button,
 .siteferry .sf-empty-actions .button {
 	min-height: 36px;
@@ -2246,23 +2377,54 @@ details.sf-dest[open] > .sf-dest-head::after {
 		margin-left: 0;
 	}
 
-	.sf-home-actions,
-	.sf-home-actions .button {
+	/* Phones: the tools share a row; the boarding bar stacks, its main button full width. */
+	/* The main action comes first: title, the boarding bar, then the other tools. */
+	.sf-home {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.sf-home > * {
+		order: 4;
+	}
+
+	.sf-home-head {
+		display: contents;
+	}
+
+	.sf-home-title {
+		order: 1;
+	}
+
+	.sf-now {
+		order: 2;
+	}
+
+	.sf-tools {
+		order: 3;
+		margin-top: 12px;
+	}
+
+	.sf-tools {
 		width: 100%;
 	}
 
-	.sf-home-actions .button {
-		justify-content: center;
-		text-align: center;
+	.siteferry .sf-tools .button.sf-btn {
+		flex: 1 1 30%;
+		padding: 0 8px;
 	}
 
-	.sf-split {
+	.siteferry .sf-now .button.sf-btn {
 		width: 100%;
 	}
 
-	.siteferry .sf-split .button {
-		flex: 1 1 50%;
-		width: auto;
+	.sf-now-line {
+		flex-basis: 100%;
+		order: 2;
+	}
+
+	.siteferry .sf-now #siteferry-options-toggle {
+		order: 3;
 	}
 
 	.sf-menu-list {
