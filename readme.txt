@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.24.1
+Stable tag: 0.24.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -438,6 +438,9 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.24.2 =
+* FTPS: when SiteFerry stops a download early (reading the test file back, or part of a backup), servers that end TLS abruptly made PHP print an "SSL_read on shutdown" warning into the answer, so the connection test (and possibly a download step) failed although everything had worked. That warning is now captured, and anything printed during a connection test is kept out of the answer.
 
 = 0.24.1 =
 * When the server answers with something that is not readable (for example a PHP warning printed before the answer), the page says so and shows the start of that answer instead of a script error.

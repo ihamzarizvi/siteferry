@@ -869,9 +869,12 @@ final class Rest {
 				set_transient( $key, $progress, 5 * MINUTE_IN_SECONDS );
 			}
 		);
+		// A storage library or server that makes PHP print a notice must not corrupt the answer.
+		ob_start();
 		try {
 			return array( 'lines' => Destinations::driver( (string) $request['dest'] )->test() );
 		} finally {
+			ob_end_clean();
 			\SiteFerry\Storage\Test_Progress::listen( null );
 		}
 	}

@@ -848,7 +848,15 @@ final class Ftp_Driver implements Driver {
 				}
 			);
 		}
-		// Otherwise the last reference goes away here, which closes the sockets without QUIT.
+		// Otherwise the last reference goes away, which closes the sockets without QUIT. Many FTPS
+		// servers then end TLS abruptly, and PHP warns ("SSL_read on shutdown: unexpected eof"):
+		// that warning is captured like any other instead of being printed into the page.
+		self::ftp(
+			static function () use ( &$conn ) {
+				$conn = null;
+				return true;
+			}
+		);
 	}
 
 	/**
