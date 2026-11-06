@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.20.0
+Stable tag: 0.21.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -305,7 +305,7 @@ cannot be restored into a network (or the other way round) yet, nor a part of a 
 
 = Moving a site straight to another server =
 
-"Move" on the new site makes a one-time key (24 hours). Pasted under "Move" on the old site, it
+"Move a site" on the new site makes a one-time key (24 hours). Pasted under "Move a site" on the old site, it
 shows the new site and then moves the old one there: a fresh backup, encrypted with the key's
 256-bit secret (AES-256-GCM), sent straight from server to server in chunks with their SHA-256;
 an interrupted transfer continues where it stopped. The routes that receive it answer only to the
@@ -438,6 +438,12 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.21.0 =
+* Header: "Back up now" and "Backup options" sit together as one control; "Move" is now "Move a site"; the second "Set up a schedule" button is gone ("Schedule" does that).
+* Move a site: first choose which side this is ("Receive a site here" on the new site, "Send this site to another server" on the old one); each side shows numbered steps and only its own fields. The help under the list explains all three ways to move a site here.
+* Schedule: the list of parts is folded behind a one-line summary ("The whole site", "The site without media"); the backup before updates has its own box that says it works on its own; the button is "Save these settings".
+* Look inside says which parts can be ticked for restoring.
 
 = 0.20.0 =
 * Restore: the text says what this backup really puts back and what stays as it is (for example a backup of the database only, or one made without media); choices a backup or site cannot take are no longer offered ("Only the files" without files, a new site address on a network or without the options table, must-use plugins and drop-ins without files). Look inside shows no tick boxes on a network, which is restored whole.

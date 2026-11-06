@@ -768,6 +768,22 @@
 	gap: 8px;
 }
 
+/* "Back up now" and its options read as one control. */
+.sf-split {
+	display: inline-flex;
+}
+
+.siteferry .sf-split .button:first-child {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+.siteferry .sf-split .button + .button {
+	margin-left: -1px;
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
 .siteferry .sf-home-actions .button.is-open {
 	border-color: var(--sf-ink);
 	color: var(--sf-ink);
@@ -1260,9 +1276,15 @@
 	color: var(--sf-text);
 }
 
-.sf-help ol {
+.sf-help ol,
+.sf-help ul,
+.sf-help p {
 	margin: 10px 0 0 20px;
 	color: var(--sf-ink-soft);
+}
+
+.sf-help ul {
+	list-style: disc;
 }
 
 .sf-help li {
@@ -2224,6 +2246,15 @@ details.sf-dest[open] > .sf-dest-head::after {
 		text-align: center;
 	}
 
+	.sf-split {
+		width: 100%;
+	}
+
+	.siteferry .sf-split .button {
+		flex: 1 1 50%;
+		width: auto;
+	}
+
 	.sf-menu-list {
 		right: auto;
 		left: 0;
@@ -2488,10 +2519,21 @@ details.sf-dest[open] > .sf-dest-head::after {
 
 /* ---------------------------------------------------------------- move */
 
-.sf-move {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-	gap: 16px 32px;
+.sf-move .sf-choices {
+	max-width: 720px;
+	margin-bottom: 14px;
+}
+
+.sf-move-half {
+	max-width: 720px;
+}
+
+.sf-steps {
+	margin: 0 0 12px 1.4em;
+}
+
+.sf-steps li {
+	margin-bottom: 4px;
 }
 
 .sf-move[hidden] {

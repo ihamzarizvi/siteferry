@@ -801,7 +801,7 @@
 							r.moved.to
 						),
 					} ),
-					el( 'p', { text: __( 'To finish, open SiteFerry there and click "Move it here" under Move.', 'siteferry' ) } ),
+					el( 'p', { text: __( 'To finish, open SiteFerry there and click "Move it here" under "Move a site".', 'siteferry' ) } ),
 					el( 'p', { class: 'sf-actions' }, [
 						el( 'a', {
 							class: 'button button-primary',
@@ -989,13 +989,8 @@
 		}
 	}
 
-	/** The line under the buttons: what "Back up now" makes with the choices in Options. */
-	function renderNowLine() {
-		const line = $( 'siteferry-now-line' );
-		if ( ! destinationsLoaded ) {
-			return; // Where it goes is known once the storages are.
-		}
-		const c = currentChoices();
+	/** Words for the parts a backup leaves out ("media", "inactive plugins", "2 database tables"). */
+	function leftOutWords( c, tables ) {
 		const left = [];
 		if ( c.exclude_media ) {
 			left.push( __( 'media', 'siteferry' ) );
@@ -1010,10 +1005,21 @@
 		} else if ( c.exclude_inactive_themes ) {
 			left.push( __( 'inactive themes', 'siteferry' ) );
 		}
-		if ( c.exclude_tables.length ) {
+		if ( tables ) {
 			/* translators: %d: number of database tables left out */
-			left.push( sprintf( _n( '%d database table', '%d database tables', c.exclude_tables.length, 'siteferry' ), c.exclude_tables.length ) );
+			left.push( sprintf( _n( '%d database table', '%d database tables', tables, 'siteferry' ), tables ) );
 		}
+		return left;
+	}
+
+	/** The line under the buttons: what "Back up now" makes with the choices in Options. */
+	function renderNowLine() {
+		const line = $( 'siteferry-now-line' );
+		if ( ! destinationsLoaded ) {
+			return; // Where it goes is known once the storages are.
+		}
+		const c = currentChoices();
+		const left = leftOutWords( c, c.exclude_tables.length );
 		const what = left.length
 			? sprintf(
 					/* translators: %s: list of parts left out, such as media and plugins */
@@ -3361,6 +3367,17 @@
 	// ------------------------------------------------------------ move to another server
 
 	let receivePoll = null;
+	let moveModeChosen = false;
+
+	/** "Move a site": the sending or the receiving side, one at a time. */
+	function setMoveMode( mode ) {
+		const radio = document.querySelector( 'input[name=siteferry_move_mode][value=' + mode + ']' );
+		if ( radio ) {
+			radio.checked = true;
+		}
+		$( 'siteferry-move-send' ).hidden = mode !== 'send';
+		$( 'siteferry-move-receive' ).hidden = mode !== 'receive';
+	}
 
 	/** Receiving: the key (when just made), and what has arrived. */
 	async function loadReceive( made ) {
@@ -3375,6 +3392,9 @@
 			}
 		}
 		clearTimeout( receivePoll );
+		if ( ! moveModeChosen && data.state !== 'none' && data.state !== 'expired' ) {
+			setMoveMode( 'receive' ); // A key or an arriving site: this is the receiving side.
+		}
 		const make = button( data.state === 'none' || data.state === 'expired' ? __( 'Make a key', 'siteferry' ) : __( 'Make a new key', 'siteferry' ), makeKey, 'button button-primary' );
 		const nodes = [];
 		if ( data.key ) {
@@ -3385,7 +3405,7 @@
 					field.select();
 					try {
 						await navigator.clipboard.writeText( data.key );
-						notice( __( 'The key is copied. Paste it on the old site, under Move.', 'siteferry' ), 'success' );
+						notice( __( 'The key is copied. Paste it on the old site, under "Move a site".', 'siteferry' ), 'success' );
 					} catch ( e ) {
 						document.execCommand( 'copy' );
 					}
@@ -3975,6 +3995,19 @@
 			compress.hidden = !! format && format.value === 'wpress';
 		}
 		form.classList.toggle( 'is-off', ! form.elements.enabled.checked );
+		// The folded list of parts says in one line what it holds.
+		const picked = {};
+		form.querySelectorAll( '.sf-schedule-what input[type=checkbox]' ).forEach( ( input ) => {
+			picked[ input.name ] = input.checked;
+		} );
+		const left = leftOutWords( picked, 0 );
+		$( 'siteferry-schedule-what-summary' ).textContent = left.length
+			? sprintf(
+					/* translators: %s: list of parts left out, such as media and plugins */
+					__( 'The site without %s', 'siteferry' ),
+					listOf( left )
+			  )
+			: __( 'The whole site', 'siteferry' );
 	}
 
 	/** The form's values, as POST /schedule takes them. */
@@ -4048,7 +4081,8 @@
 		const open = () => toggleDrawer( 'schedule', true );
 		const parts = [];
 		if ( ! s.enabled ) {
-			parts.push( el( 'span', { class: 'sf-chip', text: __( 'Automatic backups off', 'siteferry' ) } ), ' ', button( __( 'Set up a schedule', 'siteferry' ), open, 'button sf-quiet sf-quiet-small' ) );
+			// (The Schedule button above sets one up.)
+			parts.push( el( 'span', { class: 'sf-chip', text: __( 'Automatic backups off', 'siteferry' ) } ) );
 		} else {
 			parts.push( el( 'span', { class: 'sf-chip is-good', text: __( 'Automatic backups on', 'siteferry' ) } ), ' ' + describeSchedule( s ) );
 			if ( schedule.next ) {
@@ -4567,6 +4601,12 @@
 		$( 'siteferry-schedule-toggle' ).addEventListener( 'click', () => toggleDrawer( 'schedule' ) );
 		$( 'siteferry-move-toggle' ).addEventListener( 'click', () => toggleDrawer( 'move' ) );
 		$( 'siteferry-move-check' ).addEventListener( 'click', checkMoveKey );
+		document.querySelectorAll( 'input[name=siteferry_move_mode]' ).forEach( ( input ) =>
+			input.addEventListener( 'change', () => {
+				moveModeChosen = true;
+				setMoveMode( input.value );
+			} )
+		);
 		$( 'siteferry-schedule-close' ).addEventListener( 'click', () => {
 			toggleDrawer( 'schedule', false );
 			$( 'siteferry-schedule-toggle' ).focus();

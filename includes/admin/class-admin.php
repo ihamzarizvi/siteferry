@@ -165,11 +165,13 @@ final class Admin {
 							<p class="sf-home-summary" id="siteferry-summary"><?php esc_html_e( 'Make a backup of this whole site, or restore one from the list below.', 'siteferry' ); ?></p>
 						</div>
 						<div class="sf-home-actions">
-							<button type="submit" form="siteferry-export-form" class="button button-primary button-large" id="siteferry-backup-now"><?php esc_html_e( 'Back up now', 'siteferry' ); ?></button>
-							<button type="button" class="button button-large" id="siteferry-options-toggle" aria-expanded="false" aria-controls="siteferry-export-form"><?php esc_html_e( 'Options', 'siteferry' ); ?></button>
+							<span class="sf-split">
+								<button type="submit" form="siteferry-export-form" class="button button-primary button-large" id="siteferry-backup-now"><?php esc_html_e( 'Back up now', 'siteferry' ); ?></button>
+								<button type="button" class="button button-large" id="siteferry-options-toggle" aria-expanded="false" aria-controls="siteferry-export-form"><?php esc_html_e( 'Backup options', 'siteferry' ); ?></button>
+							</span>
 							<button type="button" class="button button-large" id="siteferry-upload-toggle" aria-expanded="false" aria-controls="siteferry-upload"><?php esc_html_e( 'Upload a backup', 'siteferry' ); ?></button>
 							<button type="button" class="button button-large" id="siteferry-schedule-toggle" aria-expanded="false" aria-controls="siteferry-schedule-form"><?php esc_html_e( 'Schedule', 'siteferry' ); ?></button>
-							<button type="button" class="button button-large" id="siteferry-move-toggle" aria-expanded="false" aria-controls="siteferry-move"><?php esc_html_e( 'Move', 'siteferry' ); ?></button>
+							<button type="button" class="button button-large" id="siteferry-move-toggle" aria-expanded="false" aria-controls="siteferry-move"><?php esc_html_e( 'Move a site', 'siteferry' ); ?></button>
 						</div>
 					</div>
 					<p class="sf-schedule-line sf-now-line" id="siteferry-now-line" hidden></p>
@@ -293,9 +295,26 @@ final class Admin {
 					<?php self::render_schedule( $whole_parts, $clutter ); ?>
 
 					<div id="siteferry-move" class="sf-drawer sf-move" hidden>
-						<div class="sf-move-half">
-							<h3 class="sf-sub"><?php esc_html_e( 'Move this site to another server', 'siteferry' ); ?></h3>
-							<p class="description"><?php esc_html_e( 'On the new site (with SiteFerry installed), open Move and click "Make a key"; paste the key here. This site is then backed up, encrypted with the key, and sent straight there; nothing passes through your computer.', 'siteferry' ); ?></p>
+						<p class="sf-drawer-note"><?php esc_html_e( 'Move a site straight from one server to another, with SiteFerry on both. Start on the new site.', 'siteferry' ); ?></p>
+						<div class="sf-choices" role="radiogroup" aria-label="<?php esc_attr_e( 'Which site is this?', 'siteferry' ); ?>">
+							<label class="sf-choice">
+								<input type="radio" name="siteferry_move_mode" value="receive">
+								<span class="sf-choice-name"><?php esc_html_e( 'Receive a site here', 'siteferry' ); ?></span>
+								<span class="sf-choice-note"><?php esc_html_e( 'This is the new site: make a key for the old one.', 'siteferry' ); ?></span>
+							</label>
+							<label class="sf-choice">
+								<input type="radio" name="siteferry_move_mode" value="send" checked>
+								<span class="sf-choice-name"><?php esc_html_e( 'Send this site to another server', 'siteferry' ); ?></span>
+								<span class="sf-choice-note"><?php esc_html_e( 'This is the old site: paste the key from the new one.', 'siteferry' ); ?></span>
+							</label>
+						</div>
+						<div class="sf-move-half" id="siteferry-move-send">
+							<ol class="sf-steps">
+								<li><?php esc_html_e( 'On the new site, install SiteFerry, open "Move a site", choose "Receive a site here" and click "Make a key".', 'siteferry' ); ?></li>
+								<li><?php esc_html_e( 'Paste that key below and click "Check the key".', 'siteferry' ); ?></li>
+								<li><?php esc_html_e( 'Click "Move this site there". This site is backed up, encrypted with the key and sent straight to the new site; nothing passes through your computer, and nothing changes here.', 'siteferry' ); ?></li>
+								<li><?php esc_html_e( 'On the new site, click "Move it here" to finish.', 'siteferry' ); ?></li>
+							</ol>
 							<p class="sf-field">
 								<label for="siteferry-move-key"><?php esc_html_e( 'Key from the new site', 'siteferry' ); ?></label>
 								<textarea id="siteferry-move-key" rows="3" spellcheck="false" autocomplete="off"></textarea>
@@ -303,10 +322,14 @@ final class Admin {
 							<p class="sf-actions"><button type="button" class="button" id="siteferry-move-check"><?php esc_html_e( 'Check the key', 'siteferry' ); ?></button></p>
 							<div id="siteferry-move-target" class="sf-move-target" hidden></div>
 						</div>
-						<div class="sf-move-half">
-							<h3 class="sf-sub"><?php esc_html_e( 'Receive a site here', 'siteferry' ); ?></h3>
-							<p class="description"><?php esc_html_e( 'Make a key and paste it on the old site. It works once, for 24 hours. The site that arrives waits in the list until you restore it here.', 'siteferry' ); ?></p>
+						<div class="sf-move-half" id="siteferry-move-receive" hidden>
+							<ol class="sf-steps">
+								<li><?php esc_html_e( 'Click "Make a key" below and copy it. It works once, for 24 hours.', 'siteferry' ); ?></li>
+								<li><?php esc_html_e( 'On the old site, open SiteFerry, "Move a site", choose "Send this site to another server" and paste the key there.', 'siteferry' ); ?></li>
+								<li><?php esc_html_e( 'When the site has arrived, click "Move it here". Until then nothing on this site changes.', 'siteferry' ); ?></li>
+							</ol>
 							<div id="siteferry-receive" class="sf-receive"></div>
+							<p class="description"><?php esc_html_e( 'The old site has no SiteFerry, or cannot reach this server? Make a backup there, download it, and use "Upload a backup" here instead.', 'siteferry' ); ?></p>
 						</div>
 					</div>
 				</div>
@@ -357,7 +380,7 @@ final class Admin {
 					<?php if ( is_multisite() ) : ?>
 						<p class="sf-lead"><?php esc_html_e( 'Browse the backup and download single files from it. A network is restored whole, so parts of a backup cannot be restored on their own here.', 'siteferry' ); ?></p>
 					<?php else : ?>
-						<p class="sf-lead"><?php esc_html_e( 'Browse the backup and download single files from it, or tick parts of it to restore only those. Nothing on this site changes until you confirm a restore.', 'siteferry' ); ?></p>
+						<p class="sf-lead"><?php esc_html_e( 'Browse the backup and download single files from it, or tick parts of it to restore only those: the database or single tables, all files or single folders. Nothing on this site changes until you confirm a restore.', 'siteferry' ); ?></p>
 					<?php endif; ?>
 					<nav class="sf-crumbs" id="siteferry-contents-crumbs" aria-label="<?php esc_attr_e( 'Folder in the backup', 'siteferry' ); ?>"></nav>
 					<div class="sf-contents-body" id="siteferry-contents-body" aria-live="polite"></div>
@@ -435,12 +458,13 @@ final class Admin {
 				</div>
 
 				<details class="sf-help">
-					<summary><?php esc_html_e( 'Moving a site here?', 'siteferry' ); ?></summary>
-					<ol>
-						<li><?php esc_html_e( 'On the old site, make a backup with SiteFerry (or with All-in-One WP Migration) and download it, or send it to a storage this site can reach too.', 'siteferry' ); ?></li>
-						<li><?php esc_html_e( 'Here, click "Upload a backup", or find it in the list if it is on a storage set up on this site.', 'siteferry' ); ?></li>
-						<li><?php esc_html_e( 'Click "Move here". SiteFerry checks the backup, shows what will change, and only then replaces this site\'s content. The addresses are changed to this site\'s.', 'siteferry' ); ?></li>
-					</ol>
+					<summary><?php esc_html_e( 'Moving a site here? Three ways', 'siteferry' ); ?></summary>
+					<ul>
+						<li><?php esc_html_e( 'Straight from the old server, with SiteFerry on both sites: click "Move a site" above and choose "Receive a site here".', 'siteferry' ); ?></li>
+						<li><?php esc_html_e( 'With a backup file: make a backup on the old site with SiteFerry (or a .wpress with All-in-One WP Migration), download it, and click "Upload a backup" here.', 'siteferry' ); ?></li>
+						<li><?php esc_html_e( 'Through a storage: send the backup from the old site to a storage this site has set up too; it shows up in the list above.', 'siteferry' ); ?></li>
+					</ul>
+					<p><?php esc_html_e( 'Then click "Move here" on the backup. SiteFerry checks it, shows what will change, and only then replaces this site\'s content; the addresses are changed to this site\'s.', 'siteferry' ); ?></p>
 				</details>
 			</section>
 
@@ -527,20 +551,23 @@ final class Admin {
 				<p class="sf-caution" id="siteferry-schedule-cron-off" hidden><?php esc_html_e( 'WP-Cron is turned off on this site (DISABLE_WP_CRON). Scheduled backups only start if a server cron job runs wp-cron.php, or "wp cron event run --due-now", every few minutes.', 'siteferry' ); ?></p>
 
 				<h3 class="sf-sub"><?php esc_html_e( 'What goes into the backup', 'siteferry' ); ?></h3>
-				<div class="sf-groups">
-					<fieldset class="sf-checks">
-						<legend><?php esc_html_e( 'Leave out whole parts', 'siteferry' ); ?></legend>
-						<?php foreach ( $whole_parts as $name => $label ) : ?>
-							<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>"> <?php echo esc_html( $label ); ?></label>
-						<?php endforeach; ?>
-					</fieldset>
-					<fieldset class="sf-checks">
-						<legend><?php esc_html_e( 'Leave out clutter', 'siteferry' ); ?></legend>
-						<?php foreach ( $clutter as $name => list( $label, $checked ) ) : ?>
-							<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>" <?php checked( $checked ); ?>> <?php echo esc_html( $label ); ?></label>
-						<?php endforeach; ?>
-					</fieldset>
-				</div>
+				<details class="sf-more sf-schedule-what">
+					<summary id="siteferry-schedule-what-summary"><?php esc_html_e( 'The whole site', 'siteferry' ); ?></summary>
+					<div class="sf-groups">
+						<fieldset class="sf-checks">
+							<legend><?php esc_html_e( 'Leave out whole parts', 'siteferry' ); ?></legend>
+							<?php foreach ( $whole_parts as $name => $label ) : ?>
+								<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>"> <?php echo esc_html( $label ); ?></label>
+							<?php endforeach; ?>
+						</fieldset>
+						<fieldset class="sf-checks">
+							<legend><?php esc_html_e( 'Leave out clutter', 'siteferry' ); ?></legend>
+							<?php foreach ( $clutter as $name => list( $label, $checked ) ) : ?>
+								<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>" <?php checked( $checked ); ?>> <?php echo esc_html( $label ); ?></label>
+							<?php endforeach; ?>
+						</fieldset>
+					</div>
+				</details>
 				<fieldset class="sf-format">
 					<legend><?php esc_html_e( 'File', 'siteferry' ); ?></legend>
 					<div class="sf-choices" role="radiogroup" aria-label="<?php esc_attr_e( 'Backup file format', 'siteferry' ); ?>">
@@ -610,7 +637,8 @@ final class Admin {
 			</div>
 
 			<div class="sf-before-updates">
-				<h3 class="sf-sub"><?php esc_html_e( 'Before updates', 'siteferry' ); ?></h3>
+				<h3 class="sf-sub"><?php esc_html_e( 'A backup before every update', 'siteferry' ); ?></h3>
+				<p class="description"><?php esc_html_e( 'Separate from the automatic backups above: it works whether they are on or off. It is saved with the same button.', 'siteferry' ); ?></p>
 				<p class="sf-switch"><label><input type="checkbox" name="before_updates"> <strong><?php esc_html_e( 'Back up before WordPress, a plugin or a theme updates', 'siteferry' ); ?></strong></label></p>
 				<p class="description"><?php esc_html_e( 'Just before an update starts: the database and the plugin or theme being updated (the database only for WordPress itself), on this server, tagged "before-update". Restoring it puts those back as they were and leaves the rest of the site alone. If it cannot be made within about two minutes, the update goes ahead without it.', 'siteferry' ); ?></p>
 				<p class="sf-field sf-inline-field">
@@ -623,7 +651,7 @@ final class Admin {
 
 			<p class="sf-schedule-status" id="siteferry-schedule-status"></p>
 			<div class="sf-drawer-actions">
-				<button type="submit" class="button button-primary button-large"><?php esc_html_e( 'Save schedule', 'siteferry' ); ?></button>
+				<button type="submit" class="button button-primary button-large"><?php esc_html_e( 'Save these settings', 'siteferry' ); ?></button>
 				<button type="button" class="button" id="siteferry-schedule-run"><?php esc_html_e( 'Run it now', 'siteferry' ); ?></button>
 				<button type="button" class="button sf-quiet" id="siteferry-schedule-close"><?php esc_html_e( 'Close', 'siteferry' ); ?></button>
 			</div>
