@@ -577,10 +577,12 @@
 	 */
 	async function driveJob( id, token, onProgress ) {
 		let failures = 0;
-		// Slices start short (3 s), so the first steps show as they happen. Where the server answers
-		// the live reads while a slice runs, slices go back to full length (the live reads show the
-		// progress); where it handles one request at a time, they stay short.
+		// Slices start short (3 s), so the first steps show as they happen; after 15 seconds they grow
+		// to 8 s, so long transfers spend their time moving data (each slice opens its storage
+		// connection once). Where the server answers the live reads while a slice runs, slices go to
+		// full length at once: the live reads show the progress.
 		let seconds = 3;
+		const began = Date.now();
 		for ( ;; ) {
 			let job;
 			let gotLive = false;
@@ -607,6 +609,8 @@
 				failures = 0;
 				if ( gotLive ) {
 					seconds = 0; // Live reads work here: full-length slices.
+				} else if ( seconds && Date.now() - began > 15000 ) {
+					seconds = 8;
 				}
 			} catch ( error ) {
 				inFlight = false;

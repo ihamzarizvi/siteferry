@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.25.1
+Stable tag: 0.26.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -438,6 +438,11 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.26.0 =
+* FTP: downloading a backup from an FTP server (to restore or check it) keeps one transfer running from range to range instead of logging in again every 8 MB; a fresh transfer starts every 64 MB to keep memory small. Against the test server, 200 MB took 7.9 s instead of 48.1 s (4 logins instead of 25); over the internet the gain is larger.
+* Progress: after a job's first 15 seconds its slices grow from 3 to 8 seconds where the server handles one request at a time, so long transfers move data instead of reconnecting.
+* Tests: the fake FTP server no longer loses the end of an upload when TLS reports a momentary stall (a cause of rare test failures).
 
 = 0.25.1 =
 * Progress: the crossing moves as the work goes, not only at the end of each 15-second slice. A running slice writes its step and progress to a small live file, which the page reads every 0.7 seconds; slices start at 3 seconds and become full length once the server shows it answers those reads in parallel (on servers that handle one request at a time they stay short).

@@ -207,7 +207,10 @@ Sf_Test::run(
 			$back .= $driver->download_range( $name, $offset, (int) min( 700000, strlen( $data ) - $offset ) );
 		}
 		Sf_Test::same( hash( 'sha256', $data ), hash( 'sha256', $back ), 'downloaded in ranges:' );
-		Sf_Test::ok( substr_count( $server->commands(), 'REST 700000' ) >= 1, 'ranges start at their offset' );
+		// Ranges in a row continue one transfer; a range on its own starts one at its offset.
+		Sf_Test::same( 0, substr_count( $server->commands(), 'REST 700000' ), 'ranges in a row share one transfer:' );
+		Sf_Test::same( substr( $data, 700000, 10 ), $driver->download_range( $name, 700000, 10 ), 'a range on its own:' );
+		Sf_Test::ok( substr_count( $server->commands(), 'REST 700000' ) >= 1, 'a range on its own starts at its offset' );
 
 		$driver->delete( $name );
 		Sf_Test::same( array(), $driver->list() );
@@ -274,6 +277,36 @@ Sf_Test::run(
 		$server = new Fake_Ftp( Sf_Test::temp_dir( 'ftp' ), array( 'require-tls' => true ) );
 		sf_expect_storage_error( Storage_Exception::AUTH, static function () use ( $server ) { sf_ftp( $server, array( 'encryption' => 'ftp' ) )->test(); }, 'requires AUTH TLS' );
 		Sf_Test::same( 6, count( sf_ftp( $server )->test() ), 'FTPS works:' );
+	}
+);
+
+Sf_Test::run(
+	'ranges read in a row share one transfer; another command in between ends it cleanly',
+	static function () {
+		$server = new Fake_Ftp( Sf_Test::temp_dir( 'ftp' ) );
+		mkdir( $server->root . '/backups/site', 0777, true );
+		$name = 'example-com-2026-01-01-0123456789ab.tar';
+		$data = sf_bytes( 20 * 1048576 + 123 );
+		file_put_contents( $server->root . '/backups/site/' . $name, $data );
+		$driver = sf_ftp( $server );
+		$chunk  = 3 * 1048576;
+		$got    = '';
+		for ( $at = 0; $at < 9 * 1048576; $at += $chunk ) {
+			$got .= $driver->download_range( $name, $at, $chunk );
+		}
+		Sf_Test::same( 1, substr_count( $server->commands(), 'USER ' ), 'one login for ranges in a row:' );
+		// Another command while the transfer is still sending.
+		Sf_Test::same( array( $name ), array_column( $driver->list(), 'name' ), 'listing in between:' );
+		for ( $at = 9 * 1048576; $at < strlen( $data ); $at += $chunk ) {
+			$got .= $driver->download_range( $name, $at, min( $chunk, strlen( $data ) - $at ) );
+		}
+		Sf_Test::same( md5( $data ), md5( $got ), 'every byte, in order:' );
+		Sf_Test::same( substr( $data, 5, 100 ), $driver->download_range( $name, 5, 100 ), 'an earlier range:' );
+		Sf_Test::same( substr( $data, -50 ), $driver->download_range( $name, strlen( $data ) - 50, 50 ), 'the last bytes:' );
+		Sf_Test::same( substr( $data, 1048576, 10 ), $driver->download_range( $name, 1048576, 10 ), 'then a range in the middle:' );
+		$started = microtime( true );
+		unset( $driver ); // Closing while a transfer may still be sending must not wait for it.
+		Sf_Test::ok( microtime( true ) - $started < 3, 'closing does not hang' );
 	}
 );
 

@@ -347,11 +347,20 @@ final class Fake_Ftp_Session {
 			$out = fopen( $file, 'wb' );
 		}
 		$this->rest = 0;
+		$stalls     = 0;
 		while ( ! feof( $data ) ) {
 			$chunk = @fread( $data, 65536 );
 			if ( false === $chunk ) {
-				break;
+				// TLS can report "nothing readable yet" as false before the real end; wait a moment
+				// (up to 3 seconds in a row) instead of losing the rest of the upload.
+				$meta = stream_get_meta_data( $data );
+				if ( $meta['eof'] || $meta['timed_out'] || ++$stalls > 3000 ) {
+					break;
+				}
+				usleep( 1000 );
+				continue;
 			}
+			$stalls = 0;
 			if ( '' !== $chunk ) {
 				fwrite( $out, $chunk );
 			}

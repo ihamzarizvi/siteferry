@@ -32,6 +32,9 @@ final class Ftp_Driver implements Driver {
 	/** Bytes per upload part. */
 	const PART_SIZE = 8388608;
 
+	/** A running download is started afresh (one login) after this many bytes, to keep its buffer small. */
+	const READ_SPAN = 67108864;
+
 	/** Seconds to connect. */
 	const CONNECT_TIMEOUT = 30;
 
@@ -89,6 +92,15 @@ final class Ftp_Driver implements Driver {
 	 * @var bool
 	 */
 	private $in_folder = false;
+
+	/**
+	 * A download still running on the connection, so the next range of the same file continues it
+	 * instead of logging in again: file, stream, transfer state, last error, the remote offset the
+	 * next range starts at, and the bytes handed out so far. Null when none is running.
+	 *
+	 * @var array|null
+	 */
+	private $reading = null;
 
 	/**
 	 * Whether temporary failures are retried (not during test()).
@@ -378,7 +390,7 @@ final class Ftp_Driver implements Driver {
 	public function download_range( string $name, int $offset, int $length ): string {
 		return $this->attempt(
 			function () use ( $name, $offset, $length ): string {
-				if ( ! $this->enter_folder( false ) ) {
+				if ( ! $this->continues( $name, $offset ) && ! $this->enter_folder( false ) ) {
 					throw new Storage_Exception( __( 'The backup folder does not exist on the server.', 'siteferry' ), Storage_Exception::NOT_FOUND );
 				}
 				return $this->download( $name, $offset, $length );
@@ -588,35 +600,82 @@ final class Ftp_Driver implements Driver {
 	 * @throws Storage_Exception If the file is missing or the connection breaks.
 	 */
 	private function download( string $name, int $offset, int $length ): string {
-		$stream                = fopen( 'php://temp/maxmemory:' . ( self::PART_SIZE * 2 ), 'w+b' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
-		list( $state, $error ) = self::ftp(
-			function () use ( $stream, $name, $offset ) {
-				return ftp_nb_fget( $this->conn, $stream, $name, FTP_BINARY, $offset );
-			}
-		);
-		while ( FTP_MOREDATA === $state && (int) fstat( $stream )['size'] < $length ) {
+		if ( ! $this->continues( $name, $offset ) ) {
+			$this->stop_reading();
+			$stream                = fopen( 'php://temp/maxmemory:' . ( self::PART_SIZE * 2 ), 'w+b' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 			list( $state, $error ) = self::ftp(
+				function () use ( $stream, $name, $offset ) {
+					return ftp_nb_fget( $this->conn, $stream, $name, FTP_BINARY, $offset );
+				}
+			);
+			$this->reading = array(
+				'name'   => $name,
+				'stream' => $stream,
+				'state'  => $state,
+				'error'  => $error,
+				'next'   => $offset,
+				'given'  => 0,
+			);
+		}
+		$r = &$this->reading;
+		// Read on until this range is in the buffer, or the file has ended.
+		while ( FTP_MOREDATA === $r['state'] && (int) fstat( $r['stream'] )['size'] - $r['given'] < $length ) {
+			list( $r['state'], $r['error'] ) = self::ftp(
 				function () {
 					return ftp_nb_continue( $this->conn );
 				}
 			);
 		}
-		if ( FTP_FAILED === $state ) {
-			fclose( $stream ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		if ( FTP_FAILED === $r['state'] ) {
+			$error = (string) $r['error'];
+			$this->stop_reading(); // A failed transfer has ended: the connection can be used again.
 			$failure = $this->failure( 'Downloading ' . $name, $error );
 			if ( ! $failure->retryable() && $this->remote_size( $name ) < 0 ) {
 				throw new Storage_Exception( sprintf( /* translators: %s: a file or backup name */ __( '%s is not on the server.', 'siteferry' ), $name ), Storage_Exception::NOT_FOUND );
 			}
 			throw $failure;
 		}
-		if ( FTP_MOREDATA === $state ) {
-			// Enough bytes: give up the rest of the transfer together with the connection.
+		$bytes = (string) stream_get_contents( $r['stream'], $length, $r['given'] );
+		// The transfer writes at the stream's position: back to the end, or it would overwrite.
+		fseek( $r['stream'], 0, SEEK_END );
+		$r['given'] += strlen( $bytes );
+		$r['next']   = $offset + strlen( $bytes );
+		unset( $r );
+		if ( FTP_FINISHED === $this->reading['state'] && (int) fstat( $this->reading['stream'] )['size'] <= $this->reading['given'] ) {
+			$this->stop_reading(); // All of it handed out; the transfer ended properly.
+		}
+		return $bytes;
+	}
+
+	/**
+	 * Whether a running download goes on exactly where the next range of this file starts (and has
+	 * not reached the length after which it is started afresh).
+	 *
+	 * @param string $name   File.
+	 * @param int    $offset First byte wanted.
+	 */
+	private function continues( string $name, int $offset ): bool {
+		return null !== $this->reading
+			&& null !== $this->conn
+			&& $this->reading['name'] === $name
+			&& $this->reading['next'] === $offset
+			&& $this->reading['given'] < self::READ_SPAN;
+	}
+
+	/**
+	 * Ends a running download: one still sending is dropped together with the connection (an FTP
+	 * transfer cannot be stopped otherwise); one that has finished just frees its buffer.
+	 */
+	private function stop_reading(): void {
+		if ( null === $this->reading ) {
+			return;
+		}
+		$running = FTP_MOREDATA === $this->reading['state'];
+		fclose( $this->reading['stream'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		$this->reading = null;
+		if ( $running ) {
 			$this->disconnect( false );
 		}
-		rewind( $stream );
-		$bytes = (string) stream_get_contents( $stream, $length );
-		fclose( $stream ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-		return $bytes;
 	}
 
 	/**
@@ -626,6 +685,7 @@ final class Ftp_Driver implements Driver {
 	 * @throws Storage_Exception If the server cannot be reached or refuses the login.
 	 */
 	private function connection() {
+		$this->stop_reading(); // The connection is busy while a download runs.
 		if ( null !== $this->conn ) {
 			return $this->conn;
 		}
@@ -835,6 +895,12 @@ final class Ftp_Driver implements Driver {
 	 *                     come after it, so the connection is simply dropped then.
 	 */
 	private function disconnect( bool $polite ): void {
+		if ( null !== $this->reading ) {
+			// A download still sending makes QUIT wait for its end: drop the connection instead.
+			$polite = $polite && FTP_MOREDATA !== $this->reading['state'];
+			fclose( $this->reading['stream'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+			$this->reading = null;
+		}
 		if ( null === $this->conn ) {
 			return;
 		}
