@@ -194,7 +194,7 @@ final class Backups {
 					$manifest = Wpress\Wpress::is_name( $name ) ? Wpress\Wpress::describe( $path ) : self::manifest( $path );
 				}
 				if ( ! empty( $manifest['encrypted'] ) ) {
-					$error = 'Protected with a password; SiteFerry cannot open password-protected .wpress backups yet.';
+					$error = __( 'Protected with a password; SiteFerry cannot open password-protected .wpress backups yet.', 'siteferry' );
 				}
 			} catch ( Archive_Exception $e ) {
 				$error = $e->getMessage();
@@ -226,6 +226,42 @@ final class Backups {
 	 */
 	public static function encrypted_name( string $name ): bool {
 		return Archive\Crypto::SUFFIX === substr( $name, -strlen( Archive\Crypto::SUFFIX ) );
+	}
+
+	/**
+	 * What a backup holds, as the restore panel needs it: how many tables and files, the parts
+	 * left out when it was made (media, plugins, themes, tables), and whether it is of a whole
+	 * network. Null when the manifest does not say (a .wpress backup before it is checked);
+	 * left_out is null when the backup does not record its export choices (a .wpress backup, or
+	 * one made by an older SiteFerry), as nothing can be said about what was left out.
+	 *
+	 * @param array $manifest Manifest.
+	 * @return array{tables:int,files:int,left_out:string[]|null,network:bool}|null
+	 */
+	public static function holds( array $manifest ): ?array {
+		if ( ! isset( $manifest['database']['tables'], $manifest['files']['files'] ) ) {
+			return null;
+		}
+		$options  = isset( $manifest['options'] ) && is_array( $manifest['options'] ) ? $manifest['options'] : array();
+		$left_out = array() === $options ? null : array();
+		foreach (
+			array(
+				'media'   => 'exclude_media',
+				'plugins' => 'exclude_plugins',
+				'themes'  => 'exclude_themes',
+				'tables'  => 'exclude_tables',
+			) as $part => $option
+		) {
+			if ( null !== $left_out && ! empty( $options[ $option ] ) ) {
+				$left_out[] = $part;
+			}
+		}
+		return array(
+			'tables'   => count( (array) $manifest['database']['tables'] ),
+			'files'    => (int) $manifest['files']['files'],
+			'left_out' => $left_out,
+			'network'  => ! empty( $manifest['site']['network'] ),
+		);
 	}
 
 	/**

@@ -86,10 +86,13 @@ final class Send_Step implements Step {
 
 		$finished = Sender::call( $key, 'POST', 'finish' );
 		$result   = $job->result();
+		$admin           = isset( $finished['admin'] ) && is_string( $finished['admin'] ) ? $finished['admin'] : '';
 		$result['moved'] = array(
-			'to'   => (string) $state['to'],
-			'name' => (string) $finished['backup'],
-			'size' => $size,
+			'to'    => (string) $state['to'],
+			'name'  => (string) $finished['backup'],
+			'size'  => $size,
+			// SiteFerry's page on the other site, to link to; only an address on that same site.
+			'admin' => self::same_site( $admin, (string) $state['to'] ) ? $admin : '',
 		);
 		if ( empty( $state['keep_local'] ) ) {
 			$deleted = Io::quiet(
@@ -116,5 +119,29 @@ final class Send_Step implements Step {
 	 */
 	public function cleanup( Job $job ): void {
 		$job->set_state( self::STATE, array() );
+	}
+
+	/**
+	 * Whether an address is a web page of the given site: http(s), same host and port.
+	 *
+	 * @param string $address Address the other site sent.
+	 * @param string $site    The other site's address (from the key).
+	 */
+	public static function same_site( string $address, string $site ): bool {
+		// Browsers read a backslash as a slash, so "https://site\@other" would open "other".
+		if ( preg_match( '/[\\\\\s\x00-\x1f\x7f]/', $address ) ) {
+			return false;
+		}
+		$a = wp_parse_url( $address );
+		if ( is_array( $a ) && ( isset( $a['user'] ) || isset( $a['pass'] ) ) ) {
+			return false;
+		}
+		$b = wp_parse_url( $site );
+		if ( ! is_array( $a ) || ! is_array( $b ) || ! isset( $a['scheme'], $a['host'], $b['host'] ) ) {
+			return false;
+		}
+		return in_array( strtolower( $a['scheme'] ), array( 'http', 'https' ), true )
+			&& strtolower( $a['host'] ) === strtolower( $b['host'] )
+			&& ( isset( $a['port'] ) ? (int) $a['port'] : 0 ) === ( isset( $b['port'] ) ? (int) $b['port'] : 0 );
 	}
 }

@@ -115,6 +115,8 @@ final class Rest {
 			array( '/schedule', WP_REST_Server::CREATABLE, 'save_schedule', $admin ),
 			array( '/schedule/run', WP_REST_Server::CREATABLE, 'run_schedule', $admin ),
 			array( '/undo/dismiss', WP_REST_Server::CREATABLE, 'dismiss_undo', $admin ),
+			array( '/choices', WP_REST_Server::CREATABLE, 'save_choices', $admin ),
+			array( '/choices', WP_REST_Server::DELETABLE, 'reset_choices', $admin ),
 			array( '/receive', WP_REST_Server::READABLE, 'receive_status', $admin ),
 			array( '/receive', WP_REST_Server::CREATABLE, 'receive_key', $admin ),
 			array( '/receive', WP_REST_Server::DELETABLE, 'receive_cancel', $admin ),
@@ -139,6 +141,22 @@ final class Rest {
 		foreach ( $endpoints as $path => $list ) {
 			register_rest_route( self::NS, $path, $list );
 		}
+	}
+
+	/**
+	 * Remembers the current user's choices for "Back up now" (never a password).
+	 *
+	 * @param WP_REST_Request $request Request with the choices as JSON.
+	 */
+	public static function save_choices( WP_REST_Request $request ): array {
+		return \SiteFerry\Admin\Choices::save( get_current_user_id(), (array) $request->get_json_params() );
+	}
+
+	/**
+	 * Back to the default choices for "Back up now" (the whole site, to this server).
+	 */
+	public static function reset_choices(): array {
+		return \SiteFerry\Admin\Choices::save( get_current_user_id(), array() );
 	}
 
 	/**
@@ -330,6 +348,7 @@ final class Rest {
 				'wordpress' => null === $manifest ? null : $manifest['versions']['wordpress'],
 				'format'    => \SiteFerry\Wpress\Wpress::is_name( $backup['name'] ) ? 'wpress' : 'siteferry',
 				'contents'  => null === $manifest ? null : self::contents( $manifest ),
+				'holds'     => null === $manifest ? null : Backups::holds( $manifest ),
 				'error'     => $backup['error'],
 				'encrypted' => $backup['encrypted'],
 				// A backup moved here with a key opens without asking for a password.

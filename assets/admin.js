@@ -82,6 +82,11 @@
 	let noticeTimer = null;
 	let schedule = null;
 	let watching = '';
+	let choices = cfg.choices || null; // The choices of "Back up now" as last saved (never a password).
+	let choicesTimer = null;
+	let wantedSendTo = null; // A remembered storage, kept until the list of storages has loaded.
+	let destinationsLoaded = false;
+	let tablesLoaded = false;
 
 	// ---------------------------------------------------------------- helpers
 
@@ -227,6 +232,15 @@
 	function date( value ) {
 		const d = typeof value === 'number' ? new Date( value * 1000 ) : new Date( value );
 		return isNaN( d ) ? '' : d.toLocaleString( undefined, { dateStyle: 'medium', timeStyle: 'short' } );
+	}
+
+	/** "media, plugins and themes", in the page's language. */
+	function listOf( words ) {
+		try {
+			return new Intl.ListFormat( document.documentElement.lang || undefined, { style: 'long', type: 'conjunction' } ).format( words );
+		} catch ( e ) {
+			return words.join( ', ' );
+		}
 	}
 
 	/** A message above the tabs; success messages go away by themselves. */
@@ -639,6 +653,17 @@
 					] )
 				)
 			);
+			// Tables left out before stay left out (when they still exist).
+			const left = choices ? choices.exclude_tables : [];
+			box.querySelectorAll( 'input[name=exclude_tables]' ).forEach( ( input ) => {
+				input.checked = left.indexOf( input.value ) !== -1;
+			} );
+			tablesLoaded = true;
+			countLeftOutTables();
+			renderNowLine();
+			if ( space ) {
+				renderSpace();
+			}
 		} catch ( error ) {
 			box.textContent = error.message;
 		}
@@ -656,7 +681,7 @@
 	function renderSendOptions() {
 		const box = $( 'siteferry-send-options' );
 		const checked = box.querySelector( 'input:checked' );
-		const current = checked ? checked.value : '';
+		const current = null !== wantedSendTo ? wantedSendTo : checked ? checked.value : '';
 		const ready = destinations.filter( ( d ) => d.ready );
 		box.replaceChildren(
 			box.querySelector( '.sf-choice' ),
@@ -670,8 +695,13 @@
 		);
 		const keep = Array.from( box.querySelectorAll( 'input' ) ).find( ( input ) => input.value === current ) || box.querySelector( 'input' );
 		keep.checked = true;
+		if ( destinationsLoaded ) {
+			// A remembered storage that is no longer ready falls back to this server, as shown.
+			wantedSendTo = null;
+		}
 		$( 'siteferry-no-storage' ).hidden = ready.length > 0;
 		syncDeleteAfter();
+		renderNowLine();
 	}
 
 	function syncDeleteAfter() {
@@ -698,36 +728,20 @@
 	async function startExport( event ) {
 		event.preventDefault();
 		const form = event.target;
-		const options = { exclude_tables: [] };
-		form.querySelectorAll( 'input[type=checkbox]' ).forEach( ( input ) => {
-			if ( ! input.name ) {
-				return; // Page-only choices, such as downloading when ready.
-			}
-			if ( input.name === 'exclude_tables' ) {
-				if ( input.checked ) {
-					options.exclude_tables.push( input.value );
-				}
-			} else {
-				options[ input.name ] = input.checked;
-			}
-		} );
-		const format = form.querySelector( 'input[name=format]:checked' );
-		options.format = format ? format.value : 'tar';
-		if ( options.format === 'wpress' ) {
-			options.compress = false;
-		}
-		const choice = form.querySelector( 'input[name=send_to]:checked' );
-		options.send_to = choice ? choice.value : '';
-		if ( ! options.send_to ) {
-			options.delete_after_send = false;
-		}
+		// The same choices the line under the buttons shows (also before the tables or storages are listed).
+		const options = currentChoices();
+		const downloadWhenReady = options.download;
+		delete options.encrypt; // Page-only choices, not export options.
+		delete options.download;
 		options.title = form.elements.title.value;
 		options.note = form.elements.note.value;
 		options.tags = form.elements.tags.value;
 		if ( $( 'siteferry-encrypt' ) && $( 'siteferry-encrypt' ).checked && options.format !== 'wpress' ) {
 			const password = $( 'siteferry-password' ).value;
 			const problem =
-				password.length < 8
+				password === ''
+					? __( 'Enter a password for the backup, or untick “Protect the backup with a password”.', 'siteferry' )
+					: password.length < 8
 					? __( 'The password needs at least 8 characters.', 'siteferry' )
 					: password !== $( 'siteferry-password-again' ).value
 					? __( 'The two passwords are not the same.', 'siteferry' )
@@ -754,7 +768,7 @@
 			[ 'title', 'note', 'tags' ].forEach( ( field ) => {
 				form.elements[ field ].value = '';
 			} );
-			await finishExport( started.job.id, started.token, view, $( 'siteferry-download-ready' ).checked );
+			await finishExport( started.job.id, started.token, view, downloadWhenReady );
 		} catch ( error ) {
 			view.finish( false, __( 'The backup was not made', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
 		} finally {
@@ -788,7 +802,16 @@
 						),
 					} ),
 					el( 'p', { text: __( 'To finish, open SiteFerry there and click "Move it here" under Move.', 'siteferry' ) } ),
-					el( 'p', { class: 'sf-actions' }, [ el( 'a', { class: 'button button-primary', href: r.moved.to + '/wp-admin/tools.php?page=siteferry', target: '_blank', rel: 'noopener', text: __( 'Open SiteFerry there', 'siteferry' ) } ) ] ),
+					el( 'p', { class: 'sf-actions' }, [
+						el( 'a', {
+							class: 'button button-primary',
+							// The other site says where its SiteFerry page is (SiteFerry 0.20.0 and later).
+							href: r.moved.admin || r.moved.to.replace( /\/+$/, '' ) + '/wp-admin/admin.php?page=siteferry',
+							target: '_blank',
+							rel: 'noopener',
+							text: __( 'Open SiteFerry there', 'siteferry' ),
+						} ),
+					] ),
 				]
 			);
 			loadBackups();
@@ -853,6 +876,185 @@
 		}
 	}
 
+	// ------------------------------------------------------------ remembered choices
+
+	/** The choices of "Back up now" as Options shows them (never the name, note, tags or password). */
+	function currentChoices() {
+		const form = $( 'siteferry-export-form' );
+		const out = { exclude_tables: [] };
+		form.querySelectorAll( 'input[type=checkbox][name]' ).forEach( ( input ) => {
+			if ( input.name === 'exclude_tables' ) {
+				if ( input.checked ) {
+					out.exclude_tables.push( input.value );
+				}
+			} else {
+				out[ input.name ] = input.checked;
+			}
+		} );
+		if ( ! tablesLoaded && choices ) {
+			out.exclude_tables = choices.exclude_tables.slice(); // The tables are not listed yet.
+		}
+		const format = form.querySelector( 'input[name=format]:checked' );
+		out.format = format ? format.value : 'tar';
+		const where = form.querySelector( 'input[name=send_to]:checked' );
+		out.send_to = null !== wantedSendTo ? wantedSendTo : where ? where.value : '';
+		out.encrypt = !! $( 'siteferry-encrypt' ) && $( 'siteferry-encrypt' ).checked;
+		out.download = $( 'siteferry-download-ready' ).checked;
+		if ( out.format === 'wpress' ) {
+			out.compress = false;
+			out.encrypt = false;
+		}
+		if ( ! out.send_to ) {
+			out.delete_after_send = false;
+		}
+		return out;
+	}
+
+	/** Puts choices into Options: as the page loads, or when going back to the defaults. */
+	function applyChoices( c ) {
+		choices = c;
+		const form = $( 'siteferry-export-form' );
+		form.querySelectorAll( 'input[type=checkbox][name]' ).forEach( ( input ) => {
+			if ( input.name === 'exclude_tables' ) {
+				input.checked = c.exclude_tables.indexOf( input.value ) !== -1;
+			} else if ( Object.prototype.hasOwnProperty.call( c, input.name ) ) {
+				input.checked = !! c[ input.name ];
+			}
+		} );
+		const format = form.querySelector( 'input[name=format][value="' + ( c.format === 'wpress' ? 'wpress' : 'tar' ) + '"]' );
+		if ( format ) {
+			format.checked = true;
+		}
+		if ( $( 'siteferry-encrypt' ) ) {
+			$( 'siteferry-encrypt' ).checked = !! c.encrypt;
+		}
+		$( 'siteferry-download-ready' ).checked = !! c.download;
+		wantedSendTo = c.send_to || '';
+		renderSendOptions();
+		syncFormat();
+		countLeftOutTables();
+		if ( space ) {
+			renderSpace();
+		}
+		renderNowLine();
+	}
+
+	/** A choice in Options changed: the line under the buttons shows it, and it is remembered. */
+	function choicesChanged( event ) {
+		const target = event ? event.target : null;
+		if ( target && ( target.type === 'text' || target.type === 'password' || target.tagName === 'TEXTAREA' ) ) {
+			return; // The name, note, tags and password belong to one backup.
+		}
+		if ( target && target.name === 'send_to' ) {
+			wantedSendTo = null;
+		}
+		renderNowLine();
+		clearTimeout( choicesTimer );
+		choicesTimer = setTimeout( saveChoices, 400 );
+	}
+
+	let choicesSaving = Promise.resolve(); // Saves go one after the other, so the last one wins.
+
+	function saveChoices() {
+		choicesTimer = null;
+		const json = currentChoices();
+		choicesSaving = choicesSaving.then( () => storeChoices( json ) );
+		return choicesSaving;
+	}
+
+	async function storeChoices( json ) {
+		try {
+			choices = await api( 'POST', 'choices', { json } );
+		} catch ( error ) {
+			notice(
+				sprintf(
+					/* translators: %s: error message */
+					__( 'Your backup choices could not be remembered: %s', 'siteferry' ),
+					error.message
+				),
+				'error'
+			);
+		}
+	}
+
+	async function useDefaultChoices() {
+		clearTimeout( choicesTimer );
+		choicesTimer = null;
+		await choicesSaving; // A save still on its way must not bring the old choices back.
+		try {
+			applyChoices( await api( 'DELETE', 'choices' ) );
+			notice( __( 'Back to the defaults: the whole site, kept on this server.', 'siteferry' ), 'success' );
+		} catch ( error ) {
+			notice( error.message, 'error' );
+		}
+	}
+
+	/** The line under the buttons: what "Back up now" makes with the choices in Options. */
+	function renderNowLine() {
+		const line = $( 'siteferry-now-line' );
+		if ( ! destinationsLoaded ) {
+			return; // Where it goes is known once the storages are.
+		}
+		const c = currentChoices();
+		const left = [];
+		if ( c.exclude_media ) {
+			left.push( __( 'media', 'siteferry' ) );
+		}
+		if ( c.exclude_plugins ) {
+			left.push( __( 'plugins', 'siteferry' ) );
+		} else if ( c.exclude_inactive_plugins ) {
+			left.push( __( 'inactive plugins', 'siteferry' ) );
+		}
+		if ( c.exclude_themes ) {
+			left.push( __( 'themes', 'siteferry' ) );
+		} else if ( c.exclude_inactive_themes ) {
+			left.push( __( 'inactive themes', 'siteferry' ) );
+		}
+		if ( c.exclude_tables.length ) {
+			/* translators: %d: number of database tables left out */
+			left.push( sprintf( _n( '%d database table', '%d database tables', c.exclude_tables.length, 'siteferry' ), c.exclude_tables.length ) );
+		}
+		const what = left.length
+			? sprintf(
+					/* translators: %s: list of parts left out, such as media and plugins */
+					__( 'the site without %s', 'siteferry' ),
+					listOf( left )
+			  )
+			: __( 'the whole site', 'siteferry' );
+		let file;
+		if ( c.format === 'wpress' ) {
+			file = __( 'a .wpress file', 'siteferry' );
+		} else {
+			file = c.compress ? __( 'a .tar.gz file', 'siteferry' ) : __( 'a .tar file', 'siteferry' );
+		}
+		if ( c.encrypt ) {
+			/* translators: %s: a kind of file, such as a .tar file */
+			file = sprintf( __( '%s protected with a password', 'siteferry' ), file );
+		}
+		const target = c.send_to ? destination( c.send_to ) : null;
+		let where = __( 'kept on this server', 'siteferry' );
+		if ( target ) {
+			where = c.delete_after_send
+				? /* translators: %s: name of the storage, such as Dropbox */
+				  sprintf( __( 'sent to %s and then deleted here', 'siteferry' ), target.short )
+				: /* translators: %s: name of the storage, such as Dropbox */
+				  sprintf( __( 'sent to %s and kept here too', 'siteferry' ), target.short );
+		}
+		let text = sprintf(
+			/* translators: 1: what is backed up, such as the whole site, 2: the file, such as a .tar file, 3: where it goes, such as kept on this server */
+			__( '“Back up now” saves %1$s as %2$s, %3$s.', 'siteferry' ),
+			what,
+			file,
+			where
+		);
+		if ( c.download && ! ( target && c.delete_after_send ) ) {
+			// (A backup deleted here after sending is not there to download.)
+			text += ' ' + __( 'It is also downloaded to your computer.', 'siteferry' );
+		}
+		line.replaceChildren( el( 'span', { text } ), ' ', button( __( 'Change', 'siteferry' ), () => toggleDrawer( 'options', true ), 'button sf-quiet sf-quiet-small' ) );
+		line.hidden = false;
+	}
+
 	// ------------------------------------------------------------ storage
 
 	async function loadDestinations() {
@@ -869,6 +1071,7 @@
 				'error'
 			);
 		}
+		destinationsLoaded = true;
 		renderSendOptions();
 		if ( schedule ) {
 			renderScheduleWhere( false );
@@ -2330,7 +2533,7 @@
 			cancelJob( restore.job.id, restore.job.token );
 		}
 		closeMenus();
-		restore = { item, mine: ours( item ), host: hostOf( item.source ), name: item.local ? item.name : null, job: null, phase: 'open', seq: 0, partial: partial || null, password: null };
+		restore = { item, mine: ours( item ), host: hostOf( item.source ), name: item.local ? item.name : null, job: null, phase: 'open', seq: 0, partial: partial || null, password: null, holds: item.holds || null };
 		const paths = partial ? partial.options.restore_paths || [] : [];
 		$( 'siteferry-safety' ).checked = true;
 		$( 'siteferry-replace-url' ).value = '';
@@ -2348,6 +2551,7 @@
 		document.querySelector( 'input[name=siteferry_restore_what][value=' + ( partial ? 'chosen' : 'all' ) + ']' ).checked = true;
 		$( 'siteferry-restore-advanced' ).open = !! partial;
 		$( 'siteferry-restore-advanced' ).hidden = false;
+		syncRestoreChoices();
 		$( 'siteferry-inspection' ).hidden = true;
 		$( 'siteferry-inspection-warnings' ).replaceChildren();
 		$( 'siteferry-crossing' ).hidden = true;
@@ -2425,8 +2629,7 @@
 						then
 				  )
 				: __( 'Restore a backup', 'siteferry' );
-			$( 'siteferry-restore-lead' ).textContent =
-				__( 'Posts, pages, settings, users, plugins, themes and media go back to how they were then; anything added or changed since is lost. SiteFerry and its storage settings stay as they are.', 'siteferry' ) + fromStorage;
+			$( 'siteferry-restore-lead' ).textContent = wholeRestoreText( restore.holds ) + fromStorage;
 			$( 'siteferry-confirm' ).textContent = __( 'Restore now', 'siteferry' );
 			$( 'siteferry-confirm-text' ).textContent = __( 'I understand that this replaces this site’s content with the backup.', 'siteferry' );
 		} else if ( part ) {
@@ -2456,13 +2659,25 @@
 				__( 'Move %s here', 'siteferry' ),
 				name
 			);
+			const filesOnly = !! restore.holds && restore.holds.tables === 0;
 			$( 'siteferry-restore-lead' ).textContent =
-				sprintf(
-					/* translators: 1: address of the other site, 2: address of this site */
-					__( 'This site’s content is replaced by the content of %1$s, and its addresses are changed to this site’s (%2$s). SiteFerry and its storage settings stay as they are. Afterwards you log in with that site’s users.', 'siteferry' ),
-					name,
-					hostOf( cfg.home )
-				) + fromStorage;
+				[
+					filesOnly
+						? sprintf(
+								/* translators: %s: address of the other site, such as example.com */
+								__( 'The files of %s replace this site’s; its database is not in the backup. SiteFerry and its storage settings stay as they are.', 'siteferry' ),
+								name
+						  )
+						: sprintf(
+								/* translators: 1: address of the other site, 2: address of this site */
+								__( 'This site’s content is replaced by the content of %1$s, and its addresses are changed to this site’s (%2$s). SiteFerry and its storage settings stay as they are. Afterwards you log in with that site’s users.', 'siteferry' ),
+								name,
+								hostOf( cfg.home )
+						  ),
+					staysText( restore.holds ),
+				]
+					.filter( ( sentence ) => sentence )
+					.join( ' ' ) + fromStorage;
 			$( 'siteferry-confirm' ).textContent = __( 'Move here now', 'siteferry' );
 			$( 'siteferry-confirm-text' ).textContent = sprintf(
 				/* translators: %s: address of the other site, such as example.com */
@@ -2470,6 +2685,132 @@
 				name
 			);
 		}
+	}
+
+	/**
+	 * What restoring all of this backup does, from what it holds (known from the list, or once it
+	 * has been checked): what is put back, what stays because the backup does not have it, and that
+	 * plugins and themes added since stay.
+	 */
+	function wholeRestoreText( holds ) {
+		const own = __( 'SiteFerry and its storage settings stay as they are.', 'siteferry' );
+		if ( ! holds ) {
+			return __( 'SiteFerry checks the backup first and then shows what it holds. Nothing on this site changes until you confirm.', 'siteferry' ) + ' ' + own;
+		}
+		const parts = [];
+		if ( holds.tables > 0 ) {
+			parts.push( __( 'the database (posts, pages, settings, users)', 'siteferry' ) );
+		}
+		const left = holds.left_out || [];
+		let pluginsBack = false;
+		if ( holds.files > 0 && ! holds.left_out ) {
+			// The backup does not record what was left out (a .wpress file): it puts back what it has.
+			parts.push( __( 'the files in its wp-content folder', 'siteferry' ) );
+			pluginsBack = true;
+		} else if ( holds.files > 0 ) {
+			[
+				[ 'media', __( 'media', 'siteferry' ) ],
+				[ 'plugins', __( 'plugins', 'siteferry' ) ],
+				[ 'themes', __( 'themes', 'siteferry' ) ],
+			].forEach( ( [ key, word ] ) => {
+				if ( left.indexOf( key ) === -1 ) {
+					parts.push( word );
+					pluginsBack = pluginsBack || key !== 'media';
+				}
+			} );
+			parts.push( __( 'the other files in wp-content', 'siteferry' ) );
+		}
+		const sentences = [];
+		if ( parts.length ) {
+			sentences.push(
+				sprintf(
+					/* translators: %s: list of what is put back, such as the database (posts, pages, settings, users), media, plugins and themes */
+					__( 'This puts back %s from the backup; changes made since are lost.', 'siteferry' ),
+					listOf( parts )
+				)
+			);
+		}
+		sentences.push( staysText( holds ) );
+		if ( pluginsBack ) {
+			sentences.push( __( 'Plugins and themes installed since the backup are not deleted.', 'siteferry' ) );
+		}
+		sentences.push( own );
+		return sentences.filter( ( sentence ) => sentence ).join( ' ' );
+	}
+
+	/** What a whole restore leaves as it is because the backup does not have it ('' when it has everything). */
+	function staysText( holds ) {
+		if ( ! holds ) {
+			return '';
+		}
+		if ( holds.tables === 0 ) {
+			return __( 'The backup has no database, so posts, pages, settings and users stay as they are on this site.', 'siteferry' );
+		}
+		if ( holds.files === 0 ) {
+			return __( 'The backup has no files, so media, plugins and themes stay as they are on this site.', 'siteferry' );
+		}
+		const words = {
+			media: __( 'media', 'siteferry' ),
+			plugins: __( 'plugins', 'siteferry' ),
+			themes: __( 'themes', 'siteferry' ),
+			tables: __( 'the database tables left out', 'siteferry' ),
+		};
+		const parts = ( holds.left_out || [] ).filter( ( part ) => words[ part ] ).map( ( part ) => words[ part ] );
+		return parts.length
+			? sprintf(
+					/* translators: %s: list of parts, such as media and plugins */
+					__( 'Not in the backup, so they stay as they are on this site: %s.', 'siteferry' ),
+					listOf( parts )
+			  )
+			: '';
+	}
+
+	/**
+	 * Shows only the restore choices this backup and this site can take: no "only the files"
+	 * without files (or "only the database" without one), no new address on a network or without
+	 * the options table, no must-use plugins or drop-ins without files.
+	 *
+	 * @return {boolean} Whether a choice that no longer applies was changed (so the check runs again).
+	 */
+	function syncRestoreChoices() {
+		const holds = restore ? restore.holds : null;
+		const radio = ( value ) => document.querySelector( 'input[name=siteferry_restore_what][value=' + value + ']' );
+		const noFiles = !! holds && holds.files === 0;
+		const noTables = !! holds && holds.tables === 0;
+		let changed = false;
+		radio( 'files' ).closest( 'label' ).hidden = noFiles;
+		radio( 'database' ).closest( 'label' ).hidden = noTables;
+		if ( ( noFiles && radio( 'files' ).checked ) || ( noTables && radio( 'database' ).checked ) ) {
+			radio( 'all' ).checked = true;
+			changed = true;
+		}
+		const partial = !! ( restore && restore.partial );
+		// A network is restored whole; a backup of only the database (or only files) has nothing to split.
+		$( 'siteferry-restore-what' ).hidden = !! cfg.network || ( ( noFiles || noTables ) && ! partial );
+		const options = restoreWhat().options;
+		const tables = options.restore_tables || [];
+		const addressOk = ! cfg.network && ! noTables && options.restore_database !== false && ( ! tables.length || !! ( restore && restore.partial && restore.partial.optionsTable ) );
+		$( 'siteferry-replace-url-row' ).hidden = ! addressOk;
+		if ( ! addressOk && $( 'siteferry-replace-url' ).value !== '' ) {
+			$( 'siteferry-replace-url' ).value = '';
+			changed = true;
+		}
+		const filesOk = ! noFiles && options.restore_files !== false;
+		const cleared = restore ? ( restore.cleared = restore.cleared || {} ) : {};
+		[ 'siteferry-include-mu', 'siteferry-include-dropins' ].forEach( ( id ) => {
+			$( id + '-row' ).hidden = ! filesOk;
+			if ( ! filesOk && $( id ).checked ) {
+				$( id ).checked = false;
+				cleared[ id ] = true; // Ticked again when files are restored again.
+				changed = true;
+			} else if ( filesOk && cleared[ id ] ) {
+				$( id ).checked = true;
+				delete cleared[ id ];
+				changed = true;
+			}
+		} );
+		$( 'siteferry-restore-whole-note' ).hidden = ! cfg.network;
+		return changed;
 	}
 
 	/** Shows the confirm button; moving another site here also needs the tick. */
@@ -2688,10 +3029,11 @@
 	function showInspection( info ) {
 		const mine = siteKey( info.from ) === siteKey( info.to );
 		restore.host = hostOf( info.from );
-		if ( mine !== restore.mine ) {
-			restore.mine = mine;
-			setWording( mine, restore.host );
-		}
+		restore.mine = mine;
+		// The check knows what the backup holds (also a .wpress, or one that was only on a storage).
+		restore.holds = info.holds || restore.holds;
+		const changed = syncRestoreChoices();
+		setWording( mine, restore.host );
 		const end = ( label, value ) => el( 'div', { class: 'sf-crossing-end' }, [ el( 'small', { text: label } ), el( 'code', { text: value } ) ] );
 		$( 'siteferry-crossing' ).replaceChildren( end( __( 'From', 'siteferry' ), info.from ), el( 'span', { class: 'sf-crossing-line', 'aria-hidden': 'true' } ), end( __( 'Into', 'siteferry' ), info.to ) );
 		$( 'siteferry-crossing' ).hidden = mine;
@@ -2738,6 +3080,9 @@
 		$( 'siteferry-inspection' ).hidden = false;
 		$( 'siteferry-inspection-warnings' ).replaceChildren( ...( info.warnings || [] ).map( ( w ) => el( 'li', { text: w } ) ) );
 		setConfirm( true );
+		if ( changed ) {
+			recheckSoon(); // A choice this backup cannot take was set back: check again with the new ones.
+		}
 	}
 
 	async function confirmImport() {
@@ -3206,7 +3551,7 @@
 				return;
 			}
 		}
-		inside = { item, dir: '', seq: 0, tables: null, hasDatabase: false, picks: new Map(), unlock };
+		inside = { item, dir: '', seq: 0, tables: null, prefix: '', hasDatabase: false, picks: new Map(), unlock };
 		/* translators: %s: name of the backup */
 		$( 'siteferry-contents-title' ).textContent = sprintf( __( 'Inside %s', 'siteferry' ), called( item ) );
 		$( 'siteferry-contents-crumbs' ).replaceChildren();
@@ -3272,6 +3617,7 @@
 		inside.dir = data.dir;
 		if ( data.dir === '' ) {
 			inside.tables = data.tables;
+			inside.prefix = data.prefix || '';
 			inside.hasDatabase = data.tables !== null || data.entries.some( ( entry ) => entry.path === 'database.sql' );
 		}
 		renderCrumbs( data.dir );
@@ -3308,7 +3654,7 @@
 		const block = el( 'div', { class: 'sf-contents-db' }, [
 			el( 'label', { class: 'sf-contents-db-all' }, [
 				/* translators: a part of a backup; used inside sentences such as "Restore the whole database" */
-				pickBox( 'db', __( 'the whole database', 'siteferry' ) ),
+				cfg.network ? document.createTextNode( '' ) : pickBox( 'db', __( 'the whole database', 'siteferry' ) ),
 				el( 'span', { class: 'dashicons dashicons-database', 'aria-hidden': 'true' } ),
 				el( 'strong', { text: __( 'Database', 'siteferry' ) } ),
 				el( 'span', {
@@ -3336,7 +3682,7 @@
 						tables.map( ( t ) =>
 							el( 'label', {}, [
 								/* translators: %s: name of a database table; used inside sentences such as "Restore table wp_posts" */
-								pickBox( 't:' + t.name, sprintf( __( 'table %s', 'siteferry' ), t.name ) ),
+								cfg.network ? document.createTextNode( '' ) : pickBox( 't:' + t.name, sprintf( __( 'table %s', 'siteferry' ), t.name ) ),
 								' ' + t.name + ' ',
 								/* translators: %d: a number */
 								el( 'span', { class: 'sf-table-size', text: sprintf( _n( '%d row', '%d rows', t.rows, 'siteferry' ), t.rows ) } ),
@@ -3393,6 +3739,9 @@
 
 	/** The pick a path in the backup stands for on its own ('files' or 'p:<path in wp-content>'), or ''. */
 	function pickKey( path ) {
+		if ( cfg.network ) {
+			return ''; // A network is restored whole.
+		}
 		if ( path === 'wp-content' ) {
 			return 'files';
 		}
@@ -3517,7 +3866,13 @@
 			return;
 		}
 		const item = inside.item;
-		const partial = { options: partialOptions( inside.picks ), label: describePicks( inside.picks ) };
+		const options = partialOptions( inside.picks );
+		const partial = {
+			options,
+			label: describePicks( inside.picks ),
+			// A new site address is stored in the options table, so it can only be set along with it.
+			optionsTable: inside.picks.has( 'db' ) || ( '' !== inside.prefix && options.restore_tables.indexOf( inside.prefix + 'options' ) !== -1 ),
+		};
 		closeContents();
 		openRestore( item, partial );
 	}
@@ -4201,6 +4556,8 @@
 		);
 		$( 'siteferry-export-form' ).addEventListener( 'submit', startExport );
 		$( 'siteferry-export-form' ).addEventListener( 'change', () => space && renderSpace() );
+		$( 'siteferry-export-form' ).addEventListener( 'change', choicesChanged );
+		$( 'siteferry-options-defaults' ).addEventListener( 'click', useDefaultChoices );
 		$( 'siteferry-options-toggle' ).addEventListener( 'click', () => toggleDrawer( 'options' ) );
 		$( 'siteferry-options-close' ).addEventListener( 'click', () => {
 			toggleDrawer( 'options', false );
@@ -4242,6 +4599,7 @@
 		} );
 		$( 'siteferry-restore-what' ).addEventListener( 'change', () => {
 			if ( restore ) {
+				syncRestoreChoices();
 				setWording( restore.mine, restore.host );
 				recheckSoon();
 			}
@@ -4250,6 +4608,23 @@
 		$( 'siteferry-contents-clear' ).addEventListener( 'click', clearPicks );
 		$( 'siteferry-contents-restore' ).addEventListener( 'click', restorePicked );
 		$( 'siteferry-jobs-refresh' ).addEventListener( 'click', loadJobs );
+
+		// A choice changed just before leaving the page is still remembered.
+		window.addEventListener( 'pagehide', () => {
+			if ( choicesTimer ) {
+				clearTimeout( choicesTimer );
+				choicesTimer = null;
+				try {
+					fetch( url( 'choices' ), {
+						method: 'POST',
+						keepalive: true,
+						credentials: 'same-origin',
+						headers: { 'X-WP-Nonce': cfg.nonce, 'Content-Type': 'application/json' },
+						body: JSON.stringify( currentChoices() ),
+					} );
+				} catch ( error ) {}
+			}
+		} );
 
 		// A restore check nobody confirmed would block the next backup: leaving the page cancels it.
 		window.addEventListener( 'pagehide', () => {
@@ -4316,6 +4691,11 @@
 				} );
 			}
 		} );
+
+		// The choices of "Back up now" this user made before (or the defaults).
+		if ( choices ) {
+			applyChoices( choices );
+		}
 
 		const hash = window.location.hash.replace( '#', '' );
 		const asked = OLD_TABS[ hash ] || hash;

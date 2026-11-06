@@ -94,6 +94,18 @@ $key      = '';
 $received = '';
 
 Sf_Test::run(
+	'the link to SiteFerry on the other site: only a web address on that same site is used',
+	static function () {
+		$site = 'https://example.com';
+		Sf_Test::ok( \SiteFerry\Move\Send_Step::same_site( 'https://example.com/wp-admin/admin.php?page=siteferry', $site ), 'same site' );
+		Sf_Test::ok( \SiteFerry\Move\Send_Step::same_site( 'http://EXAMPLE.com/wp/wp-admin/admin.php?page=siteferry', $site ), 'http, another case, WordPress in a folder' );
+		foreach ( array( 'javascript:alert(1)', 'https://evil.example/wp-admin/', 'https://example.com.evil.example/', 'https://example.com:8443/wp-admin/', '//example.com/wp-admin/', '', 'ftp://example.com/', 'https://example.com\\@evil.example/', 'https://user@example.com/wp-admin/', "https://example.com/wp-admin/\n" ) as $bad ) {
+			Sf_Test::ok( ! \SiteFerry\Move\Send_Step::same_site( $bad, $site ), 'refused: ' . $bad );
+		}
+	}
+);
+
+Sf_Test::run(
 	'the key: made by administrators; the move routes answer to it alone; wrong keys drop it',
 	static function () use ( $admin, &$key ) {
 		list( $status ) = sf_rest( 'POST', '/receive', 0 );
@@ -151,6 +163,7 @@ Sf_Test::run(
 		Sf_Test::same( Job::STATUS_DONE, $job->status(), 'move: ' . (string) $job->error() );
 		$moved = $job->result()['moved'];
 		Sf_Test::same( home_url(), $moved['to'] );
+		Sf_Test::same( admin_url( 'admin.php?page=siteferry' ), $moved['admin'], 'SiteFerry\'s page on the other site:' );
 		Sf_Test::same( true, $job->result()['deleted_local'], 'the copy made for the move is removed:' );
 		Sf_Test::same( false, is_file( (string) $job->result()['file'] ) );
 		Sf_Test::same( array( 'to' => home_url() ), $job->state( 'move' ), 'the key is not kept in the job:' );

@@ -99,6 +99,8 @@ Sf_Test::run(
 			array( 'POST', '/schedule' ),
 			array( 'POST', '/schedule/run' ),
 			array( 'POST', '/undo/dismiss' ),
+			array( 'POST', '/choices' ),
+			array( 'DELETE', '/choices' ),
 		);
 		foreach ( $routes as list( $method, $route ) ) {
 			list( $status ) = sf_rest( $method, $route, 0 );
@@ -234,6 +236,59 @@ Sf_Test::run(
 		Sf_Test::ok( $done['backup'] !== $created[0], 'a copy with an existing name gets a new name' );
 		$created[] = $done['backup'];
 		Sf_Test::same( hash( 'sha256', $data ), hash_file( 'sha256', SiteFerry\Backups::path( SiteFerry\Security\Storage::backups_dir(), $done['backup'] ) ) );
+	}
+);
+
+Sf_Test::run(
+	'the choices of "Back up now" are remembered for each user, cleaned, and the defaults are not stored',
+	static function () use ( $admin ) {
+		$meta  = \SiteFerry\Admin\Choices::META;
+		$saved = get_user_meta( $admin, $meta, true ); // This admin's own choices, put back at the end.
+		try {
+			list( $status, $data ) = sf_rest(
+				'POST',
+				'/choices',
+				$admin,
+				array(),
+				array(
+					'exclude_media'  => true,
+					'format'         => 'wpress',
+					'compress'       => true,
+					'send_to'        => '../s3',
+					'exclude_tables' => array( 'wp_big', 'wp_big' ),
+					'password'       => 'never-kept-123',
+					'title'          => 'Not kept either',
+				)
+			);
+			Sf_Test::same( 200, $status, 'save: ' . wp_json_encode( $data ) );
+			Sf_Test::same( array( true, 'wpress', false, '', array( 'wp_big' ) ), array( $data['exclude_media'], $data['format'], $data['compress'], $data['send_to'], $data['exclude_tables'] ) );
+			$stored = get_user_meta( $admin, $meta, true );
+			Sf_Test::same( $data, $stored, 'stored as answered:' );
+			Sf_Test::ok( false === strpos( (string) wp_json_encode( $stored ), 'never-kept' ) && ! isset( $stored['title'] ), 'no password or name is stored' );
+			Sf_Test::same( $data, \SiteFerry\Admin\Choices::get( $admin ), 'read back:' );
+			Sf_Test::same( \SiteFerry\Admin\Choices::defaults(), \SiteFerry\Admin\Choices::get( 0 ), 'nobody logged in gets the defaults:' );
+
+			list( $status, $data ) = sf_rest( 'DELETE', '/choices', $admin );
+			Sf_Test::same( 200, $status );
+			Sf_Test::same( \SiteFerry\Admin\Choices::defaults(), $data, 'back to the defaults:' );
+			Sf_Test::same( '', get_user_meta( $admin, $meta, true ), 'the defaults are not stored:' );
+		} finally {
+			if ( is_array( $saved ) ) {
+				update_user_meta( $admin, $meta, $saved );
+			} else {
+				delete_user_meta( $admin, $meta );
+			}
+		}
+
+		// The list says what each backup holds, for the restore panel.
+		list( $status, $list ) = sf_rest( 'GET', '/backups', $admin );
+		Sf_Test::same( 200, $status );
+		foreach ( $list as $backup ) {
+			Sf_Test::ok( array_key_exists( 'holds', $backup ), 'holds listed for ' . $backup['name'] );
+			if ( is_array( $backup['holds'] ) ) {
+				Sf_Test::same( array( 'tables', 'files', 'left_out', 'network' ), array_keys( $backup['holds'] ), $backup['name'] . ':' );
+			}
+		}
 	}
 );
 

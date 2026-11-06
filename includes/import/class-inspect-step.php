@@ -76,17 +76,24 @@ final class Inspect_Step implements Step {
 		// A database from a newer WordPress may not work with this site's older WordPress files.
 		if ( (int) $manifest['versions']['db_version'] > (int) $site['db_version'] ) {
 			$message = sprintf(
-				'The backup comes from WordPress %s, which is newer than WordPress %s on this site. Update WordPress here first.',
+				/* translators: 1: a WordPress version, such as 6.8, 2: the WordPress version of this site */
+				__( 'The backup comes from WordPress %1$s, which is newer than WordPress %2$s on this site. Update WordPress here first.', 'siteferry' ),
 				$manifest['versions']['wordpress'],
 				$site['wordpress']
 			);
 			if ( ! $job->option( 'force' ) ) {
-				throw new Job_Exception( $message . ' (To import anyway, use the force option.)', Job_Exception::STEP );
+				// Only WP-CLI has a way to import anyway (its --force flag); its output stays English.
+				throw new Job_Exception( $message . ( defined( 'WP_CLI' ) && WP_CLI ? ' (To import anyway, use --force.)' : '' ), Job_Exception::STEP );
 			}
 			$warnings[] = $message;
 		}
 		if ( version_compare( self::minor( $manifest['versions']['php'] ), self::minor( PHP_VERSION ), '>' ) ) {
-			$warnings[] = sprintf( 'The backup comes from PHP %s; this site runs PHP %s. Some plugins may need the newer PHP.', $manifest['versions']['php'], PHP_VERSION );
+			$warnings[] = sprintf(
+				/* translators: 1: a PHP version, such as 8.3, 2: the PHP version of this server */
+				__( 'The backup comes from PHP %1$s; this site runs PHP %2$s. Some plugins may need the newer PHP.', 'siteferry' ),
+				$manifest['versions']['php'],
+				PHP_VERSION
+			);
 		}
 
 		foreach ( $manifest['database']['tables'] as $table ) {
@@ -190,6 +197,7 @@ final class Inspect_Step implements Step {
 					'replacements' => count( $pairs ),
 					'prefix'       => $prefix . ( $prefix === $site['prefix'] ? '' : ' (becomes ' . $site['prefix'] . ')' ),
 					'restores'     => self::restores( $job, count( $names ) ),
+					'holds'        => \SiteFerry\Backups::holds( $manifest ),
 					'warnings'     => $warnings,
 				),
 			)

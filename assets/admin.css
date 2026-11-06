@@ -858,6 +858,11 @@
 	margin-right: 4px;
 }
 
+/* What "Back up now" makes; the schedule line follows it closely. */
+.sf-now-line + .sf-schedule-line {
+	margin-top: 6px;
+}
+
 .sf-schedule-line .button {
 	margin-left: 4px;
 }

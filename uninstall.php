@@ -23,6 +23,9 @@ foreach ( $siteferry_options as $siteferry_option ) {
 	delete_option( $siteferry_option );
 }
 
+// Each administrator's remembered choices for "Back up now".
+delete_metadata( 'user', 0, 'siteferry_backup_choices', '', true );
+
 // Scheduled backups (deactivation removes these too).
 wp_unschedule_hook( 'siteferry_scheduled_backup' );
 wp_unschedule_hook( 'siteferry_schedule_watchdog' );

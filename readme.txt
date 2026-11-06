@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.19.0
+Stable tag: 0.20.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -438,6 +438,13 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.20.0 =
+* Restore: the text says what this backup really puts back and what stays as it is (for example a backup of the database only, or one made without media); choices a backup or site cannot take are no longer offered ("Only the files" without files, a new site address on a network or without the options table, must-use plugins and drop-ins without files). Look inside shows no tick boxes on a network, which is restored whole.
+* Back up now: the choices in Options are remembered for each administrator, and a line under the buttons says what Back up now will make. "Use the defaults" goes back to the whole site on this server. A password, name, note or tags are never remembered.
+* Moving a site: "Open SiteFerry there" opens the right page on the other site.
+* Two warnings of the restore check are now translatable; the hint to import anyway is shown only in WP-CLI, which has that option.
+* Uninstalling also removes the remembered choices.
 
 = 0.19.0 =
 * Translation-ready: every message of the admin page (wp.i18n, with script translations), of the server (errors, warnings, progress, connection tests, the check, emails, automatic backup names) uses the "siteferry" text domain, with translator notes; the template is languages/siteferry.pot. WP-CLI output stays English.

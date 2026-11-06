@@ -266,7 +266,11 @@ final class Receiver {
 		$host = (string) wp_parse_url( $from, PHP_URL_HOST );
 		/* translators: %s: address of the site it came from */
 		Labels::set( $name, '' === $host ? __( 'Moved from another site', 'siteferry' ) : sprintf( __( 'Moved from %s', 'siteferry' ), $host ), '', array( 'moved' ) );
-		return array( 'backup' => $name );
+		return array(
+			'backup' => $name,
+			// SiteFerry's page here, where the move is finished (the sending site links to it).
+			'admin'  => admin_url( 'admin.php?page=siteferry' ),
+		);
 	}
 
 	/**

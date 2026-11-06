@@ -81,6 +81,8 @@ final class Admin {
 					'chunk'      => Rest::chunk_size(),
 					'loginUrl'   => wp_login_url( admin_url( 'admin.php?page=' . self::SLUG ) ),
 					'oauthError' => $oauth_error,
+					'network'    => is_multisite(), // A network is restored whole: no partial restore, no new address.
+					'choices'    => Choices::get( get_current_user_id() ),
 				)
 			) . ';',
 			'before'
@@ -170,10 +172,11 @@ final class Admin {
 							<button type="button" class="button button-large" id="siteferry-move-toggle" aria-expanded="false" aria-controls="siteferry-move"><?php esc_html_e( 'Move', 'siteferry' ); ?></button>
 						</div>
 					</div>
+					<p class="sf-schedule-line sf-now-line" id="siteferry-now-line" hidden></p>
 					<p class="sf-schedule-line" id="siteferry-schedule-line" hidden></p>
 
 					<form id="siteferry-export-form" class="sf-drawer" hidden>
-						<p class="sf-drawer-note"><?php esc_html_e( '"Back up now" uses these choices. Without changes it backs up the whole site to this server.', 'siteferry' ); ?></p>
+						<p class="sf-drawer-note"><?php esc_html_e( '"Back up now" uses these choices, and SiteFerry remembers them for your next backups. The defaults back up the whole site to this server.', 'siteferry' ); ?></p>
 						<h3 class="sf-sub"><?php esc_html_e( 'Name, note and tags', 'siteferry' ); ?></h3>
 						<div class="sf-label-fields">
 							<p class="sf-field">
@@ -270,7 +273,8 @@ final class Admin {
 						<div class="sf-drawer-actions">
 							<button type="submit" class="button button-primary button-large"><?php esc_html_e( 'Back up now', 'siteferry' ); ?></button>
 							<button type="button" class="button sf-quiet" id="siteferry-options-close"><?php esc_html_e( 'Close options', 'siteferry' ); ?></button>
-							<span class="description"><?php esc_html_e( 'Uses the choices above. The name, note and tags are for this backup only; the other choices stay until you reload the page.', 'siteferry' ); ?></span>
+							<button type="button" class="button sf-quiet" id="siteferry-options-defaults"><?php esc_html_e( 'Use the defaults', 'siteferry' ); ?></button>
+							<span class="description"><?php esc_html_e( 'The choices above are remembered for your next backups. The name, note, tags and password are for this backup only.', 'siteferry' ); ?></span>
 						</div>
 					</form>
 
@@ -350,7 +354,11 @@ final class Admin {
 						<h2 class="sf-card-title" id="siteferry-contents-title"></h2>
 						<button type="button" class="sf-notice-close" id="siteferry-contents-close" aria-label="<?php esc_attr_e( 'Close', 'siteferry' ); ?>">&times;</button>
 					</div>
-					<p class="sf-lead"><?php esc_html_e( 'Browse the backup and download single files from it, or tick parts of it to restore only those. Nothing on this site changes until you confirm a restore.', 'siteferry' ); ?></p>
+					<?php if ( is_multisite() ) : ?>
+						<p class="sf-lead"><?php esc_html_e( 'Browse the backup and download single files from it. A network is restored whole, so parts of a backup cannot be restored on their own here.', 'siteferry' ); ?></p>
+					<?php else : ?>
+						<p class="sf-lead"><?php esc_html_e( 'Browse the backup and download single files from it, or tick parts of it to restore only those. Nothing on this site changes until you confirm a restore.', 'siteferry' ); ?></p>
+					<?php endif; ?>
 					<nav class="sf-crumbs" id="siteferry-contents-crumbs" aria-label="<?php esc_attr_e( 'Folder in the backup', 'siteferry' ); ?>"></nav>
 					<div class="sf-contents-body" id="siteferry-contents-body" aria-live="polite"></div>
 					<div class="sf-contents-foot" id="siteferry-contents-foot" hidden>
@@ -382,13 +390,14 @@ final class Admin {
 							<label id="siteferry-restore-what-chosen" hidden><input type="radio" name="siteferry_restore_what" value="chosen"> <span id="siteferry-restore-what-label"></span></label>
 							<span class="description"><?php esc_html_e( 'To restore single plugins, themes, folders or tables, use "Look inside" in the backup\'s menu.', 'siteferry' ); ?></span>
 						</fieldset>
-						<p class="sf-field">
+						<p class="sf-field" id="siteferry-replace-url-row">
 							<label for="siteferry-replace-url"><?php esc_html_e( 'Site address after restoring', 'siteferry' ); ?></label>
 							<input type="url" class="regular-text" id="siteferry-replace-url" placeholder="<?php echo esc_attr( home_url() ); ?>">
 							<span class="description"><?php esc_html_e( 'Leave empty to keep this site\'s address. Links inside the content are changed to match.', 'siteferry' ); ?></span>
 						</p>
-						<p><label><input type="checkbox" id="siteferry-include-mu"> <?php esc_html_e( 'Also copy must-use plugins', 'siteferry' ); ?></label></p>
-						<p><label><input type="checkbox" id="siteferry-include-dropins"> <?php esc_html_e( 'Also copy server-specific drop-ins (object-cache.php, advanced-cache.php, db.php)', 'siteferry' ); ?></label></p>
+						<p id="siteferry-include-mu-row"><label><input type="checkbox" id="siteferry-include-mu"> <?php esc_html_e( 'Also copy must-use plugins', 'siteferry' ); ?></label></p>
+						<p id="siteferry-include-dropins-row"><label><input type="checkbox" id="siteferry-include-dropins"> <?php esc_html_e( 'Also copy server-specific drop-ins (object-cache.php, advanced-cache.php, db.php)', 'siteferry' ); ?></label></p>
+						<p class="description" id="siteferry-restore-whole-note" hidden><?php esc_html_e( 'A network is restored whole, and it keeps the address set in wp-config.php.', 'siteferry' ); ?></p>
 					</details>
 					<p class="sf-safety" id="siteferry-safety-row" hidden>
 						<label><input type="checkbox" id="siteferry-safety" checked> <strong><?php esc_html_e( 'Make a safety backup of this site first (recommended)', 'siteferry' ); ?></strong></label>
