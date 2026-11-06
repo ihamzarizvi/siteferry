@@ -1515,6 +1515,21 @@
 			} );
 			await loadDestinations();
 			const d = destination( id );
+			if ( d && d.ready ) {
+				// Saved settings are tried at once; when they work, the card closes and says so.
+				if ( await testStorage( form ) ) {
+					form.closest( 'details' ).open = false;
+					notice(
+						sprintf(
+							/* translators: %s: name of the storage, such as FTP server */
+							__( '%s is saved and works: a test file was written, read and deleted.', 'siteferry' ),
+							d.label
+						),
+						'success'
+					);
+				}
+				return;
+			}
 			storageResult( form, true, [
 				el( 'p', {
 					text:
@@ -1524,7 +1539,7 @@
 									__( 'Saved. Now click "%s" and allow access.', 'siteferry' ),
 									form.querySelector( '[data-role=connect]' ).textContent
 							  )
-							: __( 'Saved. Use "Test connection" to check the settings.', 'siteferry' ),
+							: __( 'Saved, but not complete yet: fill in the missing fields.', 'siteferry' ),
 				} ),
 			] );
 		} catch ( error ) {
@@ -1550,8 +1565,10 @@
 		try {
 			const result = await api( 'POST', 'storage/' + id + '/test' );
 			storageResult( form, true, [ el( 'p', { text: __( 'The storage works.', 'siteferry' ) } ), el( 'ul', {}, result.lines.map( ( line ) => el( 'li', { text: line } ) ) ) ] );
+			return true;
 		} catch ( error ) {
 			storageResult( form, false, [ el( 'p', { text: error.message } ) ] );
+			return false;
 		} finally {
 			test.disabled = false;
 		}

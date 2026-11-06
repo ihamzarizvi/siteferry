@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.23.0
+Stable tag: 0.23.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -438,6 +438,9 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.23.1 =
+* Storage: saving complete settings tests the connection at once; when it works, the card closes and a message says so. When it fails, the card stays open with the reason.
 
 = 0.23.0 =
 * Backups: "Back up now" sits in its own bar with what it will make shown as tags (whole site or what is left out, the file, where it goes) and a "Customize" button. Upload, Schedule (with its On/Off state) and Move a site are one row of matching buttons with icons; every page button has the same height and shape.
