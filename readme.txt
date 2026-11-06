@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.23.1
+Stable tag: 0.23.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -438,6 +438,9 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.23.2 =
+* Storage: after Save, the test result says that the settings are saved and only the connection test failed, with the reason; the FTP server's own words end as a sentence before SiteFerry's advice.
 
 = 0.23.1 =
 * Storage: saving complete settings tests the connection at once; when it works, the card closes and a message says so. When it fails, the card stays open with the reason.

@@ -874,7 +874,12 @@ final class Ftp_Driver implements Driver {
 		} finally {
 			restore_error_handler();
 		}
-		return array( $result, (string) preg_replace( '/[\x00-\x1f\x7f]+/', ' ', $message ) );
+		$message = trim( (string) preg_replace( '/[\x00-\x1f\x7f]+/', ' ', $message ) );
+		// The server's words end as a sentence, so the advice that follows them reads apart.
+		if ( '' !== $message && ! preg_match( '/[.!?]$/', $message ) ) {
+			$message .= '.';
+		}
+		return array( $result, $message );
 	}
 
 	/**

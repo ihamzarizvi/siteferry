@@ -1517,7 +1517,7 @@
 			const d = destination( id );
 			if ( d && d.ready ) {
 				// Saved settings are tried at once; when they work, the card closes and says so.
-				if ( await testStorage( form ) ) {
+				if ( await testStorage( form, true ) ) {
 					form.closest( 'details' ).open = false;
 					notice(
 						sprintf(
@@ -1557,17 +1557,20 @@
 		}
 	}
 
-	async function testStorage( form ) {
+	async function testStorage( form, justSaved ) {
 		const id = form.dataset.destination;
 		const test = form.querySelector( '[data-role=test]' );
 		test.disabled = true;
-		storageResult( form, null, [ el( 'p', { text: __( 'Testing: writing, reading and deleting a small file...', 'siteferry' ) } ) ] );
+		storageResult( form, null, [ el( 'p', { text: justSaved ? __( 'Saved. Testing the connection: writing, reading and deleting a small file...', 'siteferry' ) : __( 'Testing: writing, reading and deleting a small file...', 'siteferry' ) } ) ] );
 		try {
 			const result = await api( 'POST', 'storage/' + id + '/test' );
 			storageResult( form, true, [ el( 'p', { text: __( 'The storage works.', 'siteferry' ) } ), el( 'ul', {}, result.lines.map( ( line ) => el( 'li', { text: line } ) ) ) ] );
 			return true;
 		} catch ( error ) {
-			storageResult( form, false, [ el( 'p', { text: error.message } ) ] );
+			storageResult( form, false, [
+				...( justSaved ? [ el( 'p', {}, [ el( 'strong', { text: __( 'The settings are saved, but the connection test failed:', 'siteferry' ) } ) ] ) ] : [] ),
+				el( 'p', { text: error.message } ),
+			] );
 			return false;
 		} finally {
 			test.disabled = false;
