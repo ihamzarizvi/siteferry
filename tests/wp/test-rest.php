@@ -158,6 +158,7 @@ Sf_Test::run(
 		Sf_Test::same( 'done', $job['status'], 'export result: ' . (string) $job['error'] );
 		Sf_Test::ok( ! isset( $job['token_hash'] ), 'the token hash is never sent' );
 		$created[] = $job['result']['name'];
+		Sf_Test::same( $job['result']['name'], $job['backup'], 'the job names its backup (for the Activity list):' );
 
 		list( $status, $backups ) = sf_rest( 'GET', '/backups', $admin );
 		Sf_Test::ok( in_array( $job['result']['name'], array_column( $backups, 'name' ), true ), 'new backup is listed' );

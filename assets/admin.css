@@ -1976,6 +1976,16 @@
 	overflow-wrap: anywhere;
 }
 
+/* The backup the job was about. */
+.sf-job-backup {
+	display: block;
+	margin-top: 2px;
+	font-family: var(--sf-mono);
+	font-size: 11px;
+	color: var(--sf-ink-soft);
+	overflow-wrap: anywhere;
+}
+
 .sf-log {
 	grid-column: 1 / -1;
 	max-height: 420px;

@@ -212,6 +212,8 @@ final class Job {
 			// for the quick backup before an update.
 			'origin'   => in_array( $this->option( 'origin', '' ), array( 'schedule', 'safety', 'update' ), true ) ? $this->option( 'origin' ) : 'admin',
 			'status'   => $this->data['status'],
+			// The backup the job is about (for the Activity list), or ''.
+			'backup'   => $this->backup_name(),
 			'step'     => array(
 				'index' => $index,
 				'count' => count( $steps ),
@@ -229,6 +231,19 @@ final class Job {
 			'created'  => (int) $this->data['created'],
 			'updated'  => (int) $this->data['updated'],
 		);
+	}
+
+	/**
+	 * File name of the backup a job makes, restores, sends, fetches or checks ('' if none).
+	 */
+	private function backup_name(): string {
+		foreach ( array( 'name', 'archive', 'file' ) as $key ) {
+			$value = $this->option( $key, '' );
+			if ( is_string( $value ) && '' !== $value ) {
+				return basename( str_replace( '\\', '/', $value ) );
+			}
+		}
+		return '';
 	}
 
 	/**

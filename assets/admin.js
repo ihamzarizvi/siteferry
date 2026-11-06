@@ -23,7 +23,7 @@
 		import: __( 'Restore', 'siteferry' ),
 		send: __( 'Send to storage', 'siteferry' ),
 		fetch: __( 'Download from storage', 'siteferry' ),
-		check: __( 'Check a copy', 'siteferry' ),
+		check: __( 'Check of a backup', 'siteferry' ),
 	};
 	const JOB_STATES = {
 		pending: [ __( 'Not started', 'siteferry' ), 'is-busy' ],
@@ -56,6 +56,13 @@
 		'check.download': __( 'Download', 'siteferry' ),
 		'check.verify': __( 'Verify', 'siteferry' ),
 		upload: __( 'Upload', 'siteferry' ),
+	};
+	// Files at the top of a backup that describe it rather than being site content.
+	const OWN_FILES = {
+		'database.sql': __( 'the database dump', 'siteferry' ),
+		'siteferry.json': __( 'its description', 'siteferry' ),
+		'siteferry.sha256': __( 'its checksums', 'siteferry' ),
+		'package.json': __( 'its package.json', 'siteferry' ),
 	};
 	const DROP_INS = [ 'advanced-cache.php', 'object-cache.php', 'db.php', 'db-error.php' ];
 	const WEEKDAYS = [
@@ -277,6 +284,55 @@
 
 	const stepLabel = ( name ) => STEP_LABELS[ name ] || name;
 
+	// A restore runs nine steps; the route shows them as four stages (the caption names the step).
+	const STAGES = {
+		'import.wpress': 'check',
+		'import.inspect': 'check',
+		'import.confirm': 'check',
+		'import.safety': 'safety',
+		'import.extract': 'restore',
+		'import.verify': 'restore',
+		'import.database': 'restore',
+		'import.replace': 'restore',
+		'import.swap': 'restore',
+		'import.finish': 'finish',
+	};
+	const STAGE_LABELS = {
+		check: __( 'Check', 'siteferry' ),
+		safety: __( 'Safety backup', 'siteferry' ),
+		restore: __( 'Restore', 'siteferry' ),
+		finish: __( 'Finish', 'siteferry' ),
+	};
+
+	/** The job's steps as stages: their names, the current one, and how far into it the job is. */
+	function stagesOf( names, index, fraction ) {
+		if ( ! names.some( ( name ) => STAGES[ name ] ) ) {
+			return { names, index, fraction, labels: names.map( stepLabel ) };
+		}
+		const stages = [];
+		const members = [];
+		names.forEach( ( name ) => {
+			const stage = STAGES[ name ] || name;
+			if ( stages[ stages.length - 1 ] !== stage ) {
+				stages.push( stage );
+				members.push( [] );
+			}
+			members[ members.length - 1 ].push( name );
+		} );
+		let before = 0;
+		let at = stages.length;
+		let within = 0;
+		for ( let i = 0; i < stages.length; i++ ) {
+			if ( index < before + members[ i ].length ) {
+				at = i;
+				within = ( index - before + fraction ) / members[ i ].length;
+				break;
+			}
+			before += members[ i ].length;
+		}
+		return { names: stages, index: at, fraction: within, labels: stages.map( ( stage ) => STAGE_LABELS[ stage ] || stepLabel( stage ) ) };
+	}
+
 	/**
 	 * Progress box: a title, the job's steps drawn as the legs of a route with the ferry where the
 	 * job is, and the outcome below. `ends` names where the crossing starts and ends.
@@ -302,14 +358,15 @@
 			box.hidden = false;
 		}
 
-		function draw( names, index, fraction, arrived ) {
-			leg = { names, index, fraction };
+		function draw( names, index, fraction, arrived, labels, detail ) {
+			labels = labels || names.map( stepLabel );
+			leg = { names, index, fraction, labels };
 			const wrap = part( 'sf-route-wrap' );
 			const key = names.join( ' ' );
 			let route = wrap.querySelector( '.sf-route' );
 			if ( ! route || route.dataset.key !== key ) {
 				route = el( 'div', { class: 'sf-route', 'data-key': key, style: '--legs:' + names.length, 'aria-hidden': 'true' }, [
-					...names.map( ( name ) => el( 'div', { class: 'sf-leg' }, [ el( 'span', { class: 'sf-leg-track' } ), el( 'span', { class: 'sf-leg-fill' } ), el( 'span', { class: 'sf-leg-label', text: stepLabel( name ) } ) ] ) ),
+					...names.map( ( name, i ) => el( 'div', { class: 'sf-leg' }, [ el( 'span', { class: 'sf-leg-track' } ), el( 'span', { class: 'sf-leg-fill' } ), el( 'span', { class: 'sf-leg-label', text: labels[ i ] } ) ] ) ),
 					ferryNode(),
 				] );
 				const top = ends ? [ el( 'div', { class: 'sf-route-ends', 'aria-hidden': 'true' }, [ el( 'span', { text: ends[ 0 ] } ), el( 'span', { text: ends[ 1 ] } ) ] ) ] : [];
@@ -330,7 +387,14 @@
 							__( 'Step %1$d of %2$d: %3$s', 'siteferry' ),
 							index + 1,
 							names.length,
-							stepLabel( names[ index ] )
+							detail && detail !== labels[ index ]
+								? sprintf(
+										/* translators: 1: a stage of a restore, such as Restore, 2: the step it is at, such as Database */
+										_x( '%1$s (%2$s)', 'stage and step', 'siteferry' ),
+										labels[ index ],
+										detail
+								  )
+								: labels[ index ]
 					  )
 					: sprintf(
 							/* translators: %d: number of steps */
@@ -353,7 +417,8 @@
 				const index = Math.min( step.index || 0, names.length );
 				const fraction = index < names.length && p.total > 0 ? Math.min( 1, ( p.done || 0 ) / p.total ) : 0;
 				frame( 'running', p.message || __( 'Working...', 'siteferry' ) );
-				draw( names, index, fraction, false );
+				const route = stagesOf( names, index, fraction );
+				draw( route.names, route.index, route.fraction, false, route.labels, index < names.length ? stepLabel( names[ index ] ) : '' );
 			},
 			note( message ) {
 				frame( 'running', message );
@@ -367,9 +432,9 @@
 				frame( ok ? 'done' : 'failed', title );
 				if ( leg ) {
 					if ( arrived ) {
-						draw( leg.names, leg.names.length, 0, true );
+						draw( leg.names, leg.names.length, 0, true, leg.labels );
 					} else {
-						draw( leg.names, leg.index, leg.fraction, false );
+						draw( leg.names, leg.index, leg.fraction, false, leg.labels );
 					}
 					if ( ! ok || ! arrived ) {
 						part( 'sf-progress-percent' ).textContent = ''; // Stopped, or waiting for a decision.
@@ -1187,6 +1252,14 @@
 		chip.className = 'sf-chip' + ( tone ? ' ' + tone : '' );
 
 		form.querySelector( '[data-role=test]' ).disabled = ! d.ready;
+		// A greyed-out Test button says why.
+		let testNote = form.querySelector( '[data-role=test-note]' );
+		if ( ! testNote ) {
+			testNote = el( 'p', { class: 'description', 'data-role': 'test-note' } );
+			form.querySelector( '.sf-form-actions' ).after( testNote );
+		}
+		testNote.textContent = d.oauth ? __( '“Test connection” works once you have signed in.', 'siteferry' ) : __( '“Test connection” works once the settings are saved and complete.', 'siteferry' );
+		testNote.hidden = !! d.ready;
 		form.querySelector( '[data-role=remove]' ).hidden = ! d.configured;
 		if ( form.querySelector( '[data-role=disconnect]' ) ) {
 			form.querySelector( '[data-role=disconnect]' ).hidden = ! ( d.oauth && d.oauth.connected );
@@ -1211,6 +1284,8 @@
 		} else {
 			connect.textContent = connected ? __( 'Connect again', 'siteferry' ) : connect.dataset.labelOwn;
 		}
+		// Signing in saves the settings too, so "Save" is only needed to change them afterwards.
+		form.querySelector( 'button[type=submit]' ).hidden = ! connected;
 	}
 
 	function formData( form ) {
@@ -1343,6 +1418,12 @@
 		form.elements.endpoint.placeholder = option.dataset.endpoint.replace( '{region}', region );
 		form.elements.folder.placeholder = 'siteferry';
 		form.elements.path_style.checked = pathStyle === null || pathStyle === undefined ? option.dataset.pathStyle === '1' : !! pathStyle;
+		// Endpoint and addressing only when the provider needs them, or on request.
+		const open = form.dataset.advanced === '1';
+		const needsEndpoint = ! option.dataset.endpoint || option.dataset.endpoint.indexOf( '<' ) !== -1;
+		form.querySelector( '[data-advanced=endpoint]' ).hidden = ! ( open || needsEndpoint || form.elements.endpoint.value.trim() !== '' );
+		form.querySelector( '[data-advanced=addressing]' ).hidden = ! ( open || option.value === 'custom' );
+		form.querySelector( '[data-role=advanced]' ).closest( 'p' ).hidden = open || option.value === 'custom';
 	}
 
 	/** The message box at the bottom of a storage form: ok (true), failed (false) or busy (null). */
@@ -2539,6 +2620,10 @@
 			cancelJob( restore.job.id, restore.job.token );
 		}
 		closeMenus();
+		toggleDrawer( null );
+		if ( inside ) {
+			closeContents();
+		}
 		restore = { item, mine: ours( item ), host: hostOf( item.source ), name: item.local ? item.name : null, job: null, phase: 'open', seq: 0, partial: partial || null, password: null, holds: item.holds || null };
 		const paths = partial ? partial.options.restore_paths || [] : [];
 		$( 'siteferry-safety' ).checked = true;
@@ -3546,6 +3631,7 @@
 
 	async function openContents( item, error ) {
 		closeMenus();
+		closePanels( 'contents' );
 		let unlock = '';
 		if ( isEncrypted( item ) ) {
 			const password = await askPassword(
@@ -3660,10 +3746,29 @@
 		if ( data.dir === '' && inside.hasDatabase ) {
 			nodes.push( databaseBlock() );
 		}
-		if ( data.entries.length ) {
-			nodes.push( el( 'table', { class: 'sf-tree' }, [ el( 'tbody', {}, data.entries.map( entryRow ) ) ] ) );
+		// SiteFerry's own files at the top of the backup are not site content: one line, not rows.
+		const own = data.dir === '' ? data.entries.filter( ( entry ) => entry.type === 'file' && OWN_FILES[ entry.path ] ) : [];
+		const entries = data.entries.filter( ( entry ) => own.indexOf( entry ) === -1 );
+		if ( entries.length ) {
+			nodes.push( el( 'table', { class: 'sf-tree' }, [ el( 'tbody', {}, entries.map( entryRow ) ) ] ) );
 		} else {
 			nodes.push( el( 'p', { class: 'description', text: __( 'This folder is empty.', 'siteferry' ) } ) );
+		}
+		if ( own.length ) {
+			const links = [];
+			own.forEach( ( entry, i ) => {
+				if ( i ) {
+					links.push( ', ' );
+				}
+				links.push(
+					el( 'a', {
+						href: fileUrl( inside.item.name, entry.path ),
+						text: OWN_FILES[ entry.path ],
+						title: entry.path + ', ' + bytes( entry.size ),
+					} )
+				);
+			} );
+			nodes.push( el( 'p', { class: 'description sf-contents-own' }, [ __( 'Also in the backup, for downloading:', 'siteferry' ) + ' ', ...links ] ) );
 		}
 		$( 'siteferry-contents-body' ).replaceChildren( ...nodes );
 	}
@@ -4352,12 +4457,15 @@
 				const [ label, tone ] = cancelled ? [ __( 'Cancelled', 'siteferry' ), '' ] : JOB_STATES[ job.status ] || [ job.status, '' ];
 				const row = el( 'li', { class: 'sf-row sf-job' } );
 				const view = button( __( 'View log', 'siteferry' ), () => toggleLog( row, job.id, view ), 'button sf-quiet' );
+				// A backup made to move this site is a move, not a backup.
+				const moving = job.type === 'export' && job.step && ( job.step.names || [] ).indexOf( 'move.send' ) !== -1;
 				row.append(
 					el( 'span', { class: 'sf-job-when', text: date( job.created ) } ),
 					el( 'div', { class: 'sf-job-what' }, [
-						el( 'span', { class: 'sf-job-type', text: origins[ job.origin ] || JOB_TYPES[ job.type ] || job.type } ),
+						el( 'span', { class: 'sf-job-type', text: moving ? __( 'Move to another site', 'siteferry' ) : origins[ job.origin ] || JOB_TYPES[ job.type ] || job.type } ),
 						el( 'span', { class: 'sf-chip ' + tone, text: label } ),
 						el( 'span', { class: 'sf-job-detail', text: job.error || ( job.progress && job.progress.message ) || '' } ),
+						...( job.backup ? [ el( 'span', { class: 'sf-job-backup', text: job.backup } ) ] : [] ),
 					] ),
 					el( 'div', { class: 'sf-row-actions' }, [ view ] )
 				);
@@ -4410,6 +4518,24 @@
 		}
 	}
 
+	/**
+	 * One panel at a time: opening a drawer, Look inside or the restore panel closes the others.
+	 * A restore that is running (or downloading its backup) stays open.
+	 *
+	 * @param {string} keep 'drawers', 'contents' or 'restore'.
+	 */
+	function closePanels( keep ) {
+		if ( keep !== 'drawers' ) {
+			toggleDrawer( null );
+		}
+		if ( keep !== 'contents' && inside ) {
+			closeContents();
+		}
+		if ( keep !== 'restore' && restore && restore.phase !== 'running' && restore.phase !== 'fetch' ) {
+			closeRestore();
+		}
+	}
+
 	/** Opens or closes Options or Upload a backup (one at a time). */
 	function toggleDrawer( which, force ) {
 		const drawers = {
@@ -4430,6 +4556,9 @@
 		}
 		if ( which === 'options' && ! $( 'siteferry-export-form' ).hidden && ! space ) {
 			loadSpace( false ); // Measured once the options are opened, not on every page load.
+		}
+		if ( which && drawers[ which ] && ! $( drawers[ which ][ 0 ] ).hidden ) {
+			closePanels( 'drawers' );
 		}
 	}
 
@@ -4703,6 +4832,11 @@
 			if ( form.elements.preset ) {
 				form.elements.preset.addEventListener( 'change', () => applyPreset( form, null ) );
 				form.elements.region.addEventListener( 'input', () => applyPreset( form, form.elements.path_style.checked ) );
+				form.querySelector( '[data-role=advanced]' ).addEventListener( 'click', () => {
+					form.dataset.advanced = '1';
+					applyPreset( form, form.elements.path_style.checked );
+					form.elements.endpoint.focus();
+				} );
 			}
 			form.querySelector( '[data-role=test]' ).addEventListener( 'click', () => testStorage( form ) );
 			form.querySelector( '[data-role=remove]' ).addEventListener( 'click', () => removeStorage( form ) );

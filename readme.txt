@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.21.0
+Stable tag: 0.22.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -438,6 +438,13 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.22.0 =
+* Restore progress shows four stages (Check, Safety backup, Restore, Finish) instead of nine steps; the caption still names the step.
+* One panel at a time: opening Look inside, a restore or a drawer closes the others (a running restore stays).
+* Look inside lists the site's files only; the database dump, the backup's description and its checksums are one line of download links.
+* Activity names the backup of each entry, calls a site move "Move to another site" and a check "Check of a backup".
+* Storage: a greyed-out "Test connection" says why; Google Drive and Dropbox show "Save" only after signing in (signing in saves the settings); the S3 endpoint and addressing show only when the provider needs them or under "Advanced settings".
 
 = 0.21.0 =
 * Header: "Back up now" and "Backup options" sit together as one control; "Move" is now "Move a site"; the second "Set up a schedule" button is gone ("Schedule" does that).

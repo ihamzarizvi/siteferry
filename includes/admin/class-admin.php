@@ -739,7 +739,7 @@ final class Admin {
 					</td>
 				</tr>
 				<?php foreach ( $fields as $name => list( $label, $help ) ) : ?>
-					<tr>
+					<tr<?php echo 'endpoint' === $name ? ' data-advanced="endpoint"' : ''; ?>>
 						<th scope="row"><label for="siteferry-s3-<?php echo esc_attr( $name ); ?>"><?php echo esc_html( $label ); ?></label></th>
 						<td>
 							<input type="text" class="regular-text" id="siteferry-s3-<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" spellcheck="false" autocomplete="off">
@@ -756,11 +756,12 @@ final class Admin {
 						<p class="description" data-role="secret-note"><?php esc_html_e( 'Stored encrypted. It is never shown again.', 'siteferry' ); ?></p>
 					</td>
 				</tr>
-				<tr>
+				<tr data-advanced="addressing">
 					<th scope="row"><?php esc_html_e( 'Addressing', 'siteferry' ); ?></th>
 					<td><label><input type="checkbox" name="path_style"> <?php esc_html_e( 'Path-style requests (endpoint/bucket/file instead of bucket.endpoint/file)', 'siteferry' ); ?></label></td>
 				</tr>
 			</table>
+			<p><button type="button" class="button-link" data-role="advanced"><?php esc_html_e( 'Advanced settings: endpoint and addressing', 'siteferry' ); ?></button></p>
 			<?php self::render_split(); ?>
 			<p class="sf-form-actions">
 				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
@@ -803,7 +804,7 @@ final class Admin {
 					<li><?php esc_html_e( 'In the Google Cloud console, create a project and enable the Google Drive API for it.', 'siteferry' ); ?></li>
 					<li><?php esc_html_e( 'Set up the OAuth consent screen (External; add yourself as a test user). Apps left in "Testing" lose their authorization after 7 days; publish the app to keep it. SiteFerry asks only for the drive.file scope.', 'siteferry' ); ?></li>
 					<li><?php esc_html_e( 'Create an OAuth client ID of type "Web application" and add the redirect URI below as an authorized redirect URI.', 'siteferry' ); ?></li>
-					<li><?php esc_html_e( 'Enter the client ID and secret here, save, then click "Connect to Google Drive".', 'siteferry' ); ?></li>
+					<li><?php esc_html_e( 'Enter the client ID and secret here, then click "Connect to Google Drive" (this also saves them).', 'siteferry' ); ?></li>
 				</ol>
 			</details>
 			<table class="form-table" role="presentation">
@@ -879,7 +880,7 @@ final class Admin {
 					<li><?php esc_html_e( 'In the Dropbox App Console (dropbox.com/developers/apps), click "Create app": choose "Scoped access" and "App folder", and give it a name. Its folder appears in your Dropbox under Apps.', 'siteferry' ); ?></li>
 					<li><?php esc_html_e( 'On the Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then click Submit.', 'siteferry' ); ?></li>
 					<li><?php esc_html_e( 'On the Settings tab, add the redirect URI below under OAuth 2, Redirect URIs (Dropbox accepts http only for localhost).', 'siteferry' ); ?></li>
-					<li><?php esc_html_e( 'Enter the app key here (no app secret is needed), save, then click "Connect to Dropbox".', 'siteferry' ); ?></li>
+					<li><?php esc_html_e( 'Enter the app key here (no app secret is needed), then click "Connect to Dropbox" (this also saves it).', 'siteferry' ); ?></li>
 				</ol>
 			</details>
 			<table class="form-table" role="presentation">
