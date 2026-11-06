@@ -871,8 +871,14 @@ final class Rest {
 		);
 		// A storage library or server that makes PHP print a notice must not corrupt the answer.
 		ob_start();
+		$dest = (string) $request['dest'];
 		try {
-			return array( 'lines' => Destinations::driver( (string) $request['dest'] )->test() );
+			$lines = Destinations::driver( $dest )->test();
+			Destinations::record_test( $dest, true ); // The Storage tab says "Working" from now on.
+			return array( 'lines' => $lines );
+		} catch ( \Throwable $e ) {
+			Destinations::record_test( $dest, false, $e->getMessage() );
+			throw $e;
 		} finally {
 			ob_end_clean();
 			\SiteFerry\Storage\Test_Progress::listen( null );

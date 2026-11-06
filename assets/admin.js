@@ -1272,6 +1272,59 @@
 	 * Shows a destination's saved settings in its form and its state on its card. Password fields
 	 * always stay empty; unsaved checkboxes and selects take their data-default.
 	 */
+	/**
+	 * The card's badge and line. Complete settings are only "Working" once a connection test
+	 * with them has passed; before that they are "Not tested", after a failed test "Test failed".
+	 */
+	function renderDestState( form, d ) {
+		const card = form.closest( '.sf-dest' );
+		const state = card.querySelector( '[data-role=state]' );
+		const chip = card.querySelector( '[data-role=chip]' );
+		let text = state.dataset.about;
+		let label = __( 'Not set up', 'siteferry' );
+		let tone = '';
+		const tested = d.tested;
+		if ( d.oauth && ! d.oauth.connected ) {
+			if ( d.configured ) {
+				[ text, label, tone ] = [ __( 'Saved, but not signed in yet.', 'siteferry' ), __( 'Not connected', 'siteferry' ), 'is-warn' ];
+			}
+		} else if ( d.configured ) {
+			text = d.description;
+			if ( ! d.ready ) {
+				[ label, tone ] = [ __( 'Incomplete', 'siteferry' ), 'is-warn' ];
+			} else if ( tested && tested.ok ) {
+				[ label, tone ] = [ __( 'Working', 'siteferry' ), 'is-good' ];
+				text = sprintf(
+					/* translators: 1: description of the storage, 2: date and time of the last connection test */
+					__( '%1$s · tested %2$s', 'siteferry' ),
+					d.description,
+					date( tested.time )
+				);
+			} else if ( tested ) {
+				[ label, tone ] = [ __( 'Test failed', 'siteferry' ), 'is-bad' ];
+				text = sprintf(
+					/* translators: 1: description of the storage, 2: date and time of the last connection test */
+					__( '%1$s · test failed %2$s', 'siteferry' ),
+					d.description,
+					date( tested.time )
+				);
+			} else {
+				[ label, tone ] = [ __( 'Not tested', 'siteferry' ), 'is-warn' ];
+				if ( d.updated ) {
+					text = sprintf(
+						/* translators: 1: description of the storage, 2: date and time the settings were saved */
+						__( '%1$s · saved %2$s', 'siteferry' ),
+						d.description,
+						date( d.updated )
+					);
+				}
+			}
+		}
+		state.textContent = text;
+		chip.textContent = label;
+		chip.className = 'sf-chip' + ( tone ? ' ' + tone : '' );
+	}
+
 	function fillStorageForm( form ) {
 		const d = destination( form.dataset.destination );
 		if ( ! d ) {
@@ -1307,32 +1360,7 @@
 			secretNote.textContent = set ? __( 'Saved (not shown). Leave this empty to keep it, or enter a new one.', 'siteferry' ) : __( 'Stored encrypted. It is never shown again.', 'siteferry' );
 		}
 
-		const card = form.closest( '.sf-dest' );
-		const state = card.querySelector( '[data-role=state]' );
-		const chip = card.querySelector( '[data-role=chip]' );
-		let text = state.dataset.about;
-		let label = __( 'Not set up', 'siteferry' );
-		let tone = '';
-		if ( d.oauth ) {
-			if ( d.oauth.connected ) {
-				[ text, label, tone ] = [ d.description, __( 'Connected', 'siteferry' ), 'is-good' ];
-			} else if ( d.configured ) {
-				[ text, label, tone ] = [ __( 'Saved, but not signed in yet.', 'siteferry' ), __( 'Not connected', 'siteferry' ), 'is-warn' ];
-			}
-		} else if ( d.configured ) {
-			text = d.updated
-				? sprintf(
-						/* translators: 1: description of the storage, 2: date and time the settings were saved */
-						__( '%1$s · saved %2$s', 'siteferry' ),
-						d.description,
-						date( d.updated )
-				  )
-				: d.description;
-			[ label, tone ] = d.ready ? [ __( 'Ready', 'siteferry' ), 'is-good' ] : [ __( 'Incomplete', 'siteferry' ), 'is-warn' ];
-		}
-		state.textContent = text;
-		chip.textContent = label;
-		chip.className = 'sf-chip' + ( tone ? ' ' + tone : '' );
+		renderDestState( form, d );
 
 		form.querySelector( '[data-role=test]' ).disabled = ! d.ready;
 		// A greyed-out Test button says why.
@@ -1604,11 +1632,13 @@
 			const result = ( await api( 'POST', 'storage/' + id + '/test' ) ) || {};
 			running = false;
 			await watch;
+			markTested( form, true );
 			storageResult( form, true, [ el( 'p', {}, [ el( 'strong', { text: __( 'The storage works.', 'siteferry' ) } ) ] ), el( 'ul', { class: 'sf-test-lines' }, ( result.lines || [] ).map( ( line ) => el( 'li', { text: line } ) ) ) ] );
 			return true;
 		} catch ( error ) {
 			running = false;
 			await watch;
+			markTested( form, false );
 			// The last picture of the checks, with the one that failed marked.
 			try {
 				last = await api( 'GET', 'storage/' + id + '/test' );
@@ -1621,6 +1651,15 @@
 			return false;
 		} finally {
 			test.disabled = false;
+		}
+	}
+
+	/** The badge of a storage after a connection test (the server keeps the same outcome). */
+	function markTested( form, ok ) {
+		const d = destination( form.dataset.destination );
+		if ( d && d.configured ) {
+			d.tested = { ok, time: Math.round( Date.now() / 1000 ) };
+			renderDestState( form, d );
 		}
 	}
 

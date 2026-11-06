@@ -72,6 +72,8 @@ final class Destinations {
 				'secrets_set' => $set,
 				'description' => null === $saved ? null : self::driver( $id, new Null_Transport() )->describe(),
 				'updated'     => null === $saved ? null : (int) $saved['updated'],
+				// The last connection test with these settings: ok, time and message; null if none.
+				'tested'      => null !== $saved && isset( $saved['tested'] ) ? $saved['tested'] : null,
 				'info'        => $class::info(),
 			);
 			if ( $oauth ) {
@@ -237,6 +239,7 @@ final class Destinations {
 		}
 		$driver = self::oauth_driver( $id );
 		self::save_auth( $id, $driver->connect( $code, $verifier, self::redirect_uri( $id ) ) );
+		self::record_test( $id, null ); // A new connection has not been tested yet.
 	}
 
 	/**
@@ -248,7 +251,32 @@ final class Destinations {
 		$driver = self::oauth_driver( $id );
 		$driver->disconnect();
 		$stored = self::stored();
-		unset( $stored[ $id ]['auth'] );
+		unset( $stored[ $id ]['auth'], $stored[ $id ]['tested'] );
+		update_option( self::OPTION, $stored, false );
+	}
+
+	/**
+	 * Remembers how the last connection test of a destination went (null forgets it). Saving new
+	 * settings replaces the whole entry, so a result never outlives the settings it was made with.
+	 *
+	 * @param string      $id      Destination id.
+	 * @param bool|null   $ok      Outcome, or null to forget it.
+	 * @param string      $message The error when it failed.
+	 */
+	public static function record_test( string $id, ?bool $ok, string $message = '' ): void {
+		$stored = self::stored();
+		if ( ! isset( $stored[ $id ] ) ) {
+			return;
+		}
+		if ( null === $ok ) {
+			unset( $stored[ $id ]['tested'] );
+		} else {
+			$stored[ $id ]['tested'] = array(
+				'ok'      => $ok,
+				'time'    => time(),
+				'message' => $ok ? '' : substr( $message, 0, 500 ),
+			);
+		}
 		update_option( self::OPTION, $stored, false );
 	}
 
