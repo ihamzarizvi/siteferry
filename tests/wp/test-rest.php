@@ -86,6 +86,7 @@ Sf_Test::run(
 			array( 'POST', '/storage/s3' ),
 			array( 'DELETE', '/storage/s3' ),
 			array( 'POST', '/storage/s3/test' ),
+			array( 'GET', '/storage/s3/test' ),
 			array( 'GET', '/storage/s3/backups' ),
 			array( 'DELETE', '/storage/s3/backups/x-2026-01-01-0123456789ab.tar' ),
 			array( 'POST', '/storage/s3/send' ),

@@ -104,6 +104,7 @@ final class Rest {
 			array( '/storage/' . self::DEST, WP_REST_Server::CREATABLE, 'save_storage', $admin ),
 			array( '/storage/' . self::DEST, WP_REST_Server::DELETABLE, 'remove_storage', $admin ),
 			array( '/storage/' . self::DEST . '/test', WP_REST_Server::CREATABLE, 'test_storage', $admin ),
+			array( '/storage/' . self::DEST . '/test', WP_REST_Server::READABLE, 'test_progress', $admin ),
 			array( '/storage/' . self::DEST . '/backups', WP_REST_Server::READABLE, 'remote_backups', $admin ),
 			array( '/storage/' . self::DEST . '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_remote', $admin ),
 			array( '/storage/' . self::DEST . '/send', WP_REST_Server::CREATABLE, 'start_send', $admin ),
@@ -860,7 +861,41 @@ final class Rest {
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function test_storage( WP_REST_Request $request ): array {
-		return array( 'lines' => Destinations::driver( (string) $request['dest'] )->test() );
+		$key = self::test_key( (string) $request['dest'] );
+		delete_transient( $key );
+		// Each check is kept for a few minutes, for the admin page to show while the test runs.
+		\SiteFerry\Storage\Test_Progress::listen(
+			static function ( array $progress ) use ( $key ): void {
+				set_transient( $key, $progress, 5 * MINUTE_IN_SECONDS );
+			}
+		);
+		try {
+			return array( 'lines' => Destinations::driver( (string) $request['dest'] )->test() );
+		} finally {
+			\SiteFerry\Storage\Test_Progress::listen( null );
+		}
+	}
+
+	/**
+	 * How far the running connection test of a storage has got: the checks so far.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function test_progress( WP_REST_Request $request ): array {
+		$progress = get_transient( self::test_key( (string) $request['dest'] ) );
+		return is_array( $progress ) ? $progress : array(
+			'total' => 0,
+			'steps' => array(),
+		);
+	}
+
+	/**
+	 * Transient name of a storage's test progress, per user.
+	 *
+	 * @param string $dest Destination id.
+	 */
+	private static function test_key( string $dest ): string {
+		return 'siteferry_test_' . get_current_user_id() . '_' . $dest;
 	}
 
 	/**

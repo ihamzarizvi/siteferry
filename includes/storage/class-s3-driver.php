@@ -274,13 +274,14 @@ final class S3_Driver implements Driver {
 	 * @throws Storage_Exception Naming the check that failed.
 	 */
 	private function run_test(): array {
+		Test_Progress::total( 4 );
 		$name  = '.siteferry-test-' . bin2hex( random_bytes( 6 ) ) . '.txt';
 		$key   = $this->key( $name );
 		$body  = 'SiteFerry connection test, ' . gmdate( 'Y-m-d H:i:s' ) . " UTC.\n";
 		$lines = array();
 
 		$this->check(
-			'Writing a test file',
+			__( 'Writing a test file', 'siteferry' ),
 			function () use ( $key, $body ) {
 				$this->call( 'PUT', $key, array(), $body, array( 'Content-Type' => 'text/plain' ) );
 			}
@@ -288,7 +289,7 @@ final class S3_Driver implements Driver {
 		$lines[] = sprintf( /* translators: %s: where it is stored, such as Dropbox */ __( 'Wrote a test file to %s.', 'siteferry' ), $this->describe() );
 
 		$this->check(
-			'Reading the test file back',
+			__( 'Reading the test file back', 'siteferry' ),
 			function () use ( $key, $body ) {
 				$response = $this->call( 'GET', $key );
 				if ( $response['body'] !== $body ) {
@@ -299,7 +300,7 @@ final class S3_Driver implements Driver {
 		$lines[] = __( 'Read it back unchanged.', 'siteferry' );
 
 		$count = $this->check(
-			'Listing the folder',
+			__( 'Listing the folder', 'siteferry' ),
 			function (): int {
 				return count( $this->list() );
 			}
@@ -307,7 +308,7 @@ final class S3_Driver implements Driver {
 		$lines[] = sprintf( /* translators: %d: a number */ __( 'Listed the folder: %d SiteFerry backup(s).', 'siteferry' ), $count );
 
 		$this->check(
-			'Deleting the test file',
+			__( 'Deleting the test file', 'siteferry' ),
 			function () use ( $key ) {
 				$this->call( 'DELETE', $key, array(), '', array(), array( 204, 200 ) );
 			}
@@ -653,11 +654,7 @@ final class S3_Driver implements Driver {
 	 * @throws Storage_Exception Prefixed with the label.
 	 */
 	private function check( string $label, callable $callback ) {
-		try {
-			return $callback();
-		} catch ( Storage_Exception $e ) {
-			throw new Storage_Exception( $label . ' failed. ' . $e->getMessage(), $e->getCode(), $e );
-		}
+		return Test_Progress::check( $label, $callback ); // Reported live to the admin page.
 	}
 
 	/**

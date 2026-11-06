@@ -1557,24 +1557,77 @@
 		}
 	}
 
+	/**
+	 * The connection test, shown live: a bar and the list of checks so far (done, running or
+	 * failed), read from the server every half second while the test runs.
+	 */
 	async function testStorage( form, justSaved ) {
 		const id = form.dataset.destination;
 		const test = form.querySelector( '[data-role=test]' );
 		test.disabled = true;
-		storageResult( form, null, [ el( 'p', { text: justSaved ? __( 'Saved. Testing the connection: writing, reading and deleting a small file...', 'siteferry' ) : __( 'Testing: writing, reading and deleting a small file...', 'siteferry' ) } ) ] );
+		const lead = justSaved ? __( 'Saved. Testing the connection...', 'siteferry' ) : __( 'Testing the connection...', 'siteferry' );
+		let last = { total: 0, steps: [] };
+		const show = ( progress, state, head ) => storageResult( form, state, [ el( 'p', {}, [ el( 'strong', { text: head } ) ] ), testSteps( progress ) ] );
+		show( last, null, lead );
+		let running = true;
+		const watch = ( async () => {
+			while ( running ) {
+				await sleep( 500 );
+				if ( ! running ) {
+					break;
+				}
+				try {
+					const progress = await api( 'GET', 'storage/' + id + '/test' );
+					if ( running && progress && progress.steps ) {
+						last = progress;
+						show( last, null, lead );
+					}
+				} catch ( error ) {} // Only the picture of the test; the test itself goes on.
+			}
+		} )();
 		try {
 			const result = await api( 'POST', 'storage/' + id + '/test' );
-			storageResult( form, true, [ el( 'p', { text: __( 'The storage works.', 'siteferry' ) } ), el( 'ul', {}, result.lines.map( ( line ) => el( 'li', { text: line } ) ) ) ] );
+			running = false;
+			await watch;
+			storageResult( form, true, [ el( 'p', {}, [ el( 'strong', { text: __( 'The storage works.', 'siteferry' ) } ) ] ), el( 'ul', { class: 'sf-test-lines' }, result.lines.map( ( line ) => el( 'li', { text: line } ) ) ) ] );
 			return true;
 		} catch ( error ) {
+			running = false;
+			await watch;
+			// The last picture of the checks, with the one that failed marked.
+			try {
+				last = await api( 'GET', 'storage/' + id + '/test' );
+			} catch ( e ) {}
 			storageResult( form, false, [
-				...( justSaved ? [ el( 'p', {}, [ el( 'strong', { text: __( 'The settings are saved, but the connection test failed:', 'siteferry' ) } ) ] ) ] : [] ),
+				el( 'p', {}, [ el( 'strong', { text: justSaved ? __( 'The settings are saved, but the connection test failed:', 'siteferry' ) : __( 'The connection test failed:', 'siteferry' ) } ) ] ),
 				el( 'p', { text: error.message } ),
+				...( last && last.steps && last.steps.length ? [ testSteps( last ) ] : [] ),
 			] );
 			return false;
 		} finally {
 			test.disabled = false;
 		}
+	}
+
+	/** A bar and the checks of a connection test: done, running or failed. */
+	function testSteps( progress ) {
+		const steps = progress.steps || [];
+		const done = steps.filter( ( step ) => step.state === 'done' ).length;
+		const total = Math.max( progress.total || 0, steps.length, 1 );
+		const marks = { done: '✓', running: '', failed: '✕' };
+		return el( 'div', { class: 'sf-test' }, [
+			el( 'div', { class: 'sf-test-bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String( total ), 'aria-valuenow': String( done ) }, [ el( 'span', { style: 'width:' + Math.round( ( 100 * done ) / total ) + '%' } ) ] ),
+			el(
+				'ol',
+				{ class: 'sf-test-steps' },
+				steps.map( ( step ) =>
+					el( 'li', { class: 'is-' + step.state }, [
+						el( 'span', { class: 'sf-test-mark', 'aria-hidden': 'true', text: marks[ step.state ] || '' } ),
+						step.state === 'running' ? step.label + '...' : step.label,
+					] )
+				)
+			),
+		] );
 	}
 
 	async function removeStorage( form ) {

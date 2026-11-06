@@ -659,9 +659,10 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 	 * @throws Storage_Exception Naming the check that failed.
 	 */
 	private function run_test(): array {
+		Test_Progress::total( 5 );
 		$lines   = array();
 		$account = $this->check(
-			'Signing in to Dropbox',
+			__( 'Signing in to Dropbox', 'siteferry' ),
 			function (): string {
 				$this->token( true );
 				return $this->account();
@@ -677,7 +678,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 		$name = '.siteferry-test-' . bin2hex( random_bytes( 6 ) ) . '.bin';
 		$data = random_bytes( $part ) . 'SiteFerry connection test, ' . gmdate( 'Y-m-d H:i:s' ) . ' UTC.';
 		$this->check(
-			'Writing a test file with an upload session',
+			__( 'Writing a test file with an upload session', 'siteferry' ),
 			function () use ( $name, $data, $part ) {
 				$state              = $this->begin( $name, strlen( $data ) );
 				$state['part_size'] = $part;
@@ -689,7 +690,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 		$lines[] = __( 'Wrote a test file in two parts.', 'siteferry' );
 
 		$this->check(
-			'Reading the test file back',
+			__( 'Reading the test file back', 'siteferry' ),
 			function () use ( $name, $data ) {
 				if ( $this->download_range( $name, 0, strlen( $data ) ) !== $data ) {
 					throw new Storage_Exception( __( 'The file read back differs from what was written.', 'siteferry' ), Storage_Exception::REMOTE );
@@ -699,7 +700,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 		$lines[] = __( 'Read it back unchanged.', 'siteferry' );
 
 		$count   = $this->check(
-			'Listing the folder',
+			__( 'Listing the folder', 'siteferry' ),
 			function (): int {
 				return count( $this->list() );
 			}
@@ -707,7 +708,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 		$lines[] = sprintf( /* translators: %d: a number */ __( 'Listed the folder: %d SiteFerry backup(s).', 'siteferry' ), $count );
 
 		$this->check(
-			'Deleting the test file',
+			__( 'Deleting the test file', 'siteferry' ),
 			function () use ( $name ) {
 				$this->delete( $name );
 			}
@@ -1047,11 +1048,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 	 * @throws Storage_Exception Prefixed with the label.
 	 */
 	private function check( string $label, callable $callback ) {
-		try {
-			return $callback();
-		} catch ( Storage_Exception $e ) {
-			throw new Storage_Exception( $label . ' failed. ' . $e->getMessage(), $e->getCode(), $e );
-		}
+		return Test_Progress::check( $label, $callback ); // Reported live to the admin page.
 	}
 
 	/**

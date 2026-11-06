@@ -675,9 +675,10 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 	 * @throws Storage_Exception Naming the check that failed.
 	 */
 	private function run_test(): array {
+		Test_Progress::total( 6 );
 		$lines   = array();
 		$account = $this->check(
-			'Signing in to Google',
+			__( 'Signing in to Google', 'siteferry' ),
 			function (): string {
 				$this->token( true );
 				return $this->account();
@@ -686,7 +687,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		$lines[] = sprintf( /* translators: %s: account */ __( 'Signed in to Google Drive as %s.', 'siteferry' ), $account );
 
 		$this->check(
-			'Opening the folder',
+			__( 'Opening the folder', 'siteferry' ),
 			function () {
 				$this->folder( true );
 			}
@@ -696,7 +697,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		$name  = '.siteferry-test-' . bin2hex( random_bytes( 6 ) ) . '.bin';
 		$data  = random_bytes( self::CHUNK_UNIT ) . 'SiteFerry connection test, ' . gmdate( 'Y-m-d H:i:s' ) . ' UTC.';
 		$state = $this->check(
-			'Writing a test file with a resumable upload',
+			__( 'Writing a test file with a resumable upload', 'siteferry' ),
 			function () use ( $name, $data ): array {
 				$state              = $this->begin( $name, strlen( $data ) );
 				$state['part_size'] = self::CHUNK_UNIT;
@@ -709,7 +710,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		$lines[] = __( 'Wrote a test file with a resumable upload in two pieces.', 'siteferry' );
 
 		$this->check(
-			'Reading the test file back',
+			__( 'Reading the test file back', 'siteferry' ),
 			function () use ( $state, $data ) {
 				$id = (string) $this->ids[ $state['name'] ];
 				if ( $this->download_id( $id, 0, strlen( $data ) ) !== $data ) {
@@ -720,7 +721,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		$lines[] = __( 'Read it back unchanged.', 'siteferry' );
 
 		$count   = $this->check(
-			'Listing the folder',
+			__( 'Listing the folder', 'siteferry' ),
 			function (): int {
 				return count( $this->list() );
 			}
@@ -728,7 +729,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		$lines[] = sprintf( /* translators: %d: a number */ __( 'Listed the folder: %d SiteFerry backup(s).', 'siteferry' ), $count );
 
 		$this->check(
-			'Deleting the test file',
+			__( 'Deleting the test file', 'siteferry' ),
 			function () use ( $state ) {
 				$this->request( 'DELETE', $this->file_url( (string) $this->ids[ $state['name'] ] ), array(), '', array( 204, 200 ) );
 			}
@@ -1111,11 +1112,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 	 * @throws Storage_Exception Prefixed with the label.
 	 */
 	private function check( string $label, callable $callback ) {
-		try {
-			return $callback();
-		} catch ( Storage_Exception $e ) {
-			throw new Storage_Exception( $label . ' failed. ' . $e->getMessage(), $e->getCode(), $e );
-		}
+		return Test_Progress::check( $label, $callback ); // Reported live to the admin page.
 	}
 
 	/**

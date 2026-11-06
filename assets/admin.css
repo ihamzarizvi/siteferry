@@ -2722,3 +2722,90 @@ details.sf-dest[open] > .sf-dest-head::after {
 .sf-move-target {
 	margin-top: 10px;
 }
+
+/* ------------------------------------------------------ connection test */
+
+/* The test, live: a thin bar and the checks so far. */
+.sf-test {
+	margin: 8px 0 2px;
+}
+
+.sf-test-bar {
+	height: 4px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--sf-rope);
+}
+
+.sf-test-bar span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--sf-accent);
+	transition: width 0.3s ease-out;
+}
+
+.is-failed .sf-test-bar span {
+	background: var(--sf-port);
+}
+
+.siteferry .sf-test-steps {
+	margin: 10px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.sf-test-steps li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 4px;
+	color: var(--sf-ink-soft);
+}
+
+.sf-test-steps li.is-running {
+	color: var(--sf-text);
+	font-weight: 600;
+}
+
+.sf-test-mark {
+	display: inline-flex;
+	flex: 0 0 18px;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.is-done .sf-test-mark {
+	background: var(--sf-starboard-wash);
+	color: var(--sf-starboard);
+}
+
+.is-failed .sf-test-mark {
+	background: var(--sf-port-wash);
+	color: var(--sf-port);
+}
+
+/* The running check: a turning ring. */
+.is-running .sf-test-mark {
+	border: 2px solid var(--sf-rope);
+	border-top-color: var(--sf-accent);
+	animation: sf-turn 0.8s linear infinite;
+}
+
+@keyframes sf-turn {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.is-running .sf-test-mark {
+		animation: none;
+	}
+}

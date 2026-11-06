@@ -416,9 +416,10 @@ final class Ftp_Driver implements Driver {
 	 * @throws Storage_Exception Naming the check that failed.
 	 */
 	private function run_test(): array {
+		Test_Progress::total( 7 );
 		$lines = array();
 		$this->check(
-			'Connecting and logging in',
+			__( 'Connecting and logging in', 'siteferry' ),
 			function () {
 				$this->connection();
 			}
@@ -431,7 +432,7 @@ final class Ftp_Driver implements Driver {
 			: sprintf( __( 'Connected to %1$s:%2$d and logged in as %3$s WITHOUT encryption: the password and the backups travel in plain text.', 'siteferry' ), $s['host'], $s['port'], $s['username'] );
 
 		$this->check(
-			'Opening the folder',
+			__( 'Opening the folder', 'siteferry' ),
 			function () {
 				$this->enter_folder( true );
 			}
@@ -447,13 +448,13 @@ final class Ftp_Driver implements Driver {
 		$body = 'SiteFerry connection test, ' . gmdate( 'Y-m-d H:i:s' ) . " UTC.\n" . str_repeat( 'x', 100 ) . "\n";
 		$half = (int) ( strlen( $body ) / 2 );
 		$this->check(
-			'Writing a test file',
+			__( 'Writing a test file', 'siteferry' ),
 			function () use ( $name, $body, $half ) {
 				$this->upload( $name, substr( $body, 0, $half ), 0, 'Writing' );
 			}
 		);
 		$this->check(
-			'Resuming the test file at an offset (needed for uploads in parts)',
+			__( 'Resuming the test file at an offset (needed for uploads in parts)', 'siteferry' ),
 			function () use ( $name, $body, $half ) {
 				$this->upload( $name, substr( $body, $half ), $half, 'Resuming' );
 			}
@@ -461,7 +462,7 @@ final class Ftp_Driver implements Driver {
 		$lines[] = __( 'Wrote a test file in two pieces (resuming works).', 'siteferry' );
 
 		$this->check(
-			'Reading the test file back',
+			__( 'Reading the test file back', 'siteferry' ),
 			function () use ( $name, $body ) {
 				if ( $this->download( $name, 0, strlen( $body ) ) !== $body ) {
 					throw new Storage_Exception( __( 'The file read back differs from what was written.', 'siteferry' ), Storage_Exception::REMOTE );
@@ -473,7 +474,7 @@ final class Ftp_Driver implements Driver {
 		$lines[] = __( 'Read it back unchanged.', 'siteferry' );
 
 		$count   = $this->check(
-			'Listing the folder',
+			__( 'Listing the folder', 'siteferry' ),
 			function (): int {
 				return count( $this->list_here() );
 			}
@@ -481,7 +482,7 @@ final class Ftp_Driver implements Driver {
 		$lines[] = sprintf( /* translators: %d: a number */ __( 'Listed the folder: %d SiteFerry backup(s).', 'siteferry' ), $count );
 
 		$this->check(
-			'Deleting the test file',
+			__( 'Deleting the test file', 'siteferry' ),
 			function () use ( $name ) {
 				list( $deleted, $message ) = self::ftp(
 					function () use ( $name ) {
@@ -824,11 +825,7 @@ final class Ftp_Driver implements Driver {
 	 * @throws Storage_Exception Prefixed with the label.
 	 */
 	private function check( string $label, callable $callback ) {
-		try {
-			return $callback();
-		} catch ( Storage_Exception $e ) {
-			throw new Storage_Exception( $label . ' failed. ' . $e->getMessage(), $e->getCode(), $e );
-		}
+		return Test_Progress::check( $label, $callback ); // Reported live to the admin page.
 	}
 
 	/**

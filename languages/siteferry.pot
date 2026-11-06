@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: SiteFerry 0.23.2\n"
+"Project-Id-Version: SiteFerry 0.24.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/siteferry\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-06T11:07:40+00:00\n"
+"POT-Creation-Date: 2026-11-06T11:16:10+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: siteferry\n"
@@ -53,7 +53,7 @@ msgid "Backups"
 msgstr ""
 
 #: includes/admin/class-admin.php:112
-#: assets/admin.js:3011
+#: assets/admin.js:3064
 msgid "Storage"
 msgstr ""
 
@@ -66,12 +66,12 @@ msgid "Media library (uploads)"
 msgstr ""
 
 #: includes/admin/class-admin.php:117
-#: assets/admin.js:3503
+#: assets/admin.js:3556
 msgid "Plugins"
 msgstr ""
 
 #: includes/admin/class-admin.php:118
-#: assets/admin.js:3504
+#: assets/admin.js:3557
 msgid "Themes"
 msgstr ""
 
@@ -108,7 +108,7 @@ msgid "Resume"
 msgstr ""
 
 #: includes/admin/class-admin.php:150
-#: assets/admin.js:4494
+#: assets/admin.js:4547
 msgid "Cancel it"
 msgstr ""
 
@@ -121,7 +121,7 @@ msgid "Make a backup of this whole site, or restore one from the list below."
 msgstr ""
 
 #: includes/admin/class-admin.php:168
-#: assets/admin.js:1973
+#: assets/admin.js:2026
 msgid "Upload a backup"
 msgstr ""
 
@@ -136,7 +136,7 @@ msgstr ""
 #: includes/admin/class-admin.php:174
 #: includes/admin/class-admin.php:279
 #: assets/admin.js:848
-#: assets/admin.js:1972
+#: assets/admin.js:2025
 msgid "Back up now"
 msgstr ""
 
@@ -176,8 +176,8 @@ msgid "Leave out single database tables"
 msgstr ""
 
 #: includes/admin/class-admin.php:203
-#: assets/admin.js:1964
-#: assets/admin.js:4580
+#: assets/admin.js:2017
+#: assets/admin.js:4633
 msgid "Loading..."
 msgstr ""
 
@@ -191,7 +191,7 @@ msgstr ""
 
 #: includes/admin/class-admin.php:213
 #: includes/admin/class-admin.php:576
-#: assets/admin.js:3246
+#: assets/admin.js:3299
 msgid "File"
 msgstr ""
 
@@ -235,7 +235,7 @@ msgstr ""
 #: includes/admin/class-admin.php:596
 #: includes/admin/class-admin.php:958
 #: assets/admin.js:1150
-#: assets/admin.js:2131
+#: assets/admin.js:2184
 msgid "Password"
 msgstr ""
 
@@ -260,12 +260,12 @@ msgstr ""
 #: includes/admin/class-admin.php:608
 #: assets/admin.js:828
 #: assets/admin.js:1166
-#: assets/admin.js:1703
 #: assets/admin.js:1756
-#: assets/admin.js:2136
-#: assets/admin.js:2558
-#: assets/admin.js:3011
-#: assets/admin.js:4445
+#: assets/admin.js:1809
+#: assets/admin.js:2189
+#: assets/admin.js:2611
+#: assets/admin.js:3064
+#: assets/admin.js:4498
 msgid "This server"
 msgstr ""
 
@@ -308,7 +308,7 @@ msgstr ""
 
 #. translators: example tags, separated with commas
 #: includes/admin/class-admin.php:270
-#: assets/admin.js:2234
+#: assets/admin.js:2287
 msgid "before-update, monthly"
 msgstr ""
 
@@ -338,7 +338,7 @@ msgstr ""
 #: includes/admin/class-admin.php:403
 #: includes/admin/class-admin.php:660
 #: assets/admin.js:447
-#: assets/admin.js:3131
+#: assets/admin.js:3184
 msgid "Close"
 msgstr ""
 
@@ -423,7 +423,7 @@ msgid "The old site has no SiteFerry, or cannot reach this server? Make a backup
 msgstr ""
 
 #: includes/admin/class-admin.php:343
-#: assets/admin.js:2301
+#: assets/admin.js:2354
 msgid "Download in parts"
 msgstr ""
 
@@ -441,8 +441,8 @@ msgstr ""
 
 #: includes/admin/class-admin.php:370
 #: includes/admin/class-admin.php:435
-#: assets/admin.js:2265
-#: assets/admin.js:2741
+#: assets/admin.js:2318
+#: assets/admin.js:2794
 msgid "Cancel"
 msgstr ""
 
@@ -519,8 +519,8 @@ msgid "A whole-site backup of this site as it is now, so you can undo the restor
 msgstr ""
 
 #: includes/admin/class-admin.php:436
-#: assets/admin.js:2800
-#: assets/admin.js:2815
+#: assets/admin.js:2853
+#: assets/admin.js:2868
 msgid "Restore now"
 msgstr ""
 
@@ -547,11 +547,11 @@ msgstr ""
 
 #: includes/admin/class-admin.php:455
 #: assets/admin.js:22
-#: assets/admin.js:1741
-#: assets/admin.js:3065
-#: assets/admin.js:3275
-#: assets/admin.js:3828
-#: assets/admin.js:4797
+#: assets/admin.js:1794
+#: assets/admin.js:3118
+#: assets/admin.js:3328
+#: assets/admin.js:3881
+#: assets/admin.js:4850
 msgid "Backup"
 msgstr ""
 
@@ -691,7 +691,7 @@ msgid "Every month"
 msgstr ""
 
 #: includes/admin/class-admin.php:534
-#: assets/admin.js:4327
+#: assets/admin.js:4380
 msgid "On"
 msgstr ""
 
@@ -708,7 +708,7 @@ msgid "WP-Cron is turned off on this site (DISABLE_WP_CRON). Scheduled backups o
 msgstr ""
 
 #: includes/admin/class-admin.php:559
-#: assets/admin.js:4206
+#: assets/admin.js:4259
 msgid "The whole site"
 msgstr ""
 
@@ -889,7 +889,7 @@ msgstr ""
 #: includes/admin/class-admin.php:845
 #: includes/admin/class-admin.php:914
 #: includes/admin/class-admin.php:978
-#: assets/admin.js:2265
+#: assets/admin.js:2318
 msgid "Save"
 msgstr ""
 
@@ -1342,7 +1342,7 @@ msgid "A file is still being written; call continue_file() first."
 msgstr ""
 
 #: includes/check/class-check.php:63
-#: includes/rest/class-rest.php:887
+#: includes/rest/class-rest.php:922
 #: includes/storage/class-transfer.php:61
 msgid "Unknown backup."
 msgstr ""
@@ -1469,7 +1469,7 @@ msgstr ""
 
 #. translators: 1: a comma-separated list of names, 2: how many more are not listed
 #: includes/check/class-verify-step.php:465
-#: assets/admin.js:4047
+#: assets/admin.js:4100
 #, php-format,js-format
 msgid "%1$s and %2$d more"
 msgid_plural "%1$s and %2$d more"
@@ -1499,7 +1499,7 @@ msgid "This .wpress backup is protected with a password; its files cannot be rea
 msgstr ""
 
 #: includes/class-contents.php:210
-#: includes/rest/class-rest.php:598
+#: includes/rest/class-rest.php:599
 msgid "That file is not in the backup."
 msgstr ""
 
@@ -1908,7 +1908,7 @@ msgstr ""
 
 #. translators: what is restored; used inside sentences such as "This restores only the database, as it was then"
 #: includes/import/class-inspect-step.php:302
-#: assets/admin.js:3298
+#: assets/admin.js:3351
 msgid "the database"
 msgstr ""
 
@@ -1920,7 +1920,7 @@ msgstr ""
 
 #. translators: what is restored; used inside sentences such as "This restores only the files, as it was then"
 #: includes/import/class-inspect-step.php:309
-#: assets/admin.js:3302
+#: assets/admin.js:3355
 msgid "the files"
 msgstr ""
 
@@ -2223,63 +2223,63 @@ msgstr ""
 msgid "The other site answered: %s"
 msgstr ""
 
-#: includes/rest/class-rest.php:238
-#: includes/rest/class-rest.php:803
+#: includes/rest/class-rest.php:239
+#: includes/rest/class-rest.php:804
 msgid "Missing or invalid chunk offset."
 msgstr ""
 
-#: includes/rest/class-rest.php:401
+#: includes/rest/class-rest.php:402
 #: assets/admin.js:1070
-#: assets/admin.js:2894
-#: assets/admin.js:2935
+#: assets/admin.js:2947
+#: assets/admin.js:2988
 msgid "media"
 msgstr ""
 
-#: includes/rest/class-rest.php:402
+#: includes/rest/class-rest.php:403
 #: assets/admin.js:1073
-#: assets/admin.js:2895
-#: assets/admin.js:2936
+#: assets/admin.js:2948
+#: assets/admin.js:2989
 msgid "plugins"
 msgstr ""
 
-#: includes/rest/class-rest.php:403
+#: includes/rest/class-rest.php:404
 #: assets/admin.js:1078
-#: assets/admin.js:2896
-#: assets/admin.js:2937
+#: assets/admin.js:2949
+#: assets/admin.js:2990
 msgid "themes"
 msgstr ""
 
-#: includes/rest/class-rest.php:411
+#: includes/rest/class-rest.php:412
 msgid "some tables"
 msgstr ""
 
-#: includes/rest/class-rest.php:414
+#: includes/rest/class-rest.php:415
 #: assets/admin.js:1144
 msgid "Whole site"
 msgstr ""
 
 #. translators: %s: list of left-out parts, such as "media and plugins"
-#: includes/rest/class-rest.php:417
+#: includes/rest/class-rest.php:418
 #: assets/admin.js:1141
 #, php-format,js-format
 msgid "Without %s"
 msgstr ""
 
-#: includes/rest/class-rest.php:432
+#: includes/rest/class-rest.php:433
 msgid "The backup could not be deleted."
 msgstr ""
 
-#: includes/rest/class-rest.php:452
+#: includes/rest/class-rest.php:453
 msgid "There is no such part."
 msgstr ""
 
-#: includes/rest/class-rest.php:1014
+#: includes/rest/class-rest.php:1049
 #: includes/storage/class-destinations.php:378
 msgid "Unknown storage."
 msgstr ""
 
 #. translators: 1: a kind of job, such as "export" or "import", 2: the job's ID
-#: includes/rest/class-rest.php:1056
+#: includes/rest/class-rest.php:1091
 #: includes/schedule/class-schedule.php:351
 #, php-format
 msgid "Another %1$s is still in progress (job %2$s). Finish or cancel it first."
@@ -2409,7 +2409,7 @@ msgstr ""
 
 #. translators: %s: what went wrong
 #: includes/schedule/class-schedule.php:676
-#: assets/admin.js:3691
+#: assets/admin.js:3744
 msgid "unknown"
 msgstr ""
 
@@ -2540,92 +2540,121 @@ msgstr ""
 msgid "Dropbox sent a different part of the file than requested."
 msgstr ""
 
+#: includes/storage/class-dropbox-driver.php:665
+msgid "Signing in to Dropbox"
+msgstr ""
+
 #. translators: %s: account
-#: includes/storage/class-dropbox-driver.php:670
+#: includes/storage/class-dropbox-driver.php:671
 #, php-format
 msgid "Signed in to Dropbox as %s."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:672
+#: includes/storage/class-dropbox-driver.php:673
 msgid "Backups go into the app folder (Dropbox > Apps > the app's name)."
 msgstr ""
 
 #. translators: %s: folder name
-#: includes/storage/class-dropbox-driver.php:674
+#: includes/storage/class-dropbox-driver.php:675
 #, php-format
 msgid "Backups go into the folder \"%s\" in the app folder (Dropbox > Apps > the app's name); Dropbox creates it with the first file."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:689
+#: includes/storage/class-dropbox-driver.php:681
+msgid "Writing a test file with an upload session"
+msgstr ""
+
+#: includes/storage/class-dropbox-driver.php:690
 msgid "Wrote a test file in two parts."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:695
-#: includes/storage/class-ftp-driver.php:467
-#: includes/storage/class-gdrive-driver.php:716
-#: includes/storage/class-s3-driver.php:295
+#: includes/storage/class-dropbox-driver.php:693
+#: includes/storage/class-ftp-driver.php:465
+#: includes/storage/class-gdrive-driver.php:713
+#: includes/storage/class-s3-driver.php:292
+msgid "Reading the test file back"
+msgstr ""
+
+#: includes/storage/class-dropbox-driver.php:696
+#: includes/storage/class-ftp-driver.php:468
+#: includes/storage/class-gdrive-driver.php:717
+#: includes/storage/class-s3-driver.php:296
 msgid "The file read back differs from what was written."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:699
-#: includes/storage/class-ftp-driver.php:473
-#: includes/storage/class-gdrive-driver.php:720
-#: includes/storage/class-s3-driver.php:299
+#: includes/storage/class-dropbox-driver.php:700
+#: includes/storage/class-ftp-driver.php:474
+#: includes/storage/class-gdrive-driver.php:721
+#: includes/storage/class-s3-driver.php:300
 msgid "Read it back unchanged."
 msgstr ""
 
+#: includes/storage/class-dropbox-driver.php:703
+#: includes/storage/class-ftp-driver.php:477
+#: includes/storage/class-gdrive-driver.php:724
+#: includes/storage/class-s3-driver.php:303
+msgid "Listing the folder"
+msgstr ""
+
 #. translators: %d: a number
-#: includes/storage/class-dropbox-driver.php:707
-#: includes/storage/class-ftp-driver.php:481
-#: includes/storage/class-gdrive-driver.php:728
-#: includes/storage/class-s3-driver.php:307
+#: includes/storage/class-dropbox-driver.php:708
+#: includes/storage/class-ftp-driver.php:482
+#: includes/storage/class-gdrive-driver.php:729
+#: includes/storage/class-s3-driver.php:308
 #, php-format
 msgid "Listed the folder: %d SiteFerry backup(s)."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:715
-#: includes/storage/class-ftp-driver.php:496
-#: includes/storage/class-gdrive-driver.php:736
-#: includes/storage/class-s3-driver.php:315
+#: includes/storage/class-dropbox-driver.php:711
+#: includes/storage/class-ftp-driver.php:485
+#: includes/storage/class-gdrive-driver.php:732
+#: includes/storage/class-s3-driver.php:311
+msgid "Deleting the test file"
+msgstr ""
+
+#: includes/storage/class-dropbox-driver.php:716
+#: includes/storage/class-ftp-driver.php:497
+#: includes/storage/class-gdrive-driver.php:737
+#: includes/storage/class-s3-driver.php:316
 msgid "Deleted the test file."
 msgstr ""
 
 #. translators: 1: a service, such as Dropbox, 2: an HTTP status code, 3: empty, or ": " and the error message
-#: includes/storage/class-dropbox-driver.php:765
+#: includes/storage/class-dropbox-driver.php:766
 #, php-format
 msgid "%1$s answered HTTP %2$d%3$s"
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:811
+#: includes/storage/class-dropbox-driver.php:812
 msgid "Dropbox is not connected yet. Click \"Connect to Dropbox\" on the Storage tab."
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/storage/class-dropbox-driver.php:842
+#: includes/storage/class-dropbox-driver.php:843
 #, php-format
 msgid "Dropbox's sign-in service cannot be reached: %s"
 msgstr ""
 
 #. translators: %d: an HTTP status code
-#: includes/storage/class-dropbox-driver.php:852
+#: includes/storage/class-dropbox-driver.php:853
 #, php-format
 msgid "Dropbox's sign-in service answered HTTP %d; try again later."
 msgstr ""
 
 #. translators: %s: empty, or ": " and the error message
-#: includes/storage/class-dropbox-driver.php:855
+#: includes/storage/class-dropbox-driver.php:856
 #, php-format
 msgid "Dropbox no longer accepts the saved authorization (invalid_grant%s). Connect Dropbox again on the Storage tab."
 msgstr ""
 
 #. translators: 1: an HTTP status code, 2: empty, or an error code, 3: empty, or ": " and the error message
-#: includes/storage/class-dropbox-driver.php:865
+#: includes/storage/class-dropbox-driver.php:866
 #, php-format
 msgid "Dropbox's sign-in service refused (HTTP %1$d%2$s%3$s)."
 msgstr ""
 
 #. translators: %s: origin
-#: includes/storage/class-dropbox-driver.php:969
+#: includes/storage/class-dropbox-driver.php:970
 #, php-format
 msgid "Refusing to send the Dropbox token to %s."
 msgstr ""
@@ -2703,7 +2732,7 @@ msgstr ""
 
 #. translators: 1: a number, 2: a number
 #: includes/storage/class-ftp-driver.php:335
-#: includes/storage/class-s3-driver.php:427
+#: includes/storage/class-s3-driver.php:428
 #, php-format
 msgid "The stored file has %1$d bytes instead of %2$d."
 msgstr ""
@@ -2712,78 +2741,96 @@ msgstr ""
 msgid "The backup folder does not exist on the server."
 msgstr ""
 
+#: includes/storage/class-ftp-driver.php:422
+msgid "Connecting and logging in"
+msgstr ""
+
 #. translators: 1: server, 2: port, 3: user name
-#: includes/storage/class-ftp-driver.php:429
+#: includes/storage/class-ftp-driver.php:430
 #, php-format
 msgid "Connected to %1$s:%2$d with explicit FTPS (TLS) and logged in as %3$s."
 msgstr ""
 
 #. translators: 1: server, 2: port, 3: user name
-#: includes/storage/class-ftp-driver.php:431
+#: includes/storage/class-ftp-driver.php:432
 #, php-format
 msgid "Connected to %1$s:%2$d and logged in as %3$s WITHOUT encryption: the password and the backups travel in plain text."
 msgstr ""
 
+#: includes/storage/class-ftp-driver.php:435
+#: includes/storage/class-gdrive-driver.php:690
+msgid "Opening the folder"
+msgstr ""
+
 #. translators: %s: a folder path
-#: includes/storage/class-ftp-driver.php:444
+#: includes/storage/class-ftp-driver.php:445
 #, php-format
 msgid "Using the folder %s on the server."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:461
+#: includes/storage/class-ftp-driver.php:451
+#: includes/storage/class-s3-driver.php:284
+msgid "Writing a test file"
+msgstr ""
+
+#: includes/storage/class-ftp-driver.php:457
+msgid "Resuming the test file at an offset (needed for uploads in parts)"
+msgstr ""
+
+#: includes/storage/class-ftp-driver.php:462
 msgid "Wrote a test file in two pieces (resuming works)."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/storage/class-ftp-driver.php:607
+#: includes/storage/class-ftp-driver.php:608
 #, php-format
 msgid "%s is not on the server."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:634
+#: includes/storage/class-ftp-driver.php:635
 msgid "This server's PHP has no ftp extension; ask the host to enable it."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:637
+#: includes/storage/class-ftp-driver.php:638
 msgid "This server's PHP cannot use FTPS (its ftp extension was built without TLS)."
 msgstr ""
 
 #. translators: 1: a host name, 2: a port number, 3: empty, or ": " and the reason
-#: includes/storage/class-ftp-driver.php:646
+#: includes/storage/class-ftp-driver.php:647
 #, php-format
 msgid "Cannot connect to %1$s:%2$d%3$s"
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:661
+#: includes/storage/class-ftp-driver.php:662
 msgid "The connection broke during the login."
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/storage/class-ftp-driver.php:664
+#: includes/storage/class-ftp-driver.php:665
 #, php-format
 msgid "The server did not accept an encrypted (FTPS) connection: %s Ask the host whether it supports explicit FTPS (AUTH TLS)."
 msgstr ""
 
 #. translators: 1: a user name, 2: the reason, ending with a full stop
-#: includes/storage/class-ftp-driver.php:666
+#: includes/storage/class-ftp-driver.php:667
 #, php-format
 msgid "The server refused the login for \"%1$s\": %2$s Check the user name and password."
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/storage/class-ftp-driver.php:689
+#: includes/storage/class-ftp-driver.php:690
 #, php-format
 msgid "The server refused passive mode: %s"
 msgstr ""
 
 #. translators: 1: the reason, 2: the reason
-#: includes/storage/class-ftp-driver.php:792
+#: includes/storage/class-ftp-driver.php:793
 #, php-format
 msgid "%1$s failed: the connection to the server was lost%2$s."
 msgstr ""
 
 #. translators: 1: the reason, 2: the reason, 3: hint
-#: includes/storage/class-ftp-driver.php:795
+#: includes/storage/class-ftp-driver.php:796
 #, php-format
 msgid "%1$s failed: %2$s%3$s"
 msgstr ""
@@ -2842,54 +2889,62 @@ msgstr ""
 msgid "%s is not in the Google Drive folder."
 msgstr ""
 
+#: includes/storage/class-gdrive-driver.php:681
+msgid "Signing in to Google"
+msgstr ""
+
 #. translators: %s: account
-#: includes/storage/class-gdrive-driver.php:686
+#: includes/storage/class-gdrive-driver.php:687
 #, php-format
 msgid "Signed in to Google Drive as %s."
 msgstr ""
 
 #. translators: %s: a folder name
-#: includes/storage/class-gdrive-driver.php:694
+#: includes/storage/class-gdrive-driver.php:695
 #, php-format
 msgid "Using the folder \"%s\" at the top of My Drive (SiteFerry sees only the files it created)."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:709
+#: includes/storage/class-gdrive-driver.php:700
+msgid "Writing a test file with a resumable upload"
+msgstr ""
+
+#: includes/storage/class-gdrive-driver.php:710
 msgid "Wrote a test file with a resumable upload in two pieces."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:790
+#: includes/storage/class-gdrive-driver.php:791
 msgid "Google Drive did not create the folder."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:851
+#: includes/storage/class-gdrive-driver.php:852
 msgid "Google Drive sent a different part of the file than requested."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:910
+#: includes/storage/class-gdrive-driver.php:911
 msgid "Google Drive is not connected yet. Click \"Connect to Google Drive\" on the Storage tab."
 msgstr ""
 
 #. translators: 1: a service, such as Google, 2: an HTTP status code
-#: includes/storage/class-gdrive-driver.php:960
+#: includes/storage/class-gdrive-driver.php:961
 #, php-format
 msgid "%1$s answered HTTP %2$d; try again later."
 msgstr ""
 
 #. translators: %s: empty, or ": " and the error message
-#: includes/storage/class-gdrive-driver.php:963
+#: includes/storage/class-gdrive-driver.php:964
 #, php-format
 msgid "Google no longer accepts the saved authorization (invalid_grant%s). Connect Google Drive again on the Storage tab. If the app's consent screen is in \"Testing\", Google ends authorizations after 7 days; publish the app to keep them."
 msgstr ""
 
 #. translators: 1: a service, such as Google, 2: an HTTP status code, 3: empty, or an error code, 4: empty, or ": " and the error message
-#: includes/storage/class-gdrive-driver.php:973
+#: includes/storage/class-gdrive-driver.php:974
 #, php-format
 msgid "%1$s refused (HTTP %2$d%3$s%4$s)."
 msgstr ""
 
 #. translators: %s: a host name
-#: includes/storage/class-gdrive-driver.php:1047
+#: includes/storage/class-gdrive-driver.php:1048
 #, php-format
 msgid "Refusing to send the Google token to %s."
 msgstr ""
@@ -2939,50 +2994,50 @@ msgid "Bucket names with dots do not work with https in bucket.endpoint form. Ti
 msgstr ""
 
 #. translators: %s: where it is stored, such as Dropbox
-#: includes/storage/class-s3-driver.php:288
+#: includes/storage/class-s3-driver.php:289
 #, php-format
 msgid "Wrote a test file to %s."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:347
+#: includes/storage/class-s3-driver.php:348
 msgid "The storage did not start the upload (no upload ID in its answer)."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:368
+#: includes/storage/class-s3-driver.php:369
 msgid "Too many parts for one upload."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:382
+#: includes/storage/class-s3-driver.php:383
 msgid "The storage accepted a part but did not return its ETag."
 msgstr ""
 
 #. translators: %d: i + 1
-#: includes/storage/class-s3-driver.php:399
+#: includes/storage/class-s3-driver.php:400
 #, php-format
 msgid "Part %d of the upload is missing."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:420
+#: includes/storage/class-s3-driver.php:421
 msgid "The storage sent an unexpected answer when completing the upload."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:461
+#: includes/storage/class-s3-driver.php:462
 msgid "The storage sent an unexpected answer to a listing."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:503
+#: includes/storage/class-s3-driver.php:504
 msgid "The storage sent a different part of the file than requested."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:694
+#: includes/storage/class-s3-driver.php:691
 msgid "Enter the endpoint of the storage service."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:706
+#: includes/storage/class-s3-driver.php:703
 msgid "Enter the endpoint as a host name, such as s3.example.com (no path)."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:709
+#: includes/storage/class-s3-driver.php:706
 msgid "Use https for this provider."
 msgstr ""
 
@@ -3010,6 +3065,12 @@ msgstr ""
 
 #: includes/storage/class-send-step.php:199
 msgid "The backup ended early while it was being sent."
+msgstr ""
+
+#. translators: 1: a step of the connection test, such as Writing a test file, 2: the reason
+#: includes/storage/class-test-progress.php:105
+#, php-format
+msgid "%1$s failed. %2$s"
 msgstr ""
 
 #. translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB
@@ -3227,7 +3288,7 @@ msgstr ""
 
 #: assets/admin.js:23
 #: assets/admin.js:304
-#: assets/admin.js:2171
+#: assets/admin.js:2224
 msgid "Restore"
 msgstr ""
 
@@ -3265,8 +3326,8 @@ msgstr ""
 
 #: assets/admin.js:38
 #: assets/admin.js:48
-#: assets/admin.js:3501
-#: assets/admin.js:3875
+#: assets/admin.js:3554
+#: assets/admin.js:3928
 msgid "Database"
 msgstr ""
 
@@ -3286,8 +3347,8 @@ msgstr ""
 #: assets/admin.js:43
 #: assets/admin.js:56
 #: assets/admin.js:924
-#: assets/admin.js:2299
-#: assets/admin.js:3933
+#: assets/admin.js:2352
+#: assets/admin.js:3986
 msgid "Download"
 msgstr ""
 
@@ -3335,7 +3396,7 @@ msgstr ""
 
 #: assets/admin.js:55
 #: assets/admin.js:303
-#: assets/admin.js:4547
+#: assets/admin.js:4600
 msgid "Safety backup"
 msgstr ""
 
@@ -3492,11 +3553,11 @@ msgid "The two passwords are not the same."
 msgstr ""
 
 #: assets/admin.js:828
-#: assets/admin.js:3065
-#: assets/admin.js:3275
-#: assets/admin.js:3701
-#: assets/admin.js:4445
-#: assets/admin.js:4797
+#: assets/admin.js:3118
+#: assets/admin.js:3328
+#: assets/admin.js:3754
+#: assets/admin.js:4498
+#: assets/admin.js:4850
 msgid "This site"
 msgstr ""
 
@@ -3816,155 +3877,159 @@ msgstr ""
 
 #. translators: %s: error message
 #: assets/admin.js:1550
-#: assets/admin.js:2278
-#: assets/admin.js:4407
+#: assets/admin.js:2331
+#: assets/admin.js:4460
 #, js-format
 msgid "Not saved: %s"
 msgstr ""
 
-#: assets/admin.js:1564
-msgid "Saved. Testing the connection: writing, reading and deleting a small file..."
+#: assets/admin.js:1568
+msgid "Saved. Testing the connection..."
 msgstr ""
 
-#: assets/admin.js:1564
-msgid "Testing: writing, reading and deleting a small file..."
+#: assets/admin.js:1568
+msgid "Testing the connection..."
 msgstr ""
 
-#: assets/admin.js:1567
+#: assets/admin.js:1592
 msgid "The storage works."
 msgstr ""
 
-#: assets/admin.js:1571
+#: assets/admin.js:1602
 msgid "The settings are saved, but the connection test failed:"
 msgstr ""
 
+#: assets/admin.js:1602
+msgid "The connection test failed:"
+msgstr ""
+
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:1588
+#: assets/admin.js:1641
 #, js-format
 msgid "Remove the settings and key for %s? Backups already stored there are not deleted."
 msgstr ""
 
-#: assets/admin.js:1600
+#: assets/admin.js:1653
 msgid "Settings removed. Backups stored there stay."
 msgstr ""
 
-#: assets/admin.js:1616
-#: assets/admin.js:3288
+#: assets/admin.js:1669
+#: assets/admin.js:3341
 msgid "Stopped"
 msgstr ""
 
-#: assets/admin.js:1623
+#: assets/admin.js:1676
 msgid "Intact"
 msgstr ""
 
 #. translators: 1: where the copy is, such as Dropbox, 2: summary of the check
-#: assets/admin.js:1627
+#: assets/admin.js:1680
 #, js-format
 msgid "The copy on %1$s is intact. %2$s"
 msgstr ""
 
-#: assets/admin.js:1634
+#: assets/admin.js:1687
 msgid "Damaged"
 msgstr ""
 
-#: assets/admin.js:1634
+#: assets/admin.js:1687
 msgid "Not checked"
 msgstr ""
 
-#: assets/admin.js:1636
+#: assets/admin.js:1689
 msgid "Do not rely on this copy: make a new backup, or use another copy of this one."
 msgstr ""
 
-#: assets/admin.js:1640
+#: assets/admin.js:1693
 msgid "Not sent"
 msgstr ""
 
-#: assets/admin.js:1640
+#: assets/admin.js:1693
 msgid "Not downloaded"
 msgstr ""
 
-#: assets/admin.js:1642
+#: assets/admin.js:1695
 msgid "Sent"
 msgstr ""
 
 #. translators: 1: file name of the backup, 2: name of the storage, such as Dropbox
-#: assets/admin.js:1649
+#: assets/admin.js:1702
 #, js-format
 msgid "%1$s is now on %2$s."
 msgstr ""
 
-#: assets/admin.js:1658
+#: assets/admin.js:1711
 msgid "Downloaded to this server"
 msgstr ""
 
 #. translators: %s: file name of the backup
-#: assets/admin.js:1665
+#: assets/admin.js:1718
 #, js-format
 msgid "%s is now also on this server."
 msgstr ""
 
-#: assets/admin.js:1688
-msgid "Could not start"
-msgstr ""
-
-#. translators: 1: file name of the backup, 2: name of the storage, such as Dropbox
-#: assets/admin.js:1699
-#, js-format
-msgid "Sending %1$s to %2$s..."
-msgstr ""
-
-#. translators: %s: name of the backup
-#: assets/admin.js:1715
-#, js-format
-msgid "Check %s"
-msgstr ""
-
-#: assets/admin.js:1718
-msgid "This backup is protected with a password. The check needs it to compare every file with its checksums."
-msgstr ""
-
-#. translators: 1: name of the backup, 2: name of the storage, such as Dropbox
-#: assets/admin.js:1732
-#, js-format
-msgid "Checking the copy of %1$s on %2$s; nothing changes..."
-msgstr ""
-
-#. translators: %s: name of the backup
-#: assets/admin.js:1738
-#, js-format
-msgid "Checking the copy of %s on this server; nothing changes..."
-msgstr ""
-
 #: assets/admin.js:1741
-msgid "Checked"
+msgid "Could not start"
 msgstr ""
 
 #. translators: 1: file name of the backup, 2: name of the storage, such as Dropbox
 #: assets/admin.js:1752
 #, js-format
+msgid "Sending %1$s to %2$s..."
+msgstr ""
+
+#. translators: %s: name of the backup
+#: assets/admin.js:1768
+#, js-format
+msgid "Check %s"
+msgstr ""
+
+#: assets/admin.js:1771
+msgid "This backup is protected with a password. The check needs it to compare every file with its checksums."
+msgstr ""
+
+#. translators: 1: name of the backup, 2: name of the storage, such as Dropbox
+#: assets/admin.js:1785
+#, js-format
+msgid "Checking the copy of %1$s on %2$s; nothing changes..."
+msgstr ""
+
+#. translators: %s: name of the backup
+#: assets/admin.js:1791
+#, js-format
+msgid "Checking the copy of %s on this server; nothing changes..."
+msgstr ""
+
+#: assets/admin.js:1794
+msgid "Checked"
+msgstr ""
+
+#. translators: 1: file name of the backup, 2: name of the storage, such as Dropbox
+#: assets/admin.js:1805
+#, js-format
 msgid "Downloading %1$s from %2$s..."
 msgstr ""
 
 #. translators: %s: error message
-#: assets/admin.js:1803
+#: assets/admin.js:1856
 #, js-format
 msgid "Cannot list the backups on this server: %s"
 msgstr ""
 
 #. translators: %s: comma-separated names of the storages, such as Dropbox, Amazon S3
-#: assets/admin.js:1904
+#: assets/admin.js:1957
 #, js-format
 msgid "Looking on %s..."
 msgstr ""
 
 #. translators: 1: name of the storage, such as Dropbox, 2: error message
-#: assets/admin.js:1913
+#: assets/admin.js:1966
 #, js-format
 msgid "%1$s: %2$s"
 msgstr ""
 
 #. translators: 1: number of backups shown, 2: number of backups in all
-#: assets/admin.js:1923
+#: assets/admin.js:1976
 #, js-format
 msgid "%1$d of %2$d backup"
 msgid_plural "%1$d of %2$d backups"
@@ -3972,7 +4037,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of backups
-#: assets/admin.js:1929
+#: assets/admin.js:1982
 #, js-format
 msgid "%d backup"
 msgid_plural "%d backups"
@@ -3980,7 +4045,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of backups on this server
-#: assets/admin.js:1936
+#: assets/admin.js:1989
 #, js-format
 msgid "%d on this server"
 msgid_plural "%d on this server"
@@ -3988,638 +4053,638 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: number of backups, 2: name of the storage, such as Dropbox
-#: assets/admin.js:1943
+#: assets/admin.js:1996
 #, js-format
 msgid "%1$d on %2$s"
 msgid_plural "%1$d on %2$s"
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:1949
+#: assets/admin.js:2002
 msgid "No backups yet. \"Back up now\" makes one of the whole site."
 msgstr ""
 
 #. translators: 1: when the last backup was made, such as today, 7:21 PM, 2: how many backups are where, such as 3 on this server, 2 on Dropbox
-#: assets/admin.js:1954
+#: assets/admin.js:2007
 #, js-format
 msgid "Last backup %1$s · %2$s"
 msgstr ""
 
-#: assets/admin.js:1970
+#: assets/admin.js:2023
 msgid "Looking for backups on your storage..."
 msgstr ""
 
-#: assets/admin.js:1970
+#: assets/admin.js:2023
 msgid "No backups yet. Make one now, or upload one to restore it here."
 msgstr ""
 
-#: assets/admin.js:1982
+#: assets/admin.js:2035
 msgid "No backups match this search."
 msgstr ""
 
-#: assets/admin.js:1983
+#: assets/admin.js:2036
 msgid "Show all backups"
 msgstr ""
 
-#: assets/admin.js:2047
+#: assets/admin.js:2100
 msgid "SiteFerry, compressed, password"
 msgstr ""
 
-#: assets/admin.js:2050
+#: assets/admin.js:2103
 msgid "SiteFerry, password"
 msgstr ""
 
-#: assets/admin.js:2053
+#: assets/admin.js:2106
 msgid "SiteFerry, compressed"
 msgstr ""
 
 #. translators: 1: date and time of the check, 2: summary of the check
-#: assets/admin.js:2073
+#: assets/admin.js:2126
 #, js-format
 msgid "Checked %1$s: %2$s"
 msgstr ""
 
-#: assets/admin.js:2080
+#: assets/admin.js:2133
 msgid ", checked: intact"
 msgstr ""
 
-#: assets/admin.js:2080
+#: assets/admin.js:2133
 msgid ", checked: damaged"
 msgstr ""
 
-#: assets/admin.js:2086
+#: assets/admin.js:2139
 msgid "Another site"
 msgstr ""
 
 #. translators: %s: address of the site the backup was made from
-#: assets/admin.js:2096
+#: assets/admin.js:2149
 #, js-format
 msgid "from %s"
 msgstr ""
 
 #. translators: %s: WordPress version number
-#: assets/admin.js:2110
+#: assets/admin.js:2163
 #, js-format
 msgid "WordPress %s"
 msgstr ""
 
-#: assets/admin.js:2122
+#: assets/admin.js:2175
 msgid "New"
 msgstr ""
 
-#: assets/admin.js:2125
+#: assets/admin.js:2178
 msgid "From another site"
 msgstr ""
 
-#: assets/admin.js:2128
+#: assets/admin.js:2181
 msgid "Cannot be restored"
 msgstr ""
 
-#: assets/admin.js:2143
+#: assets/admin.js:2196
 msgid "Some of its parts are missing there"
 msgstr ""
 
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:2146
+#: assets/admin.js:2199
 #, js-format
 msgid "%s: parts missing"
 msgstr ""
 
 #. translators: 1: name of the storage, such as Dropbox, 2: number of parts
-#: assets/admin.js:2160
+#: assets/admin.js:2213
 #, js-format
 msgid "%1$s · %2$d part"
 msgid_plural "%1$s · %2$d parts"
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:2171
+#: assets/admin.js:2224
 msgid "Move here"
 msgstr ""
 
 #. translators: %s: a tag
-#: assets/admin.js:2180
+#: assets/admin.js:2233
 #, js-format
 msgid "Show only backups tagged %s"
 msgstr ""
 
-#: assets/admin.js:2224
+#: assets/admin.js:2277
 msgid "Left empty, the list shows the site address."
 msgstr ""
 
 #. translators: %s: what the list shows instead of a name: a date and time, or a site address
-#: assets/admin.js:2228
+#: assets/admin.js:2281
 #, js-format
 msgid "Left empty, the list shows %s."
 msgstr ""
 
-#: assets/admin.js:2232
+#: assets/admin.js:2285
 msgid "Give this backup a name"
 msgstr ""
 
 #. translators: %s: file name of the backup
-#: assets/admin.js:2250
+#: assets/admin.js:2303
 #, js-format
 msgid "Name, note and tags of %s"
 msgstr ""
 
-#: assets/admin.js:2256
+#: assets/admin.js:2309
 msgid "Name, note and tags"
 msgstr ""
 
-#: assets/admin.js:2260
+#: assets/admin.js:2313
 msgid "Name"
 msgstr ""
 
-#: assets/admin.js:2261
+#: assets/admin.js:2314
 msgid "Tags"
 msgstr ""
 
-#: assets/admin.js:2261
+#: assets/admin.js:2314
 msgid "Separate tags with commas."
 msgstr ""
 
-#: assets/admin.js:2262
+#: assets/admin.js:2315
 msgid "Note"
 msgstr ""
 
-#: assets/admin.js:2275
+#: assets/admin.js:2328
 msgid "Saved the name, note and tags."
 msgstr ""
 
-#: assets/admin.js:2295
+#: assets/admin.js:2348
 msgid "Edit name and note"
 msgstr ""
 
-#: assets/admin.js:2298
+#: assets/admin.js:2351
 msgid "Look inside"
 msgstr ""
 
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:2311
+#: assets/admin.js:2364
 #, js-format
 msgid "Send to %s"
 msgstr ""
 
-#: assets/admin.js:2323
+#: assets/admin.js:2376
 msgid "Download to this server"
 msgstr ""
 
-#: assets/admin.js:2327
+#: assets/admin.js:2380
 msgid "Check the copy on this server"
 msgstr ""
 
-#: assets/admin.js:2327
+#: assets/admin.js:2380
 msgid "Check for damage"
 msgstr ""
 
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:2336
+#: assets/admin.js:2389
 #, js-format
 msgid "Check the copy on %s"
 msgstr ""
 
-#: assets/admin.js:2345
+#: assets/admin.js:2398
 msgid "Delete from this server"
 msgstr ""
 
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:2354
+#: assets/admin.js:2407
 #, js-format
 msgid "Delete from %s"
 msgstr ""
 
-#: assets/admin.js:2368
+#: assets/admin.js:2421
 msgid "More actions"
 msgstr ""
 
 #. translators: %s: name of the backup
-#: assets/admin.js:2371
+#: assets/admin.js:2424
 #, js-format
 msgid "More actions for %s"
 msgstr ""
 
 #. translators: %s: name of the backup
-#: assets/admin.js:2430
+#: assets/admin.js:2483
 #, js-format
 msgid "Delete %s from this server? It is the only copy; this cannot be undone."
 msgstr ""
 
 #. translators: %s: name of the backup
-#: assets/admin.js:2435
+#: assets/admin.js:2488
 #, js-format
 msgid "Delete %s from this server? The copies on storage stay."
 msgstr ""
 
 #. translators: %s: name of the backup
-#: assets/admin.js:2448
+#: assets/admin.js:2501
 #, js-format
 msgid "Deleted %s from this server."
 msgstr ""
 
 #. translators: %s: error message
-#: assets/admin.js:2451
-#: assets/admin.js:2491
+#: assets/admin.js:2504
+#: assets/admin.js:2544
 #, js-format
 msgid "Could not delete: %s"
 msgstr ""
 
 #. translators: 1: name of the backup, 2: name of the storage, such as Dropbox
-#: assets/admin.js:2461
+#: assets/admin.js:2514
 #, js-format
 msgid "Delete %1$s from %2$s? It is the only copy; this cannot be undone."
 msgstr ""
 
 #. translators: 1: name of the backup, 2: name of the storage, such as Dropbox
-#: assets/admin.js:2467
+#: assets/admin.js:2520
 #, js-format
 msgid "Delete %1$s from %2$s?"
 msgstr ""
 
 #. translators: 1: name of the backup, 2: name of the storage, such as Dropbox
-#: assets/admin.js:2483
+#: assets/admin.js:2536
 #, js-format
 msgid "Deleted %1$s from %2$s."
 msgstr ""
 
-#: assets/admin.js:2558
+#: assets/admin.js:2611
 msgid "Your computer"
 msgstr ""
 
 #. translators: %s: name of the file being uploaded
-#: assets/admin.js:2560
+#: assets/admin.js:2613
 #, js-format
 msgid "Uploading %s..."
 msgstr ""
 
 #. translators: 1: name of the file being uploaded, 2: size uploaded so far, such as 12 MB, 3: size of the file
-#: assets/admin.js:2568
+#: assets/admin.js:2621
 #, js-format
 msgid "Uploading %1$s: %2$s of %3$s"
 msgstr ""
 
 #. translators: %s: file name of the uploaded backup
-#: assets/admin.js:2584
+#: assets/admin.js:2637
 #, js-format
 msgid "%s is in the list below. Nothing on this site has changed."
 msgstr ""
 
-#: assets/admin.js:2592
+#: assets/admin.js:2645
 msgid "Restore it"
 msgstr ""
 
-#: assets/admin.js:2592
-#: assets/admin.js:3625
+#: assets/admin.js:2645
+#: assets/admin.js:3678
 msgid "Move it here"
 msgstr ""
 
-#: assets/admin.js:2596
+#: assets/admin.js:2649
 msgid "Uploaded and checked"
 msgstr ""
 
-#: assets/admin.js:2598
+#: assets/admin.js:2651
 msgid "Upload stopped"
 msgstr ""
 
 #. translators: %s: error message
-#: assets/admin.js:2602
+#: assets/admin.js:2655
 #, js-format
 msgid "%s Choose the same file again to continue where it stopped."
 msgstr ""
 
 #. translators: %s: name of the backup
-#: assets/admin.js:2631
+#: assets/admin.js:2684
 #, js-format
 msgid "Download %s in parts"
 msgstr ""
 
-#: assets/admin.js:2648
+#: assets/admin.js:2701
 msgid "Choose one backup file, or all the parts of one backup (name.001, name.002, ...)."
 msgstr ""
 
 #. translators: 1: number of the missing part, such as 002, 2: file name of the backup
-#: assets/admin.js:2657
+#: assets/admin.js:2710
 #, js-format
 msgid "Part %1$s of %2$s is missing: choose all its parts."
 msgstr ""
 
-#: assets/admin.js:2706
+#: assets/admin.js:2759
 msgid "A restore is already under way."
 msgstr ""
 
 #. translators: %s: list of the parts ticked in "Look inside", such as the table wp_posts and the plugin akismet
-#: assets/admin.js:2729
+#: assets/admin.js:2782
 #, js-format
 msgid "Only what was ticked: %s"
 msgstr ""
 
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:2766
+#: assets/admin.js:2819
 #, js-format
 msgid "It is downloaded from %s to this server first."
 msgstr ""
 
-#: assets/admin.js:2769
+#: assets/admin.js:2822
 msgid "It is downloaded from the storage to this server first."
 msgstr ""
 
 #. translators: 1: name given to the backup, 2: when it was made, such as today, 7:21 PM
-#: assets/admin.js:2777
+#: assets/admin.js:2830
 #, js-format
 msgid "“%1$s” (%2$s)"
 msgstr ""
 
 #. translators: used inside sentences such as "Move the other site here" when the backup does not name its site
-#: assets/admin.js:2785
+#: assets/admin.js:2838
 msgid "the other site"
 msgstr ""
 
 #. translators: %s: the backup, such as “Before the update” (today, 7:21 PM)
-#: assets/admin.js:2790
+#: assets/admin.js:2843
 #, js-format
 msgid "Restore part of this site from %s"
 msgstr ""
 
-#: assets/admin.js:2793
+#: assets/admin.js:2846
 msgid "Restore part of a backup"
 msgstr ""
 
 #. translators: %s: what is restored, such as the database
-#: assets/admin.js:2797
+#: assets/admin.js:2850
 #, js-format
 msgid "This restores only %s, as it was then; everything else on this site stays as it is now."
 msgstr ""
 
 #. translators: %s: what is restored, such as the database
-#: assets/admin.js:2803
+#: assets/admin.js:2856
 #, js-format
 msgid "I understand that this replaces %s on this site with the backup’s."
 msgstr ""
 
 #. translators: %s: the backup, such as “Before the update” (today, 7:21 PM)
-#: assets/admin.js:2810
+#: assets/admin.js:2863
 #, js-format
 msgid "Restore this site to %s"
 msgstr ""
 
-#: assets/admin.js:2813
-#: assets/admin.js:4792
+#: assets/admin.js:2866
+#: assets/admin.js:4845
 msgid "Restore a backup"
 msgstr ""
 
-#: assets/admin.js:2816
+#: assets/admin.js:2869
 msgid "I understand that this replaces this site’s content with the backup."
 msgstr ""
 
 #. translators: %s: address of the other site, such as example.com
-#: assets/admin.js:2820
+#: assets/admin.js:2873
 #, js-format
 msgid "Copy part of %s here"
 msgstr ""
 
 #. translators: 1: what is copied, such as the database, 2: address of the other site, 3: address of this site
-#: assets/admin.js:2826
+#: assets/admin.js:2879
 #, js-format
 msgid "This copies only %1$s from %2$s, replacing what this site has; everything else here stays as it is. Addresses in what is copied are changed to this site’s (%3$s)."
 msgstr ""
 
-#: assets/admin.js:2831
+#: assets/admin.js:2884
 msgid "Copy here now"
 msgstr ""
 
 #. translators: 1: what is copied, such as the database, 2: address of the other site
-#: assets/admin.js:2834
+#: assets/admin.js:2887
 #, js-format
 msgid "I understand that this replaces %1$s on this site with %2$s’s."
 msgstr ""
 
 #. translators: %s: address of the other site, such as example.com
-#: assets/admin.js:2841
+#: assets/admin.js:2894
 #, js-format
 msgid "Move %s here"
 msgstr ""
 
 #. translators: %s: address of the other site, such as example.com
-#: assets/admin.js:2850
+#: assets/admin.js:2903
 #, js-format
 msgid "The files of %s replace this site’s; its database is not in the backup. SiteFerry and its storage settings stay as they are."
 msgstr ""
 
 #. translators: 1: address of the other site, 2: address of this site
-#: assets/admin.js:2855
+#: assets/admin.js:2908
 #, js-format
 msgid "This site’s content is replaced by the content of %1$s, and its addresses are changed to this site’s (%2$s). SiteFerry and its storage settings stay as they are. Afterwards you log in with that site’s users."
 msgstr ""
 
-#: assets/admin.js:2863
+#: assets/admin.js:2916
 msgid "Move here now"
 msgstr ""
 
 #. translators: %s: address of the other site, such as example.com
-#: assets/admin.js:2866
+#: assets/admin.js:2919
 #, js-format
 msgid "I understand that this replaces this site’s content with %s’s."
 msgstr ""
 
-#: assets/admin.js:2878
+#: assets/admin.js:2931
 msgid "SiteFerry and its storage settings stay as they are."
 msgstr ""
 
-#: assets/admin.js:2880
+#: assets/admin.js:2933
 msgid "SiteFerry checks the backup first and then shows what it holds. Nothing on this site changes until you confirm."
 msgstr ""
 
-#: assets/admin.js:2884
+#: assets/admin.js:2937
 msgid "the database (posts, pages, settings, users)"
 msgstr ""
 
-#: assets/admin.js:2890
+#: assets/admin.js:2943
 msgid "the files in its wp-content folder"
 msgstr ""
 
-#: assets/admin.js:2903
+#: assets/admin.js:2956
 msgid "the other files in wp-content"
 msgstr ""
 
 #. translators: %s: list of what is put back, such as the database (posts, pages, settings, users), media, plugins and themes
-#: assets/admin.js:2910
+#: assets/admin.js:2963
 #, js-format
 msgid "This puts back %s from the backup; changes made since are lost."
 msgstr ""
 
-#: assets/admin.js:2917
+#: assets/admin.js:2970
 msgid "Plugins and themes installed since the backup are not deleted."
 msgstr ""
 
-#: assets/admin.js:2929
+#: assets/admin.js:2982
 msgid "The backup has no database, so posts, pages, settings and users stay as they are on this site."
 msgstr ""
 
-#: assets/admin.js:2932
+#: assets/admin.js:2985
 msgid "The backup has no files, so media, plugins and themes stay as they are on this site."
 msgstr ""
 
-#: assets/admin.js:2938
+#: assets/admin.js:2991
 msgid "the database tables left out"
 msgstr ""
 
 #. translators: %s: list of parts, such as media and plugins
-#: assets/admin.js:2944
+#: assets/admin.js:2997
 #, js-format
 msgid "Not in the backup, so they stay as they are on this site: %s."
 msgstr ""
 
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:3016
+#: assets/admin.js:3069
 #, js-format
 msgid "Downloading the backup from %s..."
 msgstr ""
 
-#: assets/admin.js:3019
+#: assets/admin.js:3072
 msgid "Downloading the backup from the storage..."
 msgstr ""
 
-#: assets/admin.js:3030
-#: assets/admin.js:3038
+#: assets/admin.js:3083
+#: assets/admin.js:3091
 msgid "The backup could not be downloaded"
 msgstr ""
 
-#: assets/admin.js:3055
+#: assets/admin.js:3108
 msgid "Password of the backup"
 msgstr ""
 
-#: assets/admin.js:3055
+#: assets/admin.js:3108
 msgid "This backup is protected with a password. Enter it to check and restore the backup."
 msgstr ""
 
-#: assets/admin.js:3066
+#: assets/admin.js:3119
 msgid "Checking the backup; nothing on this site changes yet..."
 msgstr ""
 
-#: assets/admin.js:3097
+#: assets/admin.js:3150
 msgid "This backup cannot be restored here"
 msgstr ""
 
-#: assets/admin.js:3127
+#: assets/admin.js:3180
 msgid "Checked: ready"
 msgstr ""
 
-#: assets/admin.js:3127
+#: assets/admin.js:3180
 msgid "Nothing on this site has changed yet."
 msgstr ""
 
 #. translators: 1: what was copied, such as only the database, 2: address of the other site
-#: assets/admin.js:3150
+#: assets/admin.js:3203
 #, js-format
 msgid "Copied %1$s from %2$s; everything else on this site stayed as it was."
 msgstr ""
 
 #. translators: %s: what was restored, such as only the database
-#: assets/admin.js:3156
+#: assets/admin.js:3209
 #, js-format
 msgid "Restored %s; everything else on this site stayed as it was."
 msgstr ""
 
 #. translators: %s: address of the other site, such as example.com
-#: assets/admin.js:3162
+#: assets/admin.js:3215
 #, js-format
 msgid "Copied part of %s here"
 msgstr ""
 
-#: assets/admin.js:3165
+#: assets/admin.js:3218
 msgid "Restored part of the site"
 msgstr ""
 
 #. translators: 1: address of the other site, 2: address of this site
-#: assets/admin.js:3169
+#: assets/admin.js:3222
 #, js-format
 msgid "This site now has the content of %1$s, at %2$s."
 msgstr ""
 
 #. translators: %s: address of the other site, such as example.com
-#: assets/admin.js:3175
+#: assets/admin.js:3228
 #, js-format
 msgid "Moved %s here"
 msgstr ""
 
-#: assets/admin.js:3179
+#: assets/admin.js:3232
 msgid "This site is back to how it was when the backup was made."
 msgstr ""
 
-#: assets/admin.js:3180
+#: assets/admin.js:3233
 msgid "Restored"
 msgstr ""
 
 #. translators: %s: size such as 12 MB
-#: assets/admin.js:3189
+#: assets/admin.js:3242
 #, js-format
 msgid "A safety backup of the site as it was before (%s) is in the list. To undo, use \"Undo this restore\" on the Backups tab, or restore that backup."
 msgstr ""
 
-#: assets/admin.js:3195
+#: assets/admin.js:3248
 msgid "Log in with one of that site’s users."
 msgstr ""
 
-#: assets/admin.js:3195
+#: assets/admin.js:3248
 msgid "You may need to log in again."
 msgstr ""
 
-#: assets/admin.js:3196
+#: assets/admin.js:3249
 msgid "Log in"
 msgstr ""
 
-#: assets/admin.js:3203
+#: assets/admin.js:3256
 msgid "The restore did not finish"
 msgstr ""
 
-#: assets/admin.js:3203
+#: assets/admin.js:3256
 msgid "The move did not finish"
 msgstr ""
 
-#: assets/admin.js:3205
+#: assets/admin.js:3258
 msgid "This site was left as it was before."
 msgstr ""
 
-#: assets/admin.js:3205
+#: assets/admin.js:3258
 msgid "Putting the previous site back did not fully succeed; see the Activity tab."
 msgstr ""
 
-#: assets/admin.js:3220
+#: assets/admin.js:3273
 msgid "From"
 msgstr ""
 
-#: assets/admin.js:3220
+#: assets/admin.js:3273
 msgid "Into"
 msgstr ""
 
-#: assets/admin.js:3223
+#: assets/admin.js:3276
 msgid "Backup made"
 msgstr ""
 
-#: assets/admin.js:3225
+#: assets/admin.js:3278
 msgid "Made with"
 msgstr ""
 
 #. translators: 1: WordPress version, 2: PHP version, 3: MySQL version
-#: assets/admin.js:3228
+#: assets/admin.js:3281
 #, js-format
 msgid "WordPress %1$s, PHP %2$s, MySQL %3$s"
 msgstr ""
 
-#: assets/admin.js:3235
+#: assets/admin.js:3288
 msgid "Contents"
 msgstr ""
 
 #. translators: 1: number of tables, such as 12 tables, 2: number of files, such as 3400 files, 3: size such as 12 MB
-#: assets/admin.js:3238
+#: assets/admin.js:3291
 #, js-format
 msgid "%1$s, %2$s, %3$s"
 msgstr ""
 
 #. translators: %d: number of database tables
-#: assets/admin.js:3240
-#: assets/admin.js:3481
-#: assets/admin.js:3883
+#: assets/admin.js:3293
+#: assets/admin.js:3534
+#: assets/admin.js:3936
 #, js-format
 msgid "%d table"
 msgid_plural "%d tables"
@@ -4627,51 +4692,51 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: a number
-#: assets/admin.js:3242
-#: assets/admin.js:3477
-#: assets/admin.js:3941
+#: assets/admin.js:3295
+#: assets/admin.js:3530
+#: assets/admin.js:3994
 #, js-format
 msgid "%d file"
 msgid_plural "%d files"
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:3250
+#: assets/admin.js:3303
 msgid "Address changes"
 msgstr ""
 
 #. translators: %d: number of search/replace pairs for the site addresses
-#: assets/admin.js:3253
+#: assets/admin.js:3306
 #, js-format
 msgid "%d search/replace pair"
 msgid_plural "%d search/replace pairs"
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:3259
+#: assets/admin.js:3312
 msgid "Restores"
 msgstr ""
 
-#: assets/admin.js:3283
+#: assets/admin.js:3336
 msgid "Making a safety backup of this site first..."
 msgstr ""
 
-#: assets/admin.js:3283
+#: assets/admin.js:3336
 msgid "Restoring..."
 msgstr ""
 
-#: assets/admin.js:3283
+#: assets/admin.js:3336
 msgid "Moving the site here..."
 msgstr ""
 
 #. translators: %s: error message
-#: assets/admin.js:3330
+#: assets/admin.js:3383
 #, js-format
 msgid "Could not cancel: %s"
 msgstr ""
 
 #. translators: 1: number of files measured so far, 2: size such as 12 MB
-#: assets/admin.js:3359
+#: assets/admin.js:3412
 #, js-format
 msgid "Measuring the site... %1$d file, %2$s so far."
 msgid_plural "Measuring the site... %1$d files, %2$s so far."
@@ -4679,55 +4744,55 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: error message
-#: assets/admin.js:3366
+#: assets/admin.js:3419
 #, js-format
 msgid "The site could not be measured: %s"
 msgstr ""
 
 #. translators: 1: estimated size of the backup, 2: size of the database, 3: size of the files, 4: size of the whole site; sizes such as 12 MB
-#: assets/admin.js:3420
+#: assets/admin.js:3473
 #, js-format
 msgid "%1$s (database %2$s, files %3$s; the whole site is %4$s), less once compressed."
 msgstr ""
 
 #. translators: 1: estimated size of the backup, 2: size of the database, 3: size of the files, 4: size of the whole site; sizes such as 12 MB
-#: assets/admin.js:3422
+#: assets/admin.js:3475
 #, js-format
 msgid "%1$s (database %2$s, files %3$s; the whole site is %4$s)."
 msgstr ""
 
 #. translators: 1: estimated size of the backup, 2: size of the database, 3: size of the files; sizes such as 12 MB
-#: assets/admin.js:3426
+#: assets/admin.js:3479
 #, js-format
 msgid "%1$s (database %2$s, files %3$s), less once compressed."
 msgstr ""
 
 #. translators: 1: estimated size of the backup, 2: size of the database, 3: size of the files; sizes such as 12 MB
-#: assets/admin.js:3428
+#: assets/admin.js:3481
 #, js-format
 msgid "%1$s (database %2$s, files %3$s)."
 msgstr ""
 
 #. translators: %s: estimated size of the backup, such as 12 MB
-#: assets/admin.js:3435
+#: assets/admin.js:3488
 #, js-format
 msgid "This backup: about %s"
 msgstr ""
 
 #. translators: %s: free disk space, such as 12 GB
-#: assets/admin.js:3445
+#: assets/admin.js:3498
 #, js-format
 msgid "%s free on this server."
 msgstr ""
 
-#: assets/admin.js:3450
+#: assets/admin.js:3503
 msgid "That is not enough room for it."
 msgstr ""
 
 #. translators: %d: a number
-#: assets/admin.js:3479
-#: assets/admin.js:3885
-#: assets/admin.js:3904
+#: assets/admin.js:3532
+#: assets/admin.js:3938
+#: assets/admin.js:3957
 #, js-format
 msgid "%d row"
 msgid_plural "%d rows"
@@ -4735,438 +4800,438 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: size of the inactive plugins or themes, such as 12 MB
-#: assets/admin.js:3483
+#: assets/admin.js:3536
 #, js-format
 msgid "%s inactive"
 msgstr ""
 
 #. translators: 1: number of post revisions, 2: their size, such as 12 MB
-#: assets/admin.js:3487
+#: assets/admin.js:3540
 #, js-format
 msgid "%1$d post revision (%2$s)"
 msgid_plural "%1$d post revisions (%2$s)"
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:3491
+#: assets/admin.js:3544
 msgid "No post revisions"
 msgstr ""
 
 #. translators: 1: number of spam comments, 2: their size, such as 12 MB
-#: assets/admin.js:3495
+#: assets/admin.js:3548
 #, js-format
 msgid "%1$d spam comment (%2$s)"
 msgid_plural "%1$d spam comments (%2$s)"
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:3499
+#: assets/admin.js:3552
 msgid "no spam comments"
 msgstr ""
 
-#: assets/admin.js:3502
+#: assets/admin.js:3555
 msgid "Media (uploads)"
 msgstr ""
 
-#: assets/admin.js:3505
+#: assets/admin.js:3558
 msgid "Cache"
 msgstr ""
 
-#: assets/admin.js:3505
+#: assets/admin.js:3558
 msgid "left out by default"
 msgstr ""
 
-#: assets/admin.js:3506
+#: assets/admin.js:3559
 msgid "Everything else"
 msgstr ""
 
-#: assets/admin.js:3508
+#: assets/admin.js:3561
 msgid "Largest files"
 msgstr ""
 
-#: assets/admin.js:3509
+#: assets/admin.js:3562
 msgid "Media by year"
 msgstr ""
 
-#: assets/admin.js:3510
+#: assets/admin.js:3563
 msgid "Largest plugins"
 msgstr ""
 
-#: assets/admin.js:3510
-#: assets/admin.js:3512
+#: assets/admin.js:3563
+#: assets/admin.js:3565
 msgid "inactive"
 msgstr ""
 
-#: assets/admin.js:3511
+#: assets/admin.js:3564
 msgid "Largest tables"
 msgstr ""
 
-#: assets/admin.js:3512
+#: assets/admin.js:3565
 msgid "Largest themes"
 msgstr ""
 
-#: assets/admin.js:3513
+#: assets/admin.js:3566
 msgid "Largest folders in wp-content"
 msgstr ""
 
 #. translators: 1: post revisions, such as 12 post revisions (3 MB) or No post revisions, 2: spam comments, such as 4 spam comments (1 MB) or no spam comments
-#: assets/admin.js:3518
+#: assets/admin.js:3571
 #, js-format
 msgid "%1$s and %2$s."
 msgstr ""
 
 #. translators: %s: size such as 12 MB
-#: assets/admin.js:3525
+#: assets/admin.js:3578
 #, js-format
 msgid "Backups on this server take %s."
 msgstr ""
 
-#: assets/admin.js:3529
+#: assets/admin.js:3582
 msgid "Sizes are of the files as they are, before any compression."
 msgstr ""
 
 #. translators: %s: when the site was measured, such as today, 7:21 PM
-#: assets/admin.js:3533
+#: assets/admin.js:3586
 #, js-format
 msgid "Measured %s."
 msgstr ""
 
-#: assets/admin.js:3537
+#: assets/admin.js:3590
 msgid "Measure again"
 msgstr ""
 
-#: assets/admin.js:3574
+#: assets/admin.js:3627
 msgid "Make a key"
 msgstr ""
 
-#: assets/admin.js:3574
+#: assets/admin.js:3627
 msgid "Make a new key"
 msgstr ""
 
-#: assets/admin.js:3580
+#: assets/admin.js:3633
 msgid "Copy the key"
 msgstr ""
 
-#: assets/admin.js:3584
+#: assets/admin.js:3637
 msgid "The key is copied. Paste it on the old site, under \"Move a site\"."
 msgstr ""
 
 #. translators: %s: date and time the key expires
-#: assets/admin.js:3596
+#: assets/admin.js:3649
 #, js-format
 msgid "Waiting for the old site. The key works until %s."
 msgstr ""
 
 #. translators: 1: size received so far, 2: size of the whole backup; sizes such as 12 MB
-#: assets/admin.js:3606
+#: assets/admin.js:3659
 #, js-format
 msgid "Arriving: %1$s of %2$s."
 msgstr ""
 
-#: assets/admin.js:3613
+#: assets/admin.js:3666
 msgid "The last key has expired."
 msgstr ""
 
 #. translators: 1: address of the old site, 2: size such as 12 MB
-#: assets/admin.js:3620
+#: assets/admin.js:3673
 #, js-format
 msgid "The site from %1$s has arrived (%2$s). Nothing on this site has changed yet."
 msgstr ""
 
-#: assets/admin.js:3636
+#: assets/admin.js:3689
 msgid "Cancel the key"
 msgstr ""
 
 #. translators: %s: error message
-#: assets/admin.js:3649
+#: assets/admin.js:3702
 #, js-format
 msgid "No key was made: %s"
 msgstr ""
 
-#: assets/admin.js:3658
+#: assets/admin.js:3711
 msgid "Asking the other site..."
 msgstr ""
 
-#: assets/admin.js:3671
+#: assets/admin.js:3724
 msgid "Moving to"
 msgstr ""
 
 #. translators: 1: address of the other site, 2: its title
-#: assets/admin.js:3675
+#: assets/admin.js:3728
 #, js-format
 msgid "%1$s (%2$s)"
 msgstr ""
 
-#: assets/admin.js:3682
+#: assets/admin.js:3735
 msgid "Runs"
 msgstr ""
 
 #. translators: 1: WordPress version, 2: PHP version, 3: SiteFerry version
-#: assets/admin.js:3685
+#: assets/admin.js:3738
 #, js-format
 msgid "WordPress %1$s, PHP %2$s, SiteFerry %3$s"
 msgstr ""
 
-#: assets/admin.js:3691
+#: assets/admin.js:3744
 msgid "Free there"
 msgstr ""
 
-#: assets/admin.js:3694
+#: assets/admin.js:3747
 msgid "Also keep the backup on this server"
 msgstr ""
 
-#: assets/admin.js:3695
+#: assets/admin.js:3748
 msgid "Move this site there"
 msgstr ""
 
-#: assets/admin.js:3702
+#: assets/admin.js:3755
 msgid "Backing up this site for the move..."
 msgstr ""
 
-#: assets/admin.js:3710
+#: assets/admin.js:3763
 msgid "The site was not moved"
 msgstr ""
 
 #. translators: %s: name of the backup
-#: assets/admin.js:3731
+#: assets/admin.js:3784
 #, js-format
 msgid "Look inside %s"
 msgstr ""
 
-#: assets/admin.js:3734
+#: assets/admin.js:3787
 msgid "This backup is protected with a password. Enter it to see what is inside."
 msgstr ""
 
 #. translators: %s: name of the backup
-#: assets/admin.js:3753
+#: assets/admin.js:3806
 #, js-format
 msgid "Inside %s"
 msgstr ""
 
-#: assets/admin.js:3755
+#: assets/admin.js:3808
 msgid "Reading the list of files in the backup..."
 msgstr ""
 
 #. translators: %s: error message
-#: assets/admin.js:3787
+#: assets/admin.js:3840
 #, js-format
 msgid "The backup cannot be read: %s"
 msgstr ""
 
 #. translators: 1: percentage read, 2: number of entries found so far
-#: assets/admin.js:3807
+#: assets/admin.js:3860
 #, js-format
 msgid "Reading the list of files in the backup... %1$d%% (%2$d entry so far)"
 msgid_plural "Reading the list of files in the backup... %1$d%% (%2$d entries so far)"
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:3846
+#: assets/admin.js:3899
 msgid "This folder is empty."
 msgstr ""
 
-#: assets/admin.js:3862
+#: assets/admin.js:3915
 msgid "Also in the backup, for downloading:"
 msgstr ""
 
 #. translators: a part of a backup; used inside sentences such as "Restore the whole database"
-#: assets/admin.js:3873
+#: assets/admin.js:3926
 msgid "the whole database"
 msgstr ""
 
 #. translators: 1: number of tables, such as 12 tables, 2: number of rows, such as 3400 rows
-#: assets/admin.js:3881
+#: assets/admin.js:3934
 #, js-format
 msgctxt "tables and rows"
 msgid "%1$s, %2$s"
 msgstr ""
 
-#: assets/admin.js:3887
+#: assets/admin.js:3940
 msgid "its tables are listed when the backup is checked for restoring"
 msgstr ""
 
-#: assets/admin.js:3894
+#: assets/admin.js:3947
 msgid "Single tables"
 msgstr ""
 
 #. translators: %s: name of a database table; used inside sentences such as "Restore table wp_posts"
-#: assets/admin.js:3901
+#: assets/admin.js:3954
 #, js-format
 msgid "table %s"
 msgstr ""
 
 #. translators: %s: name of a file in the backup
-#: assets/admin.js:3935
+#: assets/admin.js:3988
 #, js-format
 msgid "Download %s"
 msgstr ""
 
 #. translators: a symbolic link in a list of files
-#: assets/admin.js:3944
+#: assets/admin.js:3997
 msgid "link"
 msgstr ""
 
 #. translators: a part of a backup; used inside sentences such as "Restore all files"
-#: assets/admin.js:3948
+#: assets/admin.js:4001
 msgid "all files"
 msgstr ""
 
 #. translators: %s: a part of the backup, such as the whole database, table wp_posts or wp-content/plugins/akismet
-#: assets/admin.js:3993
+#: assets/admin.js:4046
 #, js-format
 msgid "Restore %s"
 msgstr ""
 
 #. translators: %s: a wider part of the backup that is ticked, such as the whole database or all files
-#: assets/admin.js:4006
+#: assets/admin.js:4059
 #, js-format
 msgid "Included in %s"
 msgstr ""
 
 #. translators: %s: list of the ticked parts of the backup, such as the whole database, wp-content/plugins/akismet
-#: assets/admin.js:4061
+#: assets/admin.js:4114
 #, js-format
 msgid "To restore: %s."
 msgstr ""
 
 #. translators: %s: the site's admin email address
-#: assets/admin.js:4131
+#: assets/admin.js:4184
 #, js-format
 msgid "%s (the site's admin email)"
 msgstr ""
 
-#: assets/admin.js:4137
+#: assets/admin.js:4190
 msgid "Saved; leave empty to keep it"
 msgstr ""
 
 #. translators: %s: the site's time zone, such as Europe/Berlin or UTC+05:00
-#: assets/admin.js:4143
+#: assets/admin.js:4196
 #, js-format
 msgid "In the site's time zone (%s, set under Settings, General). WordPress starts scheduled tasks when the site gets a visit, so on a quiet site a backup can start a little late."
 msgstr ""
 
 #. translators: %s: list of parts left out, such as media and plugins
-#: assets/admin.js:4203
+#: assets/admin.js:4256
 #, js-format
 msgid "The site without %s"
 msgstr ""
 
 #. translators: 1: day of the week, such as Monday, 2: time of day, such as 03:00
-#: assets/admin.js:4242
+#: assets/admin.js:4295
 #, js-format
 msgid "every %1$s at %2$s"
 msgstr ""
 
 #. translators: 1: day of the month, such as 15, 2: time of day, such as 03:00
-#: assets/admin.js:4245
+#: assets/admin.js:4298
 #, js-format
 msgid "on day %1$s of every month at %2$s"
 msgstr ""
 
 #. translators: %s: time of day, such as 03:00
-#: assets/admin.js:4248
+#: assets/admin.js:4301
 #, js-format
 msgid "every day at %s"
 msgstr ""
 
-#: assets/admin.js:4251
+#: assets/admin.js:4304
 msgid "on this server"
 msgstr ""
 
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:4255
+#: assets/admin.js:4308
 #, js-format
 msgid "to %s and this server"
 msgstr ""
 
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:4257
+#: assets/admin.js:4310
 #, js-format
 msgid "to %s"
 msgstr ""
 
 #. translators: %d: number of scheduled backups kept
-#: assets/admin.js:4262
+#: assets/admin.js:4315
 #, js-format
 msgid "keeping the newest %d"
 msgid_plural "keeping the newest %d"
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:4263
+#: assets/admin.js:4316
 msgid "keeping them all"
 msgstr ""
 
 #. translators: 1: how often, such as every Monday at 03:00, 2: where, such as to Dropbox, 3: how many are kept, such as keeping the newest 7
-#: assets/admin.js:4266
+#: assets/admin.js:4319
 #, js-format
 msgid "%1$s, %2$s, %3$s."
 msgstr ""
 
-#: assets/admin.js:4281
+#: assets/admin.js:4334
 msgid "Automatic backups off"
 msgstr ""
 
-#: assets/admin.js:4283
+#: assets/admin.js:4336
 msgid "Automatic backups on"
-msgstr ""
-
-#. translators: %s: when the next scheduled backup runs, such as tomorrow, 3:00 AM
-#: assets/admin.js:4286
-#, js-format
-msgid "Next: %s."
-msgstr ""
-
-#. translators: %s: when the next try is, such as today, 9:00 AM
-#: assets/admin.js:4293
-#, js-format
-msgid "Waiting for another job to finish; trying again %s."
-msgstr ""
-
-#: assets/admin.js:4298
-msgid "Change"
-msgstr ""
-
-#: assets/admin.js:4301
-msgid "A backup is also made before WordPress, a plugin or a theme updates."
-msgstr ""
-
-#. translators: 1: when, such as today, 3:00 AM, 2: the reason
-#: assets/admin.js:4310
-#, js-format
-msgid "Last scheduled backup %1$s: skipped. %2$s"
-msgstr ""
-
-#. translators: 1: when, such as today, 3:00 AM, 2: error message
-#: assets/admin.js:4313
-#, js-format
-msgid "Last scheduled backup %1$s: failed. %2$s"
-msgstr ""
-
-#. translators: 1: when, such as today, 3:00 AM, 2: where it is stored, such as Dropbox
-#: assets/admin.js:4316
-#, js-format
-msgid "Last scheduled backup %1$s: done, stored on %2$s."
-msgstr ""
-
-#. translators: %s: when, such as today, 3:00 AM
-#: assets/admin.js:4319
-#, js-format
-msgid "Last scheduled backup %s: done."
-msgstr ""
-
-#: assets/admin.js:4327
-msgid "Off"
 msgstr ""
 
 #. translators: %s: when the next scheduled backup runs, such as tomorrow, 3:00 AM
 #: assets/admin.js:4339
 #, js-format
+msgid "Next: %s."
+msgstr ""
+
+#. translators: %s: when the next try is, such as today, 9:00 AM
+#: assets/admin.js:4346
+#, js-format
+msgid "Waiting for another job to finish; trying again %s."
+msgstr ""
+
+#: assets/admin.js:4351
+msgid "Change"
+msgstr ""
+
+#: assets/admin.js:4354
+msgid "A backup is also made before WordPress, a plugin or a theme updates."
+msgstr ""
+
+#. translators: 1: when, such as today, 3:00 AM, 2: the reason
+#: assets/admin.js:4363
+#, js-format
+msgid "Last scheduled backup %1$s: skipped. %2$s"
+msgstr ""
+
+#. translators: 1: when, such as today, 3:00 AM, 2: error message
+#: assets/admin.js:4366
+#, js-format
+msgid "Last scheduled backup %1$s: failed. %2$s"
+msgstr ""
+
+#. translators: 1: when, such as today, 3:00 AM, 2: where it is stored, such as Dropbox
+#: assets/admin.js:4369
+#, js-format
+msgid "Last scheduled backup %1$s: done, stored on %2$s."
+msgstr ""
+
+#. translators: %s: when, such as today, 3:00 AM
+#: assets/admin.js:4372
+#, js-format
+msgid "Last scheduled backup %s: done."
+msgstr ""
+
+#: assets/admin.js:4380
+msgid "Off"
+msgstr ""
+
+#. translators: %s: when the next scheduled backup runs, such as tomorrow, 3:00 AM
+#: assets/admin.js:4392
+#, js-format
 msgid "Next backup: %s."
 msgstr ""
 
 #. translators: %d: number of scheduled backups kept
-#: assets/admin.js:4343
+#: assets/admin.js:4396
 #, js-format
 msgid "%d scheduled backup kept so far."
 msgid_plural "%d scheduled backups kept so far."
@@ -5174,25 +5239,25 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: what was updated, such as the plugin Akismet, 2: when, such as today, 3:00 AM, 3: size such as 12 MB
-#: assets/admin.js:4355
+#: assets/admin.js:4408
 #, js-format
 msgid "Last backup before an update: %1$s, %2$s, made (%3$s)."
 msgstr ""
 
 #. translators: 1: what was updated, such as the plugin Akismet, 2: when, such as today, 3:00 AM, 3: the reason
-#: assets/admin.js:4358
+#: assets/admin.js:4411
 #, js-format
 msgid "Last backup before an update: %1$s, %2$s, skipped: %3$s."
 msgstr ""
 
 #. translators: 1: what was updated, such as the plugin Akismet, 2: when, such as today, 3:00 AM, 3: error message
-#: assets/admin.js:4361
+#: assets/admin.js:4414
 #, js-format
 msgid "Last backup before an update: %1$s, %2$s, failed: %3$s."
 msgstr ""
 
 #. translators: %d: number of backups made before updates that are kept
-#: assets/admin.js:4368
+#: assets/admin.js:4421
 #, js-format
 msgid "%d backup made before updates is kept."
 msgid_plural "%d backups made before updates are kept."
@@ -5200,216 +5265,216 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: when the next scheduled backup runs, such as tomorrow, 3:00 AM
-#: assets/admin.js:4399
+#: assets/admin.js:4452
 #, js-format
 msgid "Saved. Next backup: %s."
 msgstr ""
 
-#: assets/admin.js:4402
+#: assets/admin.js:4455
 msgid "Saved. Automatic backups are off."
-msgstr ""
-
-#. translators: %s: error message
-#: assets/admin.js:4428
-#, js-format
-msgid "Not started: %s"
-msgstr ""
-
-#: assets/admin.js:4446
-msgid "Scheduled backup running..."
-msgstr ""
-
-#: assets/admin.js:4449
-msgid "Stop it"
-msgstr ""
-
-#: assets/admin.js:4452
-msgid "Stop the scheduled backup? What it has done so far is removed; earlier backups stay."
-msgstr ""
-
-#: assets/admin.js:4453
-msgid "The scheduled backup was stopped."
-msgstr ""
-
-#. translators: %s: what the backup is doing, such as Packing files
-#: assets/admin.js:4462
-#, js-format
-msgid "A scheduled backup is running (%s). It runs by itself on the server; you can leave this page."
-msgstr ""
-
-#: assets/admin.js:4465
-msgid "A scheduled backup is running (starting). It runs by itself on the server; you can leave this page."
-msgstr ""
-
-#: assets/admin.js:4477
-msgid "Lost track of the scheduled backup"
 msgstr ""
 
 #. translators: %s: error message
 #: assets/admin.js:4481
 #, js-format
+msgid "Not started: %s"
+msgstr ""
+
+#: assets/admin.js:4499
+msgid "Scheduled backup running..."
+msgstr ""
+
+#: assets/admin.js:4502
+msgid "Stop it"
+msgstr ""
+
+#: assets/admin.js:4505
+msgid "Stop the scheduled backup? What it has done so far is removed; earlier backups stay."
+msgstr ""
+
+#: assets/admin.js:4506
+msgid "The scheduled backup was stopped."
+msgstr ""
+
+#. translators: %s: what the backup is doing, such as Packing files
+#: assets/admin.js:4515
+#, js-format
+msgid "A scheduled backup is running (%s). It runs by itself on the server; you can leave this page."
+msgstr ""
+
+#: assets/admin.js:4518
+msgid "A scheduled backup is running (starting). It runs by itself on the server; you can leave this page."
+msgstr ""
+
+#: assets/admin.js:4530
+msgid "Lost track of the scheduled backup"
+msgstr ""
+
+#. translators: %s: error message
+#: assets/admin.js:4534
+#, js-format
 msgid "%s It may still be running; reload the page to check."
 msgstr ""
 
 #. translators: %s: size such as 12 MB
-#: assets/admin.js:4500
+#: assets/admin.js:4553
 #, js-format
 msgid "%s · stored on this server."
 msgstr ""
 
 #. translators: 1: size such as 12 MB, 2: name of the storage, such as Dropbox
-#: assets/admin.js:4503
+#: assets/admin.js:4556
 #, js-format
 msgid "%1$s · stored on %2$s."
 msgstr ""
 
 #. translators: 1: size such as 12 MB, 2: name of the storage, such as Dropbox
-#: assets/admin.js:4506
+#: assets/admin.js:4559
 #, js-format
 msgid "%1$s · stored on this server and on %2$s."
 msgstr ""
 
 #. translators: %d: number of older scheduled backups deleted
-#: assets/admin.js:4514
+#: assets/admin.js:4567
 #, js-format
 msgid "%d older scheduled backup was deleted."
 msgid_plural "%d older scheduled backups were deleted."
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:4518
+#: assets/admin.js:4571
 msgid "Scheduled backup ready"
 msgstr ""
 
-#: assets/admin.js:4524
+#: assets/admin.js:4577
 msgid "The scheduled backup was stopped"
 msgstr ""
 
-#: assets/admin.js:4524
+#: assets/admin.js:4577
 msgid "The scheduled backup failed"
 msgstr ""
 
-#: assets/admin.js:4542
+#: assets/admin.js:4595
 msgid "Nothing has run yet. Backups, restores and transfers show up here, each with its log."
 msgstr ""
 
-#: assets/admin.js:4546
+#: assets/admin.js:4599
 msgid "Scheduled backup"
 msgstr ""
 
-#: assets/admin.js:4548
+#: assets/admin.js:4601
 msgid "Backup before update"
 msgstr ""
 
-#: assets/admin.js:4553
+#: assets/admin.js:4606
 msgid "Cancelled"
 msgstr ""
 
-#: assets/admin.js:4555
-#: assets/admin.js:4577
+#: assets/admin.js:4608
+#: assets/admin.js:4630
 msgid "View log"
 msgstr ""
 
-#: assets/admin.js:4561
+#: assets/admin.js:4614
 msgid "Move to another site"
 msgstr ""
 
-#: assets/admin.js:4582
+#: assets/admin.js:4635
 msgid "Hide log"
 msgstr ""
 
-#: assets/admin.js:4585
+#: assets/admin.js:4638
 msgid "[earlier lines omitted]"
 msgstr ""
 
 #. translators: 1: address of the other site, 2: when, such as today, 7:21 PM
-#: assets/admin.js:4681
+#: assets/admin.js:4734
 #, js-format
 msgid "Moved %1$s here %2$s."
 msgstr ""
 
 #. translators: %s: when, such as today, 7:21 PM
-#: assets/admin.js:4687
+#: assets/admin.js:4740
 #, js-format
 msgid "Restored %s."
 msgstr ""
 
-#: assets/admin.js:4691
+#: assets/admin.js:4744
 msgid "A safety backup of the site as it was just before is kept. Changed your mind?"
 msgstr ""
 
-#: assets/admin.js:4694
+#: assets/admin.js:4747
 msgid "Undo this restore"
 msgstr ""
 
-#: assets/admin.js:4695
+#: assets/admin.js:4748
 msgid "Keep it as it is"
 msgstr ""
 
 #. translators: name of the safety backup; used inside sentences such as Restore this site to “the site before the last restore”
-#: assets/admin.js:4711
+#: assets/admin.js:4764
 msgid "the site before the last restore"
 msgstr ""
 
-#: assets/admin.js:4720
+#: assets/admin.js:4773
 msgid "Kept as it is. The safety backup stays in the list until you delete it."
 msgstr ""
 
 #. translators: %s: error message
-#: assets/admin.js:4733
+#: assets/admin.js:4786
 #, js-format
 msgid "SiteFerry cannot reach its REST API: %s"
 msgstr ""
 
 #. translators: %s: comma-separated list of unfinished uploads, such as backup.tar (12 MB of 40 MB)
-#: assets/admin.js:4742
+#: assets/admin.js:4795
 #, js-format
 msgid "Unfinished upload: %s. Choose the same file to continue."
 msgstr ""
 
 #. translators: 1: file name, 2: size uploaded so far, 3: size of the file; sizes such as 12 MB
-#: assets/admin.js:4747
+#: assets/admin.js:4800
 #, js-format
 msgid "%1$s (%2$s of %3$s)"
 msgstr ""
 
-#: assets/admin.js:4768
+#: assets/admin.js:4821
 msgid "A job"
 msgstr ""
 
 #. translators: 1: the kind of job, such as A backup, 2: date and time it started, 3: what it was doing
-#: assets/admin.js:4772
+#: assets/admin.js:4825
 #, js-format
 msgid "%1$s started %2$s is not finished (%3$s)."
 msgstr ""
 
-#: assets/admin.js:4776
+#: assets/admin.js:4829
 msgid "This browser did not start it, so it can only be cancelled here."
 msgstr ""
 
-#: assets/admin.js:4783
-#: assets/admin.js:4798
+#: assets/admin.js:4836
+#: assets/admin.js:4851
 msgid "Resuming..."
 msgstr ""
 
-#: assets/admin.js:4786
+#: assets/admin.js:4839
 msgid "Resuming the backup..."
 msgstr ""
 
-#: assets/admin.js:4792
+#: assets/admin.js:4845
 msgid "Finishing the restore"
 msgstr ""
 
 #. translators: %s: the kind of job, such as A backup
-#: assets/admin.js:4807
+#: assets/admin.js:4860
 #, js-format
 msgid "%s was cancelled and its work undone."
 msgstr ""
 
-#: assets/admin.js:4939
+#: assets/admin.js:4992
 msgid "Saving or signing in this way replaces the current connection."
 msgstr ""
 
-#: assets/admin.js:4948
+#: assets/admin.js:5001
 msgid "Copied"
 msgstr ""
