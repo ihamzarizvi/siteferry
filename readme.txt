@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.28.3
+Stable tag: 0.28.4
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -426,8 +426,10 @@ are valid gzip files and an interrupted job can resume at a member boundary.
 = Can it import and make .wpress backups? =
 
 .wpress is the backup format of the All-in-One WP Migration plugin. SiteFerry reads and writes it
-from the format's layout, for moving sites between the two plugins; it is not affiliated with that
-plugin or its makers. All-in-One WP Migration is a trademark of its owner.
+from the format's layout, for moving sites between the two plugins. SiteFerry is not affiliated
+with, endorsed by or sponsored by ServMask or the All-in-One WP Migration plugin, and contains none
+of its code. All-in-One WP Migration is a trademark of ServMask, Inc., used here only to say which
+files SiteFerry can read and write.
 
 Importing a .wpress backup (Import tab, or `wp siteferry import site.wpress`) runs the usual import
 with one more step first:
@@ -458,6 +460,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.28.4 =
+* readme: the .wpress FAQ says plainly that SiteFerry is not affiliated with, endorsed or sponsored by ServMask or All-in-One WP Migration, and contains none of its code.
 
 = 0.28.3 =
 * readme: links to the privacy policy and terms of SiteFerry's sign-in service (auth.xsofty.com), and the plugin's home page.

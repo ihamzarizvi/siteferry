@@ -12,7 +12,7 @@ if ( defined( 'SITEFERRY_VERSION' ) ) {
 	return; // Already loaded (an installed copy plus --require).
 }
 
-define( 'SITEFERRY_VERSION', '0.28.3' );
+define( 'SITEFERRY_VERSION', '0.28.4' );
 define( 'SITEFERRY_DIR', dirname( __DIR__ ) );
 define( 'SITEFERRY_FILE', SITEFERRY_DIR . '/siteferry.php' );
 
