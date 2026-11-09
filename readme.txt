@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.30.0
+Stable tag: 0.31.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -182,6 +182,10 @@ start the move, SiteFerry sends this site's encrypted backup to the address in t
 
 
 == Frequently Asked Questions ==
+
+= What if my site shows a white screen? =
+
+Make an emergency kit before you need it: on the Backups tab, click "Emergency kit", choose a password (at least 12 characters) and download the file. Keep it, with its password, somewhere safe and private, not on the server. If the site later breaks and you cannot log in, upload the file by FTP or your hosting file manager into WordPress's main folder (the one with wp-config.php or wp-load.php and wp-admin) and open it in your browser at your site's address followed by the file name. Sign in with the kit's password. It works without WordPress: it can turn off every plugin except SiteFerry, switch to a default "Twenty" theme (both can be undone) and download SiteFerry's backups. Once the dashboard opens again, restore a backup with SiteFerry if needed, and delete the kit with its "Delete this kit" button. A kit works for 7, 30 or 90 days, only on the site it was made for; revoke it in SiteFerry if you lose the file. It cannot repair damaged WordPress files or a broken database: then restore through your hosting control panel, or ask your host.
 
 = How does S3-compatible storage work? =
 
@@ -460,6 +464,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.31.0 =
+* Emergency kit (Backups tab, "Emergency kit"): choose a password and download one PHP file that helps when the site shows a white screen and you cannot log in. Upload it into WordPress's main folder and open it: without loading WordPress, and after the password, it turns off every plugin except SiteFerry, switches to a default theme (both can be undone) and downloads SiteFerry's backups. It works for 7, 30 or 90 days, only on this site's address, and stops when revoked in SiteFerry; it deletes itself with one button. Wrong passwords are slowed down and locked out for 15 minutes after 5; every action is protected against cross-site requests; wp-config.php is read, never run.
 
 = 0.30.0 =
 * Look inside: "Restore" next to any file of wp-content puts that one file back from the backup, checked against the backup's checksum first; the file that was there is kept so it can be undone.

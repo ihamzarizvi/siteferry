@@ -5312,6 +5312,7 @@
 			upload: [ 'siteferry-upload', 'siteferry-upload-toggle' ],
 			schedule: [ 'siteferry-schedule-form', 'siteferry-schedule-toggle' ],
 			move: [ 'siteferry-move', 'siteferry-move-toggle' ],
+			kit: [ 'siteferry-kit', 'siteferry-kit-toggle' ],
 		};
 		Object.keys( drawers ).forEach( ( key ) => {
 			const [ panel, toggle ] = drawers[ key ];
@@ -5323,11 +5324,134 @@
 		if ( which === 'move' && ! $( 'siteferry-move' ).hidden ) {
 			loadReceive();
 		}
+		if ( which === 'kit' && ! $( 'siteferry-kit' ).hidden ) {
+			loadKits();
+		}
 		if ( which === 'options' && ! $( 'siteferry-export-form' ).hidden && ! space ) {
 			loadSpace( false ); // Measured once the options are opened, not on every page load.
 		}
 		if ( which && drawers[ which ] && ! $( drawers[ which ][ 0 ] ).hidden ) {
 			closePanels( 'drawers' );
+		}
+	}
+
+	// ------------------------------------------------------------ Emergency kit
+
+	/** The kits made, with their state and a Revoke button for those still working. */
+	function renderKits( kits ) {
+		const states = {
+			active: __( 'Works', 'siteferry' ),
+			expired: __( 'Expired', 'siteferry' ),
+			revoked: __( 'Revoked', 'siteferry' ),
+		};
+		$( 'siteferry-kit-list' ).replaceChildren(
+			...( kits.length
+				? kits.map( ( kit ) =>
+						el( 'li', { class: 'sf-kit-item is-' + kit.state }, [
+							el( 'code', { text: kit.name } ),
+							el( 'span', {
+								class: 'sf-kit-when',
+								text: sprintf(
+									/* translators: 1: when the kit was made, 2: when it stops working */
+									__( 'made %1$s, works until %2$s', 'siteferry' ),
+									date( kit.made ),
+									date( kit.expires )
+								),
+							} ),
+							el( 'span', { class: 'sf-pill', text: states[ kit.state ] || kit.state } ),
+							...( kit.state === 'active' ? [ el( 'button', { type: 'button', class: 'button-link button-link-delete', 'data-kit': kit.id, text: __( 'Revoke', 'siteferry' ) } ) ] : [] ),
+						] )
+				  )
+				: [ el( 'li', { class: 'sf-kit-item', text: __( 'No kit made yet.', 'siteferry' ) } ) ] )
+		);
+	}
+
+	async function loadKits() {
+		try {
+			renderKits( await api( 'GET', 'emergency-kits' ) );
+		} catch ( error ) {
+			$( 'siteferry-kit-list' ).replaceChildren( el( 'li', { text: error.message } ) );
+		}
+	}
+
+	function kitResult( ok, text ) {
+		const box = $( 'siteferry-kit-result' );
+		box.className = 'sf-result' + ( ok === true ? ' is-done' : ok === false ? ' is-failed' : '' );
+		box.replaceChildren( el( 'p', { text } ) );
+		box.hidden = false;
+	}
+
+	/** Makes a kit and saves the file: the password goes in the request body, never in an address. */
+	async function makeKit( event ) {
+		event.preventDefault();
+		const form = $( 'siteferry-kit-form' );
+		const password = form.elements.password.value;
+		const again = form.elements.again.value;
+		if ( password.length < 12 ) {
+			kitResult( false, __( 'Choose a password of at least 12 characters.', 'siteferry' ) );
+			form.elements.password.focus();
+			return;
+		}
+		if ( password !== again ) {
+			kitResult( false, __( 'The two passwords are not the same.', 'siteferry' ) );
+			form.elements.again.focus();
+			return;
+		}
+		const button = $( 'siteferry-kit-make' );
+		button.disabled = true;
+		try {
+			const response = await fetch( url( 'emergency-kits' ), {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'X-WP-Nonce': cfg.nonce, 'Content-Type': 'application/json' },
+				body: JSON.stringify( { password, again, days: Number( form.elements.days.value ) } ),
+			} );
+			if ( ! response.ok ) {
+				let message = sprintf(
+					/* translators: %d: HTTP status code, such as 500 */
+					__( 'Request failed (HTTP %d).', 'siteferry' ),
+					response.status
+				);
+				try {
+					message = ( await response.json() ).message || message;
+				} catch ( e ) {}
+				throw new Error( message );
+			}
+			const match = /filename="([^"]+)"/.exec( response.headers.get( 'Content-Disposition' ) || '' );
+			const name = match ? match[ 1 ] : 'siteferry-emergency.php';
+			const link = el( 'a', { href: URL.createObjectURL( await response.blob() ), download: name } );
+			document.body.appendChild( link );
+			link.click();
+			link.remove();
+			setTimeout( () => URL.revokeObjectURL( link.href ), 10000 );
+			form.reset();
+			form.elements.days.value = '30';
+			kitResult(
+				true,
+				sprintf(
+					/* translators: %s: file name of the emergency kit */
+					__( 'Downloaded %s. Keep it with its password somewhere safe, not on this server.', 'siteferry' ),
+					name
+				)
+			);
+			loadKits();
+		} catch ( error ) {
+			kitResult( false, error.message );
+		} finally {
+			button.disabled = false;
+		}
+	}
+
+	async function revokeKit( id ) {
+		// eslint-disable-next-line no-alert
+		if ( ! window.confirm( __( 'Revoke this emergency kit? It stops working as soon as it reads this site\'s database. This cannot be undone; you can make a new kit.', 'siteferry' ) ) ) {
+			return;
+		}
+		try {
+			renderKits( await api( 'POST', 'emergency-kits/' + id + '/revoke' ) );
+			kitResult( true, __( 'The kit is revoked.', 'siteferry' ) );
+		} catch ( error ) {
+			kitResult( false, error.message );
 		}
 	}
 
@@ -5499,6 +5623,14 @@
 		$( 'siteferry-upload-toggle' ).addEventListener( 'click', () => toggleDrawer( 'upload' ) );
 		$( 'siteferry-schedule-toggle' ).addEventListener( 'click', () => toggleDrawer( 'schedule' ) );
 		$( 'siteferry-move-toggle' ).addEventListener( 'click', () => toggleDrawer( 'move' ) );
+		$( 'siteferry-kit-toggle' ).addEventListener( 'click', () => toggleDrawer( 'kit' ) );
+		$( 'siteferry-kit-form' ).addEventListener( 'submit', makeKit );
+		$( 'siteferry-kit-list' ).addEventListener( 'click', ( event ) => {
+			const button = event.target.closest( 'button[data-kit]' );
+			if ( button ) {
+				revokeKit( button.dataset.kit );
+			}
+		} );
 		$( 'siteferry-move-check' ).addEventListener( 'click', checkMoveKey );
 		document.querySelectorAll( 'input[name=siteferry_move_mode]' ).forEach( ( input ) =>
 			input.addEventListener( 'change', () => {

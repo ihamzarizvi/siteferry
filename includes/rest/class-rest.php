@@ -123,6 +123,9 @@ final class Rest {
 			array( '/schedule', WP_REST_Server::CREATABLE, 'save_schedule', $admin ),
 			array( '/schedule/run', WP_REST_Server::CREATABLE, 'run_schedule', $admin ),
 			array( '/undo/dismiss', WP_REST_Server::CREATABLE, 'dismiss_undo', $admin ),
+			array( '/emergency-kits', WP_REST_Server::READABLE, 'emergency_kits', $admin ),
+			array( '/emergency-kits', WP_REST_Server::CREATABLE, 'make_emergency_kit', $admin ),
+			array( '/emergency-kits/(?P<kit>[a-f0-9]{8})/revoke', WP_REST_Server::CREATABLE, 'revoke_emergency_kit', $admin ),
 			array( '/choices', WP_REST_Server::CREATABLE, 'save_choices', $admin ),
 			array( '/choices', WP_REST_Server::DELETABLE, 'reset_choices', $admin ),
 			array( '/receive', WP_REST_Server::READABLE, 'receive_status', $admin ),
@@ -509,6 +512,50 @@ final class Rest {
 			}
 		}
 		return $out;
+	}
+
+	/**
+	 * The emergency kits made, newest first.
+	 */
+	public static function emergency_kits(): array {
+		return \SiteFerry\Emergency_Kit::kits();
+	}
+
+	/**
+	 * Makes an emergency kit and sends it as a download (the password comes in the JSON body; it
+	 * is not kept, and the file holds only its hash). Ends the request.
+	 *
+	 * @param WP_REST_Request $request Request with password, again, days.
+	 */
+	public static function make_emergency_kit( WP_REST_Request $request ): void {
+		$params = (array) $request->get_json_params();
+		$kit    = \SiteFerry\Emergency_Kit::make(
+			isset( $params['password'] ) && is_string( $params['password'] ) ? $params['password'] : '',
+			isset( $params['again'] ) && is_string( $params['again'] ) ? $params['again'] : '',
+			isset( $params['days'] ) ? (int) $params['days'] : 0
+		);
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
+		status_header( 200 );
+		header( 'Content-Type: application/octet-stream' );
+		header( 'Content-Disposition: attachment; filename="' . $kit['name'] . '"' );
+		header( 'Content-Length: ' . strlen( $kit['code'] ) );
+		header( 'Cache-Control: no-store' );
+		header( 'X-Content-Type-Options: nosniff' );
+		header( 'X-SiteFerry-Kit: ' . $kit['id'] );
+		echo $kit['code']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a file download (the kit's PHP code), not HTML.
+		exit;
+	}
+
+	/**
+	 * Revokes an emergency kit.
+	 *
+	 * @param WP_REST_Request $request Request with the kit id.
+	 */
+	public static function revoke_emergency_kit( WP_REST_Request $request ): array {
+		\SiteFerry\Emergency_Kit::revoke( (string) $request['kit'] );
+		return \SiteFerry\Emergency_Kit::kits();
 	}
 
 	/**

@@ -3198,3 +3198,45 @@ details.sf-dest[open] > .sf-dest-head::after {
 	margin-left: 0;
 	white-space: nowrap;
 }
+/* ------------------------------------------------- Emergency kit */
+
+.siteferry .sf-kit-form {
+	max-width: 520px;
+}
+
+.siteferry .sf-kit-form .sf-field input,
+.siteferry .sf-kit-form .sf-field select {
+	display: block;
+	width: 100%;
+	max-width: 360px;
+}
+
+.siteferry .sf-kit-list {
+	margin: 0 0 8px;
+	padding: 0;
+	list-style: none;
+}
+
+.siteferry .sf-kit-item {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 10px;
+	margin: 0;
+	padding: 8px 0;
+	border-top: 1px solid var(--sf-fog);
+}
+
+.siteferry .sf-kit-item code {
+	overflow-wrap: anywhere;
+}
+
+.siteferry .sf-kit-when {
+	font-size: 12px;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-kit-item.is-expired,
+.siteferry .sf-kit-item.is-revoked {
+	opacity: 0.7;
+}
