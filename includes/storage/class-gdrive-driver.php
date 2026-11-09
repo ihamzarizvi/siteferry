@@ -38,6 +38,11 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 
 	const FOLDER_TYPE = 'application/vnd.google-apps.folder';
 
+	/**
+	 * How many folders deep the backup folder's path may go ("Backups/Sites/example.com").
+	 */
+	const MAX_LEVELS = 5;
+
 	/** Seconds for a request that carries a part. */
 	const TIMEOUT = 120;
 
@@ -264,11 +269,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		if ( ! in_array( $mode, self::MODES, true ) ) {
 			throw new Storage_Exception( __( 'Choose how to sign in to Google Drive.', 'siteferry' ), Storage_Exception::CONFIG );
 		}
-		$folder = trim( isset( $input['folder'] ) ? (string) $input['folder'] : '' );
-		$folder = '' === $folder ? 'SiteFerry' : $folder;
-		if ( ! preg_match( '/^[^\x00-\x1f\x7f\/\\\\]{1,100}$/u', $folder ) ) {
-			throw new Storage_Exception( __( 'The folder name may not contain slashes or control characters (it is one folder).', 'siteferry' ), Storage_Exception::CONFIG );
-		}
+		$folder = self::folder_of( isset( $input['folder'] ) ? (string) $input['folder'] : '' );
 		list( $parent_id, $parent_path ) = self::parent_of( $input );
 		if ( 'relay' === $mode ) {
 			return array(
@@ -305,6 +306,30 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			),
 			'secrets'  => array( 'client_secret' => '' === $secret ? null : $secret ),
 		);
+	}
+
+	/**
+	 * The backup folder's name, or a path of up to MAX_LEVELS folders separated by "/" (each one
+	 * created when missing): the parts trimmed, empty parts dropped, "SiteFerry" when empty.
+	 *
+	 * @param string $input Raw name.
+	 * @throws Storage_Exception On a part with control characters or backslashes, or too deep a path.
+	 */
+	private static function folder_of( string $input ): string {
+		$parts = array_values( array_filter( array_map( 'trim', explode( '/', $input ) ), 'strlen' ) );
+		if ( array() === $parts ) {
+			return 'SiteFerry';
+		}
+		if ( count( $parts ) > self::MAX_LEVELS ) {
+			/* translators: %d: a number */
+			throw new Storage_Exception( sprintf( __( 'The backup folder can be at most %d folders deep.', 'siteferry' ), self::MAX_LEVELS ), Storage_Exception::CONFIG );
+		}
+		foreach ( $parts as $part ) {
+			if ( ! preg_match( '/^[^\x00-\x1f\x7f\\\\]{1,100}$/u', $part ) ) {
+				throw new Storage_Exception( __( 'Folder names may not contain backslashes or control characters, and each may be at most 100 characters long. Put / between folders.', 'siteferry' ), Storage_Exception::CONFIG );
+			}
+		}
+		return implode( '/', $parts );
 	}
 
 	/**
@@ -389,7 +414,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		return sprintf(
 			'Google Drive%s, folder "%s"',
 			'' === $this->auth['account'] ? '' : ' of ' . $this->auth['account'],
-			'root' === $this->parent() ? $this->settings['folder'] : $this->settings['parent_path'] . ' / ' . $this->settings['folder']
+			( 'root' === $this->parent() ? '' : $this->settings['parent_path'] . ' / ' ) . str_replace( '/', ' / ', $this->settings['folder'] )
 		);
 	}
 
@@ -752,8 +777,8 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			}
 		);
 		$lines[] = 'root' === $this->parent()
-			? sprintf( /* translators: %s: a folder name */ __( 'Using the folder "%s" at the top of My Drive (SiteFerry sees only the files it created).', 'siteferry' ), $this->settings['folder'] )
-			: sprintf( /* translators: 1: a folder name, 2: the name of the folder chosen in Google Drive */ __( 'Using the folder "%1$s" inside "%2$s" (SiteFerry sees only the files it created).', 'siteferry' ), $this->settings['folder'], $this->settings['parent_path'] );
+			? sprintf( /* translators: %s: a folder name */ __( 'Using the folder "%s" at the top of My Drive (SiteFerry sees only the files it created).', 'siteferry' ), str_replace( '/', ' / ', $this->settings['folder'] ) )
+			: sprintf( /* translators: 1: a folder name, 2: the name of the folder chosen in Google Drive */ __( 'Using the folder "%1$s" inside "%2$s" (SiteFerry sees only the files it created).', 'siteferry' ), str_replace( '/', ' / ', $this->settings['folder'] ), $this->settings['parent_path'] );
 
 		$name  = '.siteferry-test-' . bin2hex( random_bytes( 6 ) ) . '.bin';
 		$data  = random_bytes( self::CHUNK_UNIT ) . 'SiteFerry connection test, ' . gmdate( 'Y-m-d H:i:s' ) . ' UTC.';
@@ -869,37 +894,12 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			}
 		}
 
-		// A folder SiteFerry made earlier, at the top of My Drive or in the folder picked for it
-		// (drive.file shows only the app's own files, and the folders picked for it).
-		$query = array(
-			'q'        => sprintf( "mimeType = '%s' and name = '%s' and '%s' in parents and trashed = false", self::FOLDER_TYPE, self::quote( $name ), self::quote( $parent ) ),
-			'fields'   => 'files(id,name)',
-			'spaces'   => 'drive',
-			'pageSize' => '10',
-		);
-		$files = self::json( $this->request( 'GET', $this->endpoints['api'] . '/files?' . self::query( $query ) ) );
-		$id    = isset( $files['files'][0]['id'] ) ? (string) $files['files'][0]['id'] : '';
-		if ( '' === $id ) {
-			if ( ! $create ) {
+		// Each folder of the path, found or made inside the one before it.
+		$id = $parent;
+		foreach ( explode( '/', $name ) as $part ) {
+			$id = $this->child_folder( $id, $part, $create );
+			if ( null === $id ) {
 				return null;
-			}
-			$made = self::json(
-				$this->request(
-					'POST',
-					$this->endpoints['api'] . '/files?' . self::query( array( 'fields' => 'id' ) ),
-					array( 'Content-Type' => 'application/json; charset=UTF-8' ),
-					self::encode(
-						array(
-							'name'     => $name,
-							'mimeType' => self::FOLDER_TYPE,
-							'parents'  => array( $parent ),
-						)
-					)
-				)
-			);
-			$id = isset( $made['id'] ) ? (string) $made['id'] : '';
-			if ( '' === $id ) {
-				throw new Storage_Exception( __( 'Google Drive did not create the folder.', 'siteferry' ), Storage_Exception::REMOTE );
 			}
 		}
 		$this->auth['folder_id']     = $id;
@@ -907,6 +907,51 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		$this->auth['folder_parent'] = $parent;
 		$this->save_auth();
 		$this->folder_ok = true;
+		return $id;
+	}
+
+	/**
+	 * Id of the folder named $name inside $parent, found or created; null if it does not exist and
+	 * $create is false. Found: a folder SiteFerry made earlier, at the top of My Drive or in the
+	 * folder picked for it (drive.file shows only the app's own files, and the folders picked for it).
+	 *
+	 * @param string $parent Id of the folder it is in ("root": the top of My Drive).
+	 * @param string $name   Its name.
+	 * @param bool   $create Create it if missing.
+	 * @throws Storage_Exception If Drive refuses.
+	 */
+	private function child_folder( string $parent, string $name, bool $create ): ?string {
+		$query = array(
+			'q'        => sprintf( "mimeType = '%s' and name = '%s' and '%s' in parents and trashed = false", self::FOLDER_TYPE, self::quote( $name ), self::quote( $parent ) ),
+			'fields'   => 'files(id,name)',
+			'spaces'   => 'drive',
+			'pageSize' => '10',
+		);
+		$files = self::json( $this->request( 'GET', $this->endpoints['api'] . '/files?' . self::query( $query ) ) );
+		if ( isset( $files['files'][0]['id'] ) && '' !== (string) $files['files'][0]['id'] ) {
+			return (string) $files['files'][0]['id'];
+		}
+		if ( ! $create ) {
+			return null;
+		}
+		$made = self::json(
+			$this->request(
+				'POST',
+				$this->endpoints['api'] . '/files?' . self::query( array( 'fields' => 'id' ) ),
+				array( 'Content-Type' => 'application/json; charset=UTF-8' ),
+				self::encode(
+					array(
+						'name'     => $name,
+						'mimeType' => self::FOLDER_TYPE,
+						'parents'  => array( $parent ),
+					)
+				)
+			)
+		);
+		$id = isset( $made['id'] ) ? (string) $made['id'] : '';
+		if ( '' === $id ) {
+			throw new Storage_Exception( __( 'Google Drive did not create the folder.', 'siteferry' ), Storage_Exception::REMOTE );
+		}
 		return $id;
 	}
 

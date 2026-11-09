@@ -1483,7 +1483,7 @@
 				.setOAuthToken( details.token )
 				.setDeveloperKey( details.api_key )
 				.setAppId( details.app_id )
-				.setTitle( __( 'Choose the folder for the SiteFerry backups', 'siteferry' ) )
+				.setTitle( __( 'Choose where SiteFerry makes its backup folder', 'siteferry' ) )
 				.setCallback( ( data ) => {
 					if ( data[ g.Response.ACTION ] !== g.Action.PICKED ) {
 						return;
@@ -1501,7 +1501,7 @@
 						el( 'p', {
 							text: sprintf(
 								/* translators: 1: name of the folder chosen in Google Drive, 2: name of the backup folder */
-								__( 'Chosen: %1. SiteFerry will keep the backups in a folder %2 inside it. Rename it below if you like, then click Save.', 'siteferry' ),
+								__( 'Chosen: %1$s. SiteFerry will keep the backups in a new folder %2$s inside it. Rename it below if you like (Backups/My site makes two folders), then click Save.', 'siteferry' ),
 								doc[ g.Document.NAME ],
 								name.value
 							),

@@ -147,7 +147,7 @@ Sf_Test::run(
 		Sf_Test::same( '12-ab.apps.googleusercontent.com', Gdrive_Driver::client_key( array( 'client_id' => '12-ab.apps.googleusercontent.com', 'folder' => 'x' ) ), 'settings saved before modes existed count as own-client:' );
 		Sf_Test::same( 'SiteFerry', Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => '12-ab.apps.googleusercontent.com' ) )['settings']['folder'], 'default folder:' );
 		Sf_Test::same( null, Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => '12-ab.apps.googleusercontent.com' ) )['secrets']['client_secret'], 'empty secret means "keep":' );
-		foreach ( array( array( 'mode' => 'device' ), array( 'mode' => 'own', 'client_id' => '' ), array( 'mode' => 'own', 'client_id' => 'abc' ), array( 'mode' => 'own', 'client_id' => 'a b.apps.googleusercontent.com' ), array( 'folder' => 'a/b' ), array( 'mode' => 'own', 'client_id' => '12-ab.apps.googleusercontent.com', 'folder' => "a\nb" ) ) as $input ) {
+		foreach ( array( array( 'mode' => 'device' ), array( 'mode' => 'own', 'client_id' => '' ), array( 'mode' => 'own', 'client_id' => 'abc' ), array( 'mode' => 'own', 'client_id' => 'a b.apps.googleusercontent.com' ), array( 'folder' => 'a\\b' ), array( 'folder' => 'a/b/c/d/e/f' ), array( 'folder' => 'ok/' . str_repeat( 'x', 101 ) ), array( 'mode' => 'own', 'client_id' => '12-ab.apps.googleusercontent.com', 'folder' => "a\nb" ) ) as $input ) {
 			try {
 				Gdrive_Driver::normalize( $input );
 			} catch ( Storage_Exception $e ) {
@@ -561,6 +561,43 @@ Sf_Test::run(
 		sf_gsend( $top, 'c-2026-01-01-000000000000.tar', 'ghi' );
 		$parents = array_column( $transport->google->folders(), 'parents' );
 		Sf_Test::ok( in_array( array( 'root' ), $parents, true ) && in_array( array( 'fPickedClientsFolder01' ), $parents, true ), 'one folder in each place' );
+	}
+);
+
+Sf_Test::run(
+	'a backup folder path ("Backups/My site"): cleaned up, each folder made inside the one before, found again',
+	static function () {
+		Sf_Test::same( 'Backups/My site', Gdrive_Driver::normalize( array( 'folder' => ' /Backups / / My site/ ' ) )['settings']['folder'], 'parts trimmed, empty parts dropped:' );
+		Sf_Test::same( 'SiteFerry', Gdrive_Driver::normalize( array( 'folder' => ' / / ' ) )['settings']['folder'], 'only slashes: the default:' );
+		Sf_Test::same( 'a/b/c/d/e', Gdrive_Driver::normalize( array( 'folder' => 'a/b/c/d/e' ) )['settings']['folder'], 'five levels are fine:' );
+
+		$picked                                 = array(
+			'parent_id'   => 'fPickedClientsFolder01',
+			'parent_path' => 'Clients',
+			'folder'      => 'Backups/xsofty.com',
+		);
+		list( $driver, $transport, $endpoints ) = sf_gdrive( array(), $picked );
+		sf_consent( $driver, $transport, $saved );
+		Sf_Test::ok( false !== strpos( $driver->describe(), 'folder "Clients / Backups / xsofty.com"' ), 'described as a path: ' . $driver->describe() );
+		Sf_Test::same( array(), $driver->list(), 'nothing there yet, and nothing made by listing:' );
+		Sf_Test::same( 0, count( $transport->google->folders() ) );
+		sf_gsend( $driver, 'a-2026-01-01-000000000000.tar', 'abc' );
+		$folders = $transport->google->folders();
+		Sf_Test::same( 2, count( $folders ) );
+		$ids = array_flip( array_map( static function ( array $f ): string { return $f['name']; }, $folders ) );
+		Sf_Test::same( array( 'fPickedClientsFolder01' ), $folders[ $ids['Backups'] ]['parents'], 'Backups inside the picked folder:' );
+		Sf_Test::same( array( (string) $ids['Backups'] ), $folders[ $ids['xsofty.com'] ]['parents'], 'xsofty.com inside Backups:' );
+
+		// Another site next to it reuses Backups.
+		$other = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'folder' => 'Backups/other.com' ) + $picked + array( 'mode' => 'own', 'client_id' => SF_G_CLIENT ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
+		$other->use_auth( $saved, null );
+		sf_gsend( $other, 'b-2026-01-01-000000000000.tar', 'def' );
+		Sf_Test::same( 3, count( $transport->google->folders() ), 'one Backups folder, two site folders:' );
+		Sf_Test::same( array( 'b-2026-01-01-000000000000.tar' ), array_column( $other->list(), 'name' ) );
+
+		$again = new Gdrive_Driver( Gdrive_Driver::normalize( $picked + array( 'mode' => 'own', 'client_id' => SF_G_CLIENT ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
+		$again->use_auth( array( 'folder_id' => '' ) + $saved, null );
+		Sf_Test::same( array( 'a-2026-01-01-000000000000.tar' ), array_column( $again->list(), 'name' ), 'found again without the saved id:' );
 	}
 );
 

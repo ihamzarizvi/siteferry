@@ -861,6 +861,7 @@ final class Admin {
 					<td>
 						<input type="text" class="regular-text" id="siteferry-gdrive-folder" name="folder" placeholder="SiteFerry" spellcheck="false" autocomplete="off">
 						<p class="description"><?php esc_html_e( 'SiteFerry creates this folder in the place above and keeps the backups in it. It can only see the files and folders it created itself.', 'siteferry' ); ?></p>
+						<p class="description"><?php esc_html_e( 'For new folders inside each other, put / between the names, for example Backups/My site. Google’s folder picker cannot make new folders; SiteFerry makes these for you when you save.', 'siteferry' ); ?></p>
 					</td>
 				</tr>
 			</table>

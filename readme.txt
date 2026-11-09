@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.27.0
+Stable tag: 0.27.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -440,6 +440,10 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.27.1 =
+* Google Drive: Google's folder picker cannot make new folders, so the backup folder name may now be a path: "Backups/My site" makes a folder Backups (or reuses the one SiteFerry made before) with My site inside it, in the chosen folder or at the top of My Drive. Up to 5 levels; / separates the folders. The picker's title and the form say so.
+* Fixed: after choosing a folder, the message showed "%1" and "%2" instead of the folder names.
 
 = 0.27.0 =
 * Google Drive: "Choose a folder in Drive" opens Google's own folder picker; SiteFerry then keeps the backups in a folder inside the chosen one (named after the site, renameable), instead of only at the top of My Drive. Picking a folder gives SiteFerry access to that folder only (it keeps the drive.file permission). "Use the top of My Drive instead" goes back. With one-click sign-in the picker's details come from the sign-in service; with your own OAuth client, enter its Picker API key and project number.

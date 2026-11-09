@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: SiteFerry 0.27.0\n"
+"Project-Id-Version: SiteFerry 0.27.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/siteferry\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-09T10:04:29+00:00\n"
+"POT-Creation-Date: 2026-11-09T12:38:03+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: siteferry\n"
@@ -233,7 +233,7 @@ msgstr ""
 #: includes/admin/class-admin.php:235
 #: includes/admin/class-admin.php:365
 #: includes/admin/class-admin.php:597
-#: includes/admin/class-admin.php:983
+#: includes/admin/class-admin.php:984
 #: assets/admin.js:1197
 #: assets/admin.js:2390
 msgid "Password"
@@ -868,7 +868,7 @@ msgstr ""
 
 #: includes/admin/class-admin.php:761
 #: includes/admin/class-admin.php:832
-#: includes/admin/class-admin.php:986
+#: includes/admin/class-admin.php:987
 #: assets/admin.js:1395
 msgid "Stored encrypted. It is never shown again."
 msgstr ""
@@ -886,29 +886,29 @@ msgid "Advanced settings: endpoint and addressing"
 msgstr ""
 
 #: includes/admin/class-admin.php:772
-#: includes/admin/class-admin.php:870
-#: includes/admin/class-admin.php:939
-#: includes/admin/class-admin.php:1003
+#: includes/admin/class-admin.php:871
+#: includes/admin/class-admin.php:940
+#: includes/admin/class-admin.php:1004
 #: assets/admin.js:2524
 msgid "Save"
 msgstr ""
 
 #: includes/admin/class-admin.php:773
-#: includes/admin/class-admin.php:871
-#: includes/admin/class-admin.php:940
-#: includes/admin/class-admin.php:1004
+#: includes/admin/class-admin.php:872
+#: includes/admin/class-admin.php:941
+#: includes/admin/class-admin.php:1005
 msgid "Test connection"
 msgstr ""
 
 #: includes/admin/class-admin.php:774
-#: includes/admin/class-admin.php:873
-#: includes/admin/class-admin.php:942
-#: includes/admin/class-admin.php:1005
+#: includes/admin/class-admin.php:874
+#: includes/admin/class-admin.php:943
+#: includes/admin/class-admin.php:1006
 msgid "Remove these settings"
 msgstr ""
 
 #: includes/admin/class-admin.php:791
-#: includes/admin/class-admin.php:891
+#: includes/admin/class-admin.php:892
 msgid "Sign-in:"
 msgstr ""
 
@@ -947,12 +947,12 @@ msgid "Enter the client ID and secret here, then click \"Connect to Google Drive
 msgstr ""
 
 #: includes/admin/class-admin.php:817
-#: includes/admin/class-admin.php:917
+#: includes/admin/class-admin.php:918
 msgid "Redirect URI"
 msgstr ""
 
 #: includes/admin/class-admin.php:820
-#: includes/admin/class-admin.php:920
+#: includes/admin/class-admin.php:921
 msgid "Copy"
 msgstr ""
 
@@ -1010,126 +1010,130 @@ msgstr ""
 msgid "SiteFerry creates this folder in the place above and keeps the backups in it. It can only see the files and folders it created itself."
 msgstr ""
 
-#: includes/admin/class-admin.php:869
+#: includes/admin/class-admin.php:864
+msgid "For new folders inside each other, put / between the names, for example Backups/My site. Google’s folder picker cannot make new folders; SiteFerry makes these for you when you save."
+msgstr ""
+
+#: includes/admin/class-admin.php:870
 msgid "Sign in with Google"
 msgstr ""
 
-#: includes/admin/class-admin.php:869
+#: includes/admin/class-admin.php:870
 msgid "Connect to Google Drive"
 msgstr ""
 
-#: includes/admin/class-admin.php:872
-#: includes/admin/class-admin.php:941
+#: includes/admin/class-admin.php:873
+#: includes/admin/class-admin.php:942
 msgid "Disconnect"
 msgstr ""
 
-#: includes/admin/class-admin.php:893
+#: includes/admin/class-admin.php:894
 msgid "Sign in with Dropbox (recommended)"
 msgstr ""
 
-#: includes/admin/class-admin.php:894
+#: includes/admin/class-admin.php:895
 msgid "Use my own Dropbox app (advanced)"
 msgstr ""
 
 #. translators: %s: host name of the sign-in service
-#: includes/admin/class-admin.php:901
+#: includes/admin/class-admin.php:902
 #, php-format
 msgid "Sign in with your Dropbox account; no keys needed. The sign-in page opens through SiteFerry's sign-in service at %s, which only passes your browser on to Dropbox and back: the access itself goes straight to this site and never through the service. Backups go straight between this site and SiteFerry's own folder in your Dropbox (Apps, SiteFerry); SiteFerry cannot see anything else there."
 msgstr ""
 
-#: includes/admin/class-admin.php:907
+#: includes/admin/class-admin.php:908
 msgid "How to create your own Dropbox app (once)"
 msgstr ""
 
-#: includes/admin/class-admin.php:909
+#: includes/admin/class-admin.php:910
 msgid "In the Dropbox App Console (dropbox.com/developers/apps), click \"Create app\": choose \"Scoped access\" and \"App folder\", and give it a name. Its folder appears in your Dropbox under Apps."
 msgstr ""
 
-#: includes/admin/class-admin.php:910
+#: includes/admin/class-admin.php:911
 msgid "On the Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then click Submit."
 msgstr ""
 
-#: includes/admin/class-admin.php:911
+#: includes/admin/class-admin.php:912
 msgid "On the Settings tab, add the redirect URI below under OAuth 2, Redirect URIs (Dropbox accepts http only for localhost)."
 msgstr ""
 
-#: includes/admin/class-admin.php:912
+#: includes/admin/class-admin.php:913
 msgid "Enter the app key here (no app secret is needed), then click \"Connect to Dropbox\" (this also saves it)."
 msgstr ""
 
-#: includes/admin/class-admin.php:921
+#: includes/admin/class-admin.php:922
 msgid "Register exactly this address with your Dropbox app."
 msgstr ""
 
-#: includes/admin/class-admin.php:925
+#: includes/admin/class-admin.php:926
 msgid "App key"
 msgstr ""
 
-#: includes/admin/class-admin.php:929
+#: includes/admin/class-admin.php:930
 msgid "Folder in the app folder"
 msgstr ""
 
-#: includes/admin/class-admin.php:931
+#: includes/admin/class-admin.php:932
 msgid "(the app folder itself)"
 msgstr ""
 
-#: includes/admin/class-admin.php:932
+#: includes/admin/class-admin.php:933
 msgid "Optional, for example the site's name when several sites share one Dropbox. Dropbox creates it with the first backup."
 msgstr ""
 
-#: includes/admin/class-admin.php:938
+#: includes/admin/class-admin.php:939
 msgid "Sign in with Dropbox"
 msgstr ""
 
-#: includes/admin/class-admin.php:938
+#: includes/admin/class-admin.php:939
 msgid "Connect to Dropbox"
 msgstr ""
 
-#: includes/admin/class-admin.php:957
+#: includes/admin/class-admin.php:958
 msgid "This server's PHP has no ftp extension, so FTP cannot be used here. Ask the host to enable it."
 msgstr ""
 
-#: includes/admin/class-admin.php:961
+#: includes/admin/class-admin.php:962
 msgid "Server"
 msgstr ""
 
-#: includes/admin/class-admin.php:964
+#: includes/admin/class-admin.php:965
 msgid "Port"
 msgstr ""
 
-#: includes/admin/class-admin.php:969
+#: includes/admin/class-admin.php:970
 msgid "Encryption"
 msgstr ""
 
-#: includes/admin/class-admin.php:972
+#: includes/admin/class-admin.php:973
 msgid "Explicit FTPS (TLS) - recommended"
 msgstr ""
 
-#: includes/admin/class-admin.php:973
+#: includes/admin/class-admin.php:974
 msgid "None: plain FTP (password and backups unencrypted)"
 msgstr ""
 
-#: includes/admin/class-admin.php:975
+#: includes/admin/class-admin.php:976
 msgid "FTPS on port 990 (\"implicit\") and SFTP are not supported. PHP's FTP functions encrypt the connection but cannot check the server's certificate."
 msgstr ""
 
-#: includes/admin/class-admin.php:979
+#: includes/admin/class-admin.php:980
 msgid "User name"
 msgstr ""
 
-#: includes/admin/class-admin.php:990
+#: includes/admin/class-admin.php:991
 msgid "Folder"
 msgstr ""
 
-#: includes/admin/class-admin.php:993
+#: includes/admin/class-admin.php:994
 msgid "Relative to the folder you land in after logging in, or starting with / from the server's top. Created if missing. Keep it outside the public web folder."
 msgstr ""
 
-#: includes/admin/class-admin.php:997
+#: includes/admin/class-admin.php:998
 msgid "Connection"
 msgstr ""
 
-#: includes/admin/class-admin.php:998
+#: includes/admin/class-admin.php:999
 msgid "Passive mode (works through most firewalls)"
 msgstr ""
 
@@ -2608,28 +2612,28 @@ msgstr ""
 
 #: includes/storage/class-dropbox-driver.php:693
 #: includes/storage/class-ftp-driver.php:477
-#: includes/storage/class-gdrive-driver.php:774
+#: includes/storage/class-gdrive-driver.php:799
 #: includes/storage/class-s3-driver.php:292
 msgid "Reading the test file back"
 msgstr ""
 
 #: includes/storage/class-dropbox-driver.php:696
 #: includes/storage/class-ftp-driver.php:480
-#: includes/storage/class-gdrive-driver.php:778
+#: includes/storage/class-gdrive-driver.php:803
 #: includes/storage/class-s3-driver.php:296
 msgid "The file read back differs from what was written."
 msgstr ""
 
 #: includes/storage/class-dropbox-driver.php:700
 #: includes/storage/class-ftp-driver.php:486
-#: includes/storage/class-gdrive-driver.php:782
+#: includes/storage/class-gdrive-driver.php:807
 #: includes/storage/class-s3-driver.php:300
 msgid "Read it back unchanged."
 msgstr ""
 
 #: includes/storage/class-dropbox-driver.php:703
 #: includes/storage/class-ftp-driver.php:489
-#: includes/storage/class-gdrive-driver.php:785
+#: includes/storage/class-gdrive-driver.php:810
 #: includes/storage/class-s3-driver.php:303
 msgid "Listing the folder"
 msgstr ""
@@ -2637,7 +2641,7 @@ msgstr ""
 #. translators: %d: a number
 #: includes/storage/class-dropbox-driver.php:708
 #: includes/storage/class-ftp-driver.php:494
-#: includes/storage/class-gdrive-driver.php:790
+#: includes/storage/class-gdrive-driver.php:815
 #: includes/storage/class-s3-driver.php:308
 #, php-format
 msgid "Listed the folder: %d SiteFerry backup(s)."
@@ -2645,14 +2649,14 @@ msgstr ""
 
 #: includes/storage/class-dropbox-driver.php:711
 #: includes/storage/class-ftp-driver.php:497
-#: includes/storage/class-gdrive-driver.php:793
+#: includes/storage/class-gdrive-driver.php:818
 #: includes/storage/class-s3-driver.php:311
 msgid "Deleting the test file"
 msgstr ""
 
 #: includes/storage/class-dropbox-driver.php:716
 #: includes/storage/class-ftp-driver.php:509
-#: includes/storage/class-gdrive-driver.php:798
+#: includes/storage/class-gdrive-driver.php:823
 #: includes/storage/class-s3-driver.php:316
 msgid "Deleted the test file."
 msgstr ""
@@ -2796,7 +2800,7 @@ msgid "Connected to %1$s:%2$d and logged in as %3$s WITHOUT encryption: the pass
 msgstr ""
 
 #: includes/storage/class-ftp-driver.php:447
-#: includes/storage/class-gdrive-driver.php:749
+#: includes/storage/class-gdrive-driver.php:774
 msgid "Opening the folder"
 msgstr ""
 
@@ -2873,142 +2877,148 @@ msgstr ""
 msgid "%1$s failed: %2$s%3$s"
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:265
+#: includes/storage/class-gdrive-driver.php:270
 msgid "Choose how to sign in to Google Drive."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:270
-msgid "The folder name may not contain slashes or control characters (it is one folder)."
-msgstr ""
-
-#: includes/storage/class-gdrive-driver.php:288
+#: includes/storage/class-gdrive-driver.php:289
 msgid "Enter the OAuth client ID (it ends with .apps.googleusercontent.com)."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:292
+#: includes/storage/class-gdrive-driver.php:293
 msgid "The client secret contains characters that are not allowed."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:324
+#. translators: %d: a number
+#: includes/storage/class-gdrive-driver.php:325
+#, php-format
+msgid "The backup folder can be at most %d folders deep."
+msgstr ""
+
+#: includes/storage/class-gdrive-driver.php:329
+msgid "Folder names may not contain backslashes or control characters, and each may be at most 100 characters long. Put / between folders."
+msgstr ""
+
+#: includes/storage/class-gdrive-driver.php:349
 msgid "The chosen Google Drive folder is not valid; choose it again."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:340
+#: includes/storage/class-gdrive-driver.php:365
 msgid "The Picker API key contains characters that are not allowed."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:354
+#: includes/storage/class-gdrive-driver.php:379
 msgid "The project number has only digits (Google Cloud console, project settings)."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:452
+#: includes/storage/class-gdrive-driver.php:477
 msgid "Google did not send a refresh token. Remove SiteFerry's access in your Google account (Security, third-party access) and connect again."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:456
+#: includes/storage/class-gdrive-driver.php:481
 msgid "Access to Google Drive was not granted. Connect again and allow SiteFerry to see and change the files it creates."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:542
+#: includes/storage/class-gdrive-driver.php:567
 msgid "Google Drive did not start the upload (no session address in its answer)."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/storage/class-gdrive-driver.php:576
+#: includes/storage/class-gdrive-driver.php:601
 #, php-format
 msgid "Google Drive has %1$d bytes of the upload instead of at least %2$d; start the transfer again."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:594
+#: includes/storage/class-gdrive-driver.php:619
 msgid "Google Drive accepted only part of the data."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:621
+#: includes/storage/class-gdrive-driver.php:646
 msgid "The upload is not complete on Google Drive."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/storage/class-gdrive-driver.php:628
+#: includes/storage/class-gdrive-driver.php:653
 #, php-format
 msgid "The file on Google Drive has %1$d bytes instead of %2$d."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/storage/class-gdrive-driver.php:711
+#: includes/storage/class-gdrive-driver.php:736
 #, php-format
 msgid "%s is not in the Google Drive folder."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:740
+#: includes/storage/class-gdrive-driver.php:765
 msgid "Signing in to Google"
 msgstr ""
 
 #. translators: %s: account
-#: includes/storage/class-gdrive-driver.php:746
+#: includes/storage/class-gdrive-driver.php:771
 #, php-format
 msgid "Signed in to Google Drive as %s."
 msgstr ""
 
 #. translators: %s: a folder name
-#: includes/storage/class-gdrive-driver.php:755
+#: includes/storage/class-gdrive-driver.php:780
 #, php-format
 msgid "Using the folder \"%s\" at the top of My Drive (SiteFerry sees only the files it created)."
 msgstr ""
 
 #. translators: 1: a folder name, 2: the name of the folder chosen in Google Drive
-#: includes/storage/class-gdrive-driver.php:756
+#: includes/storage/class-gdrive-driver.php:781
 #, php-format
 msgid "Using the folder \"%1$s\" inside \"%2$s\" (SiteFerry sees only the files it created)."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:761
+#: includes/storage/class-gdrive-driver.php:786
 msgid "Writing a test file with a resumable upload"
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:771
+#: includes/storage/class-gdrive-driver.php:796
 msgid "Wrote a test file with a resumable upload in two pieces."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:837
+#: includes/storage/class-gdrive-driver.php:862
 msgid "Choosing a folder in Google Drive is not set up on the sign-in service yet. You can still name the folder SiteFerry keeps the backups in."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:838
+#: includes/storage/class-gdrive-driver.php:863
 msgid "To choose a folder in Google Drive with your own client, enter its Picker API key and project number."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:902
+#: includes/storage/class-gdrive-driver.php:953
 msgid "Google Drive did not create the folder."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:964
+#: includes/storage/class-gdrive-driver.php:1009
 msgid "Google Drive sent a different part of the file than requested."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:1023
+#: includes/storage/class-gdrive-driver.php:1068
 msgid "Google Drive is not connected yet. Click \"Connect to Google Drive\" on the Storage tab."
 msgstr ""
 
 #. translators: 1: a service, such as Google, 2: an HTTP status code
-#: includes/storage/class-gdrive-driver.php:1073
+#: includes/storage/class-gdrive-driver.php:1118
 #, php-format
 msgid "%1$s answered HTTP %2$d; try again later."
 msgstr ""
 
 #. translators: %s: empty, or ": " and the error message
-#: includes/storage/class-gdrive-driver.php:1076
+#: includes/storage/class-gdrive-driver.php:1121
 #, php-format
 msgid "Google no longer accepts the saved authorization (invalid_grant%s). Connect Google Drive again on the Storage tab. If the app's consent screen is in \"Testing\", Google ends authorizations after 7 days; publish the app to keep them."
 msgstr ""
 
 #. translators: 1: a service, such as Google, 2: an HTTP status code, 3: empty, or an error code, 4: empty, or ": " and the error message
-#: includes/storage/class-gdrive-driver.php:1086
+#: includes/storage/class-gdrive-driver.php:1131
 #, php-format
 msgid "%1$s refused (HTTP %2$d%3$s%4$s)."
 msgstr ""
 
 #. translators: %s: a host name
-#: includes/storage/class-gdrive-driver.php:1160
+#: includes/storage/class-gdrive-driver.php:1205
 #, php-format
 msgid "Refusing to send the Google token to %s."
 msgstr ""
@@ -3917,12 +3927,13 @@ msgid "Google’s folder picker could not be loaded. Check the connection and tr
 msgstr ""
 
 #: assets/admin.js:1486
-msgid "Choose the folder for the SiteFerry backups"
+msgid "Choose where SiteFerry makes its backup folder"
 msgstr ""
 
 #. translators: 1: name of the folder chosen in Google Drive, 2: name of the backup folder
 #: assets/admin.js:1504
-msgid "Chosen: %1. SiteFerry will keep the backups in a folder %2 inside it. Rename it below if you like, then click Save."
+#, js-format
+msgid "Chosen: %1$s. SiteFerry will keep the backups in a new folder %2$s inside it. Rename it below if you like (Backups/My site makes two folders), then click Save."
 msgstr ""
 
 #: assets/admin.js:1510
