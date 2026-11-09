@@ -54,6 +54,14 @@ final class Fake_Google {
 	public $log = array();
 
 	/**
+	 * Folder ids this account cannot see (deleted, or another account's): searching in them is a
+	 * 404, as with the real Drive.
+	 *
+	 * @var string[]
+	 */
+	public $unseen = array();
+
+	/**
 	 * Loaded state.
 	 *
 	 * @var array
@@ -439,7 +447,10 @@ final class Fake_Google {
 		foreach ( $clauses as $clause ) {
 			$clause = trim( $clause );
 			if ( preg_match( '/^' . $value . ' in parents$/', $clause, $m ) ) {
-				$parent  = stripslashes( $m[1] );
+				$parent = stripslashes( $m[1] );
+				if ( in_array( $parent, $this->unseen, true ) ) {
+					return $this->drive_error( 404, 'notFound', 'File not found: ' . $parent . '.' );
+				}
 				$tests[] = static function ( array $f ) use ( $parent ): bool {
 					return in_array( $parent, $f['parents'], true );
 				};

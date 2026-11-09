@@ -237,9 +237,23 @@ final class Destinations {
 		if ( '' === $code || strlen( $code ) > 2048 || preg_match( '/[\x00-\x20\x7f]/', $code ) ) {
 			throw new Job_Exception( __( 'The answer from the provider has no valid authorization code.', 'siteferry' ), Job_Exception::STEP );
 		}
+		$before = self::stored();
+		$was    = isset( $before[ $id ]['auth']['account'] ) ? (string) $before[ $id ]['auth']['account'] : '';
 		$driver = self::oauth_driver( $id );
-		self::save_auth( $id, $driver->connect( $code, $verifier, self::redirect_uri( $id ) ) );
+		$auth   = $driver->connect( $code, $verifier, self::redirect_uri( $id ) );
+		self::save_auth( $id, $auth );
 		self::record_test( $id, null ); // A new connection has not been tested yet.
+
+		// Another account cannot see a folder chosen in the old one: back to the top of its Drive.
+		$now = isset( $auth['account'] ) ? (string) $auth['account'] : '';
+		if ( '' !== $was && '' !== $now && strtolower( $was ) !== strtolower( $now ) ) {
+			$stored = self::stored();
+			if ( ! empty( $stored[ $id ]['settings']['parent_id'] ) ) {
+				$stored[ $id ]['settings']['parent_id']   = '';
+				$stored[ $id ]['settings']['parent_path'] = '';
+				update_option( self::OPTION, $stored, false );
+			}
+		}
 	}
 
 	/**

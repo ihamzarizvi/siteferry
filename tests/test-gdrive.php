@@ -602,6 +602,29 @@ Sf_Test::run(
 );
 
 Sf_Test::run(
+	'a chosen folder this account cannot see: a clear message to choose again, not a bare 404',
+	static function () {
+		list( $driver, $transport ) = sf_gdrive(
+			array(),
+			array(
+				'parent_id'   => 'fOtherAccountsFolder1',
+				'parent_path' => 'SiteFerry',
+			)
+		);
+		sf_consent( $driver, $transport );
+		$transport->google->unseen = array( 'fOtherAccountsFolder1' );
+		sf_expect_storage_error(
+			Storage_Exception::CONFIG,
+			static function () use ( $driver ) {
+				sf_gsend( $driver, 'a-2026-01-01-000000000000.tar', 'abc' );
+			},
+			'"SiteFerry" chosen in Google Drive cannot be found with this Google account'
+		);
+		Sf_Test::same( 0, count( $transport->google->folders() ), 'nothing made elsewhere:' );
+	}
+);
+
+Sf_Test::run(
 	'the picked folder\'s settings are checked: a malformed id is refused, the shown name is cleaned and cut',
 	static function () {
 		sf_expect_storage_error(

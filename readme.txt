@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.28.0
+Stable tag: 0.28.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -440,6 +440,9 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.28.1 =
+* Fixed: after "Use another account" in Google Drive, the folder chosen in the old account was kept, and the test failed with "HTTP 404 (notFound): File not found". Signing in with a different account now goes back to the top of that account's Drive (the folder name stays); a chosen folder that cannot be found says so and asks to choose again.
 
 = 0.28.0 =
 * Google Drive card redesigned: the connected account at the top (or "Sign in with Google" as the main button until then), "Use another account" and "Disconnect" as links; "Backups go to" shows the whole path (My Drive › chosen folder › backup folder) and follows what you type; the sign-in method and the largest file size are folded under Advanced, with their current values in its title; Save is the main button.

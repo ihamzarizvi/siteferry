@@ -198,7 +198,7 @@ if ( 's3' === $sf_kind ) {
 		'where'       => $sf_relayed ? $sf_relay_url . ' and ' . $sf_base : $sf_base,
 		'input'       => $sf_ginput,
 		'secret'      => $sf_relayed ? null : 'client_secret',
-		'invalid'     => $sf_relayed ? array( 'folder' => 'a/b' ) : array( 'client_id' => 'not-a-client-id' ),
+		'invalid'     => $sf_relayed ? array( 'folder' => 'a\\b' ) : array( 'client_id' => 'not-a-client-id' ),
 		'kept'        => array( 'folder', 'wp-test' ),
 		'test_lines'  => 6,
 		'wrong_says'  => $sf_relayed ? array() : array( 'invalid_client', 'Check them on the Storage tab' ),
@@ -267,6 +267,33 @@ if ( 's3' === $sf_kind ) {
 			// Saving the settings again (same client ID) keeps the connection.
 			list( $status, $entry ) = sf_rest( 'POST', '/storage/gdrive', $admin, array(), array( 'client_secret' => '' ) + $sf_ginput );
 			Sf_Test::same( true, $entry['oauth']['connected'], 'still connected after saving again:' );
+
+			// A folder chosen in one Google account is forgotten when another account signs in
+			// (that one cannot see it); signing in again with the same account keeps it.
+			$picked             = array(
+				'parent_id'   => 'fPickedClientsFolder01',
+				'parent_path' => 'Clients',
+			);
+			$reconnect          = static function () use ( $admin, $sf_follow ): array {
+				list( , $start )        = sf_rest( 'POST', '/storage/gdrive/authorize', $admin );
+				$back                   = $sf_follow( $start['url'] );
+				list( $status, $entry ) = sf_rest( 'POST', '/storage/gdrive/connect', $admin, array(), array( 'code' => $back['code'], 'state' => $back['state'] ) );
+				Sf_Test::same( 200, $status, 'connect again: ' . wp_json_encode( $entry ) );
+				return get_option( Destinations::OPTION )['gdrive']['settings'];
+			};
+			sf_rest( 'POST', '/storage/gdrive', $admin, array(), array( 'client_secret' => '' ) + $picked + $sf_ginput );
+			Sf_Test::same( 'fPickedClientsFolder01', $reconnect()['parent_id'], 'same account: the chosen folder stays:' );
+			$config_file = (string) getenv( 'SITEFERRY_FAKE_GOOGLE_DIR' ) . '/config.json';
+			$config      = json_decode( (string) file_get_contents( $config_file ), true );
+			file_put_contents( $config_file, wp_json_encode( array( 'account' => 'someone.else@example.com' ) + $config ) );
+			try {
+				$settings = $reconnect();
+			} finally {
+				file_put_contents( $config_file, wp_json_encode( $config ) );
+			}
+			Sf_Test::same( array( '', '' ), array( $settings['parent_id'], $settings['parent_path'] ), 'another account: back to the top of its Drive:' );
+			Sf_Test::same( 'wp-test', $settings['folder'], 'the folder name stays:' );
+			$reconnect(); // The usual account again, for the tests that follow.
 		},
 	);
 } elseif ( 'dropbox' === $sf_kind || 'dropbox-relay' === $sf_kind ) {

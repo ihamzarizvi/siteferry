@@ -896,8 +896,24 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 
 		// Each folder of the path, found or made inside the one before it.
 		$id = $parent;
-		foreach ( explode( '/', $name ) as $part ) {
-			$id = $this->child_folder( $id, $part, $create );
+		foreach ( explode( '/', $name ) as $level => $part ) {
+			try {
+				$id = $this->child_folder( $id, $part, $create );
+			} catch ( Storage_Exception $e ) {
+				// The chosen folder is gone, or belongs to another Google account.
+				if ( 0 === $level && 'root' !== $parent && Storage_Exception::NOT_FOUND === $e->getCode() ) {
+					throw new Storage_Exception(
+						sprintf(
+							/* translators: %s: name of the folder chosen in Google Drive */
+							__( 'The folder "%s" chosen in Google Drive cannot be found with this Google account (it was deleted, or belongs to another account). Choose a folder again, or use the top of My Drive, and save.', 'siteferry' ),
+							$this->settings['parent_path']
+						),
+						Storage_Exception::CONFIG,
+						$e
+					);
+				}
+				throw $e;
+			}
 			if ( null === $id ) {
 				return null;
 			}
