@@ -4187,6 +4187,7 @@
 		/* translators: %s: name of the backup */
 		$( 'siteferry-contents-title' ).textContent = sprintf( __( 'Inside %s', 'siteferry' ), called( item ) );
 		$( 'siteferry-contents-crumbs' ).replaceChildren();
+		$( 'siteferry-contents-result' ).hidden = true;
 		$( 'siteferry-contents-body' ).replaceChildren( el( 'p', { class: 'sf-contents-wait', text: __( 'Reading the list of files in the backup...', 'siteferry' ) } ) );
 		renderPicks();
 		const panel = $( 'siteferry-contents' );
@@ -4207,6 +4208,7 @@
 			return;
 		}
 		const seq = ++inside.seq;
+		inside.posts = null;
 		const body = $( 'siteferry-contents-body' );
 		let data;
 		for ( ;; ) {
@@ -4323,6 +4325,20 @@
 				} ),
 			] ),
 		] );
+		// One post or page on its own: from SiteFerry backups of this site.
+		const item = inside.item;
+		if ( item.format === 'wpress' ) {
+			block.appendChild( el( 'p', { class: 'description', text: __( 'Single posts can be restored from SiteFerry backups, not from .wpress files.', 'siteferry' ) } ) );
+		} else if ( ! ours( item ) ) {
+			block.appendChild( el( 'p', { class: 'description', text: __( 'Single posts can only be restored from backups of this site.', 'siteferry' ) } ) );
+		} else {
+			block.appendChild(
+				el( 'p', { class: 'sf-contents-posts' }, [
+					el( 'button', { type: 'button', class: 'button', onclick: () => openPosts( '' ) }, [ el( 'span', { class: 'dashicons dashicons-admin-post', 'aria-hidden': 'true' } ), ' ' + __( 'Posts and pages', 'siteferry' ) ] ),
+					el( 'span', { class: 'description', text: ' ' + __( 'Put back one post or page on its own.', 'siteferry' ) } ),
+				] )
+			);
+		}
 		if ( tables && tables.length ) {
 			block.appendChild(
 				el( 'details', { class: 'sf-more' }, [
@@ -4362,13 +4378,27 @@
 			: el( 'span', { class: 'sf-tree-file', text: entry.name } );
 		const action =
 			entry.type === 'file'
-				? el( 'a', {
-						class: 'sf-tree-download',
-						href: fileUrl( inside.item.name, entry.path ),
-						text: __( 'Download', 'siteferry' ),
-						/* translators: %s: name of a file in the backup */
-						'aria-label': sprintf( __( 'Download %s', 'siteferry' ), entry.name ),
-				  } )
+				? el( 'span', { class: 'sf-tree-actions' }, [
+						el( 'a', {
+							class: 'sf-tree-download',
+							href: fileUrl( inside.item.name, entry.path ),
+							text: __( 'Download', 'siteferry' ),
+							/* translators: %s: name of a file in the backup */
+							'aria-label': sprintf( __( 'Download %s', 'siteferry' ), entry.name ),
+						} ),
+						...( restorableFile( entry.path )
+							? [
+									el( 'button', {
+										type: 'button',
+										class: 'button-link sf-tree-restore',
+										text: __( 'Restore', 'siteferry' ),
+										/* translators: %s: name of a file in the backup */
+										'aria-label': sprintf( __( 'Restore %s on the site', 'siteferry' ), entry.name ),
+										onclick: () => restoreFile( entry ),
+									} ),
+							  ]
+							: [] ),
+				  ] )
 				: document.createTextNode( '' );
 		let what;
 		if ( dir ) {
@@ -4386,6 +4416,208 @@
 			el( 'td', { class: 'sf-tree-size', text: bytes( entry.size ) } ),
 			el( 'td', { class: 'sf-tree-action' }, [ action ] ),
 		] );
+	}
+
+	/** Whether a file of the backup can be put back on its own (the server checks again). */
+	function restorableFile( path ) {
+		if ( path.indexOf( 'wp-content/' ) !== 0 ) {
+			return false;
+		}
+		const parts = path.slice( 'wp-content/'.length ).split( '/' );
+		if ( parts.length < 2 ) {
+			return DROP_INS.indexOf( parts[ 0 ] ) === -1;
+		}
+		return ! ( ( parts[ 0 ] === 'plugins' && parts[ 1 ] === 'siteferry' ) || parts[ 0 ].indexOf( 'siteferry-' ) === 0 || parts[ 0 ] === 'upgrade' || parts[ 0 ] === 'upgrade-temp-backup' );
+	}
+
+	/** The line above the list after putting something back, with an Undo button. */
+	function insideResult( ok, text, token ) {
+		const box = $( 'siteferry-contents-result' );
+		box.className = 'sf-result' + ( ok === true ? ' is-done' : ok === false ? ' is-failed' : '' );
+		const nodes = [ el( 'p', { text } ) ];
+		if ( token ) {
+			const undo = el( 'button', {
+				type: 'button',
+				class: 'button button-small',
+				text: __( 'Undo', 'siteferry' ),
+				onclick: async () => {
+					undo.disabled = true;
+					try {
+						const done = await api( 'POST', 'undo/' + token );
+						insideResult(
+							true,
+							done.type === 'file'
+								? /* translators: %s: path of a file */
+								  sprintf( __( 'Undone: %s is as it was before.', 'siteferry' ), done.path )
+								: /* translators: %s: title of a post */
+								  sprintf( __( 'Undone: “%s” is as it was before.', 'siteferry' ), done.title || __( '(no title)', 'siteferry' ) )
+						);
+						if ( done.type === 'post' && inside && inside.posts ) {
+							openPosts( inside.posts.search );
+						}
+					} catch ( error ) {
+						undo.disabled = false;
+						insideResult( false, error.message );
+					}
+				},
+			} );
+			nodes.push( el( 'p', {}, [ undo ] ) );
+		}
+		box.replaceChildren( ...nodes );
+		box.hidden = false;
+	}
+
+	async function restoreFile( entry ) {
+		// eslint-disable-next-line no-alert
+		const sure = window.confirm(
+			sprintf(
+				/* translators: %s: path of a file, such as wp-content/themes/x/style.css */
+				__( 'Put %s from this backup back on the site? The file there now is kept, so you can undo this.', 'siteferry' ),
+				entry.path
+			)
+		);
+		if ( ! sure || ! inside ) {
+			return;
+		}
+		insideResult( null, __( 'Restoring the file...', 'siteferry' ) );
+		try {
+			const result = await api( 'POST', 'backups/' + encodeURIComponent( inside.item.name ) + '/restore-file', { json: inside.unlock ? { path: entry.path, unlock: inside.unlock } : { path: entry.path } } );
+			insideResult(
+				true,
+				( result.replaced
+					? /* translators: %s: path of a file */
+					  sprintf( __( 'Restored %s; the file that was there is kept for undoing.', 'siteferry' ), result.path )
+					: /* translators: %s: path of a file */
+					  sprintf( __( 'Restored %s; there was no such file on the site.', 'siteferry' ), result.path ) ) +
+					( result.checked ? ' ' + __( 'It matches the backup’s checksum.', 'siteferry' ) : '' ),
+				result.undo
+			);
+		} catch ( error ) {
+			insideResult( false, error.message );
+		}
+	}
+
+	/** Posts and pages in the backup's database, to put one back on its own. */
+	async function openPosts( search ) {
+		if ( ! inside ) {
+			return;
+		}
+		const seq = ++inside.seq;
+		inside.posts = { search: search || '' };
+		const back = el( 'button', { type: 'button', class: 'sf-crumb', text: __( 'Backup', 'siteferry' ), onclick: () => browse( '' ) } );
+		$( 'siteferry-contents-crumbs' ).replaceChildren( back, el( 'span', { class: 'sf-crumb-sep', 'aria-hidden': 'true', text: '/' } ), el( 'span', { class: 'sf-crumb is-current', 'aria-current': 'location', text: __( 'Posts and pages', 'siteferry' ) } ) );
+		const field = el( 'input', { type: 'search', class: 'regular-text', value: inside.posts.search, placeholder: __( 'Search titles', 'siteferry' ), 'aria-label': __( 'Search titles', 'siteferry' ) } );
+		const form = el( 'form', { class: 'sf-posts-search' }, [ field, el( 'button', { type: 'submit', class: 'button', text: __( 'Search', 'siteferry' ) } ) ] );
+		form.addEventListener( 'submit', ( event ) => {
+			event.preventDefault();
+			openPosts( field.value.trim() );
+		} );
+		const body = $( 'siteferry-contents-body' );
+		body.replaceChildren( form, el( 'p', { class: 'sf-contents-wait', text: __( 'Reading the posts in the backup’s database...', 'siteferry' ) } ) );
+		let data;
+		try {
+			data = await api( 'GET', 'backups/' + encodeURIComponent( inside.item.name ) + '/posts', { query: Object.assign( { search: inside.posts.search }, inside.unlock ? { unlock: inside.unlock } : {} ) } );
+		} catch ( error ) {
+			if ( inside && seq === inside.seq ) {
+				body.replaceChildren( form, el( 'p', { class: 'sf-row-error', text: error.message } ) );
+			}
+			return;
+		}
+		if ( ! inside || seq !== inside.seq ) {
+			return;
+		}
+		const states = {
+			missing: [ __( 'Not on the site', 'siteferry' ), 'is-warn' ],
+			changed: [ __( 'Changed since', 'siteferry' ), 'is-info' ],
+			same: [ __( 'Same', 'siteferry' ), 'is-good' ],
+		};
+		const rows = data.posts.map( ( post ) =>
+			el( 'tr', {}, [
+				el( 'td', { class: 'sf-tree-name' }, [ el( 'strong', { text: post.title || __( '(no title)', 'siteferry' ) } ), el( 'span', { class: 'sf-posts-type', text: post.type + ( post.status === 'publish' ? '' : ', ' + post.status ) } ) ] ),
+				el( 'td', { class: 'sf-tree-what', text: post.date } ),
+				el( 'td', {}, [ el( 'span', { class: 'sf-pv-tag ' + states[ post.now ][ 1 ], text: states[ post.now ][ 0 ] } ) ] ),
+				el( 'td', { class: 'sf-tree-action' }, [
+					post.now === 'same'
+						? document.createTextNode( '' )
+						: el( 'button', {
+								type: 'button',
+								class: 'button-link sf-tree-restore',
+								text: __( 'Restore', 'siteferry' ),
+								/* translators: %s: title of a post */
+								'aria-label': sprintf( __( 'Restore “%s”', 'siteferry' ), post.title ),
+								onclick: () => restorePost( post ),
+						  } ),
+				] ),
+			] )
+		);
+		const nodes = [ form ];
+		if ( rows.length ) {
+			nodes.push( el( 'table', { class: 'sf-tree sf-posts' }, [ el( 'tbody', {}, rows ) ] ) );
+		} else {
+			nodes.push( el( 'p', { class: 'description', text: inside.posts.search ? __( 'No post or page in the backup has that in its title.', 'siteferry' ) : __( 'The backup has no posts or pages.', 'siteferry' ) } ) );
+		}
+		if ( data.more ) {
+			nodes.push(
+				el( 'p', {
+					class: 'description',
+					text: sprintf(
+						/* translators: 1: number shown, 2: number in the backup */
+						__( 'Showing the newest %1$s of %2$s. Search to find others.', 'siteferry' ),
+						data.posts.length,
+						data.total
+					),
+				} )
+			);
+		}
+		nodes.push( el( 'p', { class: 'description', text: __( 'Restoring one puts back its text, custom fields and categories or tags as they were in the backup; the rest of the site stays as it is.', 'siteferry' ) } ) );
+		body.replaceChildren( ...nodes );
+	}
+
+	async function restorePost( post ) {
+		const title = post.title || __( '(no title)', 'siteferry' );
+		// eslint-disable-next-line no-alert
+		const sure = window.confirm(
+			post.now === 'missing'
+				? sprintf(
+						/* translators: %s: title of a post */
+						__( 'Put “%s” back on the site, as it was in this backup? You can undo this.', 'siteferry' ),
+						title
+				  )
+				: sprintf(
+						/* translators: %s: title of a post */
+						__( 'Replace “%s” on the site with how it was in this backup? Its text, custom fields and categories or tags are replaced; what is there now is kept, so you can undo this.', 'siteferry' ),
+						title
+				  )
+		);
+		if ( ! sure || ! inside ) {
+			return;
+		}
+		insideResult( null, __( 'Restoring...', 'siteferry' ) );
+		try {
+			const result = await api( 'POST', 'backups/' + encodeURIComponent( inside.item.name ) + '/posts/' + post.id + '/restore', { json: inside.unlock ? { unlock: inside.unlock } : {} } );
+			let text = sprintf(
+				/* translators: 1: title of a post, 2: number of custom fields, such as 3 custom fields, 3: number of categories and tags, such as 2 categories or tags */
+				__( 'Restored “%1$s” with %2$s and %3$s.', 'siteferry' ),
+				result.title || title,
+				/* translators: %d: a number */
+				sprintf( _n( '%d custom field', '%d custom fields', result.meta, 'siteferry' ), result.meta ),
+				/* translators: %d: a number */
+				sprintf( _n( '%d category or tag', '%d categories or tags', result.terms, 'siteferry' ), result.terms )
+			);
+			if ( result.skipped_terms ) {
+				text +=
+					' ' +
+					sprintf(
+						/* translators: %d: a number */
+						_n( '%d category or tag no longer exists on the site and was left out.', '%d categories or tags no longer exist on the site and were left out.', result.skipped_terms, 'siteferry' ),
+						result.skipped_terms
+					);
+			}
+			insideResult( true, text, result.undo );
+			openPosts( inside.posts ? inside.posts.search : '' );
+		} catch ( error ) {
+			insideResult( false, error.message );
+		}
 	}
 
 	/** The pick a path in the backup stands for on its own ('files' or 'p:<path in wp-content>'), or ''. */

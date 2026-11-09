@@ -213,6 +213,41 @@ final class Contents {
 	}
 
 	/**
+	 * Goes through a backup's entries in order, with their paths as Look inside shows them; the
+	 * reader is positioned at each entry's data. $visit returns false to stop.
+	 *
+	 * @param string      $file  Backup file.
+	 * @param string|null $key   Key of an encrypted backup.
+	 * @param callable    $visit function ( string $path, Tar_Entry $entry, $reader ): bool.
+	 * @return bool Whether the backup is a .wpress file.
+	 * @throws Archive_Exception If the backup cannot be read.
+	 * @throws Job_Exception If it is a password-protected .wpress backup.
+	 */
+	public static function walk(
+		string $file,
+		#[\SensitiveParameter]
+		?string $key,
+		callable $visit
+	): bool {
+		$source = self::source( $file, $key );
+		$wpress = $source === $file && ( Wpress\Wpress::is_name( $file ) || Wpress\Reader::is_wpress( $file ) );
+		if ( $wpress && ! empty( Wpress\Wpress::describe( $file )['encrypted'] ) ) {
+			throw new Job_Exception( __( 'This .wpress backup is protected with a password; its files cannot be read.', 'siteferry' ), Job_Exception::STEP );
+		}
+		$reader = self::open( $source, $wpress, null );
+		try {
+			while ( null !== ( $entry = $reader->next() ) ) { // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition
+				if ( false === $visit( self::name( $entry, $wpress ), $entry, $reader ) ) {
+					break;
+				}
+			}
+		} finally {
+			$reader->close();
+		}
+		return $wpress;
+	}
+
+	/**
 	 * Removes the index of a backup (when the backup is deleted).
 	 *
 	 * @param string $name Backup file name.

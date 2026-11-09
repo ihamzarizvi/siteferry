@@ -383,11 +383,12 @@ final class Admin {
 						<button type="button" class="sf-notice-close" id="siteferry-contents-close" aria-label="<?php esc_attr_e( 'Close', 'siteferry' ); ?>">&times;</button>
 					</div>
 					<?php if ( is_multisite() ) : ?>
-						<p class="sf-lead"><?php esc_html_e( 'Browse the backup and download single files from it. A network is restored whole, so parts of a backup cannot be restored on their own here.', 'siteferry' ); ?></p>
+						<p class="sf-lead"><?php esc_html_e( 'Browse the backup, download single files, or restore one file or one post or page of the main site on its own. Larger parts cannot be restored on their own here: a network is restored whole.', 'siteferry' ); ?></p>
 					<?php else : ?>
-						<p class="sf-lead"><?php esc_html_e( 'Browse the backup and download single files from it, or tick parts of it to restore only those: the database or single tables, all files or single folders. Nothing on this site changes until you confirm a restore.', 'siteferry' ); ?></p>
+						<p class="sf-lead"><?php esc_html_e( 'Browse the backup and download single files from it, restore one file or one post or page straight away (with an undo), or tick parts of it to restore only those: the database or single tables, all files or single folders.', 'siteferry' ); ?></p>
 					<?php endif; ?>
 					<nav class="sf-crumbs" id="siteferry-contents-crumbs" aria-label="<?php esc_attr_e( 'Folder in the backup', 'siteferry' ); ?>"></nav>
+					<div class="sf-result" id="siteferry-contents-result" role="status" hidden></div>
 					<div class="sf-contents-body" id="siteferry-contents-body" aria-live="polite"></div>
 					<div class="sf-contents-foot" id="siteferry-contents-foot" hidden>
 						<p class="sf-contents-picked" id="siteferry-contents-picked"></p>

@@ -88,6 +88,10 @@ final class Rest {
 			array( '/backups/' . self::NAME . '/unlock', WP_REST_Server::CREATABLE, 'unlock_backup', $admin ),
 			array( '/checks', WP_REST_Server::CREATABLE, 'start_check', $admin ),
 			array( '/backups/' . self::NAME . '/file', WP_REST_Server::READABLE, 'backup_file', $admin ),
+			array( '/backups/' . self::NAME . '/restore-file', WP_REST_Server::CREATABLE, 'restore_file', $admin ),
+			array( '/backups/' . self::NAME . '/posts', WP_REST_Server::READABLE, 'backup_posts', $admin ),
+			array( '/backups/' . self::NAME . '/posts/(?P<post>[0-9]{1,20})/restore', WP_REST_Server::CREATABLE, 'restore_post', $admin ),
+			array( '/undo/(?P<token>[a-f0-9]{24})', WP_REST_Server::CREATABLE, 'undo_single', $admin ),
 			array( '/exports', WP_REST_Server::CREATABLE, 'start_export', $admin ),
 			array( '/imports', WP_REST_Server::CREATABLE, 'start_import', $admin ),
 			array( '/jobs', WP_REST_Server::READABLE, 'jobs', $admin ),
@@ -602,6 +606,56 @@ final class Rest {
 			throw new Job_Exception( __( 'That file is not in the backup.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
 		Contents::stream( $path, $inner, self::unlocked( $request ) );
+	}
+
+	/**
+	 * Restores one file of wp-content from a backup on this server ("path": its path in the
+	 * backup); the file there now is kept for undoing.
+	 *
+	 * @param WP_REST_Request $request Request with "path" (and "unlock" for an encrypted backup).
+	 */
+	public static function restore_file( WP_REST_Request $request ): array {
+		self::assert_idle();
+		$path  = Backups::path( Storage::backups_dir(), (string) $request['name'] );
+		$inner = (string) $request->get_param( 'path' );
+		if ( '' === trim( $inner, '/' ) || strlen( $inner ) > 4096 ) {
+			throw new Job_Exception( __( 'That file is not in the backup.', 'siteferry' ), Job_Exception::NOT_FOUND );
+		}
+		return \SiteFerry\Single_Restore::restore_file( $path, $inner, self::unlocked( $request ) );
+	}
+
+	/**
+	 * The posts and pages in a backup of this site, with how each is here now.
+	 *
+	 * @param WP_REST_Request $request Request with "search" (and "unlock").
+	 */
+	public static function backup_posts( WP_REST_Request $request ): WP_REST_Response {
+		$path   = Backups::path( Storage::backups_dir(), (string) $request['name'] );
+		$search = substr( trim( (string) $request->get_param( 'search' ) ), 0, 200 );
+		$out    = new WP_REST_Response( \SiteFerry\Single_Restore::posts( $path, self::unlocked( $request ), $search ) );
+		$out->header( 'Cache-Control', 'no-store' );
+		return $out;
+	}
+
+	/**
+	 * Restores one post (its custom fields and terms too) from a backup of this site.
+	 *
+	 * @param WP_REST_Request $request Request (and "unlock").
+	 */
+	public static function restore_post( WP_REST_Request $request ): array {
+		self::assert_idle();
+		$path = Backups::path( Storage::backups_dir(), (string) $request['name'] );
+		return \SiteFerry\Single_Restore::restore_post( $path, (int) $request['post'], self::unlocked( $request ) );
+	}
+
+	/**
+	 * Undoes the restore of one file or one post.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function undo_single( WP_REST_Request $request ): array {
+		self::assert_idle();
+		return \SiteFerry\Single_Restore::undo( (string) $request['token'] );
 	}
 
 	/**

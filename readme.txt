@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.29.0
+Stable tag: 0.30.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -460,6 +460,11 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.30.0 =
+* Look inside: "Restore" next to any file of wp-content puts that one file back from the backup, checked against the backup's checksum first; the file that was there is kept so it can be undone.
+* Look inside, Database: "Posts and pages" lists the posts and pages in the backup (searchable, with whether each is missing, changed or the same on the site now) and restores one of them with its custom fields and categories or tags, from SiteFerry backups of this site. Undo puts back what was there.
+* The 20 newest of these undo points are kept in SiteFerry's storage folder.
 
 = 0.29.0 =
 * Restore preview: before you confirm a restore (or a move here), "What this restore changes" lists the plugins and themes it puts back in an older or newer version, the ones it brings back, which plugins it turns on or off, a change of the theme in use, and how the number of posts, pages, media items, users and comments changes. Partial restores show only what they touch. Nothing is changed by the preview.

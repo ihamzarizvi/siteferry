@@ -3149,3 +3149,52 @@ details.sf-dest[open] > .sf-dest-head::after {
 	font-size: 12px;
 	color: var(--sf-ink-soft);
 }
+/* ------------------------------------------------- Restoring one file or post */
+
+.siteferry .sf-tree-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.siteferry .sf-tree-restore {
+	font-weight: 600;
+}
+
+.siteferry #siteferry-contents-result {
+	margin: 0 0 12px;
+}
+
+.siteferry #siteferry-contents-result p {
+	margin: 4px 0;
+}
+
+.siteferry .sf-contents-posts {
+	margin: 10px 0 4px;
+}
+
+.siteferry .sf-contents-posts .button .dashicons {
+	vertical-align: text-bottom;
+}
+
+.siteferry .sf-posts-search {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 0 0 12px;
+}
+
+.siteferry .sf-posts .sf-tree-name {
+	display: flex;
+	flex-direction: column;
+}
+
+.siteferry .sf-posts-type {
+	font-size: 12px;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-posts .sf-pv-tag {
+	margin-left: 0;
+	white-space: nowrap;
+}
