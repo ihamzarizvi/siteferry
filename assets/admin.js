@@ -1387,6 +1387,8 @@
 		}
 		if ( form.elements.parent_id ) {
 			renderPlace( form );
+			// Your own OAuth client lives under Advanced: open it when that is the saved way in.
+			form.querySelector( '[data-role=gd-advanced]' ).open = settings.mode === 'own';
 		}
 		const names = Object.keys( d.secrets_set || {} );
 		const set = names.length > 0 && names.every( ( name ) => d.secrets_set[ name ] );
@@ -1422,18 +1424,33 @@
 			return;
 		}
 		const id = form.elements.parent_id.value;
-		place.textContent = id
-			? sprintf(
-					/* translators: %s: name of the folder chosen in Google Drive */
-					__( 'Inside the folder %s', 'siteferry' ),
-					form.elements.parent_path.value || 'Google Drive'
-			  )
-			: __( 'At the top of My Drive', 'siteferry' );
+		// My Drive › the chosen folder › the folders SiteFerry keeps (made when missing).
+		const ours = ( form.elements.folder.value || form.elements.folder.placeholder || 'SiteFerry' )
+			.split( '/' )
+			.map( ( part ) => part.trim() )
+			.filter( Boolean );
+		const crumbs = [ el( 'span', { class: 'sf-gd-crumb is-drive', text: __( 'My Drive', 'siteferry' ) } ) ];
+		if ( id ) {
+			crumbs.push( el( 'span', { class: 'sf-gd-crumb is-picked', text: form.elements.parent_path.value || __( 'Chosen folder', 'siteferry' ) } ) );
+		}
+		ours.forEach( ( part ) => crumbs.push( el( 'span', { class: 'sf-gd-crumb is-ours', text: part } ) ) );
+		place.replaceChildren(
+			el( 'span', { class: 'dashicons dashicons-portfolio', 'aria-hidden': 'true' } ),
+			...crumbs.flatMap( ( crumb, i ) => ( i ? [ el( 'span', { class: 'sf-gd-sep', 'aria-hidden': 'true', text: '›' } ), crumb ] : [ crumb ] ) )
+		);
+		place.setAttribute(
+			'aria-label',
+			sprintf(
+				/* translators: %s: a folder path in Google Drive, such as My Drive / Backups / My site */
+				__( 'Backups go to %s', 'siteferry' ),
+				crumbs.map( ( crumb ) => crumb.textContent ).join( ' / ' )
+			)
+		);
 		const d = destination( form.dataset.destination );
 		const connected = !! ( d && d.oauth && d.oauth.connected );
 		const pick = form.querySelector( '[data-role=pick]' );
 		pick.disabled = ! connected;
-		pick.lastChild.textContent = ' ' + ( id ? __( 'Choose another folder', 'siteferry' ) : __( 'Choose a folder in Drive', 'siteferry' ) );
+		pick.lastChild.textContent = ' ' + ( id ? __( 'Change folder', 'siteferry' ) : __( 'Choose a folder in Drive', 'siteferry' ) );
 		form.querySelector( '[data-role=unpick]' ).hidden = ! id;
 		form.querySelector( '[data-role=pick-note]' ).hidden = connected;
 	}
@@ -1543,12 +1560,43 @@
 		const connected = d && d.oauth && d.oauth.connected;
 		const connect = form.querySelector( '[data-role=connect]' );
 		if ( mode === 'relay' ) {
-			connect.textContent = connected ? __( 'Sign in again', 'siteferry' ) : connect.dataset.labelRelay;
+			connect.textContent = connected ? __( 'Use another account', 'siteferry' ) : connect.dataset.labelRelay;
 		} else {
 			connect.textContent = connected ? __( 'Connect again', 'siteferry' ) : connect.dataset.labelOwn;
 		}
 		// Signing in saves the settings too, so "Save" is only needed to change them afterwards.
 		form.querySelector( 'button[type=submit]' ).hidden = ! connected;
+		renderAccount( form, d, mode );
+	}
+
+	/**
+	 * The account line of a storage you sign in to (Google Drive): who is connected, with the
+	 * sign-in as the main button until then; and the summary line of its Advanced section.
+	 */
+	function renderAccount( form, d, mode ) {
+		const who = form.querySelector( '[data-role=who]' );
+		if ( ! who ) {
+			return;
+		}
+		const connected = !! ( d && d.oauth && d.oauth.connected );
+		const account = connected ? d.oauth.account : '';
+		const connect = form.querySelector( '[data-role=connect]' );
+		form.querySelector( '.sf-gd-account' ).classList.toggle( 'is-connected', connected );
+		who.textContent = connected ? account || __( 'Connected', 'siteferry' ) : __( 'Not connected yet', 'siteferry' );
+		form.querySelector( '[data-role=who-note]' ).textContent = connected
+			? __( 'Connected to Google Drive', 'siteferry' )
+			: __( 'Sign in with the Google account whose Drive should keep the backups.', 'siteferry' );
+		form.querySelector( '[data-role=avatar]' ).textContent = account ? account.charAt( 0 ).toUpperCase() : 'G';
+		connect.classList.toggle( 'button-primary', ! connected );
+		connect.classList.toggle( 'button-link', connected );
+		connect.classList.toggle( 'button', ! connected );
+
+		const split = form.elements.split_mb;
+		const sum = [
+			mode === 'own' ? __( 'own OAuth client', 'siteferry' ) : __( 'sign in with Google', 'siteferry' ),
+			split && split.value !== '0' ? split.selectedOptions[ 0 ].textContent.trim() : __( 'no size limit', 'siteferry' ),
+		];
+		form.querySelector( '[data-role=advanced-sum]' ).textContent = '· ' + sum.join( ' · ' );
 	}
 
 	function formData( form ) {
@@ -1647,17 +1695,10 @@
 		}
 		storageResult( form, null, [ el( 'p', { text: __( 'Finishing the connection...', 'siteferry' ) } ) ] );
 		try {
-			const d = await api( 'POST', 'storage/' + id + '/connect', { json: { code, state } } );
+			await api( 'POST', 'storage/' + id + '/connect', { json: { code, state } } );
 			await loadDestinations();
-			storageResult( form, true, [
-				el( 'p', {
-					text: sprintf(
-						/* translators: %s: description of the connected account */
-						__( 'Connected: %s. Use "Test connection" to check it.', 'siteferry' ),
-						d.description
-					),
-				} ),
-			] );
+			// Connected: checked at once, so the card says "Working" (or what fails) straight away.
+			await testStorage( form, false, __( 'Connected. Testing the connection...', 'siteferry' ) );
 		} catch ( error ) {
 			storageResult( form, false, [
 				el( 'p', {
@@ -1756,11 +1797,11 @@
 	 * The connection test, shown live: a bar and the list of checks so far (done, running or
 	 * failed), read from the server every half second while the test runs.
 	 */
-	async function testStorage( form, justSaved ) {
+	async function testStorage( form, justSaved, heading ) {
 		const id = form.dataset.destination;
 		const test = form.querySelector( '[data-role=test]' );
 		test.disabled = true;
-		const lead = justSaved ? __( 'Saved. Testing the connection...', 'siteferry' ) : __( 'Testing the connection...', 'siteferry' );
+		const lead = heading || ( justSaved ? __( 'Saved. Testing the connection...', 'siteferry' ) : __( 'Testing the connection...', 'siteferry' ) );
 		let last = { total: 0, steps: [] };
 		const show = ( progress, state, head ) => storageResult( form, state, [ el( 'p', {}, [ el( 'strong', { text: head } ) ] ), testSteps( progress ) ] );
 		show( last, null, lead );
@@ -5202,6 +5243,8 @@
 			if ( form.querySelector( '[data-role=pick]' ) ) {
 				form.querySelector( '[data-role=pick]' ).addEventListener( 'click', () => pickDriveFolder( form ) );
 				form.querySelector( '[data-role=unpick]' ).addEventListener( 'click', () => unpickDriveFolder( form ) );
+				form.elements.folder.addEventListener( 'input', () => renderPlace( form ) );
+				form.elements.split_mb.addEventListener( 'change', () => applyMode( form ) );
 			}
 			const copy = form.querySelector( '[data-role=copy]' );
 			if ( copy ) {

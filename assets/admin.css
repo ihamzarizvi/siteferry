@@ -2810,12 +2810,136 @@ details.sf-dest[open] > .sf-dest-head::after {
 	}
 }
 
-/* ------------------------------------------------- Google Drive folder */
+/* ------------------------------------------------- Google Drive card */
 
-.siteferry .sf-drive-place {
-	margin: 0 0 8px;
+.siteferry .sf-gd-block {
+	margin: 14px 0 0;
+	padding: 14px 16px;
+	border: 1px solid var(--sf-rope);
+	border-radius: var(--sf-radius);
+	background: var(--sf-deck);
+}
+
+/* Who is connected */
+.siteferry .sf-gd-account {
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	align-items: center;
+	gap: 4px 14px;
+}
+
+.siteferry .sf-gd-avatar {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	background: var(--sf-fog);
+	color: var(--sf-accent);
+	font-size: 18px;
+	font-weight: 700;
+}
+
+.siteferry .sf-gd-account.is-connected .sf-gd-avatar {
+	background: var(--sf-accent);
+	color: #fff;
+}
+
+.siteferry .sf-gd-who {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.siteferry .sf-gd-who strong {
+	font-size: 14px;
+	color: var(--sf-text);
+	overflow-wrap: anywhere;
+}
+
+.siteferry .sf-gd-who span {
+	font-size: 12px;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-gd-account.is-connected .sf-gd-who span::before {
+	content: "";
+	display: inline-block;
+	width: 7px;
+	height: 7px;
+	margin-right: 6px;
+	border-radius: 50%;
+	background: var(--sf-starboard);
+	vertical-align: 1px;
+}
+
+.siteferry .sf-gd-account-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 6px 14px;
+}
+
+.siteferry .sf-gd-account-actions [data-role=disconnect] {
+	color: var(--sf-port);
+}
+
+.siteferry .sf-gd-fine {
+	grid-column: 1 / -1;
+	margin: 10px 0 0;
+	padding-top: 10px;
+	border-top: 1px solid var(--sf-fog);
+	font-size: 12px;
+	color: var(--sf-ink-soft);
+}
+
+/* Where the backups go */
+.siteferry .sf-gd-title {
+	margin: 0 0 10px;
+	font-size: 11px;
 	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-gd-path-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px 12px;
+}
+
+.siteferry .sf-gd-path {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 6px;
+	min-width: 0;
+	margin: 0;
+	padding: 8px 12px;
+	border-radius: var(--sf-radius);
+	background: var(--sf-fog);
+	font-size: 13px;
 	color: var(--sf-ink);
+}
+
+.siteferry .sf-gd-path .dashicons {
+	color: var(--sf-accent);
+}
+
+.siteferry .sf-gd-crumb {
+	overflow-wrap: anywhere;
+}
+
+.siteferry .sf-gd-crumb.is-ours {
+	font-weight: 600;
+}
+
+.siteferry .sf-gd-sep {
+	color: var(--sf-ink-soft);
 }
 
 .siteferry .sf-drive-actions {
@@ -2823,9 +2947,76 @@ details.sf-dest[open] > .sf-dest-head::after {
 	flex-wrap: wrap;
 	align-items: center;
 	gap: 6px 12px;
-	margin: 0 0 6px;
+	margin: 0;
 }
 
 .siteferry .sf-drive-actions .button .dashicons {
 	vertical-align: text-bottom;
+}
+
+.siteferry .sf-gd-block > .description {
+	margin: 6px 0 0;
+}
+
+.siteferry .sf-gd-name {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 12px;
+	margin: 14px 0 0;
+}
+
+.siteferry .sf-gd-name label {
+	font-weight: 600;
+}
+
+.siteferry .sf-gd-name input {
+	flex: 1 1 260px;
+	max-width: 420px;
+}
+
+/* Sign-in method and size limit, folded away */
+.siteferry .sf-gd-advanced {
+	margin: 14px 0 0;
+	border: 1px solid var(--sf-rope);
+	border-radius: var(--sf-radius);
+}
+
+.siteferry .sf-gd-advanced > summary {
+	padding: 10px 16px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.siteferry .sf-gd-advanced[open] > summary {
+	border-bottom: 1px solid var(--sf-fog);
+}
+
+.siteferry .sf-gd-advanced-sum {
+	font-weight: 400;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-gd-advanced > :not(summary) {
+	margin-right: 16px;
+	margin-left: 16px;
+}
+
+.siteferry .sf-gd-advanced > .sf-split {
+	margin-bottom: 14px;
+}
+
+.siteferry .sf-gd .sf-form-actions {
+	margin-top: 16px;
+}
+
+@media (max-width: 600px) {
+	.siteferry .sf-gd-account {
+		grid-template-columns: auto 1fr;
+	}
+
+	.siteferry .sf-gd-account-actions {
+		grid-column: 1 / -1;
+		justify-content: flex-start;
+	}
 }

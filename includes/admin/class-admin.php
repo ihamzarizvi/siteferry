@@ -786,91 +786,103 @@ final class Admin {
 		$redirect   = \SiteFerry\Storage\Destinations::redirect_uri( 'gdrive' );
 		$relay_host = (string) wp_parse_url( \SiteFerry\Storage\Gdrive_Driver::relay_url(), PHP_URL_HOST );
 		?>
-		<form id="siteferry-storage-gdrive" class="siteferry-storage-form" data-destination="gdrive" method="post" action="#" autocomplete="off">
-			<p>
-				<label for="siteferry-gdrive-mode"><?php esc_html_e( 'Sign-in:', 'siteferry' ); ?></label>
-				<select id="siteferry-gdrive-mode" name="mode" data-default="relay">
-					<option value="relay"><?php esc_html_e( 'Sign in with Google (recommended)', 'siteferry' ); ?></option>
-					<option value="own"><?php esc_html_e( 'Use my own OAuth client (advanced)', 'siteferry' ); ?></option>
-				</select>
-			</p>
-			<p class="description" data-mode="relay">
-				<?php
-				printf(
-					/* translators: %s: host name of the sign-in service */
-					esc_html__( 'Sign in with your Google account; no keys needed. Signing in, and renewing the access while SiteFerry works with your Drive, go through SiteFerry\'s sign-in service at %s, which holds SiteFerry\'s Google app secret and stores nothing. Backups go straight between this site and your Google Drive.', 'siteferry' ),
-					'<strong>' . esc_html( $relay_host ) . '</strong>'
-				);
-				?>
-			</p>
-			<details class="siteferry-howto" data-mode="own">
-				<summary><?php esc_html_e( 'How to create your own OAuth client (once)', 'siteferry' ); ?></summary>
-				<ol>
-					<li><?php esc_html_e( 'In the Google Cloud console, create a project and enable the Google Drive API for it.', 'siteferry' ); ?></li>
-					<li><?php esc_html_e( 'Set up the OAuth consent screen (External; add yourself as a test user). Apps left in "Testing" lose their authorization after 7 days; publish the app to keep it. SiteFerry asks only for the drive.file scope.', 'siteferry' ); ?></li>
-					<li><?php esc_html_e( 'Create an OAuth client ID of type "Web application" and add the redirect URI below as an authorized redirect URI.', 'siteferry' ); ?></li>
-					<li><?php esc_html_e( 'Enter the client ID and secret here, then click "Connect to Google Drive" (this also saves them).', 'siteferry' ); ?></li>
-				</ol>
+		<form id="siteferry-storage-gdrive" class="siteferry-storage-form sf-gd" data-destination="gdrive" method="post" action="#" autocomplete="off">
+			<section class="sf-gd-block sf-gd-account" aria-labelledby="siteferry-gdrive-who">
+				<span class="sf-gd-avatar" data-role="avatar" aria-hidden="true">G</span>
+				<div class="sf-gd-who">
+					<strong id="siteferry-gdrive-who" data-role="who"><?php esc_html_e( 'Not connected yet', 'siteferry' ); ?></strong>
+					<span data-role="who-note"><?php esc_html_e( 'Sign in with the Google account whose Drive should keep the backups.', 'siteferry' ); ?></span>
+				</div>
+				<div class="sf-gd-account-actions">
+					<button type="button" class="button button-primary" data-role="connect" data-label-relay="<?php esc_attr_e( 'Sign in with Google', 'siteferry' ); ?>" data-label-own="<?php esc_attr_e( 'Connect to Google Drive', 'siteferry' ); ?>"><?php esc_html_e( 'Sign in with Google', 'siteferry' ); ?></button>
+					<button type="button" class="button-link" data-role="disconnect" hidden><?php esc_html_e( 'Disconnect', 'siteferry' ); ?></button>
+				</div>
+				<p class="sf-gd-fine" data-mode="relay">
+					<?php
+					printf(
+						/* translators: %s: host name of the sign-in service */
+						esc_html__( 'Signing in goes through SiteFerry\'s sign-in service at %s, which stores nothing. SiteFerry sees only the files and folders it creates, and backups go straight between this site and your Drive.', 'siteferry' ),
+						'<strong>' . esc_html( $relay_host ) . '</strong>'
+					);
+					?>
+				</p>
+			</section>
+
+			<section class="sf-gd-block" aria-labelledby="siteferry-gdrive-where">
+				<h4 class="sf-gd-title" id="siteferry-gdrive-where"><?php esc_html_e( 'Backups go to', 'siteferry' ); ?></h4>
+				<input type="hidden" name="parent_id">
+				<input type="hidden" name="parent_path">
+				<div class="sf-gd-path-row">
+					<p class="sf-gd-path" data-role="place" aria-live="polite"><?php esc_html_e( 'My Drive', 'siteferry' ); ?></p>
+					<p class="sf-drive-actions">
+						<button type="button" class="button" data-role="pick"><span class="dashicons dashicons-category" aria-hidden="true"></span> <?php esc_html_e( 'Choose a folder in Drive', 'siteferry' ); ?></button>
+						<button type="button" class="button-link" data-role="unpick" hidden><?php esc_html_e( 'Use the top of My Drive', 'siteferry' ); ?></button>
+					</p>
+				</div>
+				<p class="description" data-role="pick-note"><?php esc_html_e( 'After signing in you can choose any folder of yours; SiteFerry gets access to that folder only.', 'siteferry' ); ?></p>
+				<p class="sf-gd-name">
+					<label for="siteferry-gdrive-folder"><?php esc_html_e( 'Backup folder', 'siteferry' ); ?></label>
+					<input type="text" id="siteferry-gdrive-folder" name="folder" placeholder="SiteFerry" spellcheck="false" autocomplete="off">
+				</p>
+				<p class="description"><?php esc_html_e( 'SiteFerry creates it when it is missing. Put / between names for folders inside each other, for example Backups/My site.', 'siteferry' ); ?></p>
+			</section>
+
+			<details class="sf-gd-advanced" data-role="gd-advanced">
+				<summary><?php esc_html_e( 'Advanced', 'siteferry' ); ?> <span class="sf-gd-advanced-sum" data-role="advanced-sum"></span></summary>
+				<p class="sf-field">
+					<label for="siteferry-gdrive-mode"><?php esc_html_e( 'Sign-in method', 'siteferry' ); ?></label>
+					<select id="siteferry-gdrive-mode" name="mode" data-default="relay">
+						<option value="relay"><?php esc_html_e( 'Sign in with Google (recommended)', 'siteferry' ); ?></option>
+						<option value="own"><?php esc_html_e( 'Use my own OAuth client', 'siteferry' ); ?></option>
+					</select>
+				</p>
+				<details class="siteferry-howto" data-mode="own">
+					<summary><?php esc_html_e( 'How to create your own OAuth client (once)', 'siteferry' ); ?></summary>
+					<ol>
+						<li><?php esc_html_e( 'In the Google Cloud console, create a project and enable the Google Drive API for it.', 'siteferry' ); ?></li>
+						<li><?php esc_html_e( 'Set up the OAuth consent screen (External; add yourself as a test user). Apps left in "Testing" lose their authorization after 7 days; publish the app to keep it. SiteFerry asks only for the drive.file scope.', 'siteferry' ); ?></li>
+						<li><?php esc_html_e( 'Create an OAuth client ID of type "Web application" and add the redirect URI below as an authorized redirect URI.', 'siteferry' ); ?></li>
+						<li><?php esc_html_e( 'Enter the client ID and secret here, then click "Connect to Google Drive" (this also saves them).', 'siteferry' ); ?></li>
+					</ol>
+				</details>
+				<table class="form-table" role="presentation">
+					<tr data-mode="own">
+						<th scope="row"><?php esc_html_e( 'Redirect URI', 'siteferry' ); ?></th>
+						<td>
+							<code class="siteferry-redirect" data-role="redirect"><?php echo esc_html( $redirect ); ?></code>
+							<button type="button" class="button button-small" data-role="copy" data-copy="<?php echo esc_attr( $redirect ); ?>"><?php esc_html_e( 'Copy', 'siteferry' ); ?></button>
+							<p class="description"><?php esc_html_e( 'Register exactly this address with your OAuth client.', 'siteferry' ); ?></p>
+						</td>
+					</tr>
+					<tr data-mode="own">
+						<th scope="row"><label for="siteferry-gdrive-client_id"><?php esc_html_e( 'Client ID', 'siteferry' ); ?></label></th>
+						<td><input type="text" class="large-text" id="siteferry-gdrive-client_id" name="client_id" placeholder="1234-abc.apps.googleusercontent.com" spellcheck="false" autocomplete="off"></td>
+					</tr>
+					<tr data-mode="own">
+						<th scope="row"><label for="siteferry-gdrive-client_secret"><?php esc_html_e( 'Client secret', 'siteferry' ); ?></label></th>
+						<td>
+							<input type="password" class="regular-text" id="siteferry-gdrive-client_secret" name="client_secret" spellcheck="false" autocomplete="new-password">
+							<p class="description" data-role="secret-note"><?php esc_html_e( 'Stored encrypted. It is never shown again.', 'siteferry' ); ?></p>
+						</td>
+					</tr>
+					<tr data-mode="own">
+						<th scope="row"><label for="siteferry-gdrive-picker_key"><?php esc_html_e( 'Picker API key', 'siteferry' ); ?></label></th>
+						<td>
+							<input type="text" class="regular-text" id="siteferry-gdrive-picker_key" name="picker_key" spellcheck="false" autocomplete="off">
+							<p class="description"><?php esc_html_e( 'Optional, to choose a folder in Google Drive: an API key restricted to the Google Picker API (APIs & Services, Credentials).', 'siteferry' ); ?></p>
+						</td>
+					</tr>
+					<tr data-mode="own">
+						<th scope="row"><label for="siteferry-gdrive-app_id"><?php esc_html_e( 'Project number', 'siteferry' ); ?></label></th>
+						<td><input type="text" class="regular-text" id="siteferry-gdrive-app_id" name="app_id" inputmode="numeric" spellcheck="false" autocomplete="off"></td>
+					</tr>
+				</table>
+				<?php self::render_split(); ?>
 			</details>
-			<table class="form-table" role="presentation">
-				<tr data-mode="own">
-					<th scope="row"><?php esc_html_e( 'Redirect URI', 'siteferry' ); ?></th>
-					<td>
-						<code class="siteferry-redirect" data-role="redirect"><?php echo esc_html( $redirect ); ?></code>
-						<button type="button" class="button button-small" data-role="copy" data-copy="<?php echo esc_attr( $redirect ); ?>"><?php esc_html_e( 'Copy', 'siteferry' ); ?></button>
-						<p class="description"><?php esc_html_e( 'Register exactly this address with your OAuth client.', 'siteferry' ); ?></p>
-					</td>
-				</tr>
-				<tr data-mode="own">
-					<th scope="row"><label for="siteferry-gdrive-client_id"><?php esc_html_e( 'Client ID', 'siteferry' ); ?></label></th>
-					<td><input type="text" class="large-text" id="siteferry-gdrive-client_id" name="client_id" placeholder="1234-abc.apps.googleusercontent.com" spellcheck="false" autocomplete="off"></td>
-				</tr>
-				<tr data-mode="own">
-					<th scope="row"><label for="siteferry-gdrive-client_secret"><?php esc_html_e( 'Client secret', 'siteferry' ); ?></label></th>
-					<td>
-						<input type="password" class="regular-text" id="siteferry-gdrive-client_secret" name="client_secret" spellcheck="false" autocomplete="new-password">
-						<p class="description" data-role="secret-note"><?php esc_html_e( 'Stored encrypted. It is never shown again.', 'siteferry' ); ?></p>
-					</td>
-				</tr>
-				<tr data-mode="own">
-					<th scope="row"><label for="siteferry-gdrive-picker_key"><?php esc_html_e( 'Picker API key', 'siteferry' ); ?></label></th>
-					<td>
-						<input type="text" class="regular-text" id="siteferry-gdrive-picker_key" name="picker_key" spellcheck="false" autocomplete="off">
-						<p class="description"><?php esc_html_e( 'Optional, to choose a folder in Google Drive: an API key restricted to the Google Picker API (APIs & Services, Credentials).', 'siteferry' ); ?></p>
-					</td>
-				</tr>
-				<tr data-mode="own">
-					<th scope="row"><label for="siteferry-gdrive-app_id"><?php esc_html_e( 'Project number', 'siteferry' ); ?></label></th>
-					<td><input type="text" class="regular-text" id="siteferry-gdrive-app_id" name="app_id" inputmode="numeric" spellcheck="false" autocomplete="off"></td>
-				</tr>
-				<tr>
-					<th scope="row"><?php esc_html_e( 'Where in Google Drive', 'siteferry' ); ?></th>
-					<td>
-						<input type="hidden" name="parent_id">
-						<input type="hidden" name="parent_path">
-						<p class="sf-drive-place" data-role="place"><?php esc_html_e( 'At the top of My Drive', 'siteferry' ); ?></p>
-						<p class="sf-drive-actions">
-							<button type="button" class="button" data-role="pick"><span class="dashicons dashicons-category" aria-hidden="true"></span> <?php esc_html_e( 'Choose a folder in Drive', 'siteferry' ); ?></button>
-							<button type="button" class="button-link" data-role="unpick" hidden><?php esc_html_e( 'Use the top of My Drive instead', 'siteferry' ); ?></button>
-						</p>
-						<p class="description" data-role="pick-note"><?php esc_html_e( 'Sign in first. Google then lets you choose any folder of yours; SiteFerry gets access to that folder only.', 'siteferry' ); ?></p>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><label for="siteferry-gdrive-folder"><?php esc_html_e( 'Backup folder name', 'siteferry' ); ?></label></th>
-					<td>
-						<input type="text" class="regular-text" id="siteferry-gdrive-folder" name="folder" placeholder="SiteFerry" spellcheck="false" autocomplete="off">
-						<p class="description"><?php esc_html_e( 'SiteFerry creates this folder in the place above and keeps the backups in it. It can only see the files and folders it created itself.', 'siteferry' ); ?></p>
-						<p class="description"><?php esc_html_e( 'For new folders inside each other, put / between the names, for example Backups/My site. Google’s folder picker cannot make new folders; SiteFerry makes these for you when you save.', 'siteferry' ); ?></p>
-					</td>
-				</tr>
-			</table>
-			<?php self::render_split(); ?>
+
 			<p class="sf-form-actions">
-				<button type="button" class="button button-primary" data-role="connect" data-label-relay="<?php esc_attr_e( 'Sign in with Google', 'siteferry' ); ?>" data-label-own="<?php esc_attr_e( 'Connect to Google Drive', 'siteferry' ); ?>"><?php esc_html_e( 'Sign in with Google', 'siteferry' ); ?></button>
-				<button type="submit" class="button"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
+				<button type="submit" class="button button-primary"><?php esc_html_e( 'Save', 'siteferry' ); ?></button>
 				<button type="button" class="button" data-role="test"><?php esc_html_e( 'Test connection', 'siteferry' ); ?></button>
-				<button type="button" class="button" data-role="disconnect" hidden><?php esc_html_e( 'Disconnect', 'siteferry' ); ?></button>
 				<button type="button" class="button-link button-link-delete" data-role="remove"><?php esc_html_e( 'Remove these settings', 'siteferry' ); ?></button>
 			</p>
 			<div class="sf-result" data-role="result" role="status" hidden></div>

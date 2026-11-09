@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.27.1
+Stable tag: 0.28.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -440,6 +440,10 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.28.0 =
+* Google Drive card redesigned: the connected account at the top (or "Sign in with Google" as the main button until then), "Use another account" and "Disconnect" as links; "Backups go to" shows the whole path (My Drive › chosen folder › backup folder) and follows what you type; the sign-in method and the largest file size are folded under Advanced, with their current values in its title; Save is the main button.
+* After signing in to Google Drive or Dropbox, the connection is tested at once, so the card says "Working" (or what fails) instead of "Not tested".
 
 = 0.27.1 =
 * Google Drive: Google's folder picker cannot make new folders, so the backup folder name may now be a path: "Backups/My site" makes a folder Backups (or reuses the one SiteFerry made before) with My site inside it, in the chosen folder or at the top of My Drive. Up to 5 levels; / separates the folders. The picker's title and the form say so.
