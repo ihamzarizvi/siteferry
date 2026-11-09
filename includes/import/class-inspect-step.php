@@ -201,6 +201,7 @@ final class Inspect_Step implements Step {
 					'restores'     => self::restores( $job, count( $names ) ),
 					'holds'        => \SiteFerry\Backups::holds( $manifest ),
 					'warnings'     => $warnings,
+					'preview'      => self::preview( $job, $manifest, $site ),
 				),
 			)
 		);
@@ -215,6 +216,34 @@ final class Inspect_Step implements Step {
 	 * @param Job $job The job.
 	 */
 	public function cleanup( Job $job ): void {
+	}
+
+	/**
+	 * What the chosen restore would change (plugins, themes, content); null if it cannot be worked
+	 * out. Only shown: it never stops a restore.
+	 *
+	 * @param Job   $job      The job.
+	 * @param array $manifest The backup's manifest.
+	 * @param array $site     This site's facts.
+	 */
+	private static function preview( Job $job, array $manifest, array $site ): ?array {
+		try {
+			return Preview::compare(
+				$manifest,
+				$site,
+				array(
+					'database'   => (bool) $job->option( 'restore_database', true ),
+					'tables'     => (array) $job->option( 'restore_tables', array() ),
+					'files'      => (bool) $job->option( 'restore_files', true ),
+					'paths'      => (array) $job->option( 'restore_paths', array() ),
+					'own_plugin' => (string) $job->option( 'own_plugin', '' ),
+					'own_folder' => (string) $job->option( 'own_folder', '' ),
+				)
+			);
+		} catch ( \Throwable $e ) {
+			$job->log( 'warning', 'Restore preview not available: ' . $e->getMessage() );
+			return null;
+		}
 	}
 
 	/**

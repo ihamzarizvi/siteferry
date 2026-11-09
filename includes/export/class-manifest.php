@@ -28,6 +28,33 @@ final class Manifest {
 	const DATABASE       = 'database.sql';
 
 	/**
+	 * The installed plugins or themes whose files are in the backup (not left out by its choices),
+	 * with their names and versions, for the restore preview.
+	 *
+	 * @param Job    $job       Export job.
+	 * @param string $kind      "plugins" or "themes" (their folder in wp-content).
+	 * @param array  $installed id => [name, version]; a plugin's id is its file, a theme's its folder.
+	 */
+	private static function held( Job $job, string $kind, array $installed ): array {
+		$rules = $job->option( 'exclusions' );
+		if ( ! is_array( $rules ) || ! isset( $rules['paths'], $rules['patterns'], $rules['names'] ) ) {
+			return $installed;
+		}
+		$exclusions = Exclusions::from_array( $rules );
+		if ( $exclusions->excludes( $kind ) ) {
+			return array();
+		}
+		$held = array();
+		foreach ( $installed as $id => $item ) {
+			$folder = false === strpos( (string) $id, '/' ) ? (string) $id : (string) strstr( (string) $id, '/', true );
+			if ( ! $exclusions->excludes( $kind . '/' . $folder ) ) {
+				$held[ $id ] = $item;
+			}
+		}
+		return $held;
+	}
+
+	/**
 	 * Manifest data for an export job.
 	 *
 	 * @param Job $job Export job after its scan and database steps.
@@ -104,7 +131,12 @@ final class Manifest {
 				'bytes'      => $scan['bytes'],
 				'exclusions' => $job->option( 'exclusions' ),
 			),
-			'plugins'        => array( 'active' => $site['active_plugins'] ),
+			'plugins'        => array(
+				'active'    => $site['active_plugins'],
+				'installed' => self::held( $job, 'plugins', isset( $site['plugins_installed'] ) ? $site['plugins_installed'] : array() ),
+			),
+			'themes'         => array( 'installed' => self::held( $job, 'themes', isset( $site['themes_installed'] ) ? $site['themes_installed'] : array() ) ),
+			'content'        => isset( $site['content'] ) ? $site['content'] : array(),
 			'theme'          => array(
 				'stylesheet' => $site['stylesheet'],
 				'template'   => $site['template'],

@@ -50,7 +50,69 @@ final class Site_Info {
 			'stylesheet'     => (string) get_stylesheet(),
 			'template'       => (string) get_template(),
 			'os'             => PHP_OS,
+			// For the restore preview (since 0.29.0): what is installed, in which version, and how much content.
+			'plugins_installed' => self::plugins(),
+			'themes_installed'  => self::themes(),
+			'content'           => self::content(),
 		);
+	}
+
+	/**
+	 * Installed plugins: plugin file => [name, version].
+	 *
+	 * @return array<string,array{0:string,1:string}>
+	 */
+	public static function plugins(): array {
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		$out = array();
+		foreach ( get_plugins() as $file => $data ) {
+			$out[ (string) $file ] = array( self::text( $data['Name'] ), self::text( $data['Version'] ) );
+		}
+		return $out;
+	}
+
+	/**
+	 * Installed themes: folder => [name, version].
+	 *
+	 * @return array<string,array{0:string,1:string}>
+	 */
+	public static function themes(): array {
+		$out = array();
+		foreach ( wp_get_themes() as $slug => $theme ) {
+			$out[ (string) $slug ] = array( self::text( $theme->get( 'Name' ) ), self::text( $theme->get( 'Version' ) ) );
+		}
+		return $out;
+	}
+
+	/**
+	 * How much content the site has: published posts and pages, media items, users, approved
+	 * comments (on a network: the main site's, and all users).
+	 *
+	 * @return array<string,int>
+	 */
+	public static function content(): array {
+		$posts = wp_count_posts( 'post' );
+		$pages = wp_count_posts( 'page' );
+		$media = wp_count_posts( 'attachment' );
+		$users = function_exists( 'get_user_count' ) ? (int) get_user_count() : (int) count_users()['total_users'];
+		return array(
+			'posts'    => (int) ( isset( $posts->publish ) ? $posts->publish : 0 ),
+			'pages'    => (int) ( isset( $pages->publish ) ? $pages->publish : 0 ),
+			'media'    => (int) ( isset( $media->inherit ) ? $media->inherit : 0 ),
+			'users'    => $users,
+			'comments' => (int) wp_count_comments()->approved,
+		);
+	}
+
+	/**
+	 * A header value as short plain text.
+	 *
+	 * @param mixed $value Value.
+	 */
+	private static function text( $value ): string {
+		return substr( trim( wp_strip_all_tags( is_scalar( $value ) ? (string) $value : '' ) ), 0, 200 );
 	}
 
 	/**

@@ -3020,3 +3020,132 @@ details.sf-dest[open] > .sf-dest-head::after {
 		justify-content: flex-start;
 	}
 }
+
+/* ------------------------------------------------- Restore preview */
+
+.siteferry .sf-preview {
+	margin: 14px 0 0;
+	padding: 14px 16px;
+	border: 1px solid var(--sf-rope);
+	border-radius: var(--sf-radius);
+	background: var(--sf-deck);
+}
+
+.siteferry .sf-preview h4 {
+	margin: 0 0 10px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-pv-theme {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0 0 10px;
+	font-weight: 600;
+	color: var(--sf-ink);
+}
+
+.siteferry .sf-pv-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.siteferry .sf-pv-list li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 8px;
+	margin: 0;
+	padding: 7px 0;
+	border-top: 1px solid var(--sf-fog);
+}
+
+.siteferry .sf-pv-list li:first-child {
+	border-top: 0;
+}
+
+.siteferry .sf-pv-kind {
+	min-width: 4.5em;
+	font-size: 11px;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-pv-ver {
+	font-family: var(--sf-mono);
+	font-size: 12px;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-pv-note {
+	font-size: 12px;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-pv-tag {
+	margin-left: auto;
+	padding: 1px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 600;
+	background: var(--sf-fog);
+	color: var(--sf-accent);
+}
+
+.siteferry .sf-pv-tag + .sf-pv-tag {
+	margin-left: 0;
+}
+
+.siteferry .sf-pv-tag.is-warn {
+	background: var(--sf-amber-wash);
+	color: var(--sf-amber);
+}
+
+.siteferry .sf-pv-tag.is-good {
+	background: var(--sf-starboard-wash);
+	color: var(--sf-starboard);
+}
+
+.siteferry .sf-pv-content {
+	width: 100%;
+	max-width: 420px;
+	margin: 12px 0 0;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.siteferry .sf-pv-content th,
+.siteferry .sf-pv-content td {
+	padding: 4px 8px 4px 0;
+	text-align: left;
+}
+
+.siteferry .sf-pv-content thead th {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-pv-content td:nth-child(n+2) {
+	font-variant-numeric: tabular-nums;
+}
+
+.siteferry .sf-pv-content .is-less {
+	color: var(--sf-port);
+	font-weight: 600;
+}
+
+.siteferry .sf-pv-content .is-more {
+	color: var(--sf-starboard);
+	font-weight: 600;
+}
+
+.siteferry .sf-pv-foot {
+	margin: 10px 0 0;
+	font-size: 12px;
+	color: var(--sf-ink-soft);
+}

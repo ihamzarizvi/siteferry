@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.28.4
+Stable tag: 0.29.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -460,6 +460,10 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.29.0 =
+* Restore preview: before you confirm a restore (or a move here), "What this restore changes" lists the plugins and themes it puts back in an older or newer version, the ones it brings back, which plugins it turns on or off, a change of the theme in use, and how the number of posts, pages, media items, users and comments changes. Partial restores show only what they touch. Nothing is changed by the preview.
+* Backups now record the installed plugins and themes (name and version, only those whose files are in the backup) and those content counts. Older backups and .wpress files show which plugins are turned on or off.
 
 = 0.28.4 =
 * readme: the .wpress FAQ says plainly that SiteFerry is not affiliated with, endorsed or sponsored by ServMask or All-in-One WP Migration, and contains none of its code.

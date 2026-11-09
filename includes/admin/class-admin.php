@@ -408,6 +408,7 @@ final class Admin {
 					<div class="sf-progress" id="siteferry-import-progress" hidden></div>
 					<table class="sf-facts-table" id="siteferry-inspection" hidden><tbody id="siteferry-inspection-rows"></tbody></table>
 					<ul id="siteferry-inspection-warnings" class="sf-warnings"></ul>
+					<section class="sf-preview" id="siteferry-preview" aria-labelledby="siteferry-preview-title" hidden></section>
 					<details class="sf-more" id="siteferry-restore-advanced">
 						<summary><?php esc_html_e( 'Advanced', 'siteferry' ); ?></summary>
 						<fieldset class="sf-checks sf-restore-what" id="siteferry-restore-what">

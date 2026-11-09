@@ -3035,6 +3035,7 @@
 		$( 'siteferry-restore-advanced' ).hidden = false;
 		syncRestoreChoices();
 		$( 'siteferry-inspection' ).hidden = true;
+		$( 'siteferry-preview' ).hidden = true;
 		$( 'siteferry-inspection-warnings' ).replaceChildren();
 		$( 'siteferry-crossing' ).hidden = true;
 		$( 'siteferry-import-cancel' ).hidden = false;
@@ -3347,6 +3348,7 @@
 		restore.phase = 'check';
 		setConfirm( false );
 		$( 'siteferry-inspection' ).hidden = true;
+		$( 'siteferry-preview' ).hidden = true;
 		$( 'siteferry-inspection-warnings' ).replaceChildren();
 		if ( previous ) {
 			await cancelJob( previous.id, previous.token );
@@ -3561,10 +3563,142 @@
 		$( 'siteferry-inspection-rows' ).replaceChildren( ...rows.map( ( [ k, v ] ) => el( 'tr', {}, [ el( 'th', { scope: 'row', text: k } ), el( 'td', { text: v } ) ] ) ) );
 		$( 'siteferry-inspection' ).hidden = false;
 		$( 'siteferry-inspection-warnings' ).replaceChildren( ...( info.warnings || [] ).map( ( w ) => el( 'li', { text: w } ) ) );
+		renderPreview( info.preview );
 		setConfirm( true );
 		if ( changed ) {
 			recheckSoon(); // A choice this backup cannot take was set back: check again with the new ones.
 		}
+	}
+
+	/**
+	 * What the restore would change, from the check: plugins and themes put back in another
+	 * version, coming back or turned on or off, the theme in use, and how much content there is.
+	 */
+	function renderPreview( preview ) {
+		const box = $( 'siteferry-preview' );
+		if ( ! preview ) {
+			box.hidden = true;
+			box.replaceChildren();
+			return;
+		}
+		const tags = {
+			older: [ __( 'Older', 'siteferry' ), 'is-warn' ],
+			newer: [ __( 'Newer', 'siteferry' ), 'is-info' ],
+			back: [ __( 'Comes back', 'siteferry' ), 'is-good' ],
+			on: [ __( 'Turned on', 'siteferry' ), 'is-info' ],
+			off: [ __( 'Turned off', 'siteferry' ), 'is-warn' ],
+		};
+		const versions = ( item ) => {
+			if ( item.change === 'older' || item.change === 'newer' ) {
+				return sprintf(
+					/* translators: 1: version now, such as 9.2.1, 2: version after the restore, such as 8.7.0 */
+					__( '%1$s → %2$s', 'siteferry' ),
+					item.now || '?',
+					item.then || '?'
+				);
+			}
+			return item.change === 'back' ? item.then : item.now || '';
+		};
+		const line = ( item, kind ) => {
+			const chips = [ item.change, item.activity ]
+				.filter( ( key ) => tags[ key ] )
+				.map( ( key ) => el( 'span', { class: 'sf-pv-tag ' + tags[ key ][ 1 ], text: tags[ key ][ 0 ] } ) );
+			let note = '';
+			if ( item.change === 'stays' && item.activity === 'off' ) {
+				note = __( 'not in this backup: it stays installed, but is turned off', 'siteferry' );
+			}
+			return el( 'li', {}, [
+				el( 'span', { class: 'sf-pv-kind', text: kind } ),
+				el( 'strong', { text: item.name } ),
+				...( versions( item ) ? [ el( 'span', { class: 'sf-pv-ver', text: versions( item ) } ) ] : [] ),
+				...( note ? [ el( 'span', { class: 'sf-pv-note', text: note } ) ] : [] ),
+				...chips,
+			] );
+		};
+
+		const parts = [ el( 'h4', { id: 'siteferry-preview-title', text: __( 'What this restore changes', 'siteferry' ) } ) ];
+		if ( preview.theme ) {
+			parts.push(
+				el( 'p', { class: 'sf-pv-theme' }, [
+					el( 'span', { class: 'dashicons dashicons-admin-appearance', 'aria-hidden': 'true' } ),
+					el( 'span', {
+						text: sprintf(
+							/* translators: 1: theme used now, 2: theme used after the restore */
+							__( 'Theme in use: %1$s → %2$s', 'siteferry' ),
+							preview.theme.now,
+							preview.theme.then
+						),
+					} ),
+				] )
+			);
+		}
+		const items = [ ...preview.plugins.map( ( item ) => line( item, __( 'Plugin', 'siteferry' ) ) ), ...preview.themes.map( ( item ) => line( item, __( 'Theme', 'siteferry' ) ) ) ];
+		if ( items.length ) {
+			parts.push( el( 'ul', { class: 'sf-pv-list' }, items ) );
+		}
+		const contentChanges = !! preview.content && Object.keys( preview.content ).some( ( key ) => preview.content[ key ].now !== preview.content[ key ].then );
+		if ( contentChanges ) {
+			const labels = {
+				posts: __( 'Posts', 'siteferry' ),
+				pages: __( 'Pages', 'siteferry' ),
+				media: __( 'Media items', 'siteferry' ),
+				users: __( 'Users', 'siteferry' ),
+				comments: __( 'Comments', 'siteferry' ),
+			};
+			const rows = Object.keys( labels )
+				.filter( ( key ) => preview.content[ key ] )
+				.map( ( key ) => {
+					const { now, then } = preview.content[ key ];
+					const diff = then - now;
+					return el( 'tr', {}, [
+						el( 'th', { scope: 'row', text: labels[ key ] } ),
+						el( 'td', { text: String( now ) } ),
+						el( 'td', { text: String( then ) } ),
+						el( 'td', { class: diff < 0 ? 'is-less' : diff > 0 ? 'is-more' : '', text: diff === 0 ? '=' : ( diff > 0 ? '+' : '−' ) + Math.abs( diff ) } ),
+					] );
+				} );
+			parts.push(
+				el( 'table', { class: 'sf-pv-content' }, [
+					el( 'thead', {}, [
+						el( 'tr', {}, [
+							el( 'th', { scope: 'col', text: preview.network ? __( 'Main site', 'siteferry' ) : '' } ),
+							el( 'th', { scope: 'col', text: __( 'Now', 'siteferry' ) } ),
+							el( 'th', { scope: 'col', text: __( 'After', 'siteferry' ) } ),
+							el( 'th', { scope: 'col', text: __( 'Change', 'siteferry' ) } ),
+						] ),
+					] ),
+					el( 'tbody', {}, rows ),
+				] )
+			);
+		}
+		const notes = [];
+		if ( preview.content && ! contentChanges ) {
+			notes.push( __( 'The number of posts, pages, media items, users and comments is the same.', 'siteferry' ) );
+		}
+		if ( preview.plugins_same || preview.themes_same ) {
+			notes.push(
+				sprintf(
+					items.length
+						? /* translators: 1: number of plugins, such as 12 plugins, 2: number of themes, such as 3 themes */
+						  __( 'The other %1$s and %2$s stay as they are.', 'siteferry' )
+						: /* translators: 1: number of plugins, such as 12 plugins, 2: number of themes, such as 3 themes */
+						  __( 'All %1$s and %2$s stay as they are.', 'siteferry' ),
+					/* translators: %d: a number of plugins */
+					sprintf( _n( '%d plugin', '%d plugins', preview.plugins_same, 'siteferry' ), preview.plugins_same ),
+					/* translators: %d: a number of themes */
+					sprintf( _n( '%d theme', '%d themes', preview.themes_same, 'siteferry' ), preview.themes_same )
+				)
+			);
+		}
+		if ( ! preview.known ) {
+			notes.push( __( 'This backup does not record plugin and theme versions (it was made before SiteFerry 0.29.0, or by another plugin), so only which plugins are turned on is compared.', 'siteferry' ) );
+		}
+		if ( ! items.length && ! preview.theme && ! contentChanges ) {
+			notes.unshift( __( 'No plugin or theme changes found.', 'siteferry' ) );
+		}
+		notes.forEach( ( text ) => parts.push( el( 'p', { class: 'sf-pv-foot', text } ) ) );
+		box.replaceChildren( ...parts );
+		box.hidden = false;
 	}
 
 	async function confirmImport() {
@@ -3580,6 +3714,7 @@
 		$( 'siteferry-import-cancel' ).hidden = true;
 		$( 'siteferry-restore-advanced' ).hidden = true;
 		$( 'siteferry-inspection' ).hidden = true;
+		$( 'siteferry-preview' ).hidden = true;
 		view.start( safety ? __( 'Making a safety backup of this site first...', 'siteferry' ) : restore.mine ? __( 'Restoring...', 'siteferry' ) : __( 'Moving the site here...', 'siteferry' ) );
 		try {
 			await api( 'POST', 'jobs/' + importJob.id + '/confirm', { token: importJob.token, json: { safety } } );
