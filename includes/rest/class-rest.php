@@ -105,6 +105,7 @@ final class Rest {
 			array( '/storage/' . self::DEST, WP_REST_Server::DELETABLE, 'remove_storage', $admin ),
 			array( '/storage/' . self::DEST . '/test', WP_REST_Server::CREATABLE, 'test_storage', $admin ),
 			array( '/storage/' . self::DEST . '/test', WP_REST_Server::READABLE, 'test_progress', $admin ),
+			array( '/storage/gdrive/picker', WP_REST_Server::READABLE, 'gdrive_picker', $admin ),
 			array( '/storage/' . self::DEST . '/backups', WP_REST_Server::READABLE, 'remote_backups', $admin ),
 			array( '/storage/' . self::DEST . '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_remote', $admin ),
 			array( '/storage/' . self::DEST . '/send', WP_REST_Server::CREATABLE, 'start_send', $admin ),
@@ -883,6 +884,20 @@ final class Rest {
 			ob_end_clean();
 			\SiteFerry\Storage\Test_Progress::listen( null );
 		}
+	}
+
+	/**
+	 * What the admin page needs to open Google's folder picker: a short-lived Drive access token
+	 * (drive.file only), the Picker's API key and the project number. Never cached.
+	 */
+	public static function gdrive_picker(): WP_REST_Response {
+		$driver = Destinations::driver( 'gdrive' );
+		if ( ! $driver instanceof \SiteFerry\Storage\Gdrive_Driver ) {
+			throw new Job_Exception( __( 'Google Drive is not set up.', 'siteferry' ), Job_Exception::NOT_FOUND );
+		}
+		$response = new WP_REST_Response( $driver->picker() );
+		$response->header( 'Cache-Control', 'no-store' );
+		return $response;
 	}
 
 	/**

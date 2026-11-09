@@ -2809,3 +2809,23 @@ details.sf-dest[open] > .sf-dest-head::after {
 		animation: none;
 	}
 }
+
+/* ------------------------------------------------- Google Drive folder */
+
+.siteferry .sf-drive-place {
+	margin: 0 0 8px;
+	font-weight: 600;
+	color: var(--sf-ink);
+}
+
+.siteferry .sf-drive-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 12px;
+	margin: 0 0 6px;
+}
+
+.siteferry .sf-drive-actions .button .dashicons {
+	vertical-align: text-bottom;
+}

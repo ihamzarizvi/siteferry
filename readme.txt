@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.26.0
+Stable tag: 0.27.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -415,7 +415,9 @@ signed with your keys. Which service that is, and its terms, depend on your choi
 **Google Drive.** When you connect Google Drive, SiteFerry uses Google's sign-in
 (accounts.google.com, oauth2.googleapis.com) and the Drive API (www.googleapis.com) with the
 drive.file scope: it uploads, lists, downloads and deletes the backup files it made, in the folder
-you choose, when you ask or a schedule you set runs. Google's
+you choose, when you ask or a schedule you set runs. To choose that folder in your Drive, the
+Storage tab loads Google's folder picker (apis.google.com) only when you click "Choose a folder in
+Drive"; picking a folder gives SiteFerry access to that folder only. Google's
 [terms of service](https://policies.google.com/terms) and
 [privacy policy](https://policies.google.com/privacy).
 
@@ -438,6 +440,10 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
 == Changelog ==
+
+= 0.27.0 =
+* Google Drive: "Choose a folder in Drive" opens Google's own folder picker; SiteFerry then keeps the backups in a folder inside the chosen one (named after the site, renameable), instead of only at the top of My Drive. Picking a folder gives SiteFerry access to that folder only (it keeps the drive.file permission). "Use the top of My Drive instead" goes back. With one-click sign-in the picker's details come from the sign-in service; with your own OAuth client, enter its Picker API key and project number.
+* Sign-in service (relay): new GET /google/picker with the Picker's public API key and project number (config: google_picker_key, google_app_id).
 
 = 0.26.0 =
 * FTP: downloading a backup from an FTP server (to restore or check it) keeps one transfer running from range to range instead of logging in again every 8 MB; a fresh transfer starts every 64 MB to keep memory small. Against the test server, 200 MB took 7.9 s instead of 48.1 s (4 logins instead of 25); over the internet the gain is larger.

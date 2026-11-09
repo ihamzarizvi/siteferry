@@ -528,4 +528,149 @@ Sf_Test::run(
 	}
 );
 
+Sf_Test::run(
+	'a folder picked in Google Drive: the backup folder is made inside it and found again; back to the top of My Drive',
+	static function () {
+		$picked                                = array(
+			'parent_id'   => 'fPickedClientsFolder01',
+			'parent_path' => 'Clients',
+			'folder'      => 'xsofty.com backups',
+		);
+		list( $driver, $transport, $endpoints ) = sf_gdrive( array(), $picked );
+		sf_consent( $driver, $transport, $saved );
+		Sf_Test::ok( false !== strpos( $driver->describe(), 'folder "Clients / xsofty.com backups"' ), 'described with its place: ' . $driver->describe() );
+		sf_gsend( $driver, 'a-2026-01-01-000000000000.tar', 'abc' );
+		$folders = $transport->google->folders();
+		Sf_Test::same( 1, count( $folders ) );
+		Sf_Test::same( 'xsofty.com backups', reset( $folders )['name'] );
+		Sf_Test::same( array( 'fPickedClientsFolder01' ), reset( $folders )['parents'], 'inside the picked folder:' );
+		Sf_Test::same( 'fPickedClientsFolder01', $saved['folder_parent'], 'its place saved:' );
+
+		$settings = Gdrive_Driver::normalize( $picked + array( 'mode' => 'own', 'client_id' => SF_G_CLIENT ) )['settings'];
+		$next     = new Gdrive_Driver( $settings, SF_G_SECRET, $transport, $endpoints, static function () {} );
+		$next->use_auth( $saved, null );
+		Sf_Test::same( array( 'a-2026-01-01-000000000000.tar' ), array_column( $next->list(), 'name' ), 'found again by the next request:' );
+		sf_gsend( $next, 'b-2026-01-01-000000000000.tar', 'def' );
+		Sf_Test::same( 1, count( $transport->google->folders() ), 'no second folder:' );
+		Sf_Test::ok( false !== strpos( implode( ' ', $next->test() ), 'inside "Clients"' ), 'the test says where' );
+
+		// Back to the top of My Drive: a folder of that name there, not the one in "Clients".
+		$top = new Gdrive_Driver( Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => SF_G_CLIENT, 'folder' => 'xsofty.com backups' ) )['settings'], SF_G_SECRET, $transport, $endpoints, static function () {} );
+		$top->use_auth( $saved, null );
+		Sf_Test::same( array(), $top->list(), 'the top of My Drive starts empty:' );
+		sf_gsend( $top, 'c-2026-01-01-000000000000.tar', 'ghi' );
+		$parents = array_column( $transport->google->folders(), 'parents' );
+		Sf_Test::ok( in_array( array( 'root' ), $parents, true ) && in_array( array( 'fPickedClientsFolder01' ), $parents, true ), 'one folder in each place' );
+	}
+);
+
+Sf_Test::run(
+	'the picked folder\'s settings are checked: a malformed id is refused, the shown name is cleaned and cut',
+	static function () {
+		sf_expect_storage_error(
+			Storage_Exception::CONFIG,
+			static function () {
+				Gdrive_Driver::normalize( array( 'parent_id' => "../../etc'" ) );
+			},
+			'choose it again'
+		);
+		$n = Gdrive_Driver::normalize(
+			array(
+				'parent_id'   => 'fPickedClientsFolder01',
+				'parent_path' => "Cli\nents\x07" . str_repeat( 'é', 200 ),
+			)
+		)['settings'];
+		Sf_Test::ok( 0 === strpos( $n['parent_path'], 'Cli ents' ), 'control characters become spaces: ' . substr( $n['parent_path'], 0, 12 ) );
+		Sf_Test::same( 150, preg_match_all( '/./us', $n['parent_path'] ), 'cut to 150 characters, whole characters only:' );
+		Sf_Test::same( '', Gdrive_Driver::normalize( array() )['settings']['parent_id'], 'none picked: the top of My Drive' );
+		sf_expect_storage_error(
+			Storage_Exception::CONFIG,
+			static function () {
+				Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => SF_G_CLIENT, 'app_id' => 'abc' ) );
+			},
+			'project number'
+		);
+		sf_expect_storage_error(
+			Storage_Exception::CONFIG,
+			static function () {
+				Gdrive_Driver::normalize( array( 'mode' => 'own', 'client_id' => SF_G_CLIENT, 'picker_key' => 'key with spaces' ) );
+			},
+			'Picker API key'
+		);
+	}
+);
+
+Sf_Test::run(
+	'the folder picker\'s details: a token, the key and the project number, from the settings or the relay',
+	static function () {
+		// Your own client without a Picker key: a clear message.
+		list( $driver, $transport ) = sf_gdrive();
+		sf_consent( $driver, $transport, $saved );
+		sf_expect_storage_error(
+			Storage_Exception::CONFIG,
+			static function () use ( $driver ) {
+				$driver->picker();
+			},
+			'Picker API key and project number'
+		);
+		// With them.
+		list( $own, $own_transport ) = sf_gdrive(
+			array(),
+			array(
+				'picker_key' => 'AIzaSyTestPickerKey_0123456789abcdef',
+				'app_id'     => '340488123456',
+			)
+		);
+		sf_consent( $own, $own_transport, $own_saved );
+		$details = $own->picker();
+		Sf_Test::same( array( 'AIzaSyTestPickerKey_0123456789abcdef', '340488123456' ), array( $details['api_key'], $details['app_id'] ) );
+		Sf_Test::ok( '' !== $details['token'] && $details['expires'] > time(), 'a current access token' );
+
+		// One-click sign-in: from the relay, or a message when it has no picker set up.
+		list( , $google_transport, $endpoints ) = sf_gdrive();
+		$google = $google_transport->google;
+		$base   = 'https://relay.test/siteferry';
+		$config = array(
+			'base_url'             => $base,
+			'signing_key'          => str_repeat( 's', 40 ),
+			'google_client_id'     => SF_G_CLIENT,
+			'google_client_secret' => SF_G_SECRET,
+			'google_auth_url'      => SF_G_BASE . '/o/oauth2/v2/auth',
+			'google_token_url'     => SF_G_BASE . '/token',
+		);
+		$post   = static function ( string $url, array $fields ) use ( $google ) {
+			return $google->handle( 'POST', $url, array(), http_build_query( $fields ) );
+		};
+		foreach ( array( false, true ) as $with_picker ) {
+			$relay     = new SiteFerry_Relay\Relay(
+				$with_picker ? $config + array( 'google_picker_key' => 'AIzaSyRelayPickerKey_0123456789ab', 'google_app_id' => '340488999999' ) : $config,
+				$post
+			);
+			$transport = new Sf_Relay_Routing_Transport( $base, $relay, $google_transport );
+			$driver    = new Gdrive_Driver( Gdrive_Driver::normalize( array() )['settings'], '', $transport, array( 'relay' => $base ) + $endpoints, static function () {} );
+			$verifier  = Oauth_State::base64url( random_bytes( 48 ) );
+			$state     = bin2hex( random_bytes( 24 ) );
+			$to_google = $transport->request( 'GET', $driver->authorization_url( SF_G_REDIRECT, $state, Oauth_State::base64url( hash( 'sha256', $verifier, true ) ) ), array() );
+			$to_relay  = $google->handle( 'GET', $to_google['headers']['location'] . '&decision=allow', array(), '' );
+			$to_site   = $transport->request( 'GET', $to_relay['headers']['location'], array() );
+			$back      = array();
+			parse_str( (string) parse_url( $to_site['headers']['location'], PHP_URL_QUERY ), $back );
+			$driver->use_auth( array(), static function () {} );
+			$driver->connect( $back['code'], $verifier, SF_G_REDIRECT );
+			if ( $with_picker ) {
+				$details = $driver->picker();
+				Sf_Test::same( array( 'AIzaSyRelayPickerKey_0123456789ab', '340488999999' ), array( $details['api_key'], $details['app_id'] ), 'from the relay:' );
+			} else {
+				sf_expect_storage_error(
+					Storage_Exception::CONFIG,
+					static function () use ( $driver ) {
+						$driver->picker();
+					},
+					'not set up on the sign-in service'
+				);
+			}
+		}
+	}
+);
+
 exit( Sf_Test::finish( 'test-gdrive' ) );

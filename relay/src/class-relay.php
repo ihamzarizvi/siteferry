@@ -26,6 +26,8 @@ namespace SiteFerry_Relay;
  *                          forwards the request to Google and returns Google's answer unchanged.
  *
  * Dropbox (no app secret: Dropbox accepts PKCE alone, so the tokens never pass through here):
+ * - GET  /google/picker    The public details of Google's folder picker (API key, project number),
+ *                           so a site's admin page can open it. Nothing secret.
  * - GET  /dropbox/start     As /google/start, to Dropbox's authorization page.
  * - GET  /dropbox/callback  As /google/callback.
  * - GET  /dropbox/app       The app key and this redirect address (both public), which the site
@@ -66,6 +68,7 @@ final class Relay {
 		'google/start'     => 'start',
 		'google/callback'  => 'callback',
 		'google/token'     => 'token',
+		'google/picker'    => 'picker',
 		'dropbox/start'    => 'start',
 		'dropbox/callback' => 'callback',
 		'dropbox/app'      => 'app',
@@ -75,7 +78,8 @@ final class Relay {
 	const MAX_BODY = 16384;
 
 	/**
-	 * Settings: base_url, signing_key, google_client_id, google_client_secret, dropbox_app_key,
+	 * Settings: base_url, signing_key, google_client_id, google_client_secret, google_picker_key,
+	 * google_app_id (the Google Cloud project number), dropbox_app_key,
 	 * and for tests google_auth_url, google_token_url and dropbox_auth_url.
 	 *
 	 * @var array
@@ -143,7 +147,7 @@ final class Relay {
 		$action   = self::ROUTES[ $key ];
 		if ( ! $this->offers( $provider ) ) {
 			$message = sprintf( '%s sign-in is not set up on this relay.', 'google' === $provider ? 'Google Drive' : 'Dropbox' );
-			return in_array( $action, array( 'token', 'app' ), true ) ? self::json( 503, array( 'error' => 'temporarily_unavailable', 'error_description' => $message ) ) : self::text( 503, $message );
+			return in_array( $action, array( 'token', 'app', 'picker' ), true ) ? self::json( 503, array( 'error' => 'temporarily_unavailable', 'error_description' => $message ) ) : self::text( 503, $message );
 		}
 		if ( 'token' === $action ) {
 			return 'POST' === $method ? $this->token( $body ) : self::json( 405, array( 'error' => 'invalid_request', 'error_description' => 'Use POST.' ) );
@@ -157,11 +161,33 @@ final class Relay {
 		if ( 'callback' === $action ) {
 			return $this->callback( $provider, $query );
 		}
+		if ( 'picker' === $action ) {
+			return $this->picker();
+		}
 		return self::json(
 			200,
 			array(
 				'app_key'      => $this->config['dropbox_app_key'],
 				'redirect_uri' => $this->callback_url( 'dropbox' ),
+			)
+		);
+	}
+
+	/**
+	 * GET /google/picker: the Picker's browser key and the project number (both public by design;
+	 * the key should be restricted to the Google Picker API in the Cloud console).
+	 */
+	private function picker(): array {
+		$key = isset( $this->config['google_picker_key'] ) && is_string( $this->config['google_picker_key'] ) ? $this->config['google_picker_key'] : '';
+		$app = isset( $this->config['google_app_id'] ) ? (string) $this->config['google_app_id'] : '';
+		if ( ! preg_match( '/^[A-Za-z0-9_-]{20,100}$/', $key ) || ! preg_match( '/^[0-9]{6,20}$/', $app ) ) {
+			return self::json( 503, array( 'error' => 'temporarily_unavailable', 'error_description' => 'The Google Drive folder picker is not set up on this relay.' ) );
+		}
+		return self::json(
+			200,
+			array(
+				'api_key' => $key,
+				'app_id'  => $app,
 			)
 		);
 	}

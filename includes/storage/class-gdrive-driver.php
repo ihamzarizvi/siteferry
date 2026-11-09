@@ -267,14 +267,17 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		$folder = trim( isset( $input['folder'] ) ? (string) $input['folder'] : '' );
 		$folder = '' === $folder ? 'SiteFerry' : $folder;
 		if ( ! preg_match( '/^[^\x00-\x1f\x7f\/\\\\]{1,100}$/u', $folder ) ) {
-			throw new Storage_Exception( __( 'The folder name may not contain slashes or control characters (one folder at the top of My Drive).', 'siteferry' ), Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'The folder name may not contain slashes or control characters (it is one folder).', 'siteferry' ), Storage_Exception::CONFIG );
 		}
+		list( $parent_id, $parent_path ) = self::parent_of( $input );
 		if ( 'relay' === $mode ) {
 			return array(
 				'settings' => array(
-					'mode'      => 'relay',
-					'client_id' => '',
-					'folder'    => $folder,
+					'mode'        => 'relay',
+					'client_id'   => '',
+					'folder'      => $folder,
+					'parent_id'   => $parent_id,
+					'parent_path' => $parent_path,
 				),
 				'secrets'  => array(), // No secret on the site: the relay holds the app's.
 			);
@@ -290,12 +293,67 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		}
 		return array(
 			'settings' => array(
-				'mode'      => 'own',
-				'client_id' => $client_id,
-				'folder'    => $folder,
+				'mode'        => 'own',
+				'client_id'   => $client_id,
+				'folder'      => $folder,
+				'parent_id'   => $parent_id,
+				'parent_path' => $parent_path,
+				// For the folder picker with your own client (optional): an API key restricted to the
+				// Google Picker API, and the project number.
+				'picker_key'  => self::picker_key_of( $input ),
+				'app_id'      => self::app_id_of( $input ),
 			),
 			'secrets'  => array( 'client_secret' => '' === $secret ? null : $secret ),
 		);
+	}
+
+	/**
+	 * The folder picked in Google Drive to hold the backup folder: its id and a name to show, or two
+	 * empty strings (the backup folder is then at the top of My Drive).
+	 *
+	 * @param array $input Raw input.
+	 * @return array{0:string,1:string}
+	 * @throws Storage_Exception If the id is malformed.
+	 */
+	private static function parent_of( array $input ): array {
+		$id = trim( isset( $input['parent_id'] ) ? (string) $input['parent_id'] : '' );
+		if ( '' === $id ) {
+			return array( '', '' );
+		}
+		if ( ! preg_match( '/^[A-Za-z0-9_-]{10,200}$/', $id ) ) {
+			throw new Storage_Exception( __( 'The chosen Google Drive folder is not valid; choose it again.', 'siteferry' ), Storage_Exception::CONFIG );
+		}
+		$path = trim( (string) preg_replace( '/[\x00-\x1f\x7f]+/', ' ', isset( $input['parent_path'] ) ? (string) $input['parent_path'] : '' ) );
+		$path = preg_match( '/^.{1,150}/us', $path, $m ) ? $m[0] : '';
+		return array( $id, '' === $path ? 'Google Drive' : $path );
+	}
+
+	/**
+	 * The Picker's API key for your own client ('' when not given).
+	 *
+	 * @param array $input Raw input.
+	 * @throws Storage_Exception If it is malformed.
+	 */
+	private static function picker_key_of( array $input ): string {
+		$key = trim( isset( $input['picker_key'] ) ? (string) $input['picker_key'] : '' );
+		if ( '' !== $key && ! preg_match( '/^[A-Za-z0-9_-]{20,100}$/', $key ) ) {
+			throw new Storage_Exception( __( 'The Picker API key contains characters that are not allowed.', 'siteferry' ), Storage_Exception::CONFIG );
+		}
+		return $key;
+	}
+
+	/**
+	 * The Google Cloud project number for your own client's Picker ('' when not given).
+	 *
+	 * @param array $input Raw input.
+	 * @throws Storage_Exception If it is not a number.
+	 */
+	private static function app_id_of( array $input ): string {
+		$app = trim( isset( $input['app_id'] ) ? (string) $input['app_id'] : '' );
+		if ( '' !== $app && ! preg_match( '/^[0-9]{6,20}$/', $app ) ) {
+			throw new Storage_Exception( __( 'The project number has only digits (Google Cloud console, project settings).', 'siteferry' ), Storage_Exception::CONFIG );
+		}
+		return $app;
 	}
 
 	/**
@@ -312,6 +370,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			'account'       => '',
 			'folder_id'     => '',
 			'folder_name'   => '',
+			'folder_parent' => 'root',
 		);
 		$this->saver = $saver;
 	}
@@ -330,7 +389,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		return sprintf(
 			'Google Drive%s, folder "%s"',
 			'' === $this->auth['account'] ? '' : ' of ' . $this->auth['account'],
-			$this->settings['folder']
+			'root' === $this->parent() ? $this->settings['folder'] : $this->settings['parent_path'] . ' / ' . $this->settings['folder']
 		);
 	}
 
@@ -692,7 +751,9 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				$this->folder( true );
 			}
 		);
-		$lines[] = sprintf( /* translators: %s: a folder name */ __( 'Using the folder "%s" at the top of My Drive (SiteFerry sees only the files it created).', 'siteferry' ), $this->settings['folder'] );
+		$lines[] = 'root' === $this->parent()
+			? sprintf( /* translators: %s: a folder name */ __( 'Using the folder "%s" at the top of My Drive (SiteFerry sees only the files it created).', 'siteferry' ), $this->settings['folder'] )
+			: sprintf( /* translators: 1: a folder name, 2: the name of the folder chosen in Google Drive */ __( 'Using the folder "%1$s" inside "%2$s" (SiteFerry sees only the files it created).', 'siteferry' ), $this->settings['folder'], $this->settings['parent_path'] );
 
 		$name  = '.siteferry-test-' . bin2hex( random_bytes( 6 ) ) . '.bin';
 		$data  = random_bytes( self::CHUNK_UNIT ) . 'SiteFerry connection test, ' . gmdate( 'Y-m-d H:i:s' ) . ' UTC.';
@@ -739,6 +800,54 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 	}
 
 	/**
+	 * Where the backup folder lives: the folder picked in Google Drive, or "root" (the top of My
+	 * Drive) when none was picked, as before 0.27.0.
+	 */
+	private function parent(): string {
+		return isset( $this->settings['parent_id'] ) && '' !== (string) $this->settings['parent_id'] ? (string) $this->settings['parent_id'] : 'root';
+	}
+
+	/**
+	 * What the browser needs to open Google's folder picker: a short-lived access token (drive.file
+	 * only), the Picker's API key and the Google Cloud project number. With one-click sign-in the
+	 * key and number come from the sign-in service; with your own client, from its settings.
+	 *
+	 * @return array{token:string,expires:int,api_key:string,app_id:string}
+	 * @throws Storage_Exception If Drive is not connected or the picker is not set up.
+	 */
+	public function picker(): array {
+		$token = $this->token();
+		if ( $this->relayed() ) {
+			$url = $this->endpoints['relay'] . '/google/picker';
+			try {
+				$response = $this->transport->request( 'GET', $url, array(), '', self::SHORT_TIMEOUT );
+			} catch ( Storage_Exception $e ) {
+				throw new Storage_Exception( 'The sign-in service ' . parse_url( $url, PHP_URL_HOST ) . ' cannot be reached: ' . $e->getMessage(), $e->getCode(), $e );
+			}
+			$data = self::json( $response );
+			$key  = isset( $data['api_key'] ) && is_string( $data['api_key'] ) ? $data['api_key'] : '';
+			$app  = isset( $data['app_id'] ) ? (string) $data['app_id'] : '';
+		} else {
+			$key = isset( $this->settings['picker_key'] ) ? (string) $this->settings['picker_key'] : '';
+			$app = isset( $this->settings['app_id'] ) ? (string) $this->settings['app_id'] : '';
+		}
+		if ( ! preg_match( '/^[A-Za-z0-9_-]{20,100}$/', $key ) || ! preg_match( '/^[0-9]{6,20}$/', $app ) ) {
+			throw new Storage_Exception(
+				$this->relayed()
+					? __( 'Choosing a folder in Google Drive is not set up on the sign-in service yet. You can still name the folder SiteFerry keeps the backups in.', 'siteferry' )
+					: __( 'To choose a folder in Google Drive with your own client, enter its Picker API key and project number.', 'siteferry' ),
+				Storage_Exception::CONFIG
+			);
+		}
+		return array(
+			'token'   => $token,
+			'expires' => (int) $this->auth['expires'],
+			'api_key' => $key,
+			'app_id'  => $app,
+		);
+	}
+
+	/**
 	 * Id of the backup folder, found or created; null if it does not exist and $create is false.
 	 *
 	 * @param bool $create Create it if missing.
@@ -748,9 +857,10 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		if ( $this->folder_ok ) {
 			return (string) $this->auth['folder_id'];
 		}
-		$name = $this->settings['folder'];
-		$id   = (string) $this->auth['folder_id'];
-		if ( '' !== $id && $name === $this->auth['folder_name'] ) {
+		$name   = $this->settings['folder'];
+		$parent = $this->parent();
+		$id     = (string) $this->auth['folder_id'];
+		if ( '' !== $id && $name === $this->auth['folder_name'] && $parent === (string) $this->auth['folder_parent'] ) {
 			$response = $this->request( 'GET', $this->file_url( $id ) . '?' . self::query( array( 'fields' => 'id,name,mimeType,trashed' ) ), array(), '', array( 200, 404 ) );
 			$file     = self::json( $response );
 			if ( 200 === $response['status'] && empty( $file['trashed'] ) && self::FOLDER_TYPE === ( isset( $file['mimeType'] ) ? $file['mimeType'] : '' ) ) {
@@ -759,9 +869,10 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			}
 		}
 
-		// A folder SiteFerry made earlier (drive.file shows only the app's own files).
+		// A folder SiteFerry made earlier, at the top of My Drive or in the folder picked for it
+		// (drive.file shows only the app's own files, and the folders picked for it).
 		$query = array(
-			'q'        => sprintf( "mimeType = '%s' and name = '%s' and 'root' in parents and trashed = false", self::FOLDER_TYPE, self::quote( $name ) ),
+			'q'        => sprintf( "mimeType = '%s' and name = '%s' and '%s' in parents and trashed = false", self::FOLDER_TYPE, self::quote( $name ), self::quote( $parent ) ),
 			'fields'   => 'files(id,name)',
 			'spaces'   => 'drive',
 			'pageSize' => '10',
@@ -781,7 +892,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 						array(
 							'name'     => $name,
 							'mimeType' => self::FOLDER_TYPE,
-							'parents'  => array( 'root' ),
+							'parents'  => array( $parent ),
 						)
 					)
 				)
@@ -791,8 +902,9 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				throw new Storage_Exception( __( 'Google Drive did not create the folder.', 'siteferry' ), Storage_Exception::REMOTE );
 			}
 		}
-		$this->auth['folder_id']   = $id;
-		$this->auth['folder_name'] = $name;
+		$this->auth['folder_id']     = $id;
+		$this->auth['folder_name']   = $name;
+		$this->auth['folder_parent'] = $parent;
 		$this->save_auth();
 		$this->folder_ok = true;
 		return $id;

@@ -1385,6 +1385,9 @@
 		if ( form.elements.preset ) {
 			applyPreset( form, d.configured ? settings.path_style : null );
 		}
+		if ( form.elements.parent_id ) {
+			renderPlace( form );
+		}
 		const names = Object.keys( d.secrets_set || {} );
 		const set = names.length > 0 && names.every( ( name ) => d.secrets_set[ name ] );
 		const secretNote = form.querySelector( '[data-role=secret-note]' );
@@ -1408,6 +1411,123 @@
 			form.querySelector( '[data-role=disconnect]' ).hidden = ! ( d.oauth && d.oauth.connected );
 		}
 		applyMode( form );
+	}
+
+	// ------------------------------------------------------------ Google Drive folder
+
+	/** Where in Google Drive the backups go: the picked folder, or the top of My Drive. */
+	function renderPlace( form ) {
+		const place = form.querySelector( '[data-role=place]' );
+		if ( ! place ) {
+			return;
+		}
+		const id = form.elements.parent_id.value;
+		place.textContent = id
+			? sprintf(
+					/* translators: %s: name of the folder chosen in Google Drive */
+					__( 'Inside the folder %s', 'siteferry' ),
+					form.elements.parent_path.value || 'Google Drive'
+			  )
+			: __( 'At the top of My Drive', 'siteferry' );
+		const d = destination( form.dataset.destination );
+		const connected = !! ( d && d.oauth && d.oauth.connected );
+		const pick = form.querySelector( '[data-role=pick]' );
+		pick.disabled = ! connected;
+		pick.lastChild.textContent = ' ' + ( id ? __( 'Choose another folder', 'siteferry' ) : __( 'Choose a folder in Drive', 'siteferry' ) );
+		form.querySelector( '[data-role=unpick]' ).hidden = ! id;
+		form.querySelector( '[data-role=pick-note]' ).hidden = connected;
+	}
+
+	/** The backup folder's suggested name: the site's title (no slashes), then backups. */
+	function defaultFolderName() {
+		const site = ( cfg.siteName || hostOf( cfg.home ) || 'SiteFerry' ).replace( /[/\\]+/g, '-' ).trim();
+		/* translators: %s: the site's title */
+		return sprintf( __( '%s backups', 'siteferry' ), site ).slice( 0, 100 );
+	}
+
+	let pickerLoaded = null;
+
+	/** Google's folder picker script, loaded from Google only when a folder is chosen. */
+	function loadPicker() {
+		if ( ! pickerLoaded ) {
+			pickerLoaded = new Promise( ( resolve, reject ) => {
+				const fail = () => {
+					pickerLoaded = null;
+					reject( new Error( __( 'Google’s folder picker could not be loaded. Check the connection and try again.', 'siteferry' ) ) );
+				};
+				const script = document.createElement( 'script' );
+				script.src = 'https://apis.google.com/js/api.js';
+				script.async = true;
+				script.onload = () => window.gapi.load( 'picker', { callback: resolve, onerror: fail } );
+				script.onerror = fail;
+				document.head.appendChild( script );
+			} );
+		}
+		return pickerLoaded;
+	}
+
+	/**
+	 * Opens Google's folder picker. Picking a folder gives SiteFerry access to that folder only
+	 * (drive.file); the backup folder is created inside it when the settings are saved.
+	 */
+	async function pickDriveFolder( form ) {
+		const pick = form.querySelector( '[data-role=pick]' );
+		pick.disabled = true;
+		try {
+			const details = await api( 'GET', 'storage/gdrive/picker' );
+			await loadPicker();
+			const g = window.google.picker;
+			const view = new g.DocsView( g.ViewId.FOLDERS ).setIncludeFolders( true ).setSelectFolderEnabled( true ).setMimeTypes( 'application/vnd.google-apps.folder' ).setParent( 'root' );
+			new g.PickerBuilder()
+				.addView( view )
+				.setOAuthToken( details.token )
+				.setDeveloperKey( details.api_key )
+				.setAppId( details.app_id )
+				.setTitle( __( 'Choose the folder for the SiteFerry backups', 'siteferry' ) )
+				.setCallback( ( data ) => {
+					if ( data[ g.Response.ACTION ] !== g.Action.PICKED ) {
+						return;
+					}
+					const doc = data[ g.Response.DOCUMENTS ][ 0 ];
+					const before = form.elements.parent_id.value;
+					form.elements.parent_id.value = doc[ g.Document.ID ];
+					form.elements.parent_path.value = doc[ g.Document.NAME ];
+					const name = form.elements.folder;
+					if ( ! name.value.trim() || name.value.trim() === 'SiteFerry' ) {
+						name.value = defaultFolderName();
+					}
+					renderPlace( form );
+					storageResult( form, null, [
+						el( 'p', {
+							text: sprintf(
+								/* translators: 1: name of the folder chosen in Google Drive, 2: name of the backup folder */
+								__( 'Chosen: %1. SiteFerry will keep the backups in a folder %2 inside it. Rename it below if you like, then click Save.', 'siteferry' ),
+								doc[ g.Document.NAME ],
+								name.value
+							),
+						} ),
+						...( before !== doc[ g.Document.ID ] && destination( form.dataset.destination ).configured
+							? [ el( 'p', { text: __( 'Backups already stored in the old folder stay there; the list shows the new folder once it is saved.', 'siteferry' ) } ) ]
+							: [] ),
+					] );
+					name.focus();
+					name.select();
+				} )
+				.build()
+				.setVisible( true );
+		} catch ( error ) {
+			storageResult( form, false, [ el( 'p', { text: error.message } ) ] );
+		} finally {
+			renderPlace( form );
+		}
+	}
+
+	/** Back to a backup folder at the top of My Drive. */
+	function unpickDriveFolder( form ) {
+		form.elements.parent_id.value = '';
+		form.elements.parent_path.value = '';
+		renderPlace( form );
+		storageResult( form, null, [ el( 'p', { text: __( 'The backup folder will be at the top of My Drive. Click Save to keep this.', 'siteferry' ) } ) ] );
 	}
 
 	/** Shows the fields of the chosen sign-in mode (data-mode) and names the sign-in button. */
@@ -5078,6 +5198,10 @@
 						storageResult( form, null, [ el( 'p', { text: __( 'Saving or signing in this way replaces the current connection.', 'siteferry' ) } ) ] );
 					}
 				} );
+			}
+			if ( form.querySelector( '[data-role=pick]' ) ) {
+				form.querySelector( '[data-role=pick]' ).addEventListener( 'click', () => pickDriveFolder( form ) );
+				form.querySelector( '[data-role=unpick]' ).addEventListener( 'click', () => unpickDriveFolder( form ) );
 			}
 			const copy = form.querySelector( '[data-role=copy]' );
 			if ( copy ) {

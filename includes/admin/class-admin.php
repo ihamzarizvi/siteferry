@@ -82,6 +82,7 @@ final class Admin {
 					'loginUrl'   => wp_login_url( admin_url( 'admin.php?page=' . self::SLUG ) ),
 					'oauthError' => $oauth_error,
 					'network'    => is_multisite(), // A network is restored whole: no partial restore, no new address.
+					'siteName'   => wp_strip_all_tags( (string) get_bloginfo( 'name' ) ), // Default name of a backup folder in Google Drive.
 					'choices'    => Choices::get( get_current_user_id() ),
 				)
 			) . ';',
@@ -831,11 +832,35 @@ final class Admin {
 						<p class="description" data-role="secret-note"><?php esc_html_e( 'Stored encrypted. It is never shown again.', 'siteferry' ); ?></p>
 					</td>
 				</tr>
+				<tr data-mode="own">
+					<th scope="row"><label for="siteferry-gdrive-picker_key"><?php esc_html_e( 'Picker API key', 'siteferry' ); ?></label></th>
+					<td>
+						<input type="text" class="regular-text" id="siteferry-gdrive-picker_key" name="picker_key" spellcheck="false" autocomplete="off">
+						<p class="description"><?php esc_html_e( 'Optional, to choose a folder in Google Drive: an API key restricted to the Google Picker API (APIs & Services, Credentials).', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+				<tr data-mode="own">
+					<th scope="row"><label for="siteferry-gdrive-app_id"><?php esc_html_e( 'Project number', 'siteferry' ); ?></label></th>
+					<td><input type="text" class="regular-text" id="siteferry-gdrive-app_id" name="app_id" inputmode="numeric" spellcheck="false" autocomplete="off"></td>
+				</tr>
 				<tr>
-					<th scope="row"><label for="siteferry-gdrive-folder"><?php esc_html_e( 'Folder in My Drive', 'siteferry' ); ?></label></th>
+					<th scope="row"><?php esc_html_e( 'Where in Google Drive', 'siteferry' ); ?></th>
+					<td>
+						<input type="hidden" name="parent_id">
+						<input type="hidden" name="parent_path">
+						<p class="sf-drive-place" data-role="place"><?php esc_html_e( 'At the top of My Drive', 'siteferry' ); ?></p>
+						<p class="sf-drive-actions">
+							<button type="button" class="button" data-role="pick"><span class="dashicons dashicons-category" aria-hidden="true"></span> <?php esc_html_e( 'Choose a folder in Drive', 'siteferry' ); ?></button>
+							<button type="button" class="button-link" data-role="unpick" hidden><?php esc_html_e( 'Use the top of My Drive instead', 'siteferry' ); ?></button>
+						</p>
+						<p class="description" data-role="pick-note"><?php esc_html_e( 'Sign in first. Google then lets you choose any folder of yours; SiteFerry gets access to that folder only.', 'siteferry' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="siteferry-gdrive-folder"><?php esc_html_e( 'Backup folder name', 'siteferry' ); ?></label></th>
 					<td>
 						<input type="text" class="regular-text" id="siteferry-gdrive-folder" name="folder" placeholder="SiteFerry" spellcheck="false" autocomplete="off">
-						<p class="description"><?php esc_html_e( 'Created at the top of My Drive. SiteFerry can only see the files and folders it created itself.', 'siteferry' ); ?></p>
+						<p class="description"><?php esc_html_e( 'SiteFerry creates this folder in the place above and keeps the backups in it. It can only see the files and folders it created itself.', 'siteferry' ); ?></p>
 					</td>
 				</tr>
 			</table>

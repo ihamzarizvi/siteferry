@@ -286,4 +286,37 @@ Sf_Test::run(
 	}
 );
 
+Sf_Test::run(
+	'the Google folder picker: its public key and project number, or 503 when they are not set',
+	static function () {
+		$plain = sf_relay()->handle( 'GET', '/siteferry/google/picker', array(), '' );
+		Sf_Test::same( 503, $plain['status'], 'not set up:' );
+		Sf_Test::same( 'The Google Drive folder picker is not set up on this relay.', json_decode( $plain['body'], true )['error_description'] );
+
+		$post   = static function () {
+			return null;
+		};
+		$config = array(
+			'base_url'             => 'https://auth.example.test/siteferry',
+			'signing_key'          => str_repeat( 'k', 40 ),
+			'google_client_id'     => 'relay-client.apps.googleusercontent.com',
+			'google_client_secret' => 'relay-secret',
+			'google_picker_key'    => 'AIzaSyTestPickerKey_0123456789abcdef',
+			'google_app_id'        => '340488123456',
+		);
+		$ready  = ( new Relay( $config, $post ) )->handle( 'GET', '/siteferry/google/picker', array(), '' );
+		Sf_Test::same( 200, $ready['status'] );
+		Sf_Test::same(
+			array(
+				'api_key' => 'AIzaSyTestPickerKey_0123456789abcdef',
+				'app_id'  => '340488123456',
+			),
+			json_decode( $ready['body'], true )
+		);
+		Sf_Test::same( 405, ( new Relay( $config, $post ) )->handle( 'POST', '/siteferry/google/picker', array(), '' )['status'], 'POST refused:' );
+		$bad = array( 'google_app_id' => 'not-a-number' ) + $config;
+		Sf_Test::same( 503, ( new Relay( $bad, $post ) )->handle( 'GET', '/siteferry/google/picker', array(), '' )['status'], 'a malformed project number counts as not set:' );
+	}
+);
+
 exit( Sf_Test::finish( 'test-relay' ) );

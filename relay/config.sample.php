@@ -23,6 +23,11 @@ return array(
 	// empty to offer only Dropbox.
 	'google_client_id'     => '',
 	'google_client_secret' => '',
+	// Optional, for choosing a folder in Google Drive from the Storage tab: an API key restricted to
+	// the Google Picker API (APIs & Services, Credentials), and the project number (12 digits, from
+	// the project's settings). Both are public by design. Leave empty to keep only the folder name.
+	'google_picker_key'    => '',
+	'google_app_id'        => '',
 
 	// From the Dropbox App Console: SiteFerry's app (Scoped access, App folder), Settings, App key.
 	// Its OAuth 2 redirect URI is base_url plus /dropbox/callback. No app secret: sign-ins use
