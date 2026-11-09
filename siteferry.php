@@ -2,9 +2,10 @@
 /**
  * Plugin Name:       SiteFerry
  * Description:       Back up a whole WordPress site into one TAR file and restore or migrate it to another site.
- * Version:           0.28.2
+ * Version:           0.28.3
  * Requires at least: 5.8
  * Requires PHP:      7.4
+ * Plugin URI:        https://xsofty.com/products/siteferry
  * Author:            xsofty
  * Author URI:        https://xsofty.com/
  * License:           GPL-2.0-or-later

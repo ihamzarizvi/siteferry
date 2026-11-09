@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.28.2
+Stable tag: 0.28.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -172,7 +172,10 @@ site's SiteFerry page address, a random state and a PKCE challenge. For Google D
 also sends it the one-time code with the PKCE verifier, and later the refresh token when access
 needs renewing; the service adds SiteFerry's app credentials and passes the request to Google. For
 Dropbox, this site only asks it for the public app key. It stores nothing; backups never go through
-it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsofty.com/).
+it. See "What is the sign-in service (auth.xsofty.com)?" in the FAQ for every step. Publisher:
+[xsofty](https://xsofty.com/products/siteferry); its
+[privacy policy](https://xsofty.com/products/siteferry/privacy-policy) and
+[terms and conditions](https://xsofty.com/products/siteferry/terms-and-conditions).
 
 **Another WordPress site (moving a site).** Only when you paste a move key made on another site and
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
@@ -455,6 +458,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.28.3 =
+* readme: links to the privacy policy and terms of SiteFerry's sign-in service (auth.xsofty.com), and the plugin's home page.
 
 = 0.28.2 =
 * Passes the WordPress.org Plugin Check with no errors: wp_parse_url() instead of parse_url(), no empty strings for translation, and each deliberate direct file, database or time-limit call marked with the reason for it.
