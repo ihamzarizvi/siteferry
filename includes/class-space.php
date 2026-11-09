@@ -243,7 +243,7 @@ final class Space {
 		$tables = array();
 		$data   = 0;
 		$index  = 0;
-		foreach ( (array) $wpdb->get_results( $wpdb->prepare( 'SHOW TABLE STATUS LIKE %s', $like ), ARRAY_A ) as $row ) {
+		foreach ( (array) $wpdb->get_results( $wpdb->prepare( 'SHOW TABLE STATUS LIKE %s', $like ), ARRAY_A ) as $row ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- current table sizes for the space check; no API gives them.
 			if ( null === $row['Engine'] ) {
 				continue; // A view.
 			}

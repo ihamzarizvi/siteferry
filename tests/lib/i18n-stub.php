@@ -19,6 +19,20 @@ if ( ! function_exists( '__' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_parse_url' ) ) {
+	/**
+	 * Stand-in for wp_parse_url(): PHP's parse_url() (WordPress adds handling for
+	 * scheme-relative URLs, which SiteFerry does not pass).
+	 *
+	 * @param string $url       URL.
+	 * @param int    $component A PHP_URL_* constant, or -1 for all parts.
+	 * @return mixed
+	 */
+	function wp_parse_url( $url, $component = -1 ) {
+		return parse_url( $url, $component ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url
+	}
+}
+
 if ( ! function_exists( '_n' ) ) {
 	/**
 	 * The singular or the plural, as English needs.

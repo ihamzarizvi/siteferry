@@ -75,7 +75,7 @@ final class Replacements {
 	private static function add_url( array &$pairs, string $old, string $new ): void {
 		$old   = rtrim( $old, '/' );
 		$new   = rtrim( $new, '/' );
-		$parts = parse_url( $old ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url
+		$parts = wp_parse_url( $old );
 		if ( $old === $new || ! is_array( $parts ) || empty( $parts['host'] ) ) {
 			return;
 		}

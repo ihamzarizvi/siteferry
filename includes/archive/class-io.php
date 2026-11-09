@@ -8,6 +8,8 @@
 
 namespace SiteFerry\Archive;
 
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -157,7 +159,7 @@ final class Io {
 		}
 		return self::quiet(
 			static function () use ( $dir ) {
-				return rmdir( $dir );
+				return rmdir( $dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- SiteFerry's own files; runs in cron and WP-CLI, where WP_Filesystem may need credentials.
 			}
 		) || ! file_exists( $dir );
 	}
@@ -172,9 +174,9 @@ final class Io {
 			static function () use ( $path ) {
 				// Windows removes directory links and junctions with rmdir(), everything else with unlink().
 				if ( '\\' === DIRECTORY_SEPARATOR && is_dir( $path ) ) {
-					return rmdir( $path );
+					return rmdir( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- SiteFerry's own files; runs in cron and WP-CLI, where WP_Filesystem may need credentials.
 				}
-				return unlink( $path );
+				return unlink( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- SiteFerry's own files; runs in cron and WP-CLI, where WP_Filesystem may need credentials.
 			}
 		);
 	}

@@ -50,15 +50,6 @@ function update_option( $name, $value ) {
 	return true;
 }
 
-/**
- * Stand-in for wp_parse_url().
- *
- * @param string $url URL.
- * @return mixed
- */
-function wp_parse_url( $url ) {
-	return parse_url( $url ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url
-}
 
 /**
  * Stand-in for untrailingslashit().

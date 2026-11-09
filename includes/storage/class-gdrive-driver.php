@@ -8,6 +8,8 @@
 
 namespace SiteFerry\Storage;
 
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
+
 use SiteFerry\Backups;
 
 defined( 'ABSPATH' ) || exit;
@@ -203,7 +205,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			$url = (string) apply_filters( 'siteferry_relay_url', $url );
 		}
 		$url   = rtrim( $url, '/' );
-		$parts = parse_url( $url );
+		$parts = wp_parse_url( $url );
 		$ok    = is_array( $parts ) && isset( $parts['scheme'], $parts['host'] ) && ! isset( $parts['user'], $parts['query'], $parts['fragment'] )
 			&& ( 'https' === strtolower( $parts['scheme'] ) || ( 'http' === strtolower( $parts['scheme'] ) && in_array( strtolower( $parts['host'] ), array( '127.0.0.1', 'localhost' ), true ) ) );
 		return $ok ? $url : self::RELAY_URL;
@@ -252,7 +254,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 		return array(
 			'oauth'      => true,
 			'scope'      => self::SCOPE,
-			'relay_host' => (string) parse_url( self::relay_url(), PHP_URL_HOST ),
+			'relay_host' => (string) wp_parse_url( self::relay_url(), PHP_URL_HOST ),
 		);
 	}
 
@@ -286,7 +288,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 
 		$client_id = trim( isset( $input['client_id'] ) ? (string) $input['client_id'] : '' );
 		if ( ! preg_match( '/^[A-Za-z0-9._-]{1,200}\.apps\.googleusercontent\.com$/', $client_id ) ) {
-			throw new Storage_Exception( __( 'Enter the OAuth client ID (it ends with .apps.googleusercontent.com).', 'siteferry' ), Storage_Exception::CONFIG );
+			throw new Storage_Exception( __( 'Enter the OAuth client ID (it ends with .apps.googleusercontent.com).', 'siteferry' ), Storage_Exception::CONFIG ); // phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent -- names the form of a Google client ID; nothing is loaded.
 		}
 		$secret = trim( isset( $input['client_secret'] ) ? (string) $input['client_secret'] : '' );
 		if ( '' !== $secret && ! preg_match( '/^[\x21-\x7e]{1,200}$/', $secret ) ) {
@@ -847,7 +849,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			try {
 				$response = $this->transport->request( 'GET', $url, array(), '', self::SHORT_TIMEOUT );
 			} catch ( Storage_Exception $e ) {
-				throw new Storage_Exception( 'The sign-in service ' . parse_url( $url, PHP_URL_HOST ) . ' cannot be reached: ' . $e->getMessage(), $e->getCode(), $e );
+				throw new Storage_Exception( 'The sign-in service ' . wp_parse_url( $url, PHP_URL_HOST ) . ' cannot be reached: ' . $e->getMessage(), $e->getCode(), $e );
 			}
 			$data = self::json( $response );
 			$key  = isset( $data['api_key'] ) && is_string( $data['api_key'] ) ? $data['api_key'] : '';
@@ -1115,7 +1117,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 			$url = $this->endpoints['relay'] . '/google/token';
 			unset( $fields['client_id'], $fields['client_secret'], $fields['redirect_uri'] );
 		}
-		$service = $relayed ? 'The sign-in service ' . parse_url( $url, PHP_URL_HOST ) : 'Google\'s sign-in service';
+		$service = $relayed ? 'The sign-in service ' . wp_parse_url( $url, PHP_URL_HOST ) : 'Google\'s sign-in service';
 		return $this->retrying(
 			function () use ( $fields, $url, $relayed, $service ): array {
 				try {
@@ -1139,7 +1141,7 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 				if ( in_array( $code, array( 'invalid_client', 'unauthorized_client' ), true ) ) {
 					throw new Storage_Exception(
 						$relayed
-							? $service . ' is not set up correctly (' . $code . $text . '). This needs fixing at ' . parse_url( $url, PHP_URL_HOST ) . ', not on this site.'
+							? $service . ' is not set up correctly (' . $code . $text . '). This needs fixing at ' . wp_parse_url( $url, PHP_URL_HOST ) . ', not on this site.'
 							: 'Google refused the client ID or client secret (' . $code . $text . '). Check them on the Storage tab.',
 						Storage_Exception::AUTH
 					);
@@ -1214,9 +1216,9 @@ final class Gdrive_Driver implements Driver, Oauth_Driver {
 	private function check_host( string $url ): void {
 		$allowed = array();
 		foreach ( array( 'api', 'upload' ) as $key ) {
-			$allowed[] = strtolower( (string) parse_url( $this->endpoints[ $key ], PHP_URL_SCHEME ) . '://' . parse_url( $this->endpoints[ $key ], PHP_URL_HOST ) . ( null === parse_url( $this->endpoints[ $key ], PHP_URL_PORT ) ? '' : ':' . parse_url( $this->endpoints[ $key ], PHP_URL_PORT ) ) );
+			$allowed[] = strtolower( (string) wp_parse_url( $this->endpoints[ $key ], PHP_URL_SCHEME ) . '://' . wp_parse_url( $this->endpoints[ $key ], PHP_URL_HOST ) . ( null === wp_parse_url( $this->endpoints[ $key ], PHP_URL_PORT ) ? '' : ':' . wp_parse_url( $this->endpoints[ $key ], PHP_URL_PORT ) ) );
 		}
-		$host = strtolower( (string) parse_url( $url, PHP_URL_SCHEME ) . '://' . parse_url( $url, PHP_URL_HOST ) . ( null === parse_url( $url, PHP_URL_PORT ) ? '' : ':' . parse_url( $url, PHP_URL_PORT ) ) );
+		$host = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) . '://' . wp_parse_url( $url, PHP_URL_HOST ) . ( null === wp_parse_url( $url, PHP_URL_PORT ) ? '' : ':' . wp_parse_url( $url, PHP_URL_PORT ) ) );
 		if ( ! in_array( $host, $allowed, true ) ) {
 			throw new Storage_Exception( sprintf( /* translators: %s: a host name */ __( 'Refusing to send the Google token to %s.', 'siteferry' ), $host ), Storage_Exception::REMOTE );
 		}

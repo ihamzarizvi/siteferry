@@ -13,7 +13,7 @@ defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 global $wpdb;
 
 // Every option the plugin owns starts with "siteferry_", including encrypted storage credentials.
-$siteferry_options = $wpdb->get_col(
+$siteferry_options = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- finds the plugin's own options to delete them on uninstall.
 	$wpdb->prepare(
 		"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
 		$wpdb->esc_like( 'siteferry_' ) . '%'

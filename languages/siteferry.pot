@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: SiteFerry 0.28.1\n"
+"Project-Id-Version: SiteFerry 0.28.2\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/siteferry\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-09T13:51:02+00:00\n"
+"POT-Creation-Date: 2026-11-09T14:02:02+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: siteferry\n"
@@ -1147,324 +1147,324 @@ msgstr ""
 msgid "Passive mode (works through most firewalls)"
 msgstr ""
 
-#: includes/archive/class-crypto-stream.php:192
-#: includes/archive/class-crypto.php:120
-#: includes/archive/class-crypto.php:166
+#: includes/archive/class-crypto-stream.php:194
+#: includes/archive/class-crypto.php:122
+#: includes/archive/class-crypto.php:168
 msgid "This is not an encrypted SiteFerry backup."
 msgstr ""
 
-#: includes/archive/class-crypto-stream.php:200
+#: includes/archive/class-crypto-stream.php:202
 msgid "The encrypted backup is incomplete (it was cut off)."
 msgstr ""
 
-#: includes/archive/class-crypto-stream.php:204
+#: includes/archive/class-crypto-stream.php:206
 msgid "This encrypted backup is already complete."
 msgstr ""
 
-#: includes/archive/class-crypto.php:98
-#: includes/archive/class-crypto.php:130
+#: includes/archive/class-crypto.php:100
+#: includes/archive/class-crypto.php:132
 msgid "Encrypted backups need the PHP OpenSSL extension with AES-256-GCM."
 msgstr ""
 
-#: includes/archive/class-crypto.php:123
+#: includes/archive/class-crypto.php:125
 msgid "This backup is encrypted in a way this version of SiteFerry does not know."
 msgstr ""
 
-#: includes/archive/class-crypto.php:127
+#: includes/archive/class-crypto.php:129
 msgid "The header of this encrypted backup is damaged."
 msgstr ""
 
-#: includes/archive/class-crypto.php:135
+#: includes/archive/class-crypto.php:137
 msgid "The password is wrong."
 msgstr ""
 
-#: includes/archive/class-crypto.php:211
+#: includes/archive/class-crypto.php:213
 msgid "Encryption failed."
 msgstr ""
 
 #. translators: %d: index + 1
-#: includes/archive/class-crypto.php:244
+#: includes/archive/class-crypto.php:246
 #, php-format
 msgid "Part %d of the encrypted backup fails its check: the file is damaged or was changed."
 msgstr ""
 
-#: includes/archive/class-crypto.php:306
+#: includes/archive/class-crypto.php:308
 msgid "Cannot finish the encrypted backup."
 msgstr ""
 
-#: includes/archive/class-file-input.php:52
-#: includes/archive/class-gzip-input.php:146
+#: includes/archive/class-file-input.php:54
+#: includes/archive/class-gzip-input.php:148
 msgid "Saved read position is past the end of the archive."
 msgstr ""
 
-#: includes/archive/class-file-output.php:61
-#: includes/archive/class-gzip-output.php:112
+#: includes/archive/class-file-output.php:63
+#: includes/archive/class-gzip-output.php:114
 msgid "The archive is shorter than its saved progress; it was changed by something else."
 msgstr ""
 
-#: includes/archive/class-file-output.php:65
-#: includes/archive/class-gzip-output.php:116
+#: includes/archive/class-file-output.php:67
+#: includes/archive/class-gzip-output.php:118
 msgid "Cannot rewind the archive to its saved progress."
 msgstr ""
 
-#: includes/archive/class-gzip-input.php:125
+#: includes/archive/class-gzip-input.php:127
 msgid "Reading .tar.gz files needs the PHP zlib extension."
 msgstr ""
 
-#: includes/archive/class-gzip-input.php:135
+#: includes/archive/class-gzip-input.php:137
 msgid "Saved read position is not valid for this archive."
 msgstr ""
 
-#: includes/archive/class-gzip-input.php:251
+#: includes/archive/class-gzip-input.php:253
 msgid "The compressed archive ends in the middle of a gzip member; the file is incomplete."
 msgstr ""
 
-#: includes/archive/class-gzip-input.php:294
+#: includes/archive/class-gzip-input.php:296
 msgid "This is not a gzip file."
 msgstr ""
 
-#: includes/archive/class-gzip-input.php:302
+#: includes/archive/class-gzip-input.php:304
 msgid "Cannot start gzip decompression."
 msgstr ""
 
-#: includes/archive/class-gzip-input.php:332
+#: includes/archive/class-gzip-input.php:334
 msgid "The compressed archive is damaged (gzip data error)."
 msgstr ""
 
-#: includes/archive/class-gzip-output.php:102
-#: includes/export/class-export.php:193
+#: includes/archive/class-gzip-output.php:104
+#: includes/export/class-export.php:195
 msgid "Compression needs the PHP zlib extension."
 msgstr ""
 
-#: includes/archive/class-gzip-output.php:134
+#: includes/archive/class-gzip-output.php:136
 msgid "Cannot start gzip compression."
 msgstr ""
 
-#: includes/archive/class-gzip-output.php:196
+#: includes/archive/class-gzip-output.php:198
 msgid "gzip compression failed."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/archive/class-io.php:66
+#: includes/archive/class-io.php:68
 #, php-format
 msgid "Cannot open \"%s\"."
 msgstr ""
 
-#: includes/archive/class-io.php:99
+#: includes/archive/class-io.php:101
 msgid "Write failed. The disk may be full."
 msgstr ""
 
 #. translators: 1: the reason, 2: a file or backup name
-#: includes/archive/class-path-guard.php:118
+#: includes/archive/class-path-guard.php:120
 #, php-format
 msgid "Unsafe path in archive (%1$s): \"%2$s\""
 msgstr ""
 
-#: includes/archive/class-resumable-hash.php:76
+#: includes/archive/class-resumable-hash.php:78
 msgid "Hash already finalized."
 msgstr ""
 
-#: includes/archive/class-tar-extractor.php:110
+#: includes/archive/class-tar-extractor.php:112
 msgid "The staging folder does not exist."
 msgstr ""
 
 #. translators: 1: a kind of archive entry, such as "symbolic link", 2: its name
-#: includes/archive/class-tar-extractor.php:154
+#: includes/archive/class-tar-extractor.php:156
 #, php-format
 msgid "The archive contains a %1$s (\"%2$s\"), which is not allowed."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/archive/class-tar-extractor.php:161
+#: includes/archive/class-tar-extractor.php:163
 #, php-format
 msgid "The archive contains \"%s\", which is outside the allowed folders."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/archive/class-tar-extractor.php:227
+#: includes/archive/class-tar-extractor.php:229
 #, php-format
 msgid "Cannot write \"%s\": a folder or link is in the way."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/archive/class-tar-extractor.php:254
+#: includes/archive/class-tar-extractor.php:256
 #, php-format
 msgid "The staged copy of \"%s\" is shorter than expected."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/archive/class-tar-extractor.php:319
+#: includes/archive/class-tar-extractor.php:321
 #, php-format
 msgid "Unsafe folder name in \"%s\"."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/archive/class-tar-extractor.php:324
+#: includes/archive/class-tar-extractor.php:326
 #, php-format
 msgid "Cannot create folder \"%s\": a link is in the way."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/archive/class-tar-extractor.php:328
+#: includes/archive/class-tar-extractor.php:330
 #, php-format
 msgid "Cannot create folder \"%s\": a file is in the way."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/archive/class-tar-extractor.php:337
+#: includes/archive/class-tar-extractor.php:339
 #, php-format
 msgid "Cannot create folder \"%s\"."
 msgstr ""
 
-#: includes/archive/class-tar-extractor.php:367
+#: includes/archive/class-tar-extractor.php:369
 msgid "An archive entry resolved outside the staging folder."
 msgstr ""
 
-#: includes/archive/class-tar-header.php:85
+#: includes/archive/class-tar-header.php:87
 msgid "Short TAR header block."
 msgstr ""
 
-#: includes/archive/class-tar-header.php:91
+#: includes/archive/class-tar-header.php:93
 msgid "TAR header checksum mismatch. The archive is damaged or not a TAR file."
 msgstr ""
 
-#: includes/archive/class-tar-header.php:161
-#: includes/archive/class-tar-header.php:166
-#: includes/archive/class-tar-header.php:172
+#: includes/archive/class-tar-header.php:163
+#: includes/archive/class-tar-header.php:168
+#: includes/archive/class-tar-header.php:174
 msgid "Malformed pax header."
 msgstr ""
 
-#: includes/archive/class-tar-header.php:217
+#: includes/archive/class-tar-header.php:219
 msgid "Negative number in TAR header."
 msgstr ""
 
-#: includes/archive/class-tar-header.php:222
+#: includes/archive/class-tar-header.php:224
 msgid "Number too large in TAR header."
 msgstr ""
 
-#: includes/archive/class-tar-header.php:234
+#: includes/archive/class-tar-header.php:236
 msgid "Malformed number in TAR header."
 msgstr ""
 
-#: includes/archive/class-tar-reader.php:97
-#: includes/wpress/class-reader.php:136
+#: includes/archive/class-tar-reader.php:99
+#: includes/wpress/class-reader.php:138
 msgid "Invalid saved reader state."
 msgstr ""
 
-#: includes/archive/class-tar-reader.php:148
+#: includes/archive/class-tar-reader.php:150
 msgid "The archive has no end marker; the file is incomplete."
 msgstr ""
 
-#: includes/archive/class-tar-reader.php:161
+#: includes/archive/class-tar-reader.php:163
 msgid "Unexpected data after an empty TAR block."
 msgstr ""
 
-#: includes/archive/class-tar-reader.php:317
+#: includes/archive/class-tar-reader.php:319
 msgid "Malformed size in pax header."
 msgstr ""
 
-#: includes/archive/class-tar-reader.php:356
+#: includes/archive/class-tar-reader.php:358
 msgid "Extended TAR header is too large."
 msgstr ""
 
 #. translators: %s: empty, or where it ends, such as " after wp-content/uploads/a.jpg"
-#: includes/archive/class-tar-reader.php:392
+#: includes/archive/class-tar-reader.php:394
 #, php-format
 msgid "The archive ends unexpectedly%s; the file is incomplete."
 msgstr ""
 
-#: includes/archive/class-tar-writer.php:118
+#: includes/archive/class-tar-writer.php:120
 msgid "Invalid saved archive state."
 msgstr ""
 
-#: includes/archive/class-tar-writer.php:225
+#: includes/archive/class-tar-writer.php:227
 msgid "No file is being written."
 msgstr ""
 
-#: includes/archive/class-tar-writer.php:434
+#: includes/archive/class-tar-writer.php:436
 msgid "The archive is already finished."
 msgstr ""
 
-#: includes/archive/class-tar-writer.php:437
+#: includes/archive/class-tar-writer.php:439
 msgid "A file is still being written; call continue_file() first."
 msgstr ""
 
-#: includes/check/class-check.php:63
-#: includes/rest/class-rest.php:946
-#: includes/storage/class-transfer.php:61
+#: includes/check/class-check.php:65
+#: includes/rest/class-rest.php:948
+#: includes/storage/class-transfer.php:63
 msgid "Unknown backup."
 msgstr ""
 
-#: includes/check/class-check.php:89
-#: includes/storage/class-transfer.php:66
+#: includes/check/class-check.php:91
+#: includes/storage/class-transfer.php:68
 msgid "That backup is not on the storage (any more)."
 msgstr ""
 
 #. translators: %d: a number
-#: includes/check/class-check.php:92
-#: includes/storage/class-transfer.php:69
+#: includes/check/class-check.php:94
+#: includes/storage/class-transfer.php:71
 #, php-format
 msgid "Parts of that backup are missing on the storage (%d of them are there)."
 msgstr ""
 
 #. translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB
-#: includes/check/class-check.php:97
+#: includes/check/class-check.php:99
 #, php-format
 msgid "Not enough disk space to download the copy for the check: it needs %1$s, %2$s is free."
 msgstr ""
 
-#: includes/check/class-check.php:126
+#: includes/check/class-check.php:128
 msgid "this server"
 msgstr ""
 
 #. translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB
-#: includes/check/class-verify-step.php:98
+#: includes/check/class-verify-step.php:100
 #, php-format
 msgid "Checking: %1$s of %2$s"
 msgstr ""
 
-#: includes/check/class-verify-step.php:145
+#: includes/check/class-verify-step.php:147
 msgid "Cannot write the check's working files."
 msgstr ""
 
-#: includes/check/class-verify-step.php:318
+#: includes/check/class-verify-step.php:320
 msgid "it has no package.json"
 msgstr ""
 
-#: includes/check/class-verify-step.php:321
+#: includes/check/class-verify-step.php:323
 msgid "it has no database.sql"
 msgstr ""
 
 #. translators: %s: names of the entries
-#: includes/check/class-verify-step.php:326
+#: includes/check/class-verify-step.php:328
 #, php-format
 msgid "it holds entries an import refuses: %s"
 msgstr ""
 
-#: includes/check/class-verify-step.php:330
+#: includes/check/class-verify-step.php:332
 msgid "its manifest (siteferry.json) is missing or damaged"
 msgstr ""
 
-#: includes/check/class-verify-step.php:334
+#: includes/check/class-verify-step.php:336
 msgid "it has no database dump"
 msgstr ""
 
-#: includes/check/class-verify-step.php:336
+#: includes/check/class-verify-step.php:338
 msgid "its database dump is incomplete"
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/check/class-verify-step.php:338
+#: includes/check/class-verify-step.php:340
 #, php-format
 msgid "its database dump has %1$s bytes, the manifest says %2$s"
 msgstr ""
 
-#: includes/check/class-verify-step.php:344
+#: includes/check/class-verify-step.php:346
 msgid "its checksum list (siteferry.sha256) is missing or damaged"
 msgstr ""
 
 #. translators: 1: a number, 2: a list of file names
-#: includes/check/class-verify-step.php:356
+#: includes/check/class-verify-step.php:358
 #, php-format
 msgid "%1$d file of its checksum list is missing: %2$s"
 msgid_plural "%1$d files of its checksum list are missing: %2$s"
@@ -1472,7 +1472,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: a number, 2: a list of file names
-#: includes/check/class-verify-step.php:359
+#: includes/check/class-verify-step.php:361
 #, php-format
 msgid "%1$d file does not match its checksum: %2$s"
 msgid_plural "%1$d files do not match their checksums: %2$s"
@@ -1480,7 +1480,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number
-#: includes/check/class-verify-step.php:380
+#: includes/check/class-verify-step.php:382
 #, php-format
 msgid "Read to its end: %s file. A .wpress file has no checksums to compare."
 msgid_plural "Read to its end: %s files. A .wpress file has no checksums to compare."
@@ -1488,7 +1488,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number
-#: includes/check/class-verify-step.php:382
+#: includes/check/class-verify-step.php:384
 #, php-format
 msgid "The %s file matches its checksum; the database dump is complete."
 msgid_plural "All %s files match their checksums; the database dump is complete."
@@ -1496,7 +1496,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number
-#: includes/check/class-verify-step.php:384
+#: includes/check/class-verify-step.php:386
 #, php-format
 msgid " %s file has no checksum (it changed while the backup was made)."
 msgid_plural " %s files have no checksum (they changed while the backup was made)."
@@ -1504,19 +1504,19 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: where the backup is, such as "this server" or "Dropbox"
-#: includes/check/class-verify-step.php:401
+#: includes/check/class-verify-step.php:403
 #, php-format
 msgid "The copy on %s is intact"
 msgstr ""
 
 #. translators: 1: where it is stored, such as Dropbox, 2: the reason
-#: includes/check/class-verify-step.php:428
+#: includes/check/class-verify-step.php:430
 #, php-format
 msgid "The copy on %1$s is damaged: %2$s."
 msgstr ""
 
 #. translators: 1: a comma-separated list of names, 2: how many more are not listed
-#: includes/check/class-verify-step.php:465
+#: includes/check/class-verify-step.php:467
 #: assets/admin.js:4347
 #, php-format,js-format
 msgid "%1$s and %2$d more"
@@ -1524,30 +1524,30 @@ msgid_plural "%1$s and %2$d more"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-backups.php:197
+#: includes/class-backups.php:199
 msgid "Protected with a password; SiteFerry cannot open password-protected .wpress backups yet."
 msgstr ""
 
-#: includes/class-backups.php:281
-#: includes/class-contents.php:287
-#: includes/security/class-archive-keys.php:112
+#: includes/class-backups.php:283
+#: includes/class-contents.php:289
+#: includes/security/class-archive-keys.php:114
 msgid "This backup is protected with a password."
 msgstr ""
 
-#: includes/class-backups.php:289
+#: includes/class-backups.php:291
 msgid "This file is not a SiteFerry backup (no manifest)."
 msgstr ""
 
-#: includes/class-backups.php:296
+#: includes/class-backups.php:298
 msgid "The backup manifest is damaged."
 msgstr ""
 
-#: includes/class-contents.php:168
+#: includes/class-contents.php:170
 msgid "This .wpress backup is protected with a password; its files cannot be read."
 msgstr ""
 
-#: includes/class-contents.php:210
-#: includes/rest/class-rest.php:600
+#: includes/class-contents.php:212
+#: includes/rest/class-rest.php:602
 msgid "That file is not in the backup."
 msgstr ""
 
@@ -1577,178 +1577,178 @@ msgstr ""
 msgid "The PHP JSON extension is required."
 msgstr ""
 
-#: includes/database/class-dumper.php:150
+#: includes/database/class-dumper.php:152
 msgid "Cannot rewind the database dump."
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/database/class-dumper.php:403
+#: includes/database/class-dumper.php:405
 #, php-format
 msgid "Database error during export: %s"
 msgstr ""
 
 #. translators: %s: the error message of the database server
-#: includes/database/class-raw-query.php:38
-#: includes/database/class-raw-query.php:45
+#: includes/database/class-raw-query.php:41
 #: includes/database/class-raw-query.php:48
-#: includes/database/class-raw-query.php:69
-#: includes/database/class-raw-query.php:76
+#: includes/database/class-raw-query.php:51
+#: includes/database/class-raw-query.php:72
 #: includes/database/class-raw-query.php:79
+#: includes/database/class-raw-query.php:82
 #, php-format
 msgid "Database error: %s"
 msgstr ""
 
-#: includes/database/class-statement-reader.php:67
+#: includes/database/class-statement-reader.php:69
 msgid "Cannot resume the database dump at its saved position."
 msgstr ""
 
-#: includes/database/class-statement-reader.php:87
+#: includes/database/class-statement-reader.php:89
 msgid "The database dump ends in the middle of a statement."
 msgstr ""
 
-#: includes/database/class-statement-reader.php:139
+#: includes/database/class-statement-reader.php:141
 msgid "A statement in the database dump is too large."
 msgstr ""
 
-#: includes/database/class-statement-reader.php:183
+#: includes/database/class-statement-reader.php:185
 msgid "The database dump ends inside a comment."
 msgstr ""
 
 #. translators: %s: the start of an SQL statement
-#: includes/database/class-statement-rewriter.php:133
+#: includes/database/class-statement-rewriter.php:135
 #, php-format
 msgid "The database dump contains a statement SiteFerry does not accept: \"%s\"."
 msgstr ""
 
 #. translators: 1: a table name, 2: a table prefix, such as wp_
-#: includes/database/class-statement-rewriter.php:154
+#: includes/database/class-statement-rewriter.php:156
 #, php-format
 msgid "The database dump refers to the table \"%1$s\", which does not use the backup's prefix \"%2$s\"."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/database/class-statement-rewriter.php:158
+#: includes/database/class-statement-rewriter.php:160
 #, php-format
 msgid "The table name \"%s\" is too long to import with a temporary prefix."
 msgstr ""
 
 #. translators: %s: a table name
-#: includes/database/class-statement-rewriter.php:174
+#: includes/database/class-statement-rewriter.php:176
 #, php-format
 msgid "The table definition of \"%s\" uses options SiteFerry does not accept."
 msgstr ""
 
 #. translators: %s: a collation, such as utf8mb4_unicode_520_ci
-#: includes/database/class-statement-rewriter.php:235
+#: includes/database/class-statement-rewriter.php:237
 #, php-format
 msgid "This database server does not support the collation %s used by the backup."
 msgstr ""
 
 #. translators: %s: a character set, such as utf8mb4
-#: includes/database/class-statement-rewriter.php:261
+#: includes/database/class-statement-rewriter.php:263
 #, php-format
 msgid "This database server does not support the character set %s used by the backup."
 msgstr ""
 
 #. translators: %s: the start of the value
-#: includes/database/class-statement-rewriter.php:298
+#: includes/database/class-statement-rewriter.php:300
 #, php-format
 msgid "An INSERT in the database dump contains \"%s\", which is not a plain value."
 msgstr ""
 
-#: includes/database/class-statement-rewriter.php:303
+#: includes/database/class-statement-rewriter.php:305
 msgid "An INSERT in the database dump contains characters that are not part of plain values."
 msgstr ""
 
 #. translators: %s: a folder path
-#: includes/export/class-export.php:86
+#: includes/export/class-export.php:88
 #, php-format
 msgid "Cannot create the folder \"%s\"."
 msgstr ""
 
-#: includes/export/class-export.php:136
+#: includes/export/class-export.php:138
 msgid "A .wpress file cannot be protected with a password by SiteFerry; choose the SiteFerry format."
 msgstr ""
 
 #. translators: %d: a number
-#: includes/export/class-export.php:139
-#: includes/schedule/class-schedule.php:220
+#: includes/export/class-export.php:141
+#: includes/schedule/class-schedule.php:222
 #, php-format
 msgid "The password needs at least %d characters."
 msgstr ""
 
-#: includes/export/class-export.php:142
-#: includes/schedule/class-schedule.php:235
+#: includes/export/class-export.php:144
+#: includes/schedule/class-schedule.php:237
 msgid "Encrypted backups need the PHP OpenSSL extension with AES-256-GCM, which this server does not have."
 msgstr ""
 
 #. translators: %s: option names, separated by commas
-#: includes/export/class-export.php:156
+#: includes/export/class-export.php:158
 #, php-format
 msgid "Unknown export option: %s"
 msgstr ""
 
-#: includes/export/class-export.php:181
-#: includes/schedule/class-schedule.php:172
+#: includes/export/class-export.php:183
+#: includes/schedule/class-schedule.php:174
 msgid "Unknown backup format; use \"tar\" or \"wpress\"."
 msgstr ""
 
-#: includes/export/class-export.php:187
+#: includes/export/class-export.php:189
 msgid "Unknown storage to send the backup to."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/export/class-export.php:206
+#: includes/export/class-export.php:208
 #, php-format
 msgid "Invalid path to leave out: \"%s\". Use paths inside wp-content, such as uploads/2019."
 msgstr ""
 
-#: includes/export/class-finish-step.php:43
+#: includes/export/class-finish-step.php:45
 msgid "Cannot rename the finished backup."
 msgstr ""
 
-#: includes/export/class-finish-step.php:68
+#: includes/export/class-finish-step.php:70
 msgid "Backup complete"
 msgstr ""
 
-#: includes/export/class-pack-step.php:71
+#: includes/export/class-pack-step.php:73
 msgid "Cannot rewind the checksum list."
 msgstr ""
 
 #. translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB
-#: includes/export/class-pack-step.php:96
+#: includes/export/class-pack-step.php:98
 #, php-format
 msgid "Packing: %1$s of %2$s"
 msgstr ""
 
-#: includes/export/class-pack-step.php:158
+#: includes/export/class-pack-step.php:160
 msgid "Cannot encode the manifest."
 msgstr ""
 
-#: includes/export/class-pack-step.php:227
+#: includes/export/class-pack-step.php:229
 msgid "The file list is damaged."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/export/class-pack-step.php:256
+#: includes/export/class-pack-step.php:258
 #, php-format
 msgid "\"%s\" disappeared or could not be read; it was left out."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/export/class-pack-step.php:268
+#: includes/export/class-pack-step.php:270
 #, php-format
 msgid "\"%s\" changed while it was being saved; the backup holds the bytes that were read."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/export/class-pack-step.php:272
+#: includes/export/class-pack-step.php:274
 #, php-format
 msgid "\"%s\" has no checksum because it changed while being saved."
 msgstr ""
 
 #. translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB
-#: includes/export/class-pack-step.php:296
+#: includes/export/class-pack-step.php:298
 #, php-format
 msgid "Not enough disk space: the backup needs up to %1$s, but only %2$s is free."
 msgstr ""
@@ -1775,43 +1775,43 @@ msgid "Waiting for confirmation"
 msgstr ""
 
 #. translators: 1: a collation or character set, 2: the one used instead
-#: includes/import/class-database-step.php:99
+#: includes/import/class-database-step.php:101
 #, php-format
 msgid "This database server does not support %1$s; %2$s is used instead."
 msgstr ""
 
 #. translators: %d: a number
-#: includes/import/class-database-step.php:109
+#: includes/import/class-database-step.php:111
 #, php-format
 msgid "Loading the database: %d tables"
 msgstr ""
 
-#: includes/import/class-database-step.php:135
+#: includes/import/class-database-step.php:137
 msgid "Refusing to drop tables with an unexpected prefix."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/import/class-database-step.php:200
+#: includes/import/class-database-step.php:202
 #, php-format
 msgid "The backup lists %1$d tables to load, but the dump created %2$d."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/import/class-database-step.php:214
+#: includes/import/class-database-step.php:216
 #, php-format
 msgid "The backup has %1$d rows, but %2$d were loaded."
 msgstr ""
 
-#: includes/import/class-extract-step.php:45
+#: includes/import/class-extract-step.php:47
 msgid "Cannot create the staging folder."
 msgstr ""
 
-#: includes/import/class-extract-step.php:78
+#: includes/import/class-extract-step.php:80
 msgid "Cannot rewind the list of extracted files."
 msgstr ""
 
 #. translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB
-#: includes/import/class-extract-step.php:106
+#: includes/import/class-extract-step.php:108
 #, php-format
 msgid "Unpacking: %1$s of %2$s"
 msgstr ""
@@ -1821,174 +1821,174 @@ msgid "Import complete"
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/import/class-import.php:66
+#: includes/import/class-import.php:68
 #, php-format
 msgid "Cannot read the backup \"%s\"."
 msgstr ""
 
-#: includes/import/class-import.php:113
+#: includes/import/class-import.php:115
 msgid "This import is not waiting for confirmation."
 msgstr ""
 
 #. translators: %s: option names, separated by commas
-#: includes/import/class-import.php:146
+#: includes/import/class-import.php:148
 #, php-format
 msgid "Unknown import option: %s"
 msgstr ""
 
 #. translators: %s: a web address
-#: includes/import/class-import.php:152
+#: includes/import/class-import.php:154
 #, php-format
 msgid "The new site address \"%s\" must start with http:// or https://."
 msgstr ""
 
-#: includes/import/class-import.php:158
+#: includes/import/class-import.php:160
 msgid "Each extra replacement needs a text to find and a replacement."
 msgstr ""
 
 #. translators: %s: a table name
-#: includes/import/class-import.php:167
+#: includes/import/class-import.php:169
 #, php-format
 msgid "Invalid table name to restore: \"%s\"."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/import/class-import.php:185
+#: includes/import/class-import.php:187
 #, php-format
 msgid "Invalid path to restore: \"%s\"."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/import/class-import.php:190
+#: includes/import/class-import.php:192
 #, php-format
 msgid "Only a whole folder in wp-content, or one plugin or theme, can be restored on its own; not \"%s\"."
 msgstr ""
 
-#: includes/import/class-import.php:197
+#: includes/import/class-import.php:199
 msgid "Too many items chosen to restore."
 msgstr ""
 
-#: includes/import/class-inspect-step.php:46
+#: includes/import/class-inspect-step.php:48
 msgid "This backup was made by a newer version of SiteFerry. Update SiteFerry on this site first."
 msgstr ""
 
-#: includes/import/class-inspect-step.php:52
+#: includes/import/class-inspect-step.php:54
 msgid "This backup comes from a multisite network but was made by an older SiteFerry that does not record the network; it cannot be restored."
 msgstr ""
 
-#: includes/import/class-inspect-step.php:55
+#: includes/import/class-inspect-step.php:57
 msgid "This backup is of a whole multisite network. Restore it into a multisite network (of the same kind) instead of a single site."
 msgstr ""
 
-#: includes/import/class-inspect-step.php:58
+#: includes/import/class-inspect-step.php:60
 msgid "This site is a multisite network; it can only take a backup of a whole network. Restoring a single site into a network is not supported yet."
 msgstr ""
 
 #. translators: 1: "subdomains" or "subfolders", 2: "subdomains" or "subfolders"
-#: includes/import/class-inspect-step.php:62
+#: includes/import/class-inspect-step.php:64
 #, php-format
 msgid "The backup's network uses %1$s for its sites, this network uses %2$s; they must be the same."
 msgstr ""
 
 #. translators: 1: "subdomains" or "subfolders", 2: "subdomains" or "subfolders"
-#: includes/import/class-inspect-step.php:62
+#: includes/import/class-inspect-step.php:64
 msgid "subdomains"
 msgstr ""
 
 #. translators: 1: "subdomains" or "subfolders", 2: "subdomains" or "subfolders"
-#: includes/import/class-inspect-step.php:62
+#: includes/import/class-inspect-step.php:64
 msgid "subfolders"
 msgstr ""
 
-#: includes/import/class-inspect-step.php:65
+#: includes/import/class-inspect-step.php:67
 msgid "A network keeps the address set in wp-config.php; a new address cannot be set for it here."
 msgstr ""
 
-#: includes/import/class-inspect-step.php:68
+#: includes/import/class-inspect-step.php:70
 msgid "A network is restored whole; restoring only parts of it is not supported yet."
 msgstr ""
 
-#: includes/import/class-inspect-step.php:73
+#: includes/import/class-inspect-step.php:75
 msgid "The backup has an invalid table prefix."
 msgstr ""
 
 #. translators: 1: a WordPress version, such as 6.8, 2: the WordPress version of this site
-#: includes/import/class-inspect-step.php:80
+#: includes/import/class-inspect-step.php:82
 #, php-format
 msgid "The backup comes from WordPress %1$s, which is newer than WordPress %2$s on this site. Update WordPress here first."
 msgstr ""
 
 #. translators: 1: a PHP version, such as 8.3, 2: the PHP version of this server
-#: includes/import/class-inspect-step.php:93
+#: includes/import/class-inspect-step.php:95
 #, php-format
 msgid "The backup comes from PHP %1$s; this site runs PHP %2$s. Some plugins may need the newer PHP."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/import/class-inspect-step.php:103
+#: includes/import/class-inspect-step.php:105
 #, php-format
 msgid "The table name %s would be too long with this site's prefix."
 msgstr ""
 
 #. translators: %s: a table name
-#: includes/import/class-inspect-step.php:114
+#: includes/import/class-inspect-step.php:116
 #, php-format
 msgid "The backup has no table \"%s\"."
 msgstr ""
 
-#: includes/import/class-inspect-step.php:120
+#: includes/import/class-inspect-step.php:122
 msgid "Choose something to restore: the database, the files, or both."
 msgstr ""
 
-#: includes/import/class-inspect-step.php:124
+#: includes/import/class-inspect-step.php:126
 msgid "A new site address can only be set when the options table is restored too."
 msgstr ""
 
 #. translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB
-#: includes/import/class-inspect-step.php:135
+#: includes/import/class-inspect-step.php:137
 #, php-format
 msgid "Not enough disk space: the import needs about %1$s, but only %2$s is free."
 msgstr ""
 
-#: includes/import/class-inspect-step.php:205
+#: includes/import/class-inspect-step.php:207
 msgid "Backup checked"
 msgstr ""
 
 #. translators: what is restored; used inside sentences such as "This restores only the database, as it was then"
-#: includes/import/class-inspect-step.php:302
+#: includes/import/class-inspect-step.php:304
 #: assets/admin.js:3598
 msgid "the database"
 msgstr ""
 
 #. translators: 1: tables chosen, 2: tables in the backup, 3: their names
-#: includes/import/class-inspect-step.php:304
+#: includes/import/class-inspect-step.php:306
 #, php-format
 msgid "%1$d of %2$d tables (%3$s)"
 msgstr ""
 
 #. translators: what is restored; used inside sentences such as "This restores only the files, as it was then"
-#: includes/import/class-inspect-step.php:309
+#: includes/import/class-inspect-step.php:311
 #: assets/admin.js:3602
 msgid "the files"
 msgstr ""
 
 #. translators: 1: a part of a backup, such as "the database", 2: another part
-#: includes/import/class-inspect-step.php:320
+#: includes/import/class-inspect-step.php:322
 #, php-format
 msgid "Only %1$s and %2$s"
 msgstr ""
 
 #. translators: %s: a part of a backup, such as "the database"
-#: includes/import/class-inspect-step.php:320
+#: includes/import/class-inspect-step.php:322
 #, php-format
 msgid "Only %s"
 msgstr ""
 
-#: includes/import/class-maintenance.php:44
+#: includes/import/class-maintenance.php:46
 msgid "WordPress is already in maintenance mode (an update may be running). Try the import again later."
 msgstr ""
 
-#: includes/import/class-maintenance.php:55
+#: includes/import/class-maintenance.php:57
 msgid "Cannot write the maintenance file in the WordPress folder."
 msgstr ""
 
@@ -2011,328 +2011,328 @@ msgid "Updating addresses: table %1$d of %2$d"
 msgstr ""
 
 #. translators: %s: name of the backup being restored
-#: includes/import/class-safety-step.php:67
+#: includes/import/class-safety-step.php:69
 #, php-format
 msgid "Before restoring %s"
 msgstr ""
 
 #. translators: %s: the progress of the safety backup
-#: includes/import/class-safety-step.php:83
+#: includes/import/class-safety-step.php:85
 #, php-format
 msgid "Safety backup: %s"
 msgstr ""
 
 #. translators: %s: the reason, ending with a full stop
-#: includes/import/class-safety-step.php:85
+#: includes/import/class-safety-step.php:87
 #, php-format
 msgid "The safety backup could not be made: %s Nothing on this site has changed. To restore without one, untick \"Make a safety backup\" and try again."
 msgstr ""
 
-#: includes/import/class-swap-step.php:116
+#: includes/import/class-swap-step.php:118
 msgid "Simulated failure after the swap (test)."
 msgstr ""
 
-#: includes/import/class-swap-step.php:122
+#: includes/import/class-swap-step.php:124
 msgid "After the swap the site address is not the expected one; rolling back."
 msgstr ""
 
-#: includes/import/class-swap-step.php:133
+#: includes/import/class-swap-step.php:135
 msgid "Site switched over"
 msgstr ""
 
-#: includes/import/class-swap-step.php:238
+#: includes/import/class-swap-step.php:240
 msgid "Cannot create the rollback folder."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/import/class-swap-step.php:265
+#: includes/import/class-swap-step.php:267
 #, php-format
 msgid "The drop-in wp-content/%s was not copied; it is tied to the old server. Copy it yourself if this server needs it."
 msgstr ""
 
 #. translators: %s: parent
-#: includes/import/class-swap-step.php:307
+#: includes/import/class-swap-step.php:309
 #, php-format
 msgid "Cannot create the folder %s."
 msgstr ""
 
 #. translators: 1: a folder path, 2: a folder path
-#: includes/import/class-swap-step.php:327
+#: includes/import/class-swap-step.php:329
 #, php-format
 msgid "Cannot move %1$s to %2$s (a file inside may be in use)."
 msgstr ""
 
-#: includes/import/class-upload.php:71
+#: includes/import/class-upload.php:73
 msgid "Only SiteFerry backups (.tar, .tar.gz, or .enc when protected with a password) and All-in-One WP Migration backups (.wpress) can be uploaded."
 msgstr ""
 
-#: includes/import/class-upload.php:74
+#: includes/import/class-upload.php:76
 msgid "The file is empty."
 msgstr ""
 
-#: includes/import/class-upload.php:82
+#: includes/import/class-upload.php:84
 msgid "Not enough disk space for this upload."
 msgstr ""
 
-#: includes/import/class-upload.php:93
+#: includes/import/class-upload.php:95
 msgid "Cannot create the upload folder."
 msgstr ""
 
-#: includes/import/class-upload.php:121
-#: includes/import/class-upload.php:127
+#: includes/import/class-upload.php:123
+#: includes/import/class-upload.php:129
 msgid "Unknown upload."
 msgstr ""
 
-#: includes/import/class-upload.php:172
+#: includes/import/class-upload.php:174
 msgid "The chunk is empty or too large."
 msgstr ""
 
-#: includes/import/class-upload.php:175
+#: includes/import/class-upload.php:177
 msgid "The chunk was damaged in transit (checksum mismatch); it will be sent again."
 msgstr ""
 
-#: includes/import/class-upload.php:181
+#: includes/import/class-upload.php:183
 msgid "The upload is busy."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/import/class-upload.php:185
+#: includes/import/class-upload.php:187
 #, php-format
 msgid "Expected the chunk at byte %1$d, not %2$d."
 msgstr ""
 
-#: includes/import/class-upload.php:188
+#: includes/import/class-upload.php:190
 msgid "The chunk goes past the end of the file."
 msgstr ""
 
-#: includes/import/class-upload.php:192
+#: includes/import/class-upload.php:194
 msgid "Cannot write the upload."
 msgstr ""
 
-#: includes/import/class-upload.php:215
+#: includes/import/class-upload.php:217
 msgid "The upload is not complete yet."
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/import/class-upload.php:221
+#: includes/import/class-upload.php:223
 #, php-format
 msgid "The uploaded file is not a backup SiteFerry can import: %s"
 msgstr ""
 
-#: includes/import/class-upload.php:278
+#: includes/import/class-upload.php:280
 msgid "Cannot save the upload state."
 msgstr ""
 
 #. translators: %s: a list of file names
-#: includes/import/class-verify-step.php:64
+#: includes/import/class-verify-step.php:66
 #, php-format
 msgid "The backup is incomplete; missing: %s"
 msgstr ""
 
 #. translators: %s: a list of file names
-#: includes/import/class-verify-step.php:67
+#: includes/import/class-verify-step.php:69
 #, php-format
 msgid "The backup is damaged; checksum mismatch for: %s"
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/import/class-verify-step.php:72
+#: includes/import/class-verify-step.php:74
 #, php-format
 msgid "\"%s\" has no checksum in the backup (it changed while the backup was made)."
 msgstr ""
 
-#: includes/import/class-verify-step.php:76
+#: includes/import/class-verify-step.php:78
 msgid "The database dump in the backup is incomplete."
 msgstr ""
 
 #. translators: %s: a number
-#: includes/import/class-verify-step.php:79
+#: includes/import/class-verify-step.php:81
 #, php-format
 msgid "Checked %s files"
 msgstr ""
 
-#: includes/import/class-verify-step.php:103
+#: includes/import/class-verify-step.php:105
 msgid "The backup has no checksum list."
 msgstr ""
 
-#: includes/import/class-verify-step.php:113
+#: includes/import/class-verify-step.php:115
 msgid "The checksum list in the backup is malformed."
 msgstr ""
 
-#: includes/jobs/class-job.php:94
+#: includes/jobs/class-job.php:96
 msgid "Cannot create the job folder."
 msgstr ""
 
-#: includes/jobs/class-job.php:137
-#: includes/jobs/class-job.php:153
+#: includes/jobs/class-job.php:139
+#: includes/jobs/class-job.php:155
 msgid "Unknown job."
 msgstr ""
 
-#: includes/jobs/class-job.php:157
+#: includes/jobs/class-job.php:159
 msgid "The job state file is damaged."
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/jobs/class-job.php:567
+#: includes/jobs/class-job.php:569
 #, php-format
 msgid "Cannot encode the job state: %s"
 msgstr ""
 
-#: includes/jobs/class-job.php:593
+#: includes/jobs/class-job.php:595
 msgid "Cannot save the job state. The disk may be full."
 msgstr ""
 
-#: includes/jobs/class-runner.php:86
+#: includes/jobs/class-runner.php:88
 msgid "This job is already running in another request."
 msgstr ""
 
-#: includes/jobs/class-runner.php:129
+#: includes/jobs/class-runner.php:131
 msgid "This job is running right now; try again in a moment."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/jobs/class-runner.php:165
+#: includes/jobs/class-runner.php:167
 #, php-format
 msgid "Unknown job step: %s"
 msgstr ""
 
-#: includes/move/class-receiver.php:189
+#: includes/move/class-receiver.php:191
 msgid "Only an encrypted SiteFerry backup can be received this way."
 msgstr ""
 
-#: includes/move/class-receiver.php:218
-#: includes/move/class-receiver.php:234
+#: includes/move/class-receiver.php:220
+#: includes/move/class-receiver.php:236
 msgid "No transfer was started with this key."
 msgstr ""
 
-#: includes/move/class-receiver.php:247
+#: includes/move/class-receiver.php:249
 msgid "The backup that arrived does not open with this key."
 msgstr ""
 
 #. translators: %s: address of the site it came from
-#: includes/move/class-receiver.php:268
+#: includes/move/class-receiver.php:270
 msgid "Moved from another site"
 msgstr ""
 
 #. translators: %s: address of the site it came from
-#: includes/move/class-receiver.php:268
+#: includes/move/class-receiver.php:270
 #, php-format
 msgid "Moved from %s"
 msgstr ""
 
 #. translators: 1: where it goes, such as Dropbox or another site's host name, 2: a size, such as 12 MB, 3: a size, such as 12 MB
 #: includes/move/class-send-step.php:77
-#: includes/storage/class-send-step.php:107
+#: includes/storage/class-send-step.php:109
 #, php-format
 msgid "Sending to %1$s: %2$s of %3$s"
 msgstr ""
 
 #. translators: %s: where it went, such as Dropbox or another site's host name
 #: includes/move/class-send-step.php:110
-#: includes/storage/class-send-step.php:142
+#: includes/storage/class-send-step.php:144
 #: assets/admin.js:912
 #, php-format,js-format
 msgid "Sent to %s"
 msgstr ""
 
-#: includes/move/class-sender.php:49
+#: includes/move/class-sender.php:51
 msgid "That is not a move key. Copy the whole key from \"Receive a site\" on the new site."
 msgstr ""
 
-#: includes/move/class-sender.php:53
+#: includes/move/class-sender.php:55
 msgid "This key was made on this site. Make the key on the site you are moving to."
 msgstr ""
 
 #. translators: %s: address of the site it is moved to
-#: includes/move/class-sender.php:91
+#: includes/move/class-sender.php:93
 #, php-format
 msgid "Moved to %s"
 msgstr ""
 
 #. translators: 1: a web address, 2: the reason
-#: includes/move/class-sender.php:138
+#: includes/move/class-sender.php:140
 #, php-format
 msgid "The other site (%1$s) cannot be reached: %2$s"
 msgstr ""
 
-#: includes/move/class-sender.php:143
+#: includes/move/class-sender.php:145
 msgid "The other site refused the key: it has expired, was used already, or was replaced. Make a new key there."
 msgstr ""
 
 #. translators: 1: a version number, 2: a web address
-#: includes/move/class-sender.php:146
+#: includes/move/class-sender.php:148
 #, php-format
 msgid "SiteFerry %1$s or later is not active on %2$s."
 msgstr ""
 
 #. translators: %s: the message of the other site
-#: includes/move/class-sender.php:149
+#: includes/move/class-sender.php:151
 #, php-format
 msgid "The other site answered: %s"
 msgstr ""
 
-#: includes/rest/class-rest.php:240
-#: includes/rest/class-rest.php:805
+#: includes/rest/class-rest.php:242
+#: includes/rest/class-rest.php:807
 msgid "Missing or invalid chunk offset."
 msgstr ""
 
-#: includes/rest/class-rest.php:403
+#: includes/rest/class-rest.php:405
 #: assets/admin.js:1117
 #: assets/admin.js:3194
 #: assets/admin.js:3235
 msgid "media"
 msgstr ""
 
-#: includes/rest/class-rest.php:404
+#: includes/rest/class-rest.php:406
 #: assets/admin.js:1120
 #: assets/admin.js:3195
 #: assets/admin.js:3236
 msgid "plugins"
 msgstr ""
 
-#: includes/rest/class-rest.php:405
+#: includes/rest/class-rest.php:407
 #: assets/admin.js:1125
 #: assets/admin.js:3196
 #: assets/admin.js:3237
 msgid "themes"
 msgstr ""
 
-#: includes/rest/class-rest.php:413
+#: includes/rest/class-rest.php:415
 msgid "some tables"
 msgstr ""
 
-#: includes/rest/class-rest.php:416
+#: includes/rest/class-rest.php:418
 #: assets/admin.js:1191
 msgid "Whole site"
 msgstr ""
 
 #. translators: %s: list of left-out parts, such as "media and plugins"
-#: includes/rest/class-rest.php:419
+#: includes/rest/class-rest.php:421
 #: assets/admin.js:1188
 #, php-format,js-format
 msgid "Without %s"
 msgstr ""
 
-#: includes/rest/class-rest.php:434
+#: includes/rest/class-rest.php:436
 msgid "The backup could not be deleted."
 msgstr ""
 
-#: includes/rest/class-rest.php:454
+#: includes/rest/class-rest.php:456
 msgid "There is no such part."
 msgstr ""
 
-#: includes/rest/class-rest.php:896
+#: includes/rest/class-rest.php:898
 msgid "Google Drive is not set up."
 msgstr ""
 
-#: includes/rest/class-rest.php:1073
-#: includes/storage/class-destinations.php:420
+#: includes/rest/class-rest.php:1075
+#: includes/storage/class-destinations.php:422
 msgid "Unknown storage."
 msgstr ""
 
 #. translators: 1: a kind of job, such as "export" or "import", 2: the job's ID
-#: includes/rest/class-rest.php:1115
-#: includes/schedule/class-schedule.php:351
+#: includes/rest/class-rest.php:1117
+#: includes/schedule/class-schedule.php:353
 #, php-format
 msgid "Another %1$s is still in progress (job %2$s). Finish or cancel it first."
 msgstr ""
@@ -2348,976 +2348,976 @@ msgid "Scheduled backup done"
 msgstr ""
 
 #. translators: %s: a setting name
-#: includes/schedule/class-schedule.php:151
+#: includes/schedule/class-schedule.php:153
 #, php-format
 msgid "The schedule setting \"%s\" must be a number."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:160
+#: includes/schedule/class-schedule.php:162
 msgid "Choose how often to back up: every day, week or month."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:163
+#: includes/schedule/class-schedule.php:165
 msgid "Enter the time as hours and minutes, for example 03:00."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:166
+#: includes/schedule/class-schedule.php:168
 msgid "Choose a day of the week."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:169
+#: includes/schedule/class-schedule.php:171
 msgid "Choose a day of the month from 1 to 28 (every month has those)."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:179
+#: includes/schedule/class-schedule.php:181
 msgid "That storage is not set up (or not connected) yet. Set it up on the Storage tab, or keep the backups on this server."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:185
+#: includes/schedule/class-schedule.php:187
 msgid "Keep between 1 and 100 scheduled backups, or 0 to keep them all."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:188
+#: includes/schedule/class-schedule.php:190
 msgid "Choose when to send an email."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:191
+#: includes/schedule/class-schedule.php:193
 msgid "Enter one email address, or leave it empty for the site's admin email."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:194
+#: includes/schedule/class-schedule.php:196
 msgid "Keep between 1 and 50 backups made before updates."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:232
+#: includes/schedule/class-schedule.php:234
 msgid "Enter a password for the automatic backups, or untick the encryption."
 msgstr ""
 
 #. translators: %s: site address
-#: includes/schedule/class-schedule.php:648
+#: includes/schedule/class-schedule.php:650
 #, php-format
 msgid "[%s] Scheduled backup done"
 msgstr ""
 
 #. translators: %s: the site's address
-#: includes/schedule/class-schedule.php:649
+#: includes/schedule/class-schedule.php:651
 #, php-format
 msgid "SiteFerry made the scheduled backup of %s."
 msgstr ""
 
 #. translators: %s: backup name (and size)
-#: includes/schedule/class-schedule.php:652
+#: includes/schedule/class-schedule.php:654
 #, php-format
 msgid "Backup: %s"
 msgstr ""
 
 #. translators: %s: where it is stored
-#: includes/schedule/class-schedule.php:654
+#: includes/schedule/class-schedule.php:656
 #, php-format
 msgid "Stored: %s"
 msgstr ""
 
 #. translators: %s: how long, such as 5 mins
-#: includes/schedule/class-schedule.php:657
+#: includes/schedule/class-schedule.php:659
 #, php-format
 msgid "Took: %s"
 msgstr ""
 
 #. translators: %d: a number
-#: includes/schedule/class-schedule.php:660
+#: includes/schedule/class-schedule.php:662
 #, php-format
 msgid "Warnings: %d (see the job log on the Activity tab)"
 msgstr ""
 
 #. translators: %s: backup names
-#: includes/schedule/class-schedule.php:664
+#: includes/schedule/class-schedule.php:666
 #, php-format
 msgid "Older scheduled backups deleted: %s"
 msgstr ""
 
 #. translators: %s: what went wrong
-#: includes/schedule/class-schedule.php:668
+#: includes/schedule/class-schedule.php:670
 #, php-format
 msgid "Problem: %s"
 msgstr ""
 
 #. translators: %s: site address
-#: includes/schedule/class-schedule.php:672
+#: includes/schedule/class-schedule.php:674
 #, php-format
 msgid "[%s] Scheduled backup FAILED"
 msgstr ""
 
 #. translators: %s: the site's address
-#: includes/schedule/class-schedule.php:673
+#: includes/schedule/class-schedule.php:675
 #, php-format
 msgid "SiteFerry could not make the scheduled backup of %s."
 msgstr ""
 
 #. translators: %s: what went wrong
-#: includes/schedule/class-schedule.php:676
+#: includes/schedule/class-schedule.php:678
 #, php-format
 msgid "Reason: %s"
 msgstr ""
 
 #. translators: %s: what went wrong
-#: includes/schedule/class-schedule.php:676
+#: includes/schedule/class-schedule.php:678
 #: assets/admin.js:3991
 msgid "unknown"
 msgstr ""
 
-#: includes/schedule/class-schedule.php:677
+#: includes/schedule/class-schedule.php:679
 msgid "Earlier backups were not touched."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:749
+#: includes/schedule/class-schedule.php:751
 msgid "Automatic backups are set to be encrypted, but their password cannot be read (were the WordPress salts changed?). Enter it again in the Schedule panel."
 msgstr ""
 
-#: includes/security/class-secrets.php:101
+#: includes/security/class-secrets.php:103
 msgid "The secret could not be encrypted."
 msgstr ""
 
-#: includes/security/class-secrets.php:105
+#: includes/security/class-secrets.php:107
 msgid "Saving secrets needs the PHP sodium or OpenSSL extension."
 msgstr ""
 
-#: includes/security/class-secrets.php:122
+#: includes/security/class-secrets.php:124
 msgid "This saved secret needs the PHP sodium extension."
 msgstr ""
 
-#: includes/security/class-secrets.php:131
+#: includes/security/class-secrets.php:133
 msgid "This saved secret needs the PHP OpenSSL extension."
 msgstr ""
 
-#: includes/security/class-secrets.php:137
+#: includes/security/class-secrets.php:139
 msgid "A saved secret cannot be read (the WordPress salts may have changed). Enter it again on the Storage tab."
 msgstr ""
 
 #. translators: %s: dir
-#: includes/security/class-storage.php:92
+#: includes/security/class-storage.php:94
 #, php-format
 msgid "Cannot create the folder \"%s\". Check that wp-content is writable."
 msgstr ""
 
 #. translators: %s: a storage, such as Dropbox
-#: includes/storage/class-destinations.php:122
-#: includes/storage/class-destinations.php:330
+#: includes/storage/class-destinations.php:124
+#: includes/storage/class-destinations.php:332
 #, php-format
 msgid "%s is not set up yet (Storage tab)."
 msgstr ""
 
 #. translators: %s: a storage, such as Dropbox
-#: includes/storage/class-destinations.php:125
+#: includes/storage/class-destinations.php:127
 #, php-format
 msgid "%s is not connected yet: click \"Connect\" on the Storage tab."
 msgstr ""
 
 #. translators: %s: a field name, such as "host name"
-#: includes/storage/class-destinations.php:158
+#: includes/storage/class-destinations.php:160
 #, php-format
 msgid "Enter the %s."
 msgstr ""
 
-#: includes/storage/class-destinations.php:238
+#: includes/storage/class-destinations.php:240
 msgid "The answer from the provider has no valid authorization code."
 msgstr ""
 
-#: includes/storage/class-destinations.php:386
+#: includes/storage/class-destinations.php:388
 msgid "This storage does not use a sign-in."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:212
+#: includes/storage/class-dropbox-driver.php:214
 msgid "Choose how to sign in to Dropbox."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:219
+#: includes/storage/class-dropbox-driver.php:221
 msgid "Enter the app key of your Dropbox app (App Console, your app, Settings)."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:244
+#: includes/storage/class-dropbox-driver.php:246
 msgid "The folder may not contain \\ < > : \" | ? * or control characters, and has at most 200 characters."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:248
+#: includes/storage/class-dropbox-driver.php:250
 msgid "Each folder name needs at least one character, and may not be \".\" or \"..\", start or end with a space, or end with a dot."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:350
+#: includes/storage/class-dropbox-driver.php:352
 msgid "Dropbox did not send a refresh token, so the access would end within hours. Connect again."
 msgstr ""
 
 #. translators: %s: permission names, separated by commas
-#: includes/storage/class-dropbox-driver.php:356
+#: includes/storage/class-dropbox-driver.php:358
 #, php-format
 msgid "Dropbox did not grant every permission SiteFerry needs (missing: %s)."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:425
+#: includes/storage/class-dropbox-driver.php:427
 msgid "Dropbox did not start the upload (no session in its answer)."
 msgstr ""
 
 #. translators: 1: has, 2: a number
-#: includes/storage/class-dropbox-driver.php:477
+#: includes/storage/class-dropbox-driver.php:479
 #, php-format
 msgid "Dropbox has %1$d bytes of the upload instead of at least %2$d; start the transfer again."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:482
+#: includes/storage/class-dropbox-driver.php:484
 msgid "Dropbox kept asking for a different part of the upload."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:531
+#: includes/storage/class-dropbox-driver.php:533
 msgid "The upload is not complete on Dropbox (its upload session has ended); start the transfer again."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/storage/class-dropbox-driver.php:536
+#: includes/storage/class-dropbox-driver.php:538
 #, php-format
 msgid "Dropbox has %1$d bytes of the upload instead of %2$d; start the transfer again."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/storage/class-dropbox-driver.php:544
+#: includes/storage/class-dropbox-driver.php:546
 #, php-format
 msgid "The file on Dropbox has %1$d bytes instead of %2$d."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/storage/class-dropbox-driver.php:630
+#: includes/storage/class-dropbox-driver.php:632
 #, php-format
 msgid "%s is not in the Dropbox folder."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:639
+#: includes/storage/class-dropbox-driver.php:641
 msgid "Dropbox sent a different part of the file than requested."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:665
+#: includes/storage/class-dropbox-driver.php:667
 msgid "Signing in to Dropbox"
 msgstr ""
 
 #. translators: %s: account
-#: includes/storage/class-dropbox-driver.php:671
+#: includes/storage/class-dropbox-driver.php:673
 #, php-format
 msgid "Signed in to Dropbox as %s."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:673
+#: includes/storage/class-dropbox-driver.php:675
 msgid "Backups go into the app folder (Dropbox > Apps > the app's name)."
 msgstr ""
 
 #. translators: %s: folder name
-#: includes/storage/class-dropbox-driver.php:675
+#: includes/storage/class-dropbox-driver.php:677
 #, php-format
 msgid "Backups go into the folder \"%s\" in the app folder (Dropbox > Apps > the app's name); Dropbox creates it with the first file."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:681
+#: includes/storage/class-dropbox-driver.php:683
 msgid "Writing a test file with an upload session"
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:690
+#: includes/storage/class-dropbox-driver.php:692
 msgid "Wrote a test file in two parts."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:693
-#: includes/storage/class-ftp-driver.php:477
-#: includes/storage/class-gdrive-driver.php:799
-#: includes/storage/class-s3-driver.php:292
+#: includes/storage/class-dropbox-driver.php:695
+#: includes/storage/class-ftp-driver.php:479
+#: includes/storage/class-gdrive-driver.php:801
+#: includes/storage/class-s3-driver.php:294
 msgid "Reading the test file back"
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:696
-#: includes/storage/class-ftp-driver.php:480
-#: includes/storage/class-gdrive-driver.php:803
-#: includes/storage/class-s3-driver.php:296
+#: includes/storage/class-dropbox-driver.php:698
+#: includes/storage/class-ftp-driver.php:482
+#: includes/storage/class-gdrive-driver.php:805
+#: includes/storage/class-s3-driver.php:298
 msgid "The file read back differs from what was written."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:700
-#: includes/storage/class-ftp-driver.php:486
-#: includes/storage/class-gdrive-driver.php:807
-#: includes/storage/class-s3-driver.php:300
+#: includes/storage/class-dropbox-driver.php:702
+#: includes/storage/class-ftp-driver.php:488
+#: includes/storage/class-gdrive-driver.php:809
+#: includes/storage/class-s3-driver.php:302
 msgid "Read it back unchanged."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:703
-#: includes/storage/class-ftp-driver.php:489
-#: includes/storage/class-gdrive-driver.php:810
-#: includes/storage/class-s3-driver.php:303
+#: includes/storage/class-dropbox-driver.php:705
+#: includes/storage/class-ftp-driver.php:491
+#: includes/storage/class-gdrive-driver.php:812
+#: includes/storage/class-s3-driver.php:305
 msgid "Listing the folder"
 msgstr ""
 
 #. translators: %d: a number
-#: includes/storage/class-dropbox-driver.php:708
-#: includes/storage/class-ftp-driver.php:494
-#: includes/storage/class-gdrive-driver.php:815
-#: includes/storage/class-s3-driver.php:308
+#: includes/storage/class-dropbox-driver.php:710
+#: includes/storage/class-ftp-driver.php:496
+#: includes/storage/class-gdrive-driver.php:817
+#: includes/storage/class-s3-driver.php:310
 #, php-format
 msgid "Listed the folder: %d SiteFerry backup(s)."
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:711
-#: includes/storage/class-ftp-driver.php:497
-#: includes/storage/class-gdrive-driver.php:818
-#: includes/storage/class-s3-driver.php:311
+#: includes/storage/class-dropbox-driver.php:713
+#: includes/storage/class-ftp-driver.php:499
+#: includes/storage/class-gdrive-driver.php:820
+#: includes/storage/class-s3-driver.php:313
 msgid "Deleting the test file"
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:716
-#: includes/storage/class-ftp-driver.php:509
-#: includes/storage/class-gdrive-driver.php:823
-#: includes/storage/class-s3-driver.php:316
+#: includes/storage/class-dropbox-driver.php:718
+#: includes/storage/class-ftp-driver.php:511
+#: includes/storage/class-gdrive-driver.php:825
+#: includes/storage/class-s3-driver.php:318
 msgid "Deleted the test file."
 msgstr ""
 
 #. translators: 1: a service, such as Dropbox, 2: an HTTP status code, 3: empty, or ": " and the error message
-#: includes/storage/class-dropbox-driver.php:766
+#: includes/storage/class-dropbox-driver.php:768
 #, php-format
 msgid "%1$s answered HTTP %2$d%3$s"
 msgstr ""
 
-#: includes/storage/class-dropbox-driver.php:812
+#: includes/storage/class-dropbox-driver.php:814
 msgid "Dropbox is not connected yet. Click \"Connect to Dropbox\" on the Storage tab."
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/storage/class-dropbox-driver.php:843
+#: includes/storage/class-dropbox-driver.php:845
 #, php-format
 msgid "Dropbox's sign-in service cannot be reached: %s"
 msgstr ""
 
 #. translators: %d: an HTTP status code
-#: includes/storage/class-dropbox-driver.php:853
+#: includes/storage/class-dropbox-driver.php:855
 #, php-format
 msgid "Dropbox's sign-in service answered HTTP %d; try again later."
 msgstr ""
 
 #. translators: %s: empty, or ": " and the error message
-#: includes/storage/class-dropbox-driver.php:856
+#: includes/storage/class-dropbox-driver.php:858
 #, php-format
 msgid "Dropbox no longer accepts the saved authorization (invalid_grant%s). Connect Dropbox again on the Storage tab."
 msgstr ""
 
 #. translators: 1: an HTTP status code, 2: empty, or an error code, 3: empty, or ": " and the error message
-#: includes/storage/class-dropbox-driver.php:866
+#: includes/storage/class-dropbox-driver.php:868
 #, php-format
 msgid "Dropbox's sign-in service refused (HTTP %1$d%2$s%3$s)."
 msgstr ""
 
 #. translators: %s: origin
-#: includes/storage/class-dropbox-driver.php:970
+#: includes/storage/class-dropbox-driver.php:972
 #, php-format
 msgid "Refusing to send the Dropbox token to %s."
 msgstr ""
 
-#: includes/storage/class-fetch-step.php:57
+#: includes/storage/class-fetch-step.php:59
 msgid "Cannot write the download."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/storage/class-fetch-step.php:72
+#: includes/storage/class-fetch-step.php:74
 #, php-format
 msgid "The storage sent %1$d bytes instead of %2$d; the file may have changed there."
 msgstr ""
 
 #. translators: 1: where it is stored, such as Dropbox, 2: a size, such as 12 MB, 3: a size, such as 12 MB
-#: includes/storage/class-fetch-step.php:78
+#: includes/storage/class-fetch-step.php:80
 #, php-format
 msgid "Downloading from %1$s: %2$s of %3$s"
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/storage/class-fetch-step.php:97
+#: includes/storage/class-fetch-step.php:99
 #, php-format
 msgid "The downloaded file is not a backup SiteFerry can import: %s"
 msgstr ""
 
 #. translators: %s: final
-#: includes/storage/class-fetch-step.php:108
+#: includes/storage/class-fetch-step.php:110
 #, php-format
 msgid "Downloaded %s"
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:180
+#: includes/storage/class-ftp-driver.php:182
 msgid "Enter the server's host name, such as ftp.example.com (no path, no port)."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:185
+#: includes/storage/class-ftp-driver.php:187
 msgid "The port must be a number from 1 to 65535 (usually 21)."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:190
+#: includes/storage/class-ftp-driver.php:192
 msgid "Choose FTPS or plain FTP."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:196
+#: includes/storage/class-ftp-driver.php:198
 msgid "Enter the user name."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:200
+#: includes/storage/class-ftp-driver.php:202
 msgid "The password contains characters that are not allowed."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:208
-#: includes/storage/class-s3-driver.php:214
+#: includes/storage/class-ftp-driver.php:210
+#: includes/storage/class-s3-driver.php:216
 msgid "The folder may contain only letters, digits, \".\", \"-\", \"_\" and \"/\" between folder names."
 msgstr ""
 
 #. translators: 1: remote, 2: a number
-#: includes/storage/class-ftp-driver.php:303
+#: includes/storage/class-ftp-driver.php:305
 #, php-format
 msgid "The partly uploaded file on the server has %1$d bytes instead of at least %2$d; start the transfer again."
 msgstr ""
 
 #. translators: 1: after, 2: a number
-#: includes/storage/class-ftp-driver.php:308
+#: includes/storage/class-ftp-driver.php:310
 #, php-format
 msgid "The server stored %1$d bytes instead of %2$d."
 msgstr ""
 
 #. translators: 1: remote, 2: a number
-#: includes/storage/class-ftp-driver.php:327
+#: includes/storage/class-ftp-driver.php:329
 #, php-format
 msgid "The uploaded file on the server has %1$d bytes instead of %2$d."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/storage/class-ftp-driver.php:347
-#: includes/storage/class-s3-driver.php:428
+#: includes/storage/class-ftp-driver.php:349
+#: includes/storage/class-s3-driver.php:430
 #, php-format
 msgid "The stored file has %1$d bytes instead of %2$d."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:394
+#: includes/storage/class-ftp-driver.php:396
 msgid "The backup folder does not exist on the server."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:434
+#: includes/storage/class-ftp-driver.php:436
 msgid "Connecting and logging in"
-msgstr ""
-
-#. translators: 1: server, 2: port, 3: user name
-#: includes/storage/class-ftp-driver.php:442
-#, php-format
-msgid "Connected to %1$s:%2$d with explicit FTPS (TLS) and logged in as %3$s."
 msgstr ""
 
 #. translators: 1: server, 2: port, 3: user name
 #: includes/storage/class-ftp-driver.php:444
 #, php-format
+msgid "Connected to %1$s:%2$d with explicit FTPS (TLS) and logged in as %3$s."
+msgstr ""
+
+#. translators: 1: server, 2: port, 3: user name
+#: includes/storage/class-ftp-driver.php:446
+#, php-format
 msgid "Connected to %1$s:%2$d and logged in as %3$s WITHOUT encryption: the password and the backups travel in plain text."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:447
-#: includes/storage/class-gdrive-driver.php:774
+#: includes/storage/class-ftp-driver.php:449
+#: includes/storage/class-gdrive-driver.php:776
 msgid "Opening the folder"
 msgstr ""
 
 #. translators: %s: a folder path
-#: includes/storage/class-ftp-driver.php:457
+#: includes/storage/class-ftp-driver.php:459
 #, php-format
 msgid "Using the folder %s on the server."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:463
-#: includes/storage/class-s3-driver.php:284
+#: includes/storage/class-ftp-driver.php:465
+#: includes/storage/class-s3-driver.php:286
 msgid "Writing a test file"
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:469
+#: includes/storage/class-ftp-driver.php:471
 msgid "Resuming the test file at an offset (needed for uploads in parts)"
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:474
+#: includes/storage/class-ftp-driver.php:476
 msgid "Wrote a test file in two pieces (resuming works)."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/storage/class-ftp-driver.php:634
+#: includes/storage/class-ftp-driver.php:636
 #, php-format
 msgid "%s is not on the server."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:695
+#: includes/storage/class-ftp-driver.php:697
 msgid "This server's PHP has no ftp extension; ask the host to enable it."
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:698
+#: includes/storage/class-ftp-driver.php:700
 msgid "This server's PHP cannot use FTPS (its ftp extension was built without TLS)."
 msgstr ""
 
 #. translators: 1: a host name, 2: a port number, 3: empty, or ": " and the reason
-#: includes/storage/class-ftp-driver.php:707
+#: includes/storage/class-ftp-driver.php:709
 #, php-format
 msgid "Cannot connect to %1$s:%2$d%3$s"
 msgstr ""
 
-#: includes/storage/class-ftp-driver.php:722
+#: includes/storage/class-ftp-driver.php:724
 msgid "The connection broke during the login."
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/storage/class-ftp-driver.php:725
+#: includes/storage/class-ftp-driver.php:727
 #, php-format
 msgid "The server did not accept an encrypted (FTPS) connection: %s Ask the host whether it supports explicit FTPS (AUTH TLS)."
 msgstr ""
 
 #. translators: 1: a user name, 2: the reason, ending with a full stop
-#: includes/storage/class-ftp-driver.php:727
+#: includes/storage/class-ftp-driver.php:729
 #, php-format
 msgid "The server refused the login for \"%1$s\": %2$s Check the user name and password."
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/storage/class-ftp-driver.php:750
+#: includes/storage/class-ftp-driver.php:752
 #, php-format
 msgid "The server refused passive mode: %s"
 msgstr ""
 
 #. translators: 1: the reason, 2: the reason
-#: includes/storage/class-ftp-driver.php:853
+#: includes/storage/class-ftp-driver.php:855
 #, php-format
 msgid "%1$s failed: the connection to the server was lost%2$s."
 msgstr ""
 
 #. translators: 1: the reason, 2: the reason, 3: hint
-#: includes/storage/class-ftp-driver.php:856
+#: includes/storage/class-ftp-driver.php:858
 #, php-format
 msgid "%1$s failed: %2$s%3$s"
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:270
+#: includes/storage/class-gdrive-driver.php:272
 msgid "Choose how to sign in to Google Drive."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:289
+#: includes/storage/class-gdrive-driver.php:291
 msgid "Enter the OAuth client ID (it ends with .apps.googleusercontent.com)."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:293
+#: includes/storage/class-gdrive-driver.php:295
 msgid "The client secret contains characters that are not allowed."
 msgstr ""
 
 #. translators: %d: a number
-#: includes/storage/class-gdrive-driver.php:325
+#: includes/storage/class-gdrive-driver.php:327
 #, php-format
 msgid "The backup folder can be at most %d folders deep."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:329
+#: includes/storage/class-gdrive-driver.php:331
 msgid "Folder names may not contain backslashes or control characters, and each may be at most 100 characters long. Put / between folders."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:349
+#: includes/storage/class-gdrive-driver.php:351
 msgid "The chosen Google Drive folder is not valid; choose it again."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:365
+#: includes/storage/class-gdrive-driver.php:367
 msgid "The Picker API key contains characters that are not allowed."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:379
+#: includes/storage/class-gdrive-driver.php:381
 msgid "The project number has only digits (Google Cloud console, project settings)."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:477
+#: includes/storage/class-gdrive-driver.php:479
 msgid "Google did not send a refresh token. Remove SiteFerry's access in your Google account (Security, third-party access) and connect again."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:481
+#: includes/storage/class-gdrive-driver.php:483
 msgid "Access to Google Drive was not granted. Connect again and allow SiteFerry to see and change the files it creates."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:567
+#: includes/storage/class-gdrive-driver.php:569
 msgid "Google Drive did not start the upload (no session address in its answer)."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/storage/class-gdrive-driver.php:601
+#: includes/storage/class-gdrive-driver.php:603
 #, php-format
 msgid "Google Drive has %1$d bytes of the upload instead of at least %2$d; start the transfer again."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:619
+#: includes/storage/class-gdrive-driver.php:621
 msgid "Google Drive accepted only part of the data."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:646
+#: includes/storage/class-gdrive-driver.php:648
 msgid "The upload is not complete on Google Drive."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/storage/class-gdrive-driver.php:653
+#: includes/storage/class-gdrive-driver.php:655
 #, php-format
 msgid "The file on Google Drive has %1$d bytes instead of %2$d."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/storage/class-gdrive-driver.php:736
+#: includes/storage/class-gdrive-driver.php:738
 #, php-format
 msgid "%s is not in the Google Drive folder."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:765
+#: includes/storage/class-gdrive-driver.php:767
 msgid "Signing in to Google"
 msgstr ""
 
 #. translators: %s: account
-#: includes/storage/class-gdrive-driver.php:771
+#: includes/storage/class-gdrive-driver.php:773
 #, php-format
 msgid "Signed in to Google Drive as %s."
 msgstr ""
 
 #. translators: %s: a folder name
-#: includes/storage/class-gdrive-driver.php:780
+#: includes/storage/class-gdrive-driver.php:782
 #, php-format
 msgid "Using the folder \"%s\" at the top of My Drive (SiteFerry sees only the files it created)."
 msgstr ""
 
 #. translators: 1: a folder name, 2: the name of the folder chosen in Google Drive
-#: includes/storage/class-gdrive-driver.php:781
+#: includes/storage/class-gdrive-driver.php:783
 #, php-format
 msgid "Using the folder \"%1$s\" inside \"%2$s\" (SiteFerry sees only the files it created)."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:786
+#: includes/storage/class-gdrive-driver.php:788
 msgid "Writing a test file with a resumable upload"
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:796
+#: includes/storage/class-gdrive-driver.php:798
 msgid "Wrote a test file with a resumable upload in two pieces."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:862
+#: includes/storage/class-gdrive-driver.php:864
 msgid "Choosing a folder in Google Drive is not set up on the sign-in service yet. You can still name the folder SiteFerry keeps the backups in."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:863
+#: includes/storage/class-gdrive-driver.php:865
 msgid "To choose a folder in Google Drive with your own client, enter its Picker API key and project number."
 msgstr ""
 
 #. translators: %s: name of the folder chosen in Google Drive
-#: includes/storage/class-gdrive-driver.php:908
+#: includes/storage/class-gdrive-driver.php:910
 #, php-format
 msgid "The folder \"%s\" chosen in Google Drive cannot be found with this Google account (it was deleted, or belongs to another account). Choose a folder again, or use the top of My Drive, and save."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:969
+#: includes/storage/class-gdrive-driver.php:971
 msgid "Google Drive did not create the folder."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:1025
+#: includes/storage/class-gdrive-driver.php:1027
 msgid "Google Drive sent a different part of the file than requested."
 msgstr ""
 
-#: includes/storage/class-gdrive-driver.php:1084
+#: includes/storage/class-gdrive-driver.php:1086
 msgid "Google Drive is not connected yet. Click \"Connect to Google Drive\" on the Storage tab."
 msgstr ""
 
 #. translators: 1: a service, such as Google, 2: an HTTP status code
-#: includes/storage/class-gdrive-driver.php:1134
+#: includes/storage/class-gdrive-driver.php:1136
 #, php-format
 msgid "%1$s answered HTTP %2$d; try again later."
 msgstr ""
 
 #. translators: %s: empty, or ": " and the error message
-#: includes/storage/class-gdrive-driver.php:1137
+#: includes/storage/class-gdrive-driver.php:1139
 #, php-format
 msgid "Google no longer accepts the saved authorization (invalid_grant%s). Connect Google Drive again on the Storage tab. If the app's consent screen is in \"Testing\", Google ends authorizations after 7 days; publish the app to keep them."
 msgstr ""
 
 #. translators: 1: a service, such as Google, 2: an HTTP status code, 3: empty, or an error code, 4: empty, or ": " and the error message
-#: includes/storage/class-gdrive-driver.php:1147
+#: includes/storage/class-gdrive-driver.php:1149
 #, php-format
 msgid "%1$s refused (HTTP %2$d%3$s%4$s)."
 msgstr ""
 
 #. translators: %s: a host name
-#: includes/storage/class-gdrive-driver.php:1221
+#: includes/storage/class-gdrive-driver.php:1223
 #, php-format
 msgid "Refusing to send the Google token to %s."
 msgstr ""
 
-#: includes/storage/class-null-transport.php:29
+#: includes/storage/class-null-transport.php:31
 msgid "No requests are made here."
 msgstr ""
 
-#: includes/storage/class-oauth-state.php:71
+#: includes/storage/class-oauth-state.php:73
 msgid "This sign-in answer is not valid any more (each one works once, for 10 minutes, for the administrator who started it). Click \"Connect\" again."
 msgstr ""
 
 #. translators: 1: a number, 2: a size, such as 12 MB, 3: a number
-#: includes/storage/class-parts.php:73
+#: includes/storage/class-parts.php:75
 #, php-format
 msgid "The backup would take %1$d parts of %2$s; choose larger parts for this storage (at most %3$d parts)."
 msgstr ""
 
 #. translators: 1: a number, 2: a number
-#: includes/storage/class-parts.php:176
+#: includes/storage/class-parts.php:178
 #, php-format
 msgid "Parts must be between %1$d MB and %2$d MB (or 0 for whole files)."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:193
+#: includes/storage/class-s3-driver.php:195
 msgid "Choose a storage provider."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:201
+#: includes/storage/class-s3-driver.php:203
 msgid "The region may contain only letters, digits and hyphens (for example us-east-1)."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:208
+#: includes/storage/class-s3-driver.php:210
 msgid "Enter the bucket name (3 to 63 letters, digits, dots, hyphens or underscores)."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:220
+#: includes/storage/class-s3-driver.php:222
 msgid "Enter the access key ID."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:225
+#: includes/storage/class-s3-driver.php:227
 msgid "The secret access key contains characters that are not allowed."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:230
+#: includes/storage/class-s3-driver.php:232
 msgid "Bucket names with dots do not work with https in bucket.endpoint form. Tick \"path-style requests\"."
 msgstr ""
 
 #. translators: %s: where it is stored, such as Dropbox
-#: includes/storage/class-s3-driver.php:289
+#: includes/storage/class-s3-driver.php:291
 #, php-format
 msgid "Wrote a test file to %s."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:348
+#: includes/storage/class-s3-driver.php:350
 msgid "The storage did not start the upload (no upload ID in its answer)."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:369
+#: includes/storage/class-s3-driver.php:371
 msgid "Too many parts for one upload."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:383
+#: includes/storage/class-s3-driver.php:385
 msgid "The storage accepted a part but did not return its ETag."
 msgstr ""
 
 #. translators: %d: i + 1
-#: includes/storage/class-s3-driver.php:400
+#: includes/storage/class-s3-driver.php:402
 #, php-format
 msgid "Part %d of the upload is missing."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:421
+#: includes/storage/class-s3-driver.php:423
 msgid "The storage sent an unexpected answer when completing the upload."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:462
+#: includes/storage/class-s3-driver.php:464
 msgid "The storage sent an unexpected answer to a listing."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:504
+#: includes/storage/class-s3-driver.php:506
 msgid "The storage sent a different part of the file than requested."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:691
+#: includes/storage/class-s3-driver.php:693
 msgid "Enter the endpoint of the storage service."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:703
+#: includes/storage/class-s3-driver.php:705
 msgid "Enter the endpoint as a host name, such as s3.example.com (no path)."
 msgstr ""
 
-#: includes/storage/class-s3-driver.php:706
+#: includes/storage/class-s3-driver.php:708
 msgid "Use https for this provider."
 msgstr ""
 
-#: includes/storage/class-send-step.php:52
+#: includes/storage/class-send-step.php:54
 msgid "The backup to send is missing or empty."
 msgstr ""
 
-#: includes/storage/class-send-step.php:75
+#: includes/storage/class-send-step.php:77
 msgid "The backup changed or disappeared while it was being sent."
 msgstr ""
 
-#: includes/storage/class-send-step.php:138
+#: includes/storage/class-send-step.php:140
 msgid "The copy on this server could not be deleted."
 msgstr ""
 
 #. translators: 1: a file name, 2: the reason
-#: includes/storage/class-send-step.php:163
+#: includes/storage/class-send-step.php:165
 #, php-format
 msgid "Part %1$s could not be removed from the storage: %2$s"
 msgstr ""
 
-#: includes/storage/class-send-step.php:193
+#: includes/storage/class-send-step.php:195
 msgid "Cannot read the backup."
 msgstr ""
 
-#: includes/storage/class-send-step.php:199
+#: includes/storage/class-send-step.php:201
 msgid "The backup ended early while it was being sent."
 msgstr ""
 
 #. translators: 1: a step of the connection test, such as Writing a test file, 2: the reason
-#: includes/storage/class-test-progress.php:105
+#: includes/storage/class-test-progress.php:107
 #, php-format
 msgid "%1$s failed. %2$s"
 msgstr ""
 
 #. translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB
-#: includes/storage/class-transfer.php:75
+#: includes/storage/class-transfer.php:77
 #, php-format
 msgid "Not enough disk space: the backup needs %1$s, %2$s is free."
 msgstr ""
 
 #. translators: %s: the reason
-#: includes/storage/class-wp-transport.php:45
+#: includes/storage/class-wp-transport.php:47
 #, php-format
 msgid "Network error: %s"
 msgstr ""
 
-#: includes/wpress/class-export-step.php:108
+#: includes/wpress/class-export-step.php:110
 msgid "Cannot rename the finished .wpress backup."
 msgstr ""
 
-#: includes/wpress/class-export-step.php:128
+#: includes/wpress/class-export-step.php:130
 msgid "The .wpress backup is ready"
 msgstr ""
 
-#: includes/wpress/class-export-step.php:189
+#: includes/wpress/class-export-step.php:191
 msgid "The backup has no manifest."
 msgstr ""
 
-#: includes/wpress/class-export-step.php:194
+#: includes/wpress/class-export-step.php:196
 msgid "The backup does not start with its manifest and database."
 msgstr ""
 
-#: includes/wpress/class-export-step.php:222
+#: includes/wpress/class-export-step.php:224
 msgid "Cannot continue copying the database."
 msgstr ""
 
-#: includes/wpress/class-export-step.php:258
+#: includes/wpress/class-export-step.php:260
 msgid "The backup ended in the middle of a file."
 msgstr ""
 
-#: includes/wpress/class-export-step.php:316
+#: includes/wpress/class-export-step.php:318
 msgid "The converted database is shorter than expected."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/wpress/class-header.php:53
+#: includes/wpress/class-header.php:55
 #, php-format
 msgid "The file name \"%s\" cannot be stored in a .wpress archive."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/wpress/class-header.php:56
+#: includes/wpress/class-header.php:58
 #, php-format
 msgid "The folder \"%s\" cannot be stored in a .wpress archive."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/wpress/class-header.php:61
+#: includes/wpress/class-header.php:63
 #, php-format
 msgid "The file \"%s\" is too large for a .wpress archive."
 msgstr ""
 
-#: includes/wpress/class-header.php:92
+#: includes/wpress/class-header.php:94
 msgid "The .wpress archive ends in the middle of a header."
 msgstr ""
 
-#: includes/wpress/class-header.php:110
-#: includes/wpress/class-header.php:122
+#: includes/wpress/class-header.php:112
+#: includes/wpress/class-header.php:124
 msgid "The .wpress archive has a damaged header."
 msgstr ""
 
-#: includes/wpress/class-import-step.php:75
+#: includes/wpress/class-import-step.php:77
 msgid "The database in the .wpress backup is damaged (its CRC-32 does not match)."
 msgstr ""
 
 #. translators: %d: a number
-#: includes/wpress/class-import-step.php:115
+#: includes/wpress/class-import-step.php:117
 #, php-format
 msgid "%d database statements contain the placeholder prefix inside a value; those values were left as they are."
 msgstr ""
 
-#: includes/wpress/class-import-step.php:120
+#: includes/wpress/class-import-step.php:122
 msgid "The .wpress backup was read"
 msgstr ""
 
-#: includes/wpress/class-import-step.php:155
+#: includes/wpress/class-import-step.php:157
 msgid "The converted .wpress backup is missing; start the import again."
 msgstr ""
 
-#: includes/wpress/class-import-step.php:182
+#: includes/wpress/class-import-step.php:184
 msgid "Cannot move the converted database into the staging folder."
 msgstr ""
 
-#: includes/wpress/class-import-step.php:186
+#: includes/wpress/class-import-step.php:188
 msgid "Cannot write the manifest into the staging folder."
 msgstr ""
 
-#: includes/wpress/class-import-step.php:226
+#: includes/wpress/class-import-step.php:228
 msgid "The package.json of this .wpress backup is too large."
 msgstr ""
 
-#: includes/wpress/class-import-step.php:231
+#: includes/wpress/class-import-step.php:233
 msgid "This .wpress backup is protected with a password, and SiteFerry cannot open password-protected .wpress backups yet. Make the backup again without a password."
 msgstr ""
 
-#: includes/wpress/class-import-step.php:240
+#: includes/wpress/class-import-step.php:242
 msgid "This .wpress backup comes from a multisite network, which this version of SiteFerry cannot import."
 msgstr ""
 
-#: includes/wpress/class-import-step.php:256
+#: includes/wpress/class-import-step.php:258
 #: includes/wpress/class-wpress.php:50
 msgid "This file is not a .wpress backup (it has no package.json)."
 msgstr ""
 
-#: includes/wpress/class-import-step.php:259
+#: includes/wpress/class-import-step.php:261
 msgid "This .wpress backup has no database (it was made with \"Exclude database\"), so SiteFerry cannot import it."
 msgstr ""
 
-#: includes/wpress/class-import-step.php:276
+#: includes/wpress/class-import-step.php:278
 msgid "The .wpress backup does not state a usable table prefix."
 msgstr ""
 
-#: includes/wpress/class-package.php:35
+#: includes/wpress/class-package.php:37
 msgid "The package.json of this .wpress backup is damaged or incomplete."
 msgstr ""
 
-#: includes/wpress/class-reader.php:147
+#: includes/wpress/class-reader.php:149
 msgid "Cannot resume reading the .wpress archive."
 msgstr ""
 
 #. translators: %s: a file name
-#: includes/wpress/class-reader.php:338
+#: includes/wpress/class-reader.php:340
 #, php-format
 msgid "The file \"%s\" in the .wpress backup is damaged (its CRC-32 does not match)."
 msgstr ""
 
-#: includes/wpress/class-reader.php:348
+#: includes/wpress/class-reader.php:350
 #: includes/wpress/class-wpress.php:110
 msgid "The .wpress archive is incomplete (it ends too early)."
 msgstr ""
 
-#: includes/wpress/class-sql-in.php:113
-#: includes/wpress/class-sql-out.php:97
+#: includes/wpress/class-sql-in.php:115
+#: includes/wpress/class-sql-out.php:99
 msgid "Cannot continue writing the converted database dump."
 msgstr ""
 
 #. translators: %s: a table name
-#: includes/wpress/class-sql-in.php:190
+#: includes/wpress/class-sql-in.php:192
 #, php-format
 msgid "The database dump inserts into the table %s before creating it."
 msgstr ""
 
 #. translators: %s: preview
-#: includes/wpress/class-sql-in.php:210
+#: includes/wpress/class-sql-in.php:212
 #, php-format
 msgid "The database dump in the .wpress backup contains a statement SiteFerry does not import: \"%s\"."
 msgstr ""
 
-#: includes/wpress/class-sql-out.php:193
+#: includes/wpress/class-sql-out.php:195
 msgid "The database dump contains a statement that cannot be written to a .wpress backup."
 msgstr ""
 
@@ -3329,30 +3329,30 @@ msgstr ""
 msgid "Cannot continue copying from the .wpress backup."
 msgstr ""
 
-#: includes/wpress/class-writer.php:93
+#: includes/wpress/class-writer.php:95
 msgid "Invalid saved writer state."
 msgstr ""
 
-#: includes/wpress/class-writer.php:99
+#: includes/wpress/class-writer.php:101
 msgid "The .wpress archive being written is shorter than expected."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/wpress/class-writer.php:157
+#: includes/wpress/class-writer.php:159
 #, php-format
 msgid "The file \"%s\" grew while it was being archived."
 msgstr ""
 
-#: includes/wpress/class-writer.php:202
-#: includes/wpress/class-writer.php:207
+#: includes/wpress/class-writer.php:204
+#: includes/wpress/class-writer.php:209
 msgid "Cannot read back the .wpress archive."
 msgstr ""
 
-#: includes/wpress/class-writer.php:264
+#: includes/wpress/class-writer.php:266
 msgid "Cannot finish an entry of the .wpress archive."
 msgstr ""
 
-#: includes/wpress/class-writer.php:289
+#: includes/wpress/class-writer.php:291
 msgid "The .wpress archive is already complete."
 msgstr ""
 

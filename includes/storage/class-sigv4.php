@@ -92,7 +92,7 @@ final class Sigv4 {
 	 * @return array{authorization:string,signature:string,signed_headers:string,canonical_request:string,string_to_sign:string}
 	 */
 	public function sign( string $method, string $url, array $headers, string $payload_hash, string $amz_date ): array {
-		$parts = (array) parse_url( $url );
+		$parts = (array) wp_parse_url( $url );
 
 		$canonical_headers = array();
 		foreach ( $headers as $name => $value ) {
@@ -185,7 +185,7 @@ final class Sigv4 {
 	/**
 	 * Host header value for a parsed URL: the host, plus the port when it is not the default.
 	 *
-	 * @param array $parts parse_url() result.
+	 * @param array $parts wp_parse_url() result.
 	 */
 	public static function host( array $parts ): string {
 		$host    = strtolower( isset( $parts['host'] ) ? (string) $parts['host'] : '' );

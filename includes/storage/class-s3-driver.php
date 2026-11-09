@@ -8,6 +8,8 @@
 
 namespace SiteFerry\Storage;
 
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
+
 use SiteFerry\Backups;
 
 defined( 'ABSPATH' ) || exit;
@@ -38,7 +40,7 @@ final class S3_Driver implements Driver {
 	const SHORT_TIMEOUT = 30;
 
 	/** Namespace of S3 XML documents. */
-	const XMLNS = 'http://s3.amazonaws.com/doc/2006-03-01/';
+	const XMLNS = 'http://s3.amazonaws.com/doc/2006-03-01/'; // phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent -- the XML namespace name of S3 answers, not a download.
 
 	/**
 	 * Providers: label, endpoint template ({region} is filled in), default region, path-style
@@ -47,7 +49,7 @@ final class S3_Driver implements Driver {
 	const PRESETS = array(
 		'aws'    => array(
 			'label'      => 'Amazon S3',
-			'endpoint'   => 's3.{region}.amazonaws.com',
+			'endpoint'   => 's3.{region}.amazonaws.com', // phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent -- the host backups are stored at, chosen by the user.
 			'region'     => 'us-east-1',
 			'path_style' => false,
 			'help'       => 'Use an IAM user whose access is limited to this bucket. The endpoint follows from the region.',
@@ -546,7 +548,7 @@ final class S3_Driver implements Driver {
 	 * @param array<string,string> $query Query parameters ('' values are sent without "=").
 	 */
 	public function url( string $key, array $query = array() ): string {
-		$endpoint = (array) parse_url( $this->settings['endpoint'] );
+		$endpoint = (array) wp_parse_url( $this->settings['endpoint'] );
 		$host     = $endpoint['host'] . ( isset( $endpoint['port'] ) ? ':' . $endpoint['port'] : '' );
 		$path     = '' === $key ? '' : '/' . implode( '/', array_map( 'rawurlencode', explode( '/', $key ) ) );
 		if ( $this->settings['path_style'] ) {
@@ -695,7 +697,7 @@ final class S3_Driver implements Driver {
 		if ( ! preg_match( '#^[a-z][a-z0-9+.-]*://#i', $raw ) ) {
 			$raw = 'https://' . $raw;
 		}
-		$parts  = parse_url( rtrim( $raw, '/' ) );
+		$parts  = wp_parse_url( rtrim( $raw, '/' ) );
 		$scheme = is_array( $parts ) && isset( $parts['scheme'] ) ? strtolower( $parts['scheme'] ) : '';
 		$host   = is_array( $parts ) && isset( $parts['host'] ) ? strtolower( $parts['host'] ) : '';
 		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) || ! preg_match( '/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $host )

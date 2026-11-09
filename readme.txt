@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.28.1
+Stable tag: 0.28.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,7 +15,7 @@ Back up a whole WordPress site into one TAR file and restore or migrate it to an
 SiteFerry exports the database and wp-content into a single standard TAR archive (optionally
 gzip-compressed) and imports it on another site, replacing the site address where needed. It also
 imports and writes .wpress files, the backup format of the All-in-One WP Migration plugin (see
-".wpress backups" below).
+"Can it import and make .wpress backups?" in the FAQ).
 
 Work in progress. This version exports and imports sites from the admin screen and from WP-CLI,
 makes backups on a schedule, and sends backups to S3-compatible storage, FTP/FTPS servers, Google
@@ -45,7 +45,7 @@ The SiteFerry menu (administrators only) has these tabs:
   this server first. The site address, must-use plugins and drop-ins are under "Advanced".
   "Make a safety backup of this site first" (ticked by default) backs up the whole site as it is
   before anything changes; after the restore, the Backups tab offers "Undo this restore", which
-  restores that safety backup (see "Safety backup and Undo" below).
+  restores that safety backup (see "What are the safety backup and Undo?" in the FAQ).
   "Look inside" in a backup's menu lists its folders, files and database tables, downloads single
   files from it, and restores only the parts you tick: the database or single tables, all files, a
   folder of wp-content, or one plugin or theme. "Advanced" in the restore panel also offers "Only
@@ -126,277 +126,15 @@ and themes are left out, so it is quick. It stays on this server, named "Before 
 * `wp siteferry schedule show`, `wp siteferry schedule run [--quiet]` (the scheduled backup now,
   in this process, with its retention and email; the schedule itself is set on the Backups tab)
 
-= S3-compatible storage =
+= Storage =
 
-Presets for Amazon S3, Backblaze B2, Wasabi, Cloudflare R2 and DigitalOcean Spaces; any other
-service that speaks the S3 API (MinIO, ...) works with its endpoint. Requests are signed with AWS
-Signature Version 4 (no SDK) and carry the SHA-256 of their content, which the service checks.
-Backups are stored as `<folder>/<backup name>` in the bucket.
-
-* Uploads use multipart upload in parts of 8 MB (larger for files over 78 GB), one or a few parts
-  per request, so the PHP time limit does not matter. Temporary errors (network, throttling, server
-  errors) are retried with growing pauses. Cancelling or a failure removes the unfinished upload.
-  A job that is simply abandoned can leave one behind: a bucket lifecycle rule that aborts
-  incomplete multipart uploads after a few days cleans those up.
-* Downloads to this server use range requests of 8 MB and are checked to be SiteFerry backups.
-* "Test connection" writes, reads, lists and deletes a small file in the folder.
-* On Amazon S3, a key limited to the bucket and folder needs only this (replace BUCKET; the folder
-  here is the default "siteferry"):
-  `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:ListBucket","Resource":"arn:aws:s3:::BUCKET","Condition":{"StringLike":{"s3:prefix":"siteferry/*"}}},{"Effect":"Allow","Action":["s3:PutObject","s3:GetObject","s3:DeleteObject","s3:AbortMultipartUpload"],"Resource":"arn:aws:s3:::BUCKET/siteferry/*"}]}`
-
-= FTP and FTPS =
-
-Uses PHP's ftp extension. Explicit FTPS (AUTH TLS, with the data connections encrypted as well) is
-the default; plain FTP can be chosen for servers without TLS, and the connection test then warns
-that the password and backups travel unencrypted. Implicit FTPS (port 990) and SFTP are not
-supported.
-
-* PHP's ftp extension does not check the server's TLS certificate: FTPS protects against
-  eavesdropping, not against someone who can redirect the connection.
-* Passive mode by default. Data connections always go to the server SiteFerry logged in to, never
-  to another address the server names in its passive-mode answer.
-* Uploads are written to `<name>.part` in parts of 8 MB, each at its offset (REST + STOR, so an
-  interrupted part is simply written again), and renamed when complete. The server must support
-  resuming uploads, which common servers do; "Test connection" checks it. Cancelling or a failure
-  deletes the `.part` file.
-* Downloads to this server read 8 MB ranges (REST + RETR).
-* Temporary failures (a dropped connection) are retried with growing pauses and a new connection;
-  refusals by the server (permissions, quota) are reported at once.
-* The folder is created if missing. Keep it outside the server's public web folder.
-
-= Google Drive =
-
-Two ways to sign in, chosen on the Storage tab:
-
-* "Sign in with Google" (the default): click the button and allow access on Google's page. No
-  Google Cloud project or keys are needed; SiteFerry's own Google app is used, through SiteFerry's
-  sign-in service (see "Sign-in service" below).
-* "Use my own OAuth client" (advanced, no sign-in service involved): in the Google Cloud console,
-  enable the Google Drive API, set up the consent screen, create an OAuth client of type "Web
-  application" and register the redirect URI that the Storage tab shows; enter its client ID and
-  secret. If that consent screen is left in "Testing", Google ends the authorization after 7 days;
-  publish the app to keep it (with only the drive.file scope Google usually asks for no review).
-
-SiteFerry asks only for the `drive.file` scope: it can see and change only the files and folders it
-created itself, nothing else in the Drive. Backups go into one folder at the top of My Drive
-("SiteFerry" by default).
-
-* Connecting: the sign-in button (a POST with the administrator's nonce) creates a one-time
-  `state`, tied to that administrator, and a PKCE code verifier, both kept for 10 minutes. Google
-  (through the sign-in service, in the default way) sends the browser back to the SiteFerry page
-  with a code; that page then hands code and state to the REST API with the nonce. Only that
-  request, after the state matches, exchanges the code and saves the tokens. Nothing is saved from
-  the GET request itself, and the code is removed from the address bar at once.
-* The refresh token and access token are stored encrypted; the access token is refreshed when it
-  is about to expire (or when Google refuses it) and the new one saved. "Disconnect" revokes the
-  tokens at Google. Switching between the two ways of signing in, or changing the client ID, drops
-  the connection.
-* Uploads use resumable uploads in parts of 8 MB; after an interruption Drive is asked how much it
-  has and the upload continues from there. Sending a backup again replaces the earlier copy.
-  Deleting a backup moves it to the Drive trash. Downloads use range requests.
-* The access token is only ever sent to Google's API hosts.
-
-= Dropbox =
-
-Two ways to sign in, chosen on the Storage tab; neither needs a secret, because Dropbox lets an app
-sign in with PKCE and its public app key alone:
-
-* "Sign in with Dropbox" (the default): click the button and allow access on Dropbox's page.
-  SiteFerry's own Dropbox app is used; your browser passes through SiteFerry's sign-in service on
-  the way (see "Sign-in service" below), but the access itself never does.
-* "Use my own Dropbox app" (advanced, no sign-in service involved): in the Dropbox App Console,
-  create an app with "Scoped access" and "App folder" access; on its Permissions tab tick
-  files.metadata.read, files.content.read and files.content.write; on its Settings tab register the
-  redirect URI that the Storage tab shows (Dropbox accepts http only for localhost). Enter its app
-  key; no app secret is needed.
-
-With "App folder" access SiteFerry sees only its own folder in the Dropbox (Apps, then the app's
-name), nothing else. Backups go into that folder, or into a folder inside it named on the Storage
-tab (for example one per site, when several sites share a Dropbox).
-
-* Connecting works as for Google Drive: a one-time `state` tied to the administrator and a PKCE
-  code verifier, kept for 10 minutes; the code that comes back is exchanged only by an
-  authenticated POST with the nonce, after the state matches. SiteFerry asks for the permissions
-  account_info.read (the account's email address, shown on the Storage tab), files.metadata.read,
-  files.content.read and files.content.write, and checks that they were granted.
-* The refresh token and access token are stored encrypted; the access token (valid for four hours)
-  is renewed when it is about to expire, or when Dropbox refuses it, and the new one saved.
-  "Disconnect" revokes the access at Dropbox. Switching between the two ways of signing in, or
-  changing the app key, drops the connection.
-* Uploads use upload sessions in parts of 8 MB; after an interruption Dropbox says how much it has
-  and the upload continues from there. Sending a backup again replaces the earlier copy. Cancelling
-  leaves nothing in the folder (an unfinished upload session never becomes a file, and Dropbox
-  discards it). Downloads use range requests. Deleted backups can be restored from Dropbox's deleted
-  files for a while, depending on the Dropbox plan.
-* The access token is only ever sent to Dropbox's API hosts.
-
-= Sign-in service (auth.xsofty.com) =
-
-"Sign in with Google" and "Sign in with Dropbox" use SiteFerry's sign-in service at
-`https://auth.xsofty.com/siteferry`, run by the publisher of SiteFerry. Google and Dropbox only send
-the browser back to the one address registered for SiteFerry's apps, which is the service's; for
-Google, the service also holds the secret of SiteFerry's Google app, which a plugin cannot keep
-secret. SiteFerry contacts it only for those two storages, only in those modes, and only for these
-steps:
-
-* Signing in: your browser goes to the service with this site's SiteFerry page address, a random
-  state and a PKCE challenge, and on to Google or Dropbox, which sends the browser back through the
-  service; the service passes the one-time code to this site's page. The code is useless without
-  the PKCE verifier, which stays on this site.
-* Google Drive, getting and renewing access: this site sends the service the one-time code with the
-  PKCE verifier (once), and later the refresh token whenever the access token needs renewing (about
-  once an hour while SiteFerry works with the Drive). The service adds the app's client ID and
-  secret, sends the request to Google and returns Google's answer.
-* Dropbox, connecting: this site asks the service once for the app key and redirect address of
-  SiteFerry's Dropbox app (both public). The code exchange and every renewal then go straight from
-  this site to Dropbox; no token ever passes through the service.
-
-The service stores nothing and keeps no logs of its own. Backups never go through it: they travel
-directly between this site and Google or Dropbox. If the service cannot be reached, signing in (and,
-for Google Drive, renewing access) fails with a message saying so; the rest of SiteFerry is not
-affected. To avoid the service completely, use your own OAuth client or Dropbox app. To use a
-sign-in service of your own instead, define `SITEFERRY_RELAY_URL` (an https address) in
-wp-config.php.
-
-= Stored keys =
-
-Secret keys, passwords and OAuth tokens are encrypted before they are saved (libsodium secretbox, or OpenSSL
-AES-256-GCM if libsodium is missing) with a key derived from the site's WordPress salts. They are
-never shown again or sent to the browser, never logged, left out of every export, kept when a
-backup is imported into this site, and removed when SiteFerry is deleted. If the salts change,
-enter them again. To use a key that survives changed salts, define `SITEFERRY_ENCRYPTION_KEY` (at
-least 32 random characters) in wp-config.php before saving the settings.
-
-= How an import works =
-
-1. The backup's manifest, WordPress and PHP versions and free disk space are checked, and you confirm.
-   Then, unless you untick it, a safety backup of the whole site as it is now is made.
-2. Files are unpacked into a staging folder and checked against the backup's SHA-256 list.
-3. The database is loaded into temporary tables while the site keeps running. Only the statements a
-   SiteFerry dump contains are accepted. Collations the server lacks are mapped to close equivalents.
-4. The old address and folder paths are replaced (http/https, www, `//`, JSON and URL-encoded forms;
-   serialized data stays valid). GUIDs are not changed.
-5. Under maintenance mode, the tables are swapped with one RENAME TABLE and the files are moved into
-   place. SiteFerry itself, its settings and its storage folder stay as they are. Must-use plugins
-   and server-specific drop-ins (object-cache.php, advanced-cache.php, db.php) are only copied on request.
-6. Caches and rewrite rules are flushed; the old tables and files are removed.
-
-If anything fails after step 5 starts, the previous tables and files are put back. After an import,
-log in with the imported site's users.
-
-= Password-protected backups =
-
-"Protect the backup with a password" in Options (and, for automatic backups, in the Schedule
-panel) encrypts the whole backup with AES-256-GCM as it is written; the file name ends in .enc. The
-key comes from the password (PBKDF2-HMAC-SHA256, 600,000 rounds, and HKDF); every 2 MB chunk is
-authenticated, so a changed, reordered or cut-off file is refused. Restoring, checking or looking
-inside asks for the password; a wrong one is refused before anything changes. The password of a
-backup made by hand is not kept anywhere. The password of automatic backups is kept on the site,
-encrypted with a key from the WordPress salts. Safety backups made before a restore are not
-encrypted (they stay on this server). Needs the PHP OpenSSL extension.
-
-= Multisite networks =
-
-On a network, SiteFerry is for super admins, on the main site, and backs up the whole network:
-every site's tables, the network tables and all of wp-content. Such a backup restores into a
-network of the same kind (subfolders or subdomains); every subsite is put under the new network's
-domain and path, and subsites made after the backup are removed with their tables. A single site
-cannot be restored into a network (or the other way round) yet, nor a part of a network.
-
-= Moving a site straight to another server =
-
-"Move a site" on the new site makes a one-time key (24 hours). Pasted under "Move a site" on the old site, it
-shows the new site and then moves the old one there: a fresh backup, encrypted with the key's
-256-bit secret (AES-256-GCM), sent straight from server to server in chunks with their SHA-256;
-an interrupted transfer continues where it stopped. The routes that receive it answer only to the
-key, which works once and is dropped after 20 wrong tries. On the new site the backup waits in the
-list; "Move it here" restores it after the usual check and confirmation, with the key's secret as
-its password (kept, encrypted, until the backup is deleted). Only the address in the key is
-contacted.
-
-= Checking a copy =
-
-"Check the copy on ..." in a backup's menu reads that copy from start to end without unpacking
-anything. Every file is compared with the backup's own SHA-256 checksum list; the manifest must be
-there, the database dump complete and of the size the manifest gives, and entries an import would
-refuse count as damage. A copy on a storage is downloaded into SiteFerry's protected folder first
-and deleted afterwards. The outcome shows on the copy's place badge (a tick, or a warning) and
-stays until the copy is deleted. A .wpress file has no checksums: its check only makes sure it
-reads to its end.
-
-= Safety backup and Undo =
-
-Rolling back on failure protects against a restore that breaks halfway; the safety backup protects
-against one that works but was the wrong choice.
-
-* After you confirm a restore (or a move), SiteFerry first backs up this whole site as it is, as
-  an ordinary backup named "Before restoring ..." with the tag "before-restore". It takes about as
-  long as a normal backup and needs room for one. Untick "Make a safety backup of this site first"
-  to skip it (WP-CLI: `--skip-safety-backup`).
-* If the safety backup fails, the restore stops before anything changes.
-* If the restore then fails and the site is left as it was, or is put back completely, the safety
-  backup is not needed and is removed. If putting the site back does not fully succeed, it is kept.
-* After a restore, the Backups tab offers "Undo this restore": it opens the restore panel for the
-  safety backup, checked like any other restore. "Keep it as it is" hides the offer; the safety
-  backup stays in the list until you delete it. Safety backups are never deleted automatically.
-
-Left out of every export: cache folders (unless `--include-cache`), WordPress's upgrade folders,
-other backup plugins' folders, `.git`, `node_modules`, SiteFerry itself, its storage folder and its
-settings (including storage credentials).
-
-= Where backups are stored =
-
-In `wp-content/siteferry-<random>/backups/`, with `.htaccess`, `web.config` and `index.php` deny
-files. Web servers that ignore those files (nginx, including LocalWP) will serve a backup to anyone
-who knows its exact URL; the random folder and file names make that URL unguessable. To block it on
-nginx as well, add a rule such as `location ~ /wp-content/siteferry-[a-f0-9]+/ { deny all; }`.
-
-= Backup format =
-
-A SiteFerry backup is a plain POSIX TAR file (ustar with pax extended headers) that any TAR tool can
-open. It contains:
-
-* `siteferry.json` - the manifest (site address, versions, export options).
-* `database.sql` - the database dump.
-* `wp-content/...` - the site files.
-* `siteferry.sha256` - SHA-256 checksums of every file above except the manifest, in `sha256sum` format.
-
-Compressed backups (`.tar.gz`) are a series of independent gzip members of about 8 MB each, so they
-are valid gzip files and an interrupted job can resume at a member boundary.
-
-= .wpress backups =
-
-.wpress is the backup format of the All-in-One WP Migration plugin. SiteFerry reads and writes it
-from the format's layout, for moving sites between the two plugins; it is not affiliated with that
-plugin or its makers. All-in-One WP Migration is a trademark of its owner.
-
-Importing a .wpress backup (Import tab, or `wp siteferry import site.wpress`) runs the usual import
-with one more step first:
-
-* Every file's CRC-32, stored in the archive, is checked as it is unpacked; a damaged backup stops
-  the import before the site is touched. (.wpress files have no SHA-256 list.)
-* The database dump is rewritten as a SiteFerry dump: the format's placeholder table prefix goes
-  back to the source site's prefix, column lists are added, and the theme and active plugins, which
-  the dump leaves empty and package.json holds, are filled in. Only DROP TABLE, CREATE TABLE and
-  INSERT statements are accepted, as for SiteFerry's own dumps.
-* Addresses and paths come from the backup's package.json; the import then replaces them as usual.
-* Left out: other SiteFerry storage folders inside the backup, All-in-One WP Migration's own backup
-  folder, and SiteFerry's plugin folder (this site keeps its own SiteFerry).
-* Not supported: password-protected .wpress backups (listed, but they cannot be imported yet),
-  multisite backups, and backups made with "Exclude database". The server needs room for the backup,
-  the unpacked files and the database twice, as with any import.
-
-Exporting as .wpress (Export tab: File, or `wp siteferry export --format=wpress`) makes a normal
-SiteFerry backup first and then converts it: package.json first, then the files, then database.sql,
-with each file's CRC-32 and the archive's CRC-32 in their headers. In the dump, the table prefix is
-replaced by the format's placeholder in table names, in the user_roles option and at the start of
-user-meta keys, so the importing plugin can use its own prefix; option names that start with "wp_"
-whatever the prefix (such as wp_page_for_privacy_policy) stay as they are. Compression does not
-apply to .wpress files. All-in-One WP Migration's free version imports such a file with "Import
-from file", within the host's upload limit.
-
-Tested with backups made by All-in-One WP Migration 7.113, and by importing SiteFerry's .wpress files
-with that version.
+Backups go to this server, or to a storage set up on the Storage tab: S3-compatible services
+(Amazon S3, Backblaze B2, Wasabi, Cloudflare R2, DigitalOcean Spaces, MinIO and others), FTP and
+FTPS servers, Google Drive and Dropbox. Uploads and downloads run in resumable parts of 8 MB, so
+large backups fit within PHP's time limits, and "Test connection" writes, reads and deletes a small
+file. Google Drive and Dropbox connect with one click through SiteFerry's sign-in service (see
+"External services"), or with your own OAuth client or Dropbox app. The FAQ has the details of
+each.
 
 == External services ==
 
@@ -439,7 +177,288 @@ it. See "Sign-in service" above for every step. Publisher: [xsofty](https://xsof
 **Another WordPress site (moving a site).** Only when you paste a move key made on another site and
 start the move, SiteFerry sends this site's encrypted backup to the address in that key.
 
+
+== Frequently Asked Questions ==
+
+= How does S3-compatible storage work? =
+
+Presets for Amazon S3, Backblaze B2, Wasabi, Cloudflare R2 and DigitalOcean Spaces; any other
+service that speaks the S3 API (MinIO, ...) works with its endpoint. Requests are signed with AWS
+Signature Version 4 (no SDK) and carry the SHA-256 of their content, which the service checks.
+Backups are stored as `<folder>/<backup name>` in the bucket.
+
+* Uploads use multipart upload in parts of 8 MB (larger for files over 78 GB), one or a few parts
+  per request, so the PHP time limit does not matter. Temporary errors (network, throttling, server
+  errors) are retried with growing pauses. Cancelling or a failure removes the unfinished upload.
+  A job that is simply abandoned can leave one behind: a bucket lifecycle rule that aborts
+  incomplete multipart uploads after a few days cleans those up.
+* Downloads to this server use range requests of 8 MB and are checked to be SiteFerry backups.
+* "Test connection" writes, reads, lists and deletes a small file in the folder.
+* On Amazon S3, a key limited to the bucket and folder needs only this (replace BUCKET; the folder
+  here is the default "siteferry"):
+  `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:ListBucket","Resource":"arn:aws:s3:::BUCKET","Condition":{"StringLike":{"s3:prefix":"siteferry/*"}}},{"Effect":"Allow","Action":["s3:PutObject","s3:GetObject","s3:DeleteObject","s3:AbortMultipartUpload"],"Resource":"arn:aws:s3:::BUCKET/siteferry/*"}]}`
+
+= How do FTP and FTPS work? =
+
+Uses PHP's ftp extension. Explicit FTPS (AUTH TLS, with the data connections encrypted as well) is
+the default; plain FTP can be chosen for servers without TLS, and the connection test then warns
+that the password and backups travel unencrypted. Implicit FTPS (port 990) and SFTP are not
+supported.
+
+* PHP's ftp extension does not check the server's TLS certificate: FTPS protects against
+  eavesdropping, not against someone who can redirect the connection.
+* Passive mode by default. Data connections always go to the server SiteFerry logged in to, never
+  to another address the server names in its passive-mode answer.
+* Uploads are written to `<name>.part` in parts of 8 MB, each at its offset (REST + STOR, so an
+  interrupted part is simply written again), and renamed when complete. The server must support
+  resuming uploads, which common servers do; "Test connection" checks it. Cancelling or a failure
+  deletes the `.part` file.
+* Downloads to this server read 8 MB ranges (REST + RETR).
+* Temporary failures (a dropped connection) are retried with growing pauses and a new connection;
+  refusals by the server (permissions, quota) are reported at once.
+* The folder is created if missing. Keep it outside the server's public web folder.
+
+= How does Google Drive work? =
+
+Two ways to sign in, chosen on the Storage tab:
+
+* "Sign in with Google" (the default): click the button and allow access on Google's page. No
+  Google Cloud project or keys are needed; SiteFerry's own Google app is used, through SiteFerry's
+  sign-in service (see "What is the sign-in service (auth.xsofty.com)?" in the FAQ).
+* "Use my own OAuth client" (advanced, no sign-in service involved): in the Google Cloud console,
+  enable the Google Drive API, set up the consent screen, create an OAuth client of type "Web
+  application" and register the redirect URI that the Storage tab shows; enter its client ID and
+  secret. If that consent screen is left in "Testing", Google ends the authorization after 7 days;
+  publish the app to keep it (with only the drive.file scope Google usually asks for no review).
+
+SiteFerry asks only for the `drive.file` scope: it can see and change only the files and folders it
+created itself, nothing else in the Drive. Backups go into one folder at the top of My Drive
+("SiteFerry" by default).
+
+* Connecting: the sign-in button (a POST with the administrator's nonce) creates a one-time
+  `state`, tied to that administrator, and a PKCE code verifier, both kept for 10 minutes. Google
+  (through the sign-in service, in the default way) sends the browser back to the SiteFerry page
+  with a code; that page then hands code and state to the REST API with the nonce. Only that
+  request, after the state matches, exchanges the code and saves the tokens. Nothing is saved from
+  the GET request itself, and the code is removed from the address bar at once.
+* The refresh token and access token are stored encrypted; the access token is refreshed when it
+  is about to expire (or when Google refuses it) and the new one saved. "Disconnect" revokes the
+  tokens at Google. Switching between the two ways of signing in, or changing the client ID, drops
+  the connection.
+* Uploads use resumable uploads in parts of 8 MB; after an interruption Drive is asked how much it
+  has and the upload continues from there. Sending a backup again replaces the earlier copy.
+  Deleting a backup moves it to the Drive trash. Downloads use range requests.
+* The access token is only ever sent to Google's API hosts.
+
+= How does Dropbox work? =
+
+Two ways to sign in, chosen on the Storage tab; neither needs a secret, because Dropbox lets an app
+sign in with PKCE and its public app key alone:
+
+* "Sign in with Dropbox" (the default): click the button and allow access on Dropbox's page.
+  SiteFerry's own Dropbox app is used; your browser passes through SiteFerry's sign-in service on
+  the way (see "What is the sign-in service (auth.xsofty.com)?" in the FAQ), but the access itself never does.
+* "Use my own Dropbox app" (advanced, no sign-in service involved): in the Dropbox App Console,
+  create an app with "Scoped access" and "App folder" access; on its Permissions tab tick
+  files.metadata.read, files.content.read and files.content.write; on its Settings tab register the
+  redirect URI that the Storage tab shows (Dropbox accepts http only for localhost). Enter its app
+  key; no app secret is needed.
+
+With "App folder" access SiteFerry sees only its own folder in the Dropbox (Apps, then the app's
+name), nothing else. Backups go into that folder, or into a folder inside it named on the Storage
+tab (for example one per site, when several sites share a Dropbox).
+
+* Connecting works as for Google Drive: a one-time `state` tied to the administrator and a PKCE
+  code verifier, kept for 10 minutes; the code that comes back is exchanged only by an
+  authenticated POST with the nonce, after the state matches. SiteFerry asks for the permissions
+  account_info.read (the account's email address, shown on the Storage tab), files.metadata.read,
+  files.content.read and files.content.write, and checks that they were granted.
+* The refresh token and access token are stored encrypted; the access token (valid for four hours)
+  is renewed when it is about to expire, or when Dropbox refuses it, and the new one saved.
+  "Disconnect" revokes the access at Dropbox. Switching between the two ways of signing in, or
+  changing the app key, drops the connection.
+* Uploads use upload sessions in parts of 8 MB; after an interruption Dropbox says how much it has
+  and the upload continues from there. Sending a backup again replaces the earlier copy. Cancelling
+  leaves nothing in the folder (an unfinished upload session never becomes a file, and Dropbox
+  discards it). Downloads use range requests. Deleted backups can be restored from Dropbox's deleted
+  files for a while, depending on the Dropbox plan.
+* The access token is only ever sent to Dropbox's API hosts.
+
+= What is the sign-in service (auth.xsofty.com)? =
+
+"Sign in with Google" and "Sign in with Dropbox" use SiteFerry's sign-in service at
+`https://auth.xsofty.com/siteferry`, run by the publisher of SiteFerry. Google and Dropbox only send
+the browser back to the one address registered for SiteFerry's apps, which is the service's; for
+Google, the service also holds the secret of SiteFerry's Google app, which a plugin cannot keep
+secret. SiteFerry contacts it only for those two storages, only in those modes, and only for these
+steps:
+
+* Signing in: your browser goes to the service with this site's SiteFerry page address, a random
+  state and a PKCE challenge, and on to Google or Dropbox, which sends the browser back through the
+  service; the service passes the one-time code to this site's page. The code is useless without
+  the PKCE verifier, which stays on this site.
+* Google Drive, getting and renewing access: this site sends the service the one-time code with the
+  PKCE verifier (once), and later the refresh token whenever the access token needs renewing (about
+  once an hour while SiteFerry works with the Drive). The service adds the app's client ID and
+  secret, sends the request to Google and returns Google's answer.
+* Dropbox, connecting: this site asks the service once for the app key and redirect address of
+  SiteFerry's Dropbox app (both public). The code exchange and every renewal then go straight from
+  this site to Dropbox; no token ever passes through the service.
+
+The service stores nothing and keeps no logs of its own. Backups never go through it: they travel
+directly between this site and Google or Dropbox. If the service cannot be reached, signing in (and,
+for Google Drive, renewing access) fails with a message saying so; the rest of SiteFerry is not
+affected. To avoid the service completely, use your own OAuth client or Dropbox app. To use a
+sign-in service of your own instead, define `SITEFERRY_RELAY_URL` (an https address) in
+wp-config.php.
+
+= How are keys, passwords and tokens stored? =
+
+Secret keys, passwords and OAuth tokens are encrypted before they are saved (libsodium secretbox, or OpenSSL
+AES-256-GCM if libsodium is missing) with a key derived from the site's WordPress salts. They are
+never shown again or sent to the browser, never logged, left out of every export, kept when a
+backup is imported into this site, and removed when SiteFerry is deleted. If the salts change,
+enter them again. To use a key that survives changed salts, define `SITEFERRY_ENCRYPTION_KEY` (at
+least 32 random characters) in wp-config.php before saving the settings.
+
+= How does an import work? =
+
+1. The backup's manifest, WordPress and PHP versions and free disk space are checked, and you confirm.
+   Then, unless you untick it, a safety backup of the whole site as it is now is made.
+2. Files are unpacked into a staging folder and checked against the backup's SHA-256 list.
+3. The database is loaded into temporary tables while the site keeps running. Only the statements a
+   SiteFerry dump contains are accepted. Collations the server lacks are mapped to close equivalents.
+4. The old address and folder paths are replaced (http/https, www, `//`, JSON and URL-encoded forms;
+   serialized data stays valid). GUIDs are not changed.
+5. Under maintenance mode, the tables are swapped with one RENAME TABLE and the files are moved into
+   place. SiteFerry itself, its settings and its storage folder stay as they are. Must-use plugins
+   and server-specific drop-ins (object-cache.php, advanced-cache.php, db.php) are only copied on request.
+6. Caches and rewrite rules are flushed; the old tables and files are removed.
+
+If anything fails after step 5 starts, the previous tables and files are put back. After an import,
+log in with the imported site's users.
+
+= How do password-protected backups work? =
+
+"Protect the backup with a password" in Options (and, for automatic backups, in the Schedule
+panel) encrypts the whole backup with AES-256-GCM as it is written; the file name ends in .enc. The
+key comes from the password (PBKDF2-HMAC-SHA256, 600,000 rounds, and HKDF); every 2 MB chunk is
+authenticated, so a changed, reordered or cut-off file is refused. Restoring, checking or looking
+inside asks for the password; a wrong one is refused before anything changes. The password of a
+backup made by hand is not kept anywhere. The password of automatic backups is kept on the site,
+encrypted with a key from the WordPress salts. Safety backups made before a restore are not
+encrypted (they stay on this server). Needs the PHP OpenSSL extension.
+
+= Does it work on multisite networks? =
+
+On a network, SiteFerry is for super admins, on the main site, and backs up the whole network:
+every site's tables, the network tables and all of wp-content. Such a backup restores into a
+network of the same kind (subfolders or subdomains); every subsite is put under the new network's
+domain and path, and subsites made after the backup are removed with their tables. A single site
+cannot be restored into a network (or the other way round) yet, nor a part of a network.
+
+= How do I move a site straight to another server? =
+
+"Move a site" on the new site makes a one-time key (24 hours). Pasted under "Move a site" on the old site, it
+shows the new site and then moves the old one there: a fresh backup, encrypted with the key's
+256-bit secret (AES-256-GCM), sent straight from server to server in chunks with their SHA-256;
+an interrupted transfer continues where it stopped. The routes that receive it answer only to the
+key, which works once and is dropped after 20 wrong tries. On the new site the backup waits in the
+list; "Move it here" restores it after the usual check and confirmation, with the key's secret as
+its password (kept, encrypted, until the backup is deleted). Only the address in the key is
+contacted.
+
+= What does checking a copy do? =
+
+"Check the copy on ..." in a backup's menu reads that copy from start to end without unpacking
+anything. Every file is compared with the backup's own SHA-256 checksum list; the manifest must be
+there, the database dump complete and of the size the manifest gives, and entries an import would
+refuse count as damage. A copy on a storage is downloaded into SiteFerry's protected folder first
+and deleted afterwards. The outcome shows on the copy's place badge (a tick, or a warning) and
+stays until the copy is deleted. A .wpress file has no checksums: its check only makes sure it
+reads to its end.
+
+= What are the safety backup and Undo? =
+
+Rolling back on failure protects against a restore that breaks halfway; the safety backup protects
+against one that works but was the wrong choice.
+
+* After you confirm a restore (or a move), SiteFerry first backs up this whole site as it is, as
+  an ordinary backup named "Before restoring ..." with the tag "before-restore". It takes about as
+  long as a normal backup and needs room for one. Untick "Make a safety backup of this site first"
+  to skip it (WP-CLI: `--skip-safety-backup`).
+* If the safety backup fails, the restore stops before anything changes.
+* If the restore then fails and the site is left as it was, or is put back completely, the safety
+  backup is not needed and is removed. If putting the site back does not fully succeed, it is kept.
+* After a restore, the Backups tab offers "Undo this restore": it opens the restore panel for the
+  safety backup, checked like any other restore. "Keep it as it is" hides the offer; the safety
+  backup stays in the list until you delete it. Safety backups are never deleted automatically.
+
+= What is never included in an export? =
+
+Left out of every export: cache folders (unless `--include-cache`), WordPress's upgrade folders,
+other backup plugins' folders, `.git`, `node_modules`, SiteFerry itself, its storage folder and its
+settings (including storage credentials).
+
+= Where are backups stored? =
+
+In `wp-content/siteferry-<random>/backups/`, with `.htaccess`, `web.config` and `index.php` deny
+files. Web servers that ignore those files (nginx, including LocalWP) will serve a backup to anyone
+who knows its exact URL; the random folder and file names make that URL unguessable. To block it on
+nginx as well, add a rule such as `location ~ /wp-content/siteferry-[a-f0-9]+/ { deny all; }`.
+
+= What is in a SiteFerry backup file? =
+
+A SiteFerry backup is a plain POSIX TAR file (ustar with pax extended headers) that any TAR tool can
+open. It contains:
+
+* `siteferry.json` - the manifest (site address, versions, export options).
+* `database.sql` - the database dump.
+* `wp-content/...` - the site files.
+* `siteferry.sha256` - SHA-256 checksums of every file above except the manifest, in `sha256sum` format.
+
+Compressed backups (`.tar.gz`) are a series of independent gzip members of about 8 MB each, so they
+are valid gzip files and an interrupted job can resume at a member boundary.
+
+= Can it import and make .wpress backups? =
+
+.wpress is the backup format of the All-in-One WP Migration plugin. SiteFerry reads and writes it
+from the format's layout, for moving sites between the two plugins; it is not affiliated with that
+plugin or its makers. All-in-One WP Migration is a trademark of its owner.
+
+Importing a .wpress backup (Import tab, or `wp siteferry import site.wpress`) runs the usual import
+with one more step first:
+
+* Every file's CRC-32, stored in the archive, is checked as it is unpacked; a damaged backup stops
+  the import before the site is touched. (.wpress files have no SHA-256 list.)
+* The database dump is rewritten as a SiteFerry dump: the format's placeholder table prefix goes
+  back to the source site's prefix, column lists are added, and the theme and active plugins, which
+  the dump leaves empty and package.json holds, are filled in. Only DROP TABLE, CREATE TABLE and
+  INSERT statements are accepted, as for SiteFerry's own dumps.
+* Addresses and paths come from the backup's package.json; the import then replaces them as usual.
+* Left out: other SiteFerry storage folders inside the backup, All-in-One WP Migration's own backup
+  folder, and SiteFerry's plugin folder (this site keeps its own SiteFerry).
+* Not supported: password-protected .wpress backups (listed, but they cannot be imported yet),
+  multisite backups, and backups made with "Exclude database". The server needs room for the backup,
+  the unpacked files and the database twice, as with any import.
+
+Exporting as .wpress (Export tab: File, or `wp siteferry export --format=wpress`) makes a normal
+SiteFerry backup first and then converts it: package.json first, then the files, then database.sql,
+with each file's CRC-32 and the archive's CRC-32 in their headers. In the dump, the table prefix is
+replaced by the format's placeholder in table names, in the user_roles option and at the start of
+user-meta keys, so the importing plugin can use its own prefix; option names that start with "wp_"
+whatever the prefix (such as wp_page_for_privacy_policy) stay as they are. Compression does not
+apply to .wpress files. All-in-One WP Migration's free version imports such a file with "Import
+from file", within the host's upload limit.
+
+Tested with backups made by All-in-One WP Migration 7.113, and by importing SiteFerry's .wpress files
+with that version.
+
 == Changelog ==
+
+= 0.28.2 =
+* Passes the WordPress.org Plugin Check with no errors: wp_parse_url() instead of parse_url(), no empty strings for translation, and each deliberate direct file, database or time-limit call marked with the reason for it.
+* readme.txt: the technical details moved from Description into a new FAQ section, with a short Storage overview in Description, so WordPress.org shows all of it.
 
 = 0.28.1 =
 * Fixed: after "Use another account" in Google Drive, the folder chosen in the old account was kept, and the test failed with "HTTP 404 (notFound): File not found". Signing in with a different account now goes back to the top of that account's Drive (the folder name stays); a chosen folder that cannot be found says so and asks to choose again.

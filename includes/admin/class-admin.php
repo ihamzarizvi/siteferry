@@ -856,7 +856,7 @@ final class Admin {
 					</tr>
 					<tr data-mode="own">
 						<th scope="row"><label for="siteferry-gdrive-client_id"><?php esc_html_e( 'Client ID', 'siteferry' ); ?></label></th>
-						<td><input type="text" class="large-text" id="siteferry-gdrive-client_id" name="client_id" placeholder="1234-abc.apps.googleusercontent.com" spellcheck="false" autocomplete="off"></td>
+						<td><input type="text" class="large-text" id="siteferry-gdrive-client_id" name="client_id" placeholder="1234-abc.apps.googleusercontent.com" spellcheck="false" autocomplete="off"></td><?php // phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent -- an example client ID in a placeholder; nothing is loaded. ?>
 					</tr>
 					<tr data-mode="own">
 						<th scope="row"><label for="siteferry-gdrive-client_secret"><?php esc_html_e( 'Client secret', 'siteferry' ); ?></label></th>

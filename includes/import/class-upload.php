@@ -8,6 +8,8 @@
 
 namespace SiteFerry\Import;
 
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
+
 use SiteFerry\Archive\Archive_Exception;
 use SiteFerry\Archive\Io;
 use SiteFerry\Backups;
@@ -87,12 +89,12 @@ final class Upload {
 		$dir = rtrim( $base, '/\\' ) . '/' . $id;
 		if ( ! Io::quiet(
 			static function () use ( $dir ) {
-				return mkdir( $dir, 0755, true );
+				return mkdir( $dir, 0755, true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir -- SiteFerry's own files; runs in cron and WP-CLI, where WP_Filesystem may need credentials.
 			}
 		) ) {
 			throw new Job_Exception( __( 'Cannot create the upload folder.', 'siteferry' ), Job_Exception::STEP );
 		}
-		touch( $dir . '/data.part' );
+		touch( $dir . '/data.part' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch -- SiteFerry's own files; runs in cron and WP-CLI, where WP_Filesystem may need credentials.
 
 		$upload = new self(
 			$dir,

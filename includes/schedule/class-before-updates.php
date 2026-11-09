@@ -178,7 +178,7 @@ final class Before_Updates {
 
 		$raised  = (bool) Io::quiet(
 			static function () {
-				return set_time_limit( 300 );
+				return set_time_limit( 300 ); // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- a backup or restore slice may need longer than the default limit.
 			}
 		);
 		$limit   = (int) ini_get( 'max_execution_time' );

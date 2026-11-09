@@ -8,6 +8,8 @@
 
 namespace SiteFerry\Storage;
 
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
+
 use SiteFerry\Backups;
 
 defined( 'ABSPATH' ) || exit;
@@ -194,7 +196,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 		return array(
 			'oauth'      => true,
 			'scopes'     => self::SCOPES,
-			'relay_host' => (string) parse_url( Gdrive_Driver::relay_url(), PHP_URL_HOST ),
+			'relay_host' => (string) wp_parse_url( Gdrive_Driver::relay_url(), PHP_URL_HOST ),
 		);
 	}
 
@@ -751,7 +753,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 	 */
 	private function relay_app(): array {
 		$url     = $this->endpoints['relay'] . '/dropbox/app';
-		$service = 'The sign-in service ' . parse_url( $url, PHP_URL_HOST );
+		$service = 'The sign-in service ' . wp_parse_url( $url, PHP_URL_HOST );
 		return $this->retrying(
 			function () use ( $url, $service ): array {
 				try {
@@ -785,8 +787,8 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 	 * @param string $url Address.
 	 */
 	private function is_relay_callback( string $url ): bool {
-		$relay = parse_url( $this->endpoints['relay'] );
-		$parts = parse_url( $url );
+		$relay = wp_parse_url( $this->endpoints['relay'] );
+		$parts = wp_parse_url( $url );
 		if ( ! is_array( $relay ) || ! is_array( $parts ) || isset( $parts['user'] ) || isset( $parts['query'] ) || isset( $parts['fragment'] ) ) {
 			return false;
 		}
@@ -858,7 +860,7 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 				if ( in_array( $code, array( 'invalid_client', 'unauthorized_client' ), true ) ) {
 					throw new Storage_Exception(
 						$this->relayed()
-							? 'Dropbox refused SiteFerry\'s app (' . $code . $text . '). This needs fixing at ' . parse_url( $this->endpoints['relay'], PHP_URL_HOST ) . ', not on this site.'
+							? 'Dropbox refused SiteFerry\'s app (' . $code . $text . '). This needs fixing at ' . wp_parse_url( $this->endpoints['relay'], PHP_URL_HOST ) . ', not on this site.'
 							: 'Dropbox refused the app key (' . $code . $text . '). Check it on the Storage tab.',
 						Storage_Exception::AUTH
 					);
@@ -977,8 +979,8 @@ final class Dropbox_Driver implements Driver, Oauth_Driver {
 	 * @param string $url URL.
 	 */
 	private static function origin( string $url ): string {
-		$port = parse_url( $url, PHP_URL_PORT );
-		return strtolower( (string) parse_url( $url, PHP_URL_SCHEME ) . '://' . parse_url( $url, PHP_URL_HOST ) . ( null === $port ? '' : ':' . $port ) );
+		$port = wp_parse_url( $url, PHP_URL_PORT );
+		return strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) . '://' . wp_parse_url( $url, PHP_URL_HOST ) . ( null === $port ? '' : ':' . $port ) );
 	}
 
 	/**

@@ -8,6 +8,8 @@
 
 namespace SiteFerry\Import;
 
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
+
 use SiteFerry\Database\Dumper;
 use SiteFerry\Export\Manifest;
 use SiteFerry\Jobs\Job;

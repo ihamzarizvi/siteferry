@@ -8,6 +8,9 @@
 
 namespace SiteFerry\Database;
 
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
+// phpcs:disable WordPress.DB.RestrictedFunctions -- On $wpdb's own mysqli connection: dump and restore statements run as written (no placeholder parsing of % in data) and keep binary values intact; with no mysqli link, $wpdb is used.
+
 use SiteFerry\Jobs\Job_Exception;
 
 defined( 'ABSPATH' ) || exit;

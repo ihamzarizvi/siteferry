@@ -50,8 +50,8 @@ final class Database_Step implements Step {
 
 		// In one long WP-CLI process, read every table from the same InnoDB snapshot.
 		if ( $job->option( 'snapshot' ) && ! self::$snapshot ) {
-			$wpdb->query( 'SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ' );
-			$wpdb->query( 'START TRANSACTION WITH CONSISTENT SNAPSHOT' );
+			$wpdb->query( 'SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a consistent snapshot for the dump.
+			$wpdb->query( 'START TRANSACTION WITH CONSISTENT SNAPSHOT' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a consistent snapshot for the dump.
 			self::$snapshot = true;
 		}
 
@@ -124,7 +124,7 @@ final class Database_Step implements Step {
 	private function end_snapshot(): void {
 		global $wpdb;
 		if ( self::$snapshot ) {
-			$wpdb->query( 'COMMIT' );
+			$wpdb->query( 'COMMIT' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- ends the snapshot transaction.
 			self::$snapshot = false;
 		}
 	}

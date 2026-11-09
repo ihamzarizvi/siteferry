@@ -8,6 +8,8 @@
 
 namespace SiteFerry\Schedule;
 
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
+
 use SiteFerry\Backups;
 use SiteFerry\Export\Export;
 use SiteFerry\Jobs\Job;
@@ -647,7 +649,7 @@ final class Schedule {
 			/* translators: %s: site address */
 			$subject = sprintf( __( '[%s] Scheduled backup done', 'siteferry' ), $site );
 			$lines[] = sprintf( /* translators: %s: the site's address */ __( 'SiteFerry made the scheduled backup of %s.', 'siteferry' ), home_url() );
-			$lines[] = __( '', 'siteferry' );
+			$lines[] = '';
 			/* translators: %s: backup name (and size) */
 			$lines[] = sprintf( __( 'Backup: %s', 'siteferry' ), $details['name'] . ( empty( $details['size'] ) ? '' : ' (' . size_format( (int) $details['size'], 1 ) . ')' ) );
 			/* translators: %s: where it is stored */
@@ -671,12 +673,12 @@ final class Schedule {
 			/* translators: %s: site address */
 			$subject = sprintf( __( '[%s] Scheduled backup FAILED', 'siteferry' ), $site );
 			$lines[] = sprintf( /* translators: %s: the site's address */ __( 'SiteFerry could not make the scheduled backup of %s.', 'siteferry' ), home_url() );
-			$lines[] = __( '', 'siteferry' );
+			$lines[] = '';
 			/* translators: %s: what went wrong */
 			$lines[] = sprintf( __( 'Reason: %s', 'siteferry' ), isset( $details['error'] ) ? $details['error'] : __( 'unknown', 'siteferry' ) );
 			$lines[] = __( 'Earlier backups were not touched.', 'siteferry' );
 		}
-		$lines[] = __( '', 'siteferry' );
+		$lines[] = '';
 		$lines[] = 'SiteFerry: ' . admin_url( 'admin.php?page=siteferry' );
 		return (bool) wp_mail( $to, $subject, implode( "\n", $lines ) );
 	}

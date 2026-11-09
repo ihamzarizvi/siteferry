@@ -8,6 +8,8 @@
 
 namespace SiteFerry\Archive;
 
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
+
 use SiteFerry\Jobs\Slice_Budget;
 
 defined( 'ABSPATH' ) || exit;
@@ -279,7 +281,7 @@ final class Tar_Extractor {
 			$mtime = $this->current['mtime'];
 			Io::quiet(
 				static function () use ( $target, $mtime ) {
-					return touch( $target, $mtime );
+					return touch( $target, $mtime ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch -- SiteFerry's own files; runs in cron and WP-CLI, where WP_Filesystem may need credentials.
 				}
 			);
 		}
@@ -330,7 +332,7 @@ final class Tar_Extractor {
 				$dir  = $current;
 				$made = Io::quiet(
 					static function () use ( $dir ) {
-						return mkdir( $dir, 0755 );
+						return mkdir( $dir, 0755 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir -- SiteFerry's own files; runs in cron and WP-CLI, where WP_Filesystem may need credentials.
 					}
 				);
 				if ( ! $made && ! is_dir( $current ) ) {

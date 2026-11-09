@@ -8,6 +8,8 @@
 
 namespace SiteFerry;
 
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
+
 use SiteFerry\Archive\Archive_Exception;
 use SiteFerry\Archive\Io;
 use SiteFerry\Archive\Tar_Entry;
@@ -181,7 +183,7 @@ final class Contents {
 				}
 				Io::quiet(
 					static function () {
-						return set_time_limit( 0 );
+						return set_time_limit( 0 ); // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- a backup or restore slice may need longer than the default limit.
 					}
 				);
 				$name = (string) preg_replace( '/[^A-Za-z0-9._-]+/', '_', basename( $inner ) );
