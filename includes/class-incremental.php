@@ -325,12 +325,7 @@ final class Incremental {
 		if ( $keep <= 0 ) {
 			return array( array(), array() );
 		}
-		usort(
-			$runs,
-			static function ( array $a, array $b ): int {
-				return (int) $b['time'] - (int) $a['time'];
-			}
-		);
+		$runs   = \SiteFerry\Schedule\Schedule::newest_first( $runs ); // Ties: the one recorded later is newer.
 		$kept   = array_slice( $runs, 0, $keep );
 		$needed = array();
 		foreach ( $kept as $run ) {

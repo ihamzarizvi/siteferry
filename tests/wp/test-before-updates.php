@@ -223,6 +223,104 @@ Sf_Test::run(
 	}
 );
 
+Schedule::save(
+	array(
+		'before_updates' => true,
+		'update_retain'  => 10,
+	)
+);
+
+Sf_Test::run(
+	'before risky changes: deleting a plugin or a theme, switching the theme (WordPress\'s own functions)',
+	static function () use ( &$sf_made ) {
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/theme.php';
+		// A tiny plugin and theme made here (our own files), then deleted the way WordPress deletes them.
+		$plugin_dir = WP_PLUGIN_DIR . '/sf-risky-test';
+		wp_mkdir_p( $plugin_dir );
+		file_put_contents( $plugin_dir . '/sf-risky-test.php', "<?php\n/**\n * Plugin Name: SiteFerry risky test\n * Version: 1.0.1\n */\n" );
+		file_put_contents( $plugin_dir . '/readme.txt', 'SiteFerry test plugin.' );
+		wp_clean_plugins_cache( false );
+		$deleted = delete_plugins( array( 'sf-risky-test/sf-risky-test.php' ) );
+		Sf_Test::same( true, $deleted, 'the plugin is deleted:' );
+		Sf_Test::ok( ! is_dir( $plugin_dir ), 'its folder is gone' );
+		$last      = sf_last_update();
+		$sf_made[] = $last['name'];
+		Sf_Test::same( array( 'done', 'plugin-delete' ), array( $last['status'], $last['change'] ), wp_json_encode( $last ) );
+		Sf_Test::same( 'Before deleting the plugin SiteFerry risky test 1.0.1', $last['title'] );
+		$paths = sf_paths( $last['name'] );
+		Sf_Test::ok( in_array( 'wp-content/plugins/sf-risky-test/sf-risky-test.php', $paths, true ) && in_array( 'database.sql', $paths, true ), 'the backup holds the database and the plugin' );
+		Sf_Test::same( array(), sf_outside( $paths, 'wp-content/plugins/sf-risky-test' ), 'only that plugin:' );
+		Sf_Test::same( array( 'before-plugin-delete' ), \SiteFerry\Labels::get( $last['name'] )['tags'] );
+
+		$theme_dir = get_theme_root() . '/sf-risky-theme';
+		wp_mkdir_p( $theme_dir );
+		file_put_contents( $theme_dir . '/style.css', "/*\nTheme Name: SiteFerry risky theme\nVersion: 2.0\n*/\n" );
+		file_put_contents( $theme_dir . '/index.php', "<?php\n" );
+		wp_clean_themes_cache();
+		Sf_Test::ok( true === delete_theme( 'sf-risky-theme' ), 'the theme is deleted' );
+		$last      = sf_last_update();
+		$sf_made[] = $last['name'];
+		Sf_Test::same( array( 'done', 'theme-delete' ), array( $last['status'], $last['change'] ), wp_json_encode( $last ) );
+		$paths = sf_paths( $last['name'] );
+		Sf_Test::ok( in_array( 'wp-content/themes/sf-risky-theme/style.css', $paths, true ), 'the backup holds the theme' );
+		Sf_Test::same( array(), sf_outside( $paths, 'wp-content/themes/sf-risky-theme' ), 'only that theme:' );
+
+		// Switching: to another installed theme and back; the backup is taken before the switch.
+		$current = get_stylesheet();
+		$other = '';
+		$slugs = array_keys( wp_get_themes() );
+		usort(
+			$slugs,
+			static function ( string $a, string $b ): int {
+				return (int) ( 0 !== strpos( $a, 'twenty' ) ) - (int) ( 0 !== strpos( $b, 'twenty' ) ); // WordPress's default themes first.
+			}
+		);
+		foreach ( $slugs as $slug ) {
+			if ( $slug !== $current && wp_get_theme( $slug )->get_template() === $slug ) {
+				$other = $slug;
+				break;
+			}
+		}
+		Sf_Test::ok( '' !== $other, 'another theme to switch to' );
+		$in_backup = null;
+		$watch     = static function ( $value ) use ( &$in_backup ) {
+			// Read in the middle of the switch: the backup before it must already exist.
+			if ( null === $in_backup ) {
+				$in_backup = sf_last_update();
+			}
+			return $value;
+		};
+		add_filter( 'pre_update_option_stylesheet', $watch, 20 );
+		switch_theme( $other );
+		remove_filter( 'pre_update_option_stylesheet', $watch, 20 );
+		$last      = sf_last_update();
+		$sf_made[] = $last['name'];
+		Sf_Test::same( array( 'done', 'theme-switch' ), array( $last['status'], $last['change'] ), wp_json_encode( $last ) );
+		Sf_Test::same( $last['name'], $in_backup['name'], 'made before the switch finished:' );
+		Sf_Test::same( array(), sf_outside( sf_paths( $last['name'] ), '' ), 'the database only:' );
+		Sf_Test::same( $other, get_stylesheet(), 'the switch went ahead:' );
+		switch_theme( $current );
+		$back      = sf_last_update();
+		$sf_made[] = $back['name'];
+		Sf_Test::same( $current, get_stylesheet() );
+
+		// Turned off: no backup.
+		Schedule::save(
+			array(
+				'before_updates'      => true,
+				'update_retain'       => 10,
+				'before_theme_switch' => false,
+			)
+		);
+		$time = sf_last_update()['time'];
+		sleep( 1 );
+		switch_theme( $other );
+		switch_theme( $current );
+		Sf_Test::same( $time, sf_last_update()['time'], 'no backup when turned off:' );
+	}
+);
+
 // Clean up: the backups made here, and the settings.
 foreach ( Schedule::state()['update_runs'] as $sf_run ) {
 	$sf_made[] = $sf_run['name'];

@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.34.1
+Stable tag: 0.35.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -492,6 +492,10 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.35.0 =
+* Backups before risky changes: the same quick backup as before updates is now made just before a plugin is deleted (the database and that plugin, tagged "before-plugin-delete"; taken before the plugin's own uninstall code runs), a theme is deleted (the database and that theme, "before-theme-delete") and the theme is switched (the database, "before-theme-switch"; taken before the switch is written, from the Themes screen, the Customizer or WP-CLI). Each has its switch in the Schedule panel under "Before risky changes", on by default; they share "Keep the newest" with the backups made before updates, never block the change, and show on the timeline.
+* Fixed: when two quick backups finished within the same second, keeping "the newest N" could delete the newer one; runs recorded later now count as newer.
 
 = 0.34.1 =
 * Staging: `wp siteferry staging create --no-media` works (WP-CLI read it as an unknown --media option).

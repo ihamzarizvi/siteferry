@@ -251,4 +251,55 @@ Sf_Test::run(
 	}
 );
 
+Sf_Test::run(
+	'retention: backups made within the same second keep their order (the one recorded later is newer)',
+	static function () {
+		$runs = array(
+			array( 'name' => 'a', 'time' => 100 ),
+			array( 'name' => 'b', 'time' => 100 ),
+			array( 'name' => 'c', 'time' => 100 ),
+		);
+		Sf_Test::same( array( 'a' ), array_column( \SiteFerry\Schedule\Schedule::expired( $runs, 2 ), 'name' ), 'the first recorded goes:' );
+		Sf_Test::same( array( 'c', 'b', 'a' ), array_column( \SiteFerry\Schedule\Schedule::newest_first( $runs ), 'name' ) );
+		list( $expired ) = \SiteFerry\Incremental::expired( $runs, 2 );
+		Sf_Test::same( array( 'a' ), array_column( $expired, 'name' ), 'changes-only rules too:' );
+	}
+);
+
+Sf_Test::run(
+	'before risky changes: each has its switch (on by default), its tag, title and contents',
+	static function () {
+		$bu       = '\SiteFerry\Schedule\Before_Updates';
+		$defaults = \SiteFerry\Schedule\Schedule::DEFAULTS;
+		Sf_Test::same( array( false, true, true, true ), array( $bu::wanted( 'update', $defaults ), $bu::wanted( 'plugin-delete', $defaults ), $bu::wanted( 'theme-delete', $defaults ), $bu::wanted( 'theme-switch', $defaults ) ), 'defaults:' );
+		Sf_Test::same( false, $bu::wanted( 'plugin-delete', array( 'before_plugin_delete' => false ) + $defaults ), 'turned off:' );
+		Sf_Test::same( false, $bu::wanted( 'something-else', $defaults ), 'unknown change:' );
+
+		$content = array( 'plugins', 'themes', 'uploads', 'languages' );
+		$plugins = array( 'akismet', 'hello.php' );
+		$themes  = array( 'twentytwentyfive', 'twentytwentyfour' );
+		$delete  = $bu::export_options( array( 'type' => 'plugin', 'change' => 'plugin-delete', 'folder' => 'hello.php', 'name' => 'Hello Dolly', 'version' => '1.7.2' ), $content, $plugins, $themes );
+		Sf_Test::same( 'Before deleting the plugin Hello Dolly 1.7.2', $delete['title'] );
+		Sf_Test::same( array( 'before-plugin-delete' ), $delete['tags'] );
+		Sf_Test::same( array( 'uploads', 'languages', 'plugins/akismet' ), $delete['exclude_paths'], 'only that plugin (a single-file plugin too):' );
+
+		$theme = $bu::export_options( array( 'type' => 'theme', 'change' => 'theme-delete', 'folder' => 'twentytwentyfour', 'name' => 'Twenty Twenty-Four', 'version' => '1.3' ), $content, $plugins, $themes );
+		Sf_Test::same( array( 'before-theme-delete' ), $theme['tags'] );
+		Sf_Test::same( array( 'uploads', 'languages', 'themes/twentytwentyfive' ), $theme['exclude_paths'] );
+		Sf_Test::same( 'Before deleting the theme Twenty Twenty-Four 1.3', $theme['title'] );
+
+		$switch = $bu::export_options( array( 'type' => 'database', 'change' => 'theme-switch', 'folder' => '', 'name' => 'Twenty Twenty-Five', 'version' => '' ), $content, $plugins, $themes );
+		Sf_Test::same( array( true, true, true ), array( $switch['exclude_media'], $switch['exclude_plugins'], $switch['exclude_themes'] ), 'a theme switch: the database only:' );
+		Sf_Test::same( array( 'uploads', 'languages' ), $switch['exclude_paths'] );
+		Sf_Test::same( array( 'before-theme-switch' ), $switch['tags'] );
+		Sf_Test::same( 'Before switching away from the theme Twenty Twenty-Five', $switch['title'] );
+		\SiteFerry\Export\Export::normalize( $delete );
+		\SiteFerry\Export\Export::normalize( $switch );
+
+		// A theme switch with nothing changing makes no backup and returns the value untouched.
+		Sf_Test::same( 'same', $bu::on_theme_switch( 'same', 'same' ) );
+		Sf_Test::same( array( 'x' ), $bu::on_theme_switch( array( 'x' ), 'y' ), 'not a theme name:' );
+	}
+);
+
 exit( Sf_Test::finish( 'test-schedule' ) );

@@ -29,10 +29,38 @@ defined( 'ABSPATH' ) || exit;
  * can be raised, else half of it): when the backup cannot be finished in time, it is stopped and
  * the update goes ahead without it. An update is never blocked. Only the newest few such backups
  * are kept.
+ *
+ * The same quick backup is made before risky changes, each with its own switch (on unless turned
+ * off), sharing the number to keep:
+ * - deleting a plugin: the database and that plugin's folder, tagged "before-plugin-delete". It
+ *   hooks pre_uninstall_plugin (WordPress runs a plugin's uninstall code, which may delete its
+ *   data, BEFORE the delete_plugin action) and delete_plugin (plugins without uninstall code);
+ * - deleting a theme: the database and that theme's folder ("before-theme-delete"), on the
+ *   delete_theme action, which runs before the files are removed;
+ * - switching the theme: the database only ("before-theme-switch"; theme files stay). The
+ *   switch_theme action runs after the switch, so it hooks pre_update_option_template and
+ *   pre_update_option_stylesheet instead: switch_theme() updates the template option first, and
+ *   these filters run before the new value is written, in every way of switching (Themes screen,
+ *   Customizer, WP-CLI). Not while WordPress installs, nor inside switch_to_blog().
  */
 final class Before_Updates {
 
 	const TAG = 'before-update';
+
+	/** Tags of the backups before risky changes, by kind of change. */
+	const TAGS = array(
+		'plugin-delete' => 'before-plugin-delete',
+		'theme-delete'  => 'before-theme-delete',
+		'theme-switch'  => 'before-theme-switch',
+	);
+
+	/** The setting that turns each kind of change's backup on. */
+	const SETTINGS = array(
+		'update'        => 'before_updates',
+		'plugin-delete' => 'before_plugin_delete',
+		'theme-delete'  => 'before_theme_delete',
+		'theme-switch'  => 'before_theme_switch',
+	);
 
 	/** Seconds the backup may take when the time limit could be raised. */
 	const SECONDS = 120.0;
@@ -45,6 +73,114 @@ final class Before_Updates {
 	 */
 	public static function register(): void {
 		add_filter( 'upgrader_pre_download', array( self::class, 'on_pre_download' ), 10, 4 );
+		add_action( 'pre_uninstall_plugin', array( self::class, 'on_plugin_delete' ), 10, 1 );
+		add_action( 'delete_plugin', array( self::class, 'on_plugin_delete' ), 10, 1 );
+		add_action( 'delete_theme', array( self::class, 'on_theme_delete' ), 10, 1 );
+		add_filter( 'pre_update_option_template', array( self::class, 'on_theme_switch' ), 10, 2 );
+		add_filter( 'pre_update_option_stylesheet', array( self::class, 'on_theme_switch' ), 10, 2 );
+	}
+
+	/**
+	 * Whether the backup before a kind of change is turned on.
+	 *
+	 * @param string $change   update, plugin-delete, theme-delete or theme-switch.
+	 * @param array  $settings Schedule settings.
+	 */
+	public static function wanted( string $change, array $settings ): bool {
+		return isset( self::SETTINGS[ $change ] ) && ! empty( $settings[ self::SETTINGS[ $change ] ] );
+	}
+
+	/**
+	 * Action pre_uninstall_plugin / delete_plugin: a backup before a plugin is deleted.
+	 *
+	 * @param mixed $file Plugin file, such as akismet/akismet.php.
+	 */
+	public static function on_plugin_delete( $file ): void {
+		if ( ! is_string( $file ) || '' === $file || ! self::wanted( 'plugin-delete', Schedule::settings() ) ) {
+			return;
+		}
+		$plugins = function_exists( 'get_plugins' ) ? get_plugins() : array();
+		self::run(
+			array(
+				'key'     => 'plugin-delete:' . $file,
+				'type'    => 'plugin',
+				'change'  => 'plugin-delete',
+				'folder'  => false === strpos( $file, '/' ) ? $file : dirname( $file ),
+				'name'    => isset( $plugins[ $file ]['Name'] ) && '' !== $plugins[ $file ]['Name'] ? (string) $plugins[ $file ]['Name'] : $file,
+				'version' => isset( $plugins[ $file ]['Version'] ) ? (string) $plugins[ $file ]['Version'] : '',
+			)
+		);
+	}
+
+	/**
+	 * Action delete_theme: a backup before a theme is deleted.
+	 *
+	 * @param mixed $slug Theme folder.
+	 */
+	public static function on_theme_delete( $slug ): void {
+		if ( ! is_string( $slug ) || '' === $slug || ! self::wanted( 'theme-delete', Schedule::settings() ) ) {
+			return;
+		}
+		$theme = function_exists( 'wp_get_theme' ) ? wp_get_theme( $slug ) : null;
+		self::run(
+			array(
+				'key'     => 'theme-delete:' . $slug,
+				'type'    => 'theme',
+				'change'  => 'theme-delete',
+				'folder'  => $slug,
+				'name'    => null !== $theme && $theme->exists() ? (string) $theme->get( 'Name' ) : $slug,
+				'version' => null !== $theme && $theme->exists() ? (string) $theme->get( 'Version' ) : '',
+			)
+		);
+	}
+
+	/**
+	 * Filters pre_update_option_template / pre_update_option_stylesheet: a backup of the database
+	 * before the theme in use changes. Returns the new value unchanged.
+	 *
+	 * @param mixed $value New value.
+	 * @param mixed $old   Current value.
+	 * @return mixed
+	 */
+	public static function on_theme_switch( $value, $old = null ) {
+		if ( ! is_string( $value ) || $value === $old || '' === $value ) {
+			return $value;
+		}
+		if ( ( defined( 'WP_INSTALLING' ) && WP_INSTALLING ) || ( function_exists( 'ms_is_switched' ) && ms_is_switched() ) ) {
+			return $value;
+		}
+		if ( ! self::wanted( 'theme-switch', Schedule::settings() ) ) {
+			return $value;
+		}
+		$current = function_exists( 'wp_get_theme' ) ? wp_get_theme() : null;
+		self::run(
+			array(
+				'key'     => 'theme-switch',
+				'type'    => 'database',
+				'change'  => 'theme-switch',
+				'folder'  => '',
+				'name'    => null !== $current && $current->exists() ? (string) $current->get( 'Name' ) : (string) $old,
+				'version' => '',
+			)
+		);
+		return $value;
+	}
+
+	/**
+	 * Makes one backup per change and request; never lets a failure stop the change.
+	 *
+	 * @param array $item What changes.
+	 */
+	private static function run( array $item ): void {
+		if ( isset( self::$done[ $item['key'] ] ) ) {
+			return;
+		}
+		self::$done[ $item['key'] ] = true;
+		try {
+			self::backup( $item );
+		} catch ( \Throwable $e ) {
+			self::record( $item, 'failed', $e->getMessage(), array() );
+		}
 	}
 
 	/**
@@ -58,18 +194,12 @@ final class Before_Updates {
 	 */
 	public static function on_pre_download( $reply, $package = '', $upgrader = null, $hook_extra = array() ) {
 		unset( $package );
-		if ( false !== $reply || empty( Schedule::settings()['before_updates'] ) ) {
+		if ( false !== $reply || ! self::wanted( 'update', Schedule::settings() ) ) {
 			return $reply;
 		}
 		$item = self::item( $upgrader, is_array( $hook_extra ) ? $hook_extra : array() );
-		if ( null === $item || isset( self::$done[ $item['key'] ] ) ) {
-			return $reply;
-		}
-		self::$done[ $item['key'] ] = true;
-		try {
-			self::backup( $item );
-		} catch ( \Throwable $e ) {
-			self::record( $item, 'failed', $e->getMessage(), array() );
+		if ( null !== $item ) {
+			self::run( $item );
 		}
 		return $reply;
 	}
@@ -142,15 +272,38 @@ final class Before_Updates {
 				}
 			}
 		}
+		$change = isset( $item['change'] ) ? (string) $item['change'] : 'update';
 		return array(
-			/* translators: 1: name of the plugin, theme or WordPress, 2: its version */
-			'title'           => trim( sprintf( __( 'Before updating %1$s %2$s', 'siteferry' ), $item['name'], $item['version'] ) ),
-			'tags'            => array( self::TAG ),
+			'title'           => self::title( $item ),
+			'tags'            => array( isset( self::TAGS[ $change ] ) ? self::TAGS[ $change ] : self::TAG ),
 			'exclude_media'   => true,
 			'exclude_plugins' => 'plugin' !== $item['type'],
 			'exclude_themes'  => 'theme' !== $item['type'],
 			'exclude_paths'   => $paths,
 		);
+	}
+
+	/**
+	 * The backup's title: what was about to change.
+	 *
+	 * @param array $item What changes.
+	 */
+	public static function title( array $item ): string {
+		$change = isset( $item['change'] ) ? (string) $item['change'] : 'update';
+		if ( 'plugin-delete' === $change ) {
+			/* translators: 1: name of a plugin, 2: its version */
+			return trim( sprintf( __( 'Before deleting the plugin %1$s %2$s', 'siteferry' ), $item['name'], $item['version'] ) );
+		}
+		if ( 'theme-delete' === $change ) {
+			/* translators: 1: name of a theme, 2: its version */
+			return trim( sprintf( __( 'Before deleting the theme %1$s %2$s', 'siteferry' ), $item['name'], $item['version'] ) );
+		}
+		if ( 'theme-switch' === $change ) {
+			/* translators: %s: name of the theme in use before the switch */
+			return sprintf( __( 'Before switching away from the theme %s', 'siteferry' ), $item['name'] );
+		}
+		/* translators: 1: name of the plugin, theme or WordPress, 2: its version */
+		return trim( sprintf( __( 'Before updating %1$s %2$s', 'siteferry' ), $item['name'], $item['version'] ) );
 	}
 
 	/**
@@ -174,7 +327,7 @@ final class Before_Updates {
 			self::relative( (string) $site['themes_dir'], $content, 'themes' )
 		);
 		list( $job ) = Export::start( Schedule::with_password( $options ), null, 'update' );
-		$job->log( 'info', sprintf( 'Started before updating %s %s.', $item['name'], $item['version'] ) );
+		$job->log( 'info', 'Started: ' . self::title( $item ) . '.' );
 
 		$raised  = (bool) Io::quiet(
 			static function () {
@@ -189,8 +342,8 @@ final class Before_Updates {
 			Runner::run_slice( $job, new Slice_Budget( max( 0.0, $until - microtime( true ) ) ) );
 		}
 		if ( ! $job->finished() ) {
-			Runner::cancel( $job, 'Stopped: the backup before the update took too long; the update went ahead without it.' );
-			self::record( $item, 'skipped', 'It took too long, so the update went ahead without it.', array() );
+			Runner::cancel( $job, 'Stopped: the quick backup took too long; the change went ahead without it.' );
+			self::record( $item, 'skipped', 'It took too long, so the change went ahead without it.', array() );
 			return;
 		}
 		if ( Job::STATUS_DONE !== $job->status() ) {
@@ -237,6 +390,8 @@ final class Before_Updates {
 			'status'  => $status,
 			'time'    => time(),
 			'what'    => trim( $item['name'] . ' ' . $item['version'] ),
+			'title'   => self::title( $item ),
+			'change'  => isset( $item['change'] ) ? (string) $item['change'] : 'update',
 			'message' => $message,
 			'name'    => isset( $backup['name'] ) ? (string) $backup['name'] : '',
 			'size'    => isset( $backup['size'] ) ? (int) $backup['size'] : 0,

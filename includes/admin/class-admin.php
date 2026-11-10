@@ -728,15 +728,22 @@ final class Admin {
 			</div>
 
 			<div class="sf-before-updates">
-				<h3 class="sf-sub"><?php esc_html_e( 'A backup before every update', 'siteferry' ); ?></h3>
+				<h3 class="sf-sub"><?php esc_html_e( 'A backup before updates and risky changes', 'siteferry' ); ?></h3>
 				<p class="description"><?php esc_html_e( 'Separate from the automatic backups above: it works whether they are on or off. It is saved with the same button.', 'siteferry' ); ?></p>
 				<p class="sf-switch"><label><input type="checkbox" name="before_updates"> <strong><?php esc_html_e( 'Back up before WordPress, a plugin or a theme updates', 'siteferry' ); ?></strong></label></p>
 				<p class="description"><?php esc_html_e( 'Just before an update starts: the database and the plugin or theme being updated (the database only for WordPress itself), on this server, tagged "before-update". Restoring it puts those back as they were and leaves the rest of the site alone. If it cannot be made within about two minutes, the update goes ahead without it.', 'siteferry' ); ?></p>
 				<p class="sf-field sf-inline-field">
 					<label for="siteferry-update-retain"><?php esc_html_e( 'Keep the newest', 'siteferry' ); ?></label>
 					<input type="number" class="small-text" id="siteferry-update-retain" name="update_retain" min="1" max="50" step="1" value="3">
-					<span><?php esc_html_e( 'backups made before updates', 'siteferry' ); ?></span>
+					<span><?php esc_html_e( 'backups made before updates and risky changes', 'siteferry' ); ?></span>
 				</p>
+				<fieldset class="sf-checks sf-before-risky">
+					<legend><?php esc_html_e( 'Before risky changes', 'siteferry' ); ?></legend>
+					<label><input type="checkbox" name="before_plugin_delete"> <?php esc_html_e( 'Deleting a plugin (the database and that plugin)', 'siteferry' ); ?></label>
+					<label><input type="checkbox" name="before_theme_delete"> <?php esc_html_e( 'Deleting a theme (the database and that theme)', 'siteferry' ); ?></label>
+					<label><input type="checkbox" name="before_theme_switch"> <?php esc_html_e( 'Switching the theme (the database; the theme files stay)', 'siteferry' ); ?></label>
+				</fieldset>
+				<p class="description"><?php esc_html_e( 'The same quick backup, on this server, made just before the change and tagged with what happened. If it takes more than about two minutes, the change goes ahead without it.', 'siteferry' ); ?></p>
 				<p class="description" id="siteferry-update-last" hidden></p>
 			</div>
 

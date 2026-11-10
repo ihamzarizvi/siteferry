@@ -107,6 +107,10 @@ final class Schedule {
 		// Independent of the schedule: a quick backup before updates (see Before_Updates).
 		'before_updates'           => false,
 		'update_retain'            => 3,
+		// Quick backups before risky changes (see Before_Updates); kept with the ones made before updates.
+		'before_theme_switch'      => true,
+		'before_plugin_delete'     => true,
+		'before_theme_delete'      => true,
 	);
 
 	/**
@@ -634,13 +638,28 @@ final class Schedule {
 		if ( $keep <= 0 ) {
 			return array();
 		}
+		return array_reverse( array_slice( self::newest_first( $runs ), $keep ) );
+	}
+
+	/**
+	 * Runs newest first. Runs are recorded in the order they finish, so of two with the same time
+	 * (quick backups can finish within the same second) the one recorded later is the newer.
+	 *
+	 * @param array $runs Runs with a time.
+	 * @return array
+	 */
+	public static function newest_first( array $runs ): array {
+		$order = array();
+		foreach ( array_values( $runs ) as $i => $run ) {
+			$order[] = array( (int) $run['time'], $i, $run );
+		}
 		usort(
-			$runs,
+			$order,
 			static function ( array $a, array $b ): int {
-				return (int) $b['time'] - (int) $a['time'];
+				return $b[0] !== $a[0] ? $b[0] - $a[0] : $b[1] - $a[1];
 			}
 		);
-		return array_reverse( array_slice( $runs, $keep ) );
+		return array_column( $order, 2 );
 	}
 
 	/**

@@ -4683,6 +4683,9 @@
 		if ( tags.indexOf( 'before-update' ) !== -1 ) {
 			return [ 'update', __( 'Before an update', 'siteferry' ) ];
 		}
+		if ( tags.some( ( tag ) => [ 'before-plugin-delete', 'before-theme-delete', 'before-theme-switch' ].indexOf( tag ) !== -1 ) ) {
+			return [ 'update', __( 'Before a risky change', 'siteferry' ) ];
+		}
 		if ( tags.indexOf( 'scheduled' ) !== -1 ) {
 			return [ 'scheduled', __( 'Scheduled', 'siteferry' ) ];
 		}
@@ -4800,7 +4803,7 @@
 		const legend = [
 			[ 'full', __( 'Made by you', 'siteferry' ) ],
 			[ 'scheduled', __( 'Scheduled', 'siteferry' ) ],
-			[ 'update', __( 'Before an update', 'siteferry' ) ],
+			[ 'update', __( 'Before an update or risky change', 'siteferry' ) ],
 			[ 'changes', __( 'Changes only', 'siteferry' ) ],
 		].map( ( [ kind, text ] ) => el( 'span', { class: 'sf-tl-key' }, [ el( 'span', { class: 'sf-tl-dot is-' + kind, 'aria-hidden': 'true' } ), el( 'span', { text } ) ] ) );
 		legend.push( el( 'span', { class: 'sf-tl-key' }, [ el( 'span', { class: 'sf-tl-dot is-remote', 'aria-hidden': 'true' } ), el( 'span', { text: __( 'Only on a storage', 'siteferry' ) } ) ] ) );
@@ -5638,6 +5641,9 @@
 		if ( s.before_updates ) {
 			parts.push( el( 'span', { class: 'sf-schedule-last', text: __( 'A backup is also made before WordPress, a plugin or a theme updates.', 'siteferry' ) } ) );
 		}
+		if ( s.before_plugin_delete || s.before_theme_delete || s.before_theme_switch ) {
+			parts.push( el( 'span', { class: 'sf-schedule-last', text: __( 'A quick backup is made before a plugin or theme is deleted or the theme is switched (Schedule, Before risky changes).', 'siteferry' ) } ) );
+		}
 		const last = schedule.last;
 		if ( last ) {
 			const failed = last.status !== 'done';
@@ -5660,7 +5666,7 @@
 		}
 		line.replaceChildren( ...parts );
 		// Off and nothing to report: the Schedule button says so on its own.
-		line.hidden = ! s.enabled && ! s.before_updates && ! last;
+		line.hidden = ! s.enabled && ! s.before_updates && ! s.before_plugin_delete && ! s.before_theme_delete && ! s.before_theme_switch && ! last;
 		const state = $( 'siteferry-schedule-state' );
 		state.textContent = s.enabled ? __( 'On', 'siteferry' ) : __( 'Off', 'siteferry' );
 		state.className = 'sf-btn-state' + ( s.enabled ? ' is-on' : '' );
@@ -5685,7 +5691,31 @@
 		const update = schedule.last_update;
 		const line = $( 'siteferry-update-last' );
 		line.hidden = ! update;
-		if ( update ) {
+		if ( update && update.change && update.change !== 'update' ) {
+			// A backup before a risky change: its title says what changed.
+			const at = when( update.time, true );
+			let text;
+			if ( update.status === 'done' ) {
+				/* translators: 1: what the backup was made before, such as Before deleting the plugin Akismet 5.3, 2: when, such as today, 3:00 AM, 3: size such as 12 MB */
+				text = sprintf( __( 'Last quick backup: %1$s, %2$s, made (%3$s).', 'siteferry' ), update.title, at, bytes( update.size ) );
+			} else if ( update.status === 'skipped' ) {
+				/* translators: 1: what the backup was made before, such as Before deleting the plugin Akismet 5.3, 2: when, such as today, 3:00 AM, 3: the reason */
+				text = sprintf( __( 'Last quick backup: %1$s, %2$s, skipped: %3$s', 'siteferry' ), update.title, at, update.message );
+			} else {
+				/* translators: 1: what the backup was made before, such as Before deleting the plugin Akismet 5.3, 2: when, such as today, 3:00 AM, 3: error message */
+				text = sprintf( __( 'Last quick backup: %1$s, %2$s, failed: %3$s', 'siteferry' ), update.title, at, update.message );
+			}
+			if ( schedule.update_kept ) {
+				text +=
+					' ' +
+					sprintf(
+						/* translators: %d: number of quick backups made before updates and changes that are kept */
+						_n( '%d quick backup is kept.', '%d quick backups are kept.', schedule.update_kept, 'siteferry' ),
+						schedule.update_kept
+					);
+			}
+			line.textContent = text;
+		} else if ( update ) {
 			const at = when( update.time, true );
 			let text;
 			if ( update.status === 'done' ) {
