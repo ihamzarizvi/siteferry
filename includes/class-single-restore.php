@@ -53,6 +53,32 @@ final class Single_Restore {
 	// ------------------------------------------------------------------ one file
 
 	/**
+	 * The full backup next to a changes-only backup, or null (a full backup, or it is not here).
+	 *
+	 * @param string      $backup Backup file.
+	 * @param string|null $key    Key of an encrypted backup (those are never changes-only backups).
+	 */
+	private static function full_backup_of(
+		string $backup,
+		#[\SensitiveParameter]
+		?string $key
+	): ?string {
+		if ( null !== $key || \SiteFerry\Backups::encrypted_name( basename( $backup ) ) || \SiteFerry\Wpress\Wpress::is_name( basename( $backup ) ) ) {
+			return null;
+		}
+		try {
+			$base = \SiteFerry\Incremental::base_of( \SiteFerry\Backups::manifest( $backup ) );
+		} catch ( \Throwable $e ) {
+			return null;
+		}
+		if ( null === $base ) {
+			return null;
+		}
+		$path = dirname( $backup ) . '/' . $base['name'];
+		return is_file( $path ) && null === \SiteFerry\Incremental::base_of( \SiteFerry\Backups::manifest( $path ) ) ? $path : null;
+	}
+
+	/**
 	 * Restores one file of wp-content from a backup.
 	 *
 	 * @param string      $backup Backup file on this server.
@@ -95,6 +121,11 @@ final class Single_Restore {
 				}
 			);
 			if ( null === $found ) {
+				// A changes-only backup: an unchanged file comes from its full backup.
+				$full = self::full_backup_of( $backup, $key );
+				if ( null !== $full ) {
+					return self::restore_file( $full, $inner, null );
+				}
 				throw new Job_Exception( __( 'That file is not in the backup.', 'siteferry' ), Job_Exception::NOT_FOUND );
 			}
 			// A .wpress reader has checked the file's CRC while reading it.

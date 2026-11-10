@@ -228,6 +228,10 @@ final class Admin {
 							<?php if ( Requirements::can_compress() ) : ?>
 								<p class="sf-compress" id="siteferry-compress-row"><label><input type="checkbox" name="compress"> <?php esc_html_e( 'Compress the file (.tar.gz): smaller, but takes longer to make', 'siteferry' ); ?></label></p>
 							<?php endif; ?>
+							<div class="sf-changes-only" id="siteferry-changes-row">
+								<p><label><input type="checkbox" name="changes_only" id="siteferry-changes-only"> <?php esc_html_e( 'Only changes since the last full backup', 'siteferry' ); ?></label></p>
+								<p class="description" id="siteferry-changes-note"><?php esc_html_e( 'Much smaller and quicker: the whole database, and only the files added or changed since then. Restoring it needs that full backup too, so it stays on this server.', 'siteferry' ); ?></p>
+							</div>
 							<?php if ( \SiteFerry\Archive\Crypto::available() ) : ?>
 								<div class="sf-encrypt" id="siteferry-encrypt-row">
 									<p><label><input type="checkbox" id="siteferry-encrypt"> <?php esc_html_e( 'Protect the backup with a password', 'siteferry' ); ?></label></p>
@@ -661,6 +665,12 @@ final class Admin {
 					<span><?php esc_html_e( 'scheduled backups', 'siteferry' ); ?></span>
 				</p>
 				<p class="description"><?php esc_html_e( 'After a new scheduled backup succeeds, older scheduled backups beyond this number are deleted wherever they are stored. 0 keeps them all. Backups you make yourself are never deleted.', 'siteferry' ); ?></p>
+				<p class="sf-field sf-inline-field">
+					<label for="siteferry-schedule-full-every"><?php esc_html_e( 'Make a full backup every', 'siteferry' ); ?></label>
+					<input type="number" class="small-text" id="siteferry-schedule-full-every" name="full_every" min="1" max="30" step="1" value="1">
+					<span><?php esc_html_e( 'runs, only the changes in between', 'siteferry' ); ?></span>
+				</p>
+				<p class="description"><?php esc_html_e( '1 makes a full backup every time. With a higher number the runs in between hold only the files changed since the last full backup (and the whole database), so they are much smaller. They need SiteFerry\'s format, no password, and a copy kept on this server; a full backup is kept as long as changes built on it are.', 'siteferry' ); ?></p>
 
 				<h3 class="sf-sub"><?php esc_html_e( 'Email', 'siteferry' ); ?></h3>
 				<div class="sf-when">

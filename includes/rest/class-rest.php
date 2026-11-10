@@ -340,10 +340,20 @@ final class Rest {
 	 * Backups, newest first.
 	 */
 	public static function backups(): array {
-		$list   = array();
-		$labels = \SiteFerry\Labels::all();
-		foreach ( Backups::in( Storage::backups_dir() ) as $backup ) {
+		$list    = array();
+		$labels  = \SiteFerry\Labels::all();
+		$backups = Backups::in( Storage::backups_dir() );
+		// Changes-only backups and the full backups they are built on.
+		$bases = array();
+		foreach ( $backups as $backup ) {
+			$base = \SiteFerry\Incremental::base_of( is_array( $backup['manifest'] ) ? $backup['manifest'] : null );
+			if ( null !== $base ) {
+				$bases[ $base['name'] ][] = $backup['name'];
+			}
+		}
+		foreach ( $backups as $backup ) {
 			$manifest = $backup['manifest'];
+			$base     = \SiteFerry\Incremental::base_of( is_array( $manifest ) ? $manifest : null );
 			// The label set on this site; otherwise the one the backup was made with.
 			$given    = isset( $manifest['options'] ) && is_array( $manifest['options'] ) ? $manifest['options'] : array();
 			$label    = isset( $labels[ $backup['name'] ] ) ? $labels[ $backup['name'] ] : \SiteFerry\Labels::normalize( isset( $given['title'] ) ? $given['title'] : '', isset( $given['note'] ) ? $given['note'] : '', isset( $given['tags'] ) ? $given['tags'] : array() );
@@ -364,6 +374,16 @@ final class Rest {
 				'encrypted' => $backup['encrypted'],
 				// A backup moved here with a key opens without asking for a password.
 				'unlocked'  => $backup['encrypted'] && null !== \SiteFerry\Move\Receiver::password_for( $backup['name'] ),
+				// Changes only: the full backup it is built on (and whether it is here), and what it holds itself.
+				'base'      => null === $base ? null : array(
+					'name'    => $base['name'],
+					'created' => $base['created'],
+					'present' => is_file( dirname( $backup['file'] ) . '/' . $base['name'] ),
+					'changes' => isset( $manifest['changes']['files'] ) ? (int) $manifest['changes']['files'] : null,
+					'deleted' => isset( $manifest['deleted'] ) ? count( (array) $manifest['deleted'] ) : 0,
+				),
+				'dependents' => isset( $bases[ $backup['name'] ] ) ? $bases[ $backup['name'] ] : array(),
+				'can_be_base' => null === $backup['error'] && is_array( $manifest ) && null === \SiteFerry\Incremental::unsuitable_base( $backup['file'], $manifest ),
 			);
 		}
 		return $list;
@@ -435,6 +455,7 @@ final class Rest {
 	 */
 	public static function delete_backup( WP_REST_Request $request ): array {
 		$path = Backups::path( Storage::backups_dir(), (string) $request['name'] );
+		\SiteFerry\Incremental::guard_delete( basename( $path ) ); // Not while changes-only backups need it.
 		if ( ! Io::quiet(
 			static function () use ( $path ) {
 				return unlink( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
@@ -507,6 +528,8 @@ final class Rest {
 					(array) $manifest['database']['tables']
 				);
 				$out['prefix'] = (string) $manifest['database']['prefix'];
+				$base          = \SiteFerry\Incremental::base_of( $manifest );
+				$out['base']   = null === $base ? null : $base['name'];
 			} catch ( \Throwable $e ) {
 				$out['tables'] = null; // A .wpress backup lists its tables only once it is imported.
 			}
@@ -713,7 +736,7 @@ final class Rest {
 	public static function start_export( WP_REST_Request $request ): array {
 		self::assert_idle();
 		$params  = (array) $request->get_json_params();
-		$options = array_intersect_key( $params, array_flip( array( 'title', 'note', 'tags', 'format', 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables', 'send_to', 'delete_after_send', 'password' ) ) );
+		$options = array_intersect_key( $params, array_flip( array( 'title', 'note', 'tags', 'format', 'compress', 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables', 'send_to', 'delete_after_send', 'password', 'changes_since' ) ) );
 		list( $job, $token ) = Export::start( $options );
 		return array(
 			'job'   => $job->summary(),
@@ -1048,7 +1071,9 @@ final class Rest {
 		if ( ! preg_match( Backups::SAFE_NAME, $name ) ) {
 			throw new Job_Exception( __( 'Unknown backup.', 'siteferry' ), Job_Exception::NOT_FOUND );
 		}
-		\SiteFerry\Storage\Parts::delete( Destinations::driver( (string) $request['dest'] ), $name );
+		$driver = Destinations::driver( (string) $request['dest'] );
+		\SiteFerry\Incremental::guard_remote_delete( $driver, $name ); // Not while changes-only backups there need it.
+		\SiteFerry\Storage\Parts::delete( $driver, $name );
 		Check::forget( $name, (string) $request['dest'] );
 		return array( 'deleted' => $name );
 	}

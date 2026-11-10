@@ -46,9 +46,13 @@ final class Finish_Step implements Step {
 			'local'       => $local,
 			'destination' => $destination,
 			'where'       => implode( ' and ', $where ),
+			'base'        => isset( $result['base'] ) ? (string) $result['base'] : '',
 		);
 
 		$kept = Schedule::record_success( $job, $backup );
+		foreach ( $kept['held'] as $name ) {
+			$job->log( 'info', sprintf( 'Kept the older full backup %s beyond the number to keep: newer changes-only backups are built on it.', $name ) );
+		}
 		foreach ( $kept['deleted'] as $name ) {
 			$job->log( 'info', sprintf( 'Deleted the older scheduled backup %s (keeping the newest %d).', $name, (int) Schedule::settings()['retain'] ) );
 		}

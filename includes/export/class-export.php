@@ -51,7 +51,12 @@ final class Export {
 		'snapshot'                 => false,
 		'send_to'                  => '',
 		'delete_after_send'        => false,
+		// A changes-only backup: the name of the full backup on this server it is built on.
+		'changes_since'            => '',
 	);
+
+	/** Choices a changes-only backup takes from its full backup, so both cover the same things. */
+	const BASE_CHOICES = array( 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'exclude_tables', 'exclude_paths' );
 
 	/**
 	 * Creates an export job.
@@ -72,8 +77,12 @@ final class Export {
 		$password = isset( $options['password'] ) && is_string( $options['password'] ) ? $options['password'] : '';
 		unset( $options['password'] );
 		$options = self::normalize( $options );
-		$site    = Site_Info::collect();
-		$sealed  = null;
+		$base    = null;
+		if ( '' !== $options['changes_since'] ) {
+			list( $options, $base ) = self::changes_only( $options, '' !== $password, $work_dir );
+		}
+		$site   = Site_Info::collect();
+		$sealed = null;
 		if ( '' !== $password ) {
 			$sealed = self::encryption( $password, $options );
 		}
@@ -90,6 +99,9 @@ final class Export {
 		}
 
 		$steps = self::STEPS;
+		if ( null !== $base ) {
+			array_splice( $steps, 1, 0, array( Base_Step::STEP ) ); // Right after the scan.
+		}
 		if ( 'wpress' === $options['format'] ) {
 			$steps[] = \SiteFerry\Wpress\Export_Step::STEP;
 		}
@@ -111,6 +123,7 @@ final class Export {
 		$options['save_labels'] = null === $work_dir; // Exports to another folder write nothing to the site.
 		$options['archive']    = self::archive_name( $site['home'], $options['compress'] ) . ( null === $sealed ? '' : \SiteFerry\Archive\Crypto::SUFFIX );
 		$options['encrypted']  = null !== $sealed;
+		$options['base']       = $base;
 
 		$created = Job::create( $jobs, 'export', $steps, $options );
 		if ( null !== $sealed ) {
@@ -118,6 +131,53 @@ final class Export {
 			$created[0]->save();
 		}
 		return $created;
+	}
+
+	/**
+	 * Checks a changes-only export and takes the full backup's choices (what to leave out), so the
+	 * two cover the same parts of the site.
+	 *
+	 * @param array       $options  Normalized options.
+	 * @param bool        $password Whether a password was given.
+	 * @param string|null $work_dir Another output folder (not allowed for changes-only backups).
+	 * @return array{0:array,1:array{name:string,path:string}}
+	 * @throws Job_Exception If it cannot be made.
+	 */
+	private static function changes_only( array $options, bool $password, ?string $work_dir ): array {
+		if ( $password ) {
+			throw new Job_Exception( __( 'A changes-only backup cannot be protected with a password yet. Make a full backup instead, or leave the password out.', 'siteferry' ), Job_Exception::STEP );
+		}
+		if ( 'tar' !== $options['format'] ) {
+			throw new Job_Exception( __( 'A changes-only backup is always a SiteFerry backup; it cannot be a .wpress file.', 'siteferry' ), Job_Exception::STEP );
+		}
+		if ( null !== $work_dir ) {
+			throw new Job_Exception( __( 'A changes-only backup is kept next to its full backup on this server.', 'siteferry' ), Job_Exception::STEP );
+		}
+		$dir = Storage::existing_backups_dir();
+		try {
+			$path = \SiteFerry\Backups::path( null === $dir ? '' : $dir, $options['changes_since'] );
+		} catch ( \Throwable $e ) {
+			throw new Job_Exception( sprintf( /* translators: %s: a backup name */ __( 'The full backup %s is not on this server.', 'siteferry' ), $options['changes_since'] ), Job_Exception::NOT_FOUND );
+		}
+		$manifest = \SiteFerry\Backups::manifest( $path );
+		$problem  = \SiteFerry\Incremental::unsuitable_base( $path, $manifest );
+		if ( null !== $problem ) {
+			throw new Job_Exception( $problem, Job_Exception::STEP );
+		}
+		$given = isset( $manifest['options'] ) && is_array( $manifest['options'] ) ? $manifest['options'] : array();
+		foreach ( self::BASE_CHOICES as $key ) {
+			if ( array_key_exists( $key, $given ) ) {
+				$options[ $key ] = $given[ $key ];
+			}
+		}
+		$options = self::normalize( $options );
+		return array(
+			$options,
+			array(
+				'name' => basename( $path ),
+				'path' => $path,
+			),
+		);
 	}
 
 	/**
@@ -190,6 +250,9 @@ final class Export {
 		}
 		if ( '' === $normalized['send_to'] ) {
 			$normalized['delete_after_send'] = false;
+		}
+		if ( '' !== $normalized['changes_since'] && ( strlen( $normalized['changes_since'] ) > 200 || ! preg_match( \SiteFerry\Backups::SAFE_NAME, $normalized['changes_since'] ) ) ) {
+			throw new Job_Exception( __( 'Unknown full backup for a changes-only backup.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( $normalized['compress'] && ! function_exists( 'deflate_init' ) ) {
 			throw new Job_Exception( __( 'Compression needs the PHP zlib extension.', 'siteferry' ), Job_Exception::STEP );

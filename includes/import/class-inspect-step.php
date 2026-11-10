@@ -44,9 +44,11 @@ final class Inspect_Step implements Step {
 		$site     = $job->option( 'site' );
 		$warnings = array();
 
-		if ( (int) $manifest['format_version'] > Manifest::FORMAT_VERSION ) {
+		if ( (int) $manifest['format_version'] > \SiteFerry\Incremental::FORMAT_VERSION ) {
 			throw new Job_Exception( __( 'This backup was made by a newer version of SiteFerry. Update SiteFerry on this site first.', 'siteferry' ), Job_Exception::STEP );
 		}
+		// A changes-only backup needs its full backup, unchanged, next to it.
+		$base = self::base( $job, $manifest );
 		// Networks: a whole network goes into a network of the same kind, and nothing else does.
 		$from_network = isset( $manifest['site']['network'] ) && is_array( $manifest['site']['network'] ) ? $manifest['site']['network'] : null;
 		$to_network   = isset( $site['network'] ) && is_array( $site['network'] ) ? $site['network'] : null;
@@ -177,6 +179,7 @@ final class Inspect_Step implements Step {
 				'themes'    => $manifest['paths']['themes_dir'],
 				'versions'  => $manifest['versions'],
 				'created'   => $manifest['created'],
+				'base'      => $base,
 			)
 		);
 		foreach ( $warnings as $warning ) {
@@ -202,6 +205,7 @@ final class Inspect_Step implements Step {
 					'holds'        => \SiteFerry\Backups::holds( $manifest ),
 					'warnings'     => $warnings,
 					'preview'      => self::preview( $job, $manifest, $site ),
+					'base'         => null === $base ? null : basename( $base ),
 				),
 			)
 		);
@@ -216,6 +220,50 @@ final class Inspect_Step implements Step {
 	 * @param Job $job The job.
 	 */
 	public function cleanup( Job $job ): void {
+	}
+
+	/**
+	 * The full backup a changes-only backup is built on, checked: on this server next to it, not
+	 * protected with a password, and with the checksum list it had when the changes were made.
+	 * Null for a full backup.
+	 *
+	 * @param Job   $job      The job.
+	 * @param array $manifest The backup's manifest.
+	 * @return string|null Path of the full backup.
+	 * @throws Job_Exception If it is missing or different.
+	 */
+	private static function base( Job $job, array $manifest ): ?string {
+		$base = \SiteFerry\Incremental::base_of( $manifest );
+		if ( null === $base ) {
+			if ( ! empty( $manifest['base'] ) ) {
+				throw new Job_Exception( __( 'This changes-only backup does not name a valid full backup.', 'siteferry' ), Job_Exception::STEP );
+			}
+			return null;
+		}
+		if ( 'wpress' === $job->option( 'format' ) || null !== \SiteFerry\Security\Archive_Keys::key( $job ) ) {
+			throw new Job_Exception( __( 'This changes-only backup cannot be read this way.', 'siteferry' ), Job_Exception::STEP );
+		}
+		$path = dirname( (string) $job->option( 'archive' ) ) . '/' . $base['name'];
+		if ( ! is_file( $path ) ) {
+			throw new Job_Exception(
+				sprintf(
+					/* translators: 1: a backup name, 2: a date */
+					__( 'This backup holds only the changes since the full backup %1$s (%2$s), which is not on this server. Put that full backup back here (upload it, or download it from your storage) and try again.', 'siteferry' ),
+					$base['name'],
+					$base['created']
+				),
+				Job_Exception::STEP
+			);
+		}
+		if ( \SiteFerry\Backups::encrypted_name( $base['name'] ) ) {
+			throw new Job_Exception( __( 'The full backup of this changes-only backup is protected with a password, which is not supported.', 'siteferry' ), Job_Exception::STEP );
+		}
+		list( , $fingerprint ) = \SiteFerry\Incremental::checksums( $path );
+		if ( '' === $base['fingerprint'] || ! hash_equals( $base['fingerprint'], $fingerprint ) ) {
+			throw new Job_Exception( sprintf( /* translators: %s: a backup name */ __( 'The full backup %s is not the one these changes were made from (its checksum list differs). It cannot be restored with it.', 'siteferry' ), $base['name'] ), Job_Exception::STEP );
+		}
+		$job->log( 'info', sprintf( 'Changes-only backup; full backup %s found and matches.', $base['name'] ) );
+		return $path;
 	}
 
 	/**

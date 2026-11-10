@@ -100,6 +100,8 @@ final class Schedule {
 		'send_to'                  => '',
 		'keep_local'               => false,
 		'retain'                   => 7,
+		// A full backup every this many runs, changes-only backups in between (1: always full).
+		'full_every'               => 1,
 		'notify'                   => 'failure',
 		'email'                    => '',
 		// Independent of the schedule: a quick backup before updates (see Before_Updates).
@@ -194,6 +196,24 @@ final class Schedule {
 		}
 		if ( $out['update_retain'] < 1 || $out['update_retain'] > 50 ) {
 			throw new Job_Exception( __( 'Keep between 1 and 50 backups made before updates.', 'siteferry' ), Job_Exception::STEP );
+		}
+		if ( $out['full_every'] < 1 || $out['full_every'] > 30 ) {
+			throw new Job_Exception( __( 'Make a full backup every 1 to 30 runs.', 'siteferry' ), Job_Exception::STEP );
+		}
+		if ( $out['full_every'] > 1 ) {
+			// Changes-only backups are built on a full backup on this server, in SiteFerry's format.
+			if ( 'tar' !== $out['format'] ) {
+				throw new Job_Exception( __( 'Changes-only backups are always SiteFerry backups; choose that format, or make a full backup every run.', 'siteferry' ), Job_Exception::STEP );
+			}
+			if ( $out['encrypt'] ) {
+				throw new Job_Exception( __( 'Changes-only backups cannot be protected with a password yet; turn the password off, or make a full backup every run.', 'siteferry' ), Job_Exception::STEP );
+			}
+			if ( ! $out['keep_local'] ) {
+				throw new Job_Exception( __( 'Changes-only backups need their full backup on this server; keep a copy on this server, or make a full backup every run.', 'siteferry' ), Job_Exception::STEP );
+			}
+			if ( 0 !== $out['retain'] && $out['retain'] < $out['full_every'] ) {
+				throw new Job_Exception( __( 'Keep at least as many scheduled backups as the runs between full backups.', 'siteferry' ), Job_Exception::STEP );
+			}
 		}
 		return $out;
 	}
@@ -381,7 +401,50 @@ final class Schedule {
 		$options = array_intersect_key( $settings, array_flip( array( 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'format', 'compress', 'send_to' ) ) );
 		$options['delete_after_send'] = '' !== $settings['send_to'] && ! $settings['keep_local'];
 		$options['tags']              = array( self::TAG );
+		if ( isset( $settings['full_every'] ) && (int) $settings['full_every'] > 1 ) {
+			$base = self::changes_base( $settings, self::state()['runs'] );
+			if ( null !== $base ) {
+				$options['changes_since'] = $base;
+			}
+		}
 		return $options;
+	}
+
+	/**
+	 * The full backup this run builds a changes-only backup on, or null for a full backup: with
+	 * "a full backup every N runs", the newest scheduled full backup still on this server, as long
+	 * as fewer than N - 1 changes-only runs followed it.
+	 *
+	 * @param array $settings Settings.
+	 * @param array $runs     Recorded runs: name, time, local, base.
+	 */
+	public static function changes_base( array $settings, array $runs ): ?string {
+		$every = (int) $settings['full_every'];
+		if ( $every <= 1 || 'tar' !== $settings['format'] || ! empty( $settings['encrypt'] ) ) {
+			return null;
+		}
+		usort(
+			$runs,
+			static function ( array $a, array $b ): int {
+				return (int) $b['time'] - (int) $a['time'];
+			}
+		);
+		$since = 0;
+		foreach ( $runs as $run ) {
+			if ( ! empty( $run['base'] ) ) {
+				++$since;
+				continue;
+			}
+			if ( $since >= $every - 1 ) {
+				return null; // Time for a full one.
+			}
+			$dir = Storage::existing_backups_dir();
+			if ( null === $dir || ! is_file( $dir . '/' . $run['name'] ) || null !== \SiteFerry\Incremental::unsuitable_base( $dir . '/' . $run['name'] ) ) {
+				return null;
+			}
+			return (string) $run['name'];
+		}
+		return null;
 	}
 
 	/**
@@ -519,12 +582,21 @@ final class Schedule {
 			'time'        => time(),
 			'local'       => (bool) $backup['local'],
 			'destination' => (string) $backup['destination'],
+			'base'        => isset( $backup['base'] ) ? (string) $backup['base'] : '',
 		);
 		$keep            = (int) self::settings()['retain'];
 		$deleted         = array();
 		$problems        = array();
 		$left            = array();
-		foreach ( self::expired( $state['runs'], $keep ) as $run ) {
+		list( $expired, $held ) = \SiteFerry\Incremental::expired( $state['runs'], $keep );
+		// Changes-only backups first, so the full backups they were built on are free to go after them.
+		usort(
+			$expired,
+			static function ( array $a, array $b ): int {
+				return (int) empty( $a['base'] ) - (int) empty( $b['base'] );
+			}
+		);
+		foreach ( $expired as $run ) {
 			$failed = self::delete_run( $run );
 			if ( null === $failed ) {
 				$deleted[] = $run['name'];
@@ -547,6 +619,7 @@ final class Schedule {
 		return array(
 			'deleted'  => $deleted,
 			'problems' => $problems,
+			'held'     => $held,
 		);
 	}
 
@@ -577,7 +650,12 @@ final class Schedule {
 	 * @return string|null What went wrong, or null.
 	 */
 	public static function delete_run( array $run ): ?string {
-		$name = (string) $run['name'];
+		$name       = (string) $run['name'];
+		$dependents = \SiteFerry\Incremental::dependents( $name );
+		if ( array() !== $dependents ) {
+			// Kept (here and on the storage) while changes-only backups are built on it; tried again later.
+			return sprintf( '%s was kept: changes-only backups are built on it (%s).', $name, implode( ', ', $dependents ) );
+		}
 		try {
 			$path = Backups::path( Storage::backups_dir(), $name );
 			if ( is_file( $path ) && ! @unlink( $path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink

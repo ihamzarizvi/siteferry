@@ -26,6 +26,8 @@ final class Manifest {
 	const ENTRY          = 'siteferry.json';
 	const CHECKSUMS      = 'siteferry.sha256';
 	const DATABASE       = 'database.sql';
+	/** In a changes-only backup: the files a restore takes from its full backup, one path per line. */
+	const BASE_LIST      = 'siteferry.base';
 
 	/**
 	 * The installed plugins or themes whose files are in the backup (not left out by its choices),
@@ -81,7 +83,7 @@ final class Manifest {
 			$options[ $key ] = $job->option( $key );
 		}
 
-		return array(
+		$manifest = array(
 			'format'         => self::FORMAT,
 			'format_version' => self::FORMAT_VERSION,
 			'generator'      => array(
@@ -148,5 +150,24 @@ final class Manifest {
 				'format'    => 'sha256sum',
 			),
 		);
+
+		// A changes-only backup: which full backup it is built on, what changed and what is gone.
+		// "files" above describes the whole site; "changes" what this file holds itself.
+		$base = $job->state( 'base' );
+		if ( null !== $job->option( 'base' ) && array() !== $base ) {
+			$manifest['format_version'] = \SiteFerry\Incremental::FORMAT_VERSION;
+			$manifest['base']           = array(
+				'name'        => (string) $base['name'],
+				'created'     => (string) $base['created'],
+				'fingerprint' => (string) $base['fingerprint'],
+				'files'       => (int) $base['files'],
+			);
+			$manifest['changes']        = array(
+				'files' => (int) $base['changed'],
+				'bytes' => (int) $base['changed_bytes'],
+			);
+			$manifest['deleted']        = array_values( (array) $base['deleted'] );
+		}
+		return $manifest;
 	}
 }

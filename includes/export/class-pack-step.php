@@ -142,7 +142,8 @@ final class Pack_Step implements Step {
 	 * @return bool True when every entry is written.
 	 */
 	private function work( Job $job, Tar_Writer $writer, $sums, array &$state, Slice_Budget $budget ): bool {
-		$list = null;
+		$list      = null;
+		$unchanged = Base_Step::unchanged( $job ); // A changes-only backup leaves these out.
 		try {
 			while ( true ) {
 				if ( $writer->has_pending() ) {
@@ -160,6 +161,10 @@ final class Pack_Step implements Step {
 							throw new Job_Exception( __( 'Cannot encode the manifest.', 'siteferry' ), Job_Exception::STEP );
 						}
 						$writer->add_string( Manifest::ENTRY, $json . "\n", $job->created() );
+						if ( null !== $job->option( 'base' ) ) {
+							// What a restore takes from the full backup.
+							$writer->add_string( Manifest::BASE_LIST, implode( "\n", array_keys( $unchanged ) ) . "\n", $job->created() );
+						}
 						$state['phase'] = 'database';
 						break;
 
@@ -183,7 +188,7 @@ final class Pack_Step implements Step {
 							break;
 						}
 						$state['list_offset'] = (int) ftell( $list );
-						if ( ! $this->add_listed( $job, $writer, $sums, $state, rtrim( $line, "\n" ), $budget ) ) {
+						if ( ! $this->add_listed( $job, $writer, $sums, $state, rtrim( $line, "\n" ), $budget, $unchanged ) ) {
 							return false;
 						}
 						break;
@@ -220,10 +225,11 @@ final class Pack_Step implements Step {
 	 * @param array        $state  Pack state.
 	 * @param string       $line   List line.
 	 * @param Slice_Budget $budget Work limit.
+	 * @param array        $unchanged Files a changes-only backup leaves out: path => sha256.
 	 * @return bool False if a file was left partly written for the next slice.
 	 * @throws Job_Exception On a damaged list.
 	 */
-	private function add_listed( Job $job, Tar_Writer $writer, $sums, array &$state, string $line, Slice_Budget $budget ): bool {
+	private function add_listed( Job $job, Tar_Writer $writer, $sums, array &$state, string $line, Slice_Budget $budget, array $unchanged = array() ): bool {
 		$item = Scanner::parse_line( $line );
 		if ( null === $item ) {
 			throw new Job_Exception( __( 'The file list is damaged.', 'siteferry' ), Job_Exception::STEP );
@@ -232,6 +238,13 @@ final class Pack_Step implements Step {
 
 		if ( 'd' === $item['type'] ) {
 			$writer->add_directory( $name, $item['mtime'] );
+			return true;
+		}
+		if ( isset( $unchanged[ $name ] ) ) {
+			// Unchanged since the full backup: the restore takes it from there; its checksum is carried.
+			Io::write_all( $sums, $unchanged[ $name ] . '  ' . $name . "\n" );
+			$state['carried'] = ( isset( $state['carried'] ) ? (int) $state['carried'] : 0 ) + 1;
+			$state['bytes']  += $item['size'];
 			return true;
 		}
 

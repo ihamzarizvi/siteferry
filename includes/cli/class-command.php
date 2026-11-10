@@ -107,12 +107,19 @@ final class Command {
 	 * value the password is taken from the SITEFERRY_PASSWORD environment variable, or asked for.
 	 * It is not saved anywhere: without it the backup cannot be restored.
 	 *
+	 * [--changes-only[=<backup>]]
+	 * : Make a changes-only backup: the whole database, and only the files that are new or changed
+	 * since a full backup on this server (by default the newest suitable one; or give its file
+	 * name). It takes that backup's choices of what to leave out. Restoring it needs that full
+	 * backup too. Not with --password, --format=wpress or --dir.
+	 *
 	 * [--porcelain]
 	 * : Print only the path of the backup file.
 	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry export
+	 *     wp siteferry export --changes-only
 	 *     wp siteferry export --exclude=media,inactive-themes --compress
 	 *     wp siteferry export --dir=/home/me/backups --porcelain
 	 *     wp siteferry export --send=s3 --delete-after-send
@@ -140,6 +147,15 @@ final class Command {
 				WP_CLI::error( sprintf( 'Unknown --exclude value "%s". Use: %s.', $item, implode( ', ', array_keys( self::EXCLUDE_ITEMS ) ) ) );
 			}
 			$options[ self::EXCLUDE_ITEMS[ $item ] ] = true;
+		}
+
+		$changes = \WP_CLI\Utils\get_flag_value( $assoc_args, 'changes-only', null );
+		if ( null !== $changes && false !== $changes ) {
+			$base = true === $changes || '' === (string) $changes ? \SiteFerry\Incremental::latest_base() : (string) $changes;
+			if ( null === $base ) {
+				WP_CLI::error( 'There is no full backup of this site on this server to build a changes-only backup on. Make a full backup first.' );
+			}
+			$options['changes_since'] = $base;
 		}
 
 		$dir = \WP_CLI\Utils\get_flag_value( $assoc_args, 'dir', null );
@@ -176,6 +192,9 @@ final class Command {
 				WP_CLI::success( sprintf( 'Backup made and sent (%s); the copy on this server was deleted.', size_format( $result['size'], 1 ) ) );
 				return;
 			}
+		}
+		if ( ! empty( $result['base'] ) ) {
+			WP_CLI::log( sprintf( 'Changes only, built on %s (restoring it needs that backup too).', $result['base'] ) );
 		}
 		WP_CLI::success(
 			sprintf(

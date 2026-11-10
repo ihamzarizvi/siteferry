@@ -46,7 +46,7 @@ final class Finish_Step implements Step {
 			}
 		}
 
-		foreach ( array( 'files.list', 'database.sql', 'checksums.tmp' ) as $temporary ) {
+		foreach ( array( 'files.list', 'database.sql', 'checksums.tmp', Base_Step::UNCHANGED ) as $temporary ) {
 			$job->delete_file( $temporary );
 		}
 		if ( $job->option( 'save_labels', false ) && ( '' !== (string) $job->option( 'title', '' ) || '' !== (string) $job->option( 'note', '' ) || array() !== (array) $job->option( 'tags', array() ) ) ) {
@@ -65,6 +65,8 @@ final class Finish_Step implements Step {
 				'skipped'  => $pack['skipped'] + (int) $job->state( 'scan' )['skipped'],
 				'warnings' => $job->warning_count(),
 				'seconds'  => time() - $job->created(),
+				// A changes-only backup: the full backup it is built on.
+				'base'     => null === $job->option( 'base' ) ? '' : (string) $job->option( 'base' )['name'],
 			)
 		);
 		$job->set_progress( __( 'Backup complete', 'siteferry' ), 1, 1 );

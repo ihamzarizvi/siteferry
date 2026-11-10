@@ -62,6 +62,19 @@ final class Slice_Budget {
 	}
 
 	/**
+	 * Seconds left in the slice (at least $minimum; $unlimited when there is no time limit).
+	 *
+	 * @param float $minimum   Least returned, so work always moves on.
+	 * @param float $unlimited Returned without a time limit.
+	 */
+	public function seconds_left( float $minimum = 1.0, float $unlimited = 3600.0 ): float {
+		if ( null === $this->deadline ) {
+			return $unlimited;
+		}
+		return max( $minimum, $this->deadline - microtime( true ) );
+	}
+
+	/**
 	 * Whether the slice should stop and save its progress.
 	 */
 	public function exhausted(): bool {

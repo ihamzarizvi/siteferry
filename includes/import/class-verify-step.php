@@ -69,7 +69,7 @@ final class Verify_Step implements Step {
 			throw new Job_Exception( sprintf( /* translators: %s: a list of file names */ __( 'The backup is damaged; checksum mismatch for: %s', 'siteferry' ), self::names( $changed ) ), Job_Exception::STEP );
 		}
 
-		$unverified = array_diff( array_keys( $actual ), array_keys( $expected ), array( Manifest::ENTRY, Manifest::CHECKSUMS ) );
+		$unverified = array_diff( array_keys( $actual ), array_keys( $expected ), array( Manifest::ENTRY, Manifest::CHECKSUMS, Manifest::BASE_LIST ) );
 		foreach ( array_slice( $unverified, 0, 50 ) as $path ) {
 			$job->warn( sprintf( /* translators: %s: a file or backup name */ __( '"%s" has no checksum in the backup (it changed while the backup was made).', 'siteferry' ), $path ) );
 		}

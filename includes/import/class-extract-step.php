@@ -47,29 +47,43 @@ final class Extract_Step implements Step {
 			throw new Archive_Exception( __( 'Cannot create the staging folder.', 'siteferry' ), Archive_Exception::IO );
 		}
 
-		$saved     = isset( $state['extractor'] ) ? $state['extractor']['reader'] : null;
-		$wpress    = 'wpress' === $job->option( 'format' );
-		$reader    = $wpress
-			? Wpress_Reader::open(
-				$job->option( 'archive' ),
-				$saved,
-				array(
-					'prefix' => 'wp-content/',
-					'skip'   => array( Wpress::class, 'skipped' ),
+		// A changes-only backup: first its own entries, then the unchanged files from its full backup.
+		$base   = isset( $job->state( 'inspect' )['base'] ) ? $job->state( 'inspect' )['base'] : null;
+		$second = null !== $base && ! empty( $state['main_done'] );
+		$key    = $second ? 'base_extractor' : 'extractor';
+		$saved  = isset( $state[ $key ] ) ? $state[ $key ]['reader'] : null;
+		$wpress = 'wpress' === $job->option( 'format' );
+		if ( $second ) {
+			$reader = Tar_Reader::open( (string) $base, $saved );
+			$wanted = self::base_files( $staging );
+			$skip   = static function ( string $path, Tar_Entry $entry ) use ( $job, $wanted ): bool {
+				// Only files the changes-only backup takes from it (never its manifest, dump or folders).
+				return ! $entry->is_file() || ! isset( $wanted[ $path ] ) || ! Import::wanted_path( $job, $path );
+			};
+		} else {
+			$reader = $wpress
+				? Wpress_Reader::open(
+					$job->option( 'archive' ),
+					$saved,
+					array(
+						'prefix' => 'wp-content/',
+						'skip'   => array( Wpress::class, 'skipped' ),
+					)
 				)
-			)
-			: Tar_Reader::open( \SiteFerry\Security\Archive_Keys::path( $job, (string) $job->option( 'archive' ) ), $saved );
+				: Tar_Reader::open( \SiteFerry\Security\Archive_Keys::path( $job, (string) $job->option( 'archive' ) ), $saved );
+			// A partial restore unpacks only what it restores.
+			$skip = static function ( string $path ) use ( $job ): bool {
+				return ! Import::wanted_path( $job, $path );
+			};
+		}
 		$extractor = new Tar_Extractor(
 			$reader,
 			$staging,
 			array(
 				'allow' => array( self::class, 'allowed' ),
-				// A partial restore unpacks only what it restores.
-				'skip'  => static function ( string $path ) use ( $job ): bool {
-					return ! Import::wanted_path( $job, $path );
-				},
+				'skip'  => $skip,
 			),
-			isset( $state['extractor'] ) ? $state['extractor'] : null
+			isset( $state[ $key ] ) ? $state[ $key ] : null
 		);
 		$sums      = Io::open_or_fail( $job->path( 'extracted.sha256' ), 'c+b' );
 		$size      = isset( $state['sums_size'] ) ? (int) $state['sums_size'] : 0;
@@ -95,14 +109,16 @@ final class Extract_Step implements Step {
 			$reader->close();
 		}
 
-		$job->set_state(
-			'extract',
-			array(
-				'extractor' => $extractor->state(),
-				'sums_size' => $size,
-				'bytes'     => $bytes,
-			)
-		);
+		$state[ $key ]      = $extractor->state();
+		$state['sums_size'] = $size;
+		$state['bytes']     = $bytes;
+		if ( $done && null !== $base && ! $second ) {
+			// The changes are unpacked; the full backup's unchanged files come next.
+			$state['main_done'] = true;
+			$done               = false;
+			$job->log( 'info', sprintf( 'Changes unpacked; unpacking the unchanged files from %s.', basename( (string) $base ) ) );
+		}
+		$job->set_state( 'extract', $state );
 		$inspect = $job->state( 'inspect' );
 		$total   = $inspect['bytes'] + $inspect['db_size'];
 		$job->set_progress( sprintf( /* translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB */ __( 'Unpacking: %1$s of %2$s', 'siteferry' ), size_format( $bytes, 1 ), size_format( $total, 1 ) ), $bytes, $total );
@@ -135,13 +151,35 @@ final class Extract_Step implements Step {
 	}
 
 	/**
+	 * The files a changes-only backup takes from its full backup (from its staged base list).
+	 *
+	 * @param string $staging Staging folder.
+	 * @return array<string,bool>
+	 * @throws Archive_Exception If the list is missing.
+	 */
+	private static function base_files( string $staging ): array {
+		$file = $staging . '/' . Manifest::BASE_LIST;
+		if ( ! is_file( $file ) ) {
+			throw new Archive_Exception( __( 'The changes-only backup has no list of the files to take from its full backup.', 'siteferry' ), Archive_Exception::CORRUPT );
+		}
+		$wanted = array();
+		foreach ( explode( "\n", (string) file_get_contents( $file ) ) as $line ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$line = trim( $line, "\r" );
+			if ( 0 === strpos( $line, 'wp-content/' ) ) {
+				$wanted[ $line ] = true;
+			}
+		}
+		return $wanted;
+	}
+
+	/**
 	 * Which archive paths may be extracted.
 	 *
 	 * @param string    $path  Normalized path.
 	 * @param Tar_Entry $entry Entry.
 	 */
 	public static function allowed( string $path, Tar_Entry $entry ): bool {
-		if ( in_array( $path, array( Manifest::ENTRY, Manifest::DATABASE, Manifest::CHECKSUMS ), true ) ) {
+		if ( in_array( $path, array( Manifest::ENTRY, Manifest::DATABASE, Manifest::CHECKSUMS, Manifest::BASE_LIST ), true ) ) {
 			return $entry->is_file();
 		}
 		return 'wp-content' === $path || 0 === strpos( $path, 'wp-content/' );

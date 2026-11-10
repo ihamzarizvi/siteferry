@@ -27,6 +27,7 @@ final class Runner {
 	 */
 	const STEPS = array(
 		'export.scan'     => \SiteFerry\Export\Scan_Step::class,
+		'export.base'     => \SiteFerry\Export\Base_Step::class,
 		'export.database' => \SiteFerry\Export\Database_Step::class,
 		'export.pack'     => \SiteFerry\Export\Pack_Step::class,
 		'export.finish'   => \SiteFerry\Export\Finish_Step::class,

@@ -3240,3 +3240,18 @@ details.sf-dest[open] > .sf-dest-head::after {
 .siteferry .sf-kit-item.is-revoked {
 	opacity: 0.7;
 }
+/* ------------------------------------------------- Changes-only backups */
+
+.sf-badge.is-changes {
+	background: var(--sf-fog);
+	color: var(--sf-accent);
+}
+
+.siteferry .sf-row-warn {
+	color: var(--sf-port);
+	font-weight: 600;
+}
+
+.siteferry .sf-changes-only .description {
+	margin: 2px 0 8px 24px;
+}

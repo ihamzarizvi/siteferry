@@ -36,6 +36,7 @@ final class Choices {
 		'delete_after_send'        => false,
 		'encrypt'                  => false, // Ask for a password; the password itself is never kept.
 		'download'                 => false, // Also download the backup to the computer when it is ready.
+		'changes_only'             => false, // Only the changes since the newest full backup on this server, when there is one.
 	);
 
 	/** At most this many left-out tables are remembered. */
@@ -113,8 +114,12 @@ final class Choices {
 			$out['exclude_tables'] = array_slice( $out['exclude_tables'], 0, self::MAX_TABLES );
 		}
 		if ( 'wpress' === $out['format'] ) {
-			$out['compress'] = false;
-			$out['encrypt']  = false;
+			$out['compress']     = false;
+			$out['encrypt']      = false;
+			$out['changes_only'] = false;
+		}
+		if ( $out['encrypt'] ) {
+			$out['changes_only'] = false; // Changes-only backups are not protected with a password (yet).
 		}
 		if ( '' === $out['send_to'] ) {
 			$out['delete_after_send'] = false;

@@ -839,6 +839,57 @@
 			$( 'siteferry-encrypt-row' ).hidden = wpress;
 			$( 'siteferry-encrypt-fields' ).hidden = wpress || ! $( 'siteferry-encrypt' ).checked;
 		}
+		syncChangesOnly();
+	}
+
+	/** The full backup "Back up now" builds on with these choices, or null when it makes a full one. */
+	function changesOnlyBase( c ) {
+		if ( ! c.changes_only || c.format === 'wpress' || c.encrypt ) {
+			return null;
+		}
+		return changesBase();
+	}
+
+	/** The newest full backup on this server a changes-only backup can be built on, or null. */
+	function changesBase() {
+		let best = null;
+		( localBackups || [] ).forEach( ( b ) => {
+			if ( b.can_be_base && ( ! best || String( b.created ) > String( best.created ) ) ) {
+				best = b;
+			}
+		} );
+		return best;
+	}
+
+	/** "Only changes since the last full backup": possible with a full backup here, in SiteFerry's format, without a password. */
+	function syncChangesOnly() {
+		const box = $( 'siteferry-changes-only' );
+		if ( ! box ) {
+			return;
+		}
+		const format = $( 'siteferry-export-form' ).querySelector( 'input[name=format]:checked' );
+		const wpress = !! format && format.value === 'wpress';
+		const encrypt = !! $( 'siteferry-encrypt' ) && $( 'siteferry-encrypt' ).checked;
+		const base = changesBase();
+		let reason = '';
+		if ( wpress ) {
+			reason = __( 'Not for .wpress files: changes-only backups are always SiteFerry backups.', 'siteferry' );
+		} else if ( encrypt ) {
+			reason = __( 'Not with a password yet: untick “Protect the backup with a password” to use it.', 'siteferry' );
+		} else if ( localBackups && ! base ) {
+			reason = __( 'There is no full backup of this site on this server yet. Make one first; the next backups can then hold only the changes.', 'siteferry' );
+		}
+		box.disabled = !! reason;
+		const base_label = base ? base.title || when( Math.round( Date.parse( base.created ) / 1000 ) ) : '';
+		$( 'siteferry-changes-note' ).textContent =
+			reason ||
+			( base
+				? sprintf(
+						/* translators: %s: the full backup, such as its name or date */
+						__( 'Much smaller and quicker: the whole database, and only the files added or changed since the full backup of %s. It takes that backup’s choices of what to leave out, and restoring it needs that full backup too.', 'siteferry' ),
+						base_label
+				  )
+				: __( 'Much smaller and quicker: the whole database, and only the files added or changed since then. Restoring it needs that full backup too, so it stays on this server.', 'siteferry' ) );
 	}
 
 	/** Back up now: the choices in Options (closed or open) go to the export. */
@@ -848,8 +899,13 @@
 		// The same choices the line under the buttons shows (also before the tables or storages are listed).
 		const options = currentChoices();
 		const downloadWhenReady = options.download;
+		const changesFrom = changesOnlyBase( options );
+		if ( changesFrom ) {
+			options.changes_since = changesFrom.name; // Built on the newest full backup here.
+		}
 		delete options.encrypt; // Page-only choices, not export options.
 		delete options.download;
+		delete options.changes_only;
 		options.title = form.elements.title.value;
 		options.note = form.elements.note.value;
 		options.tags = form.elements.tags.value;
@@ -966,6 +1022,19 @@
 			el( 'p', { text: stored } ),
 			el( 'p', {}, [ el( 'span', { class: 'sf-result-name', text: r.name } ) ] ),
 		];
+		if ( r.base ) {
+			nodes.splice(
+				1,
+				0,
+				el( 'p', {
+					text: sprintf(
+						/* translators: %s: file name of the full backup */
+						__( 'Changes only: the files changed since the full backup %s, and the whole database. Keep that full backup; restoring this one needs it.', 'siteferry' ),
+						r.base
+					),
+				} )
+			);
+		}
 		const actions = [];
 		if ( ! r.deleted_local ) {
 			actions.push( el( 'a', { class: 'button button-primary', href: downloadUrl( r.name ), text: __( 'Download', 'siteferry' ) } ) );
@@ -1024,6 +1093,10 @@
 		if ( out.format === 'wpress' ) {
 			out.compress = false;
 			out.encrypt = false;
+			out.changes_only = false;
+		}
+		if ( out.encrypt ) {
+			out.changes_only = false;
 		}
 		if ( ! out.send_to ) {
 			out.delete_after_send = false;
@@ -1174,6 +1247,10 @@
 			file,
 			where
 		);
+		const changesFrom = changesOnlyBase( c );
+		if ( changesFrom ) {
+			text += ' ' + __( 'It holds only the files changed since the last full backup, and the whole database.', 'siteferry' );
+		}
 		const downloads = c.download && ! ( target && c.delete_after_send ); // (A backup deleted here is not there to download.)
 		if ( downloads ) {
 			text += ' ' + __( 'It is also downloaded to your computer.', 'siteferry' );
@@ -1193,6 +1270,9 @@
 			),
 			chip( c.format === 'wpress' ? __( '.wpress file', 'siteferry' ) : c.compress ? __( '.tar.gz file', 'siteferry' ) : __( '.tar file', 'siteferry' ), 'media-archive' ),
 		];
+		if ( changesFrom ) {
+			chips.push( chip( __( 'Changes only', 'siteferry' ), 'update' ) );
+		}
 		if ( c.encrypt ) {
 			chips.push( chip( __( 'Password', 'siteferry' ), 'lock' ) );
 		}
@@ -2108,6 +2188,8 @@
 		}
 		updateFacts();
 		renderList();
+		syncChangesOnly(); // Possible only with a full backup here.
+		renderNowLine();
 	}
 
 	/** Lists every storage that is ready; each one's backups join the list as they arrive. */
@@ -2147,6 +2229,8 @@
 				local: true,
 				places: [],
 				sizes: { local: b.size },
+				base: b.base || null,
+				dependents: b.dependents || [],
 			} );
 		} );
 		Object.keys( remote ).forEach( ( id ) => {
@@ -2429,6 +2513,38 @@
 		}
 		if ( isEncrypted( item ) ) {
 			flags.push( badge( __( 'Password', 'siteferry' ), 'is-lock' ) );
+		}
+		if ( item.base ) {
+			flags.push( badge( __( 'Changes only', 'siteferry' ), 'is-changes' ) );
+			const full = ( localBackups || [] ).find( ( b ) => b.name === item.base.name );
+			const fullLabel = full && full.title ? full.title : item.base.created ? when( Math.round( Date.parse( item.base.created ) / 1000 ) ) : item.base.name;
+			meta.push(
+				el( 'span', {
+					class: item.base.present ? '' : 'sf-row-warn',
+					text: item.base.present
+						? sprintf(
+								/* translators: %s: the full backup, such as its name or date */
+								__( 'based on the full backup of %s', 'siteferry' ),
+								fullLabel
+						  )
+						: sprintf(
+								/* translators: %s: the full backup's file name */
+								__( 'its full backup %s is not on this server', 'siteferry' ),
+								item.base.name
+						  ),
+				} )
+			);
+		}
+		if ( item.dependents && item.dependents.length ) {
+			meta.push(
+				el( 'span', {
+					text: sprintf(
+						/* translators: %d: a number of backups */
+						_n( '%d changes-only backup depends on it', '%d changes-only backups depend on it', item.dependents.length, 'siteferry' ),
+						item.dependents.length
+					),
+				} )
+			);
 		}
 
 		const places = [];
@@ -3167,6 +3283,15 @@
 				__( 'I understand that this replaces this site’s content with %s’s.', 'siteferry' ),
 				name
 			);
+		}
+		if ( item && item.base ) {
+			$( 'siteferry-restore-lead' ).textContent +=
+				' ' +
+				sprintf(
+					/* translators: %s: file name of a full backup */
+					__( 'This backup holds only the changes since a full backup, so the restore uses both: this one, and the full backup %s for the files that did not change.', 'siteferry' ),
+					item.base.name
+				);
 		}
 	}
 
@@ -4256,6 +4381,18 @@
 		}
 		renderCrumbs( data.dir );
 		renderFolder( data );
+		if ( data.dir === '' && data.base ) {
+			body.prepend(
+				el( 'p', {
+					class: 'description sf-contents-changes',
+					text: sprintf(
+						/* translators: %s: file name of the full backup */
+						__( 'Changes only: this lists the files added or changed since the full backup %s. Restoring a file that did not change takes it from that full backup.', 'siteferry' ),
+						data.base
+					),
+				} )
+			);
+		}
 	}
 
 	function renderCrumbs( dir ) {
@@ -4895,7 +5032,7 @@
 				data[ input.name ] = input.value.trim();
 			}
 		} );
-		[ 'weekday', 'monthday', 'retain', 'update_retain' ].forEach( ( key ) => {
+		[ 'weekday', 'monthday', 'retain', 'update_retain', 'full_every' ].forEach( ( key ) => {
 			data[ key ] = data[ key ] === '' ? NaN : Number( data[ key ] );
 		} );
 		return data;
@@ -4928,13 +5065,25 @@
 				? /* translators: %d: number of scheduled backups kept */
 				  sprintf( _n( 'keeping the newest %d', 'keeping the newest %d', s.retain, 'siteferry' ), s.retain )
 				: __( 'keeping them all', 'siteferry' );
-		return sprintf(
+		const text = sprintf(
 			/* translators: 1: how often, such as every Monday at 03:00, 2: where, such as to Dropbox, 3: how many are kept, such as keeping the newest 7 */
 			__( '%1$s, %2$s, %3$s.', 'siteferry' ),
 			when,
 			where,
 			keep
 		);
+		if ( Number( s.full_every ) > 1 ) {
+			return (
+				text +
+				' ' +
+				sprintf(
+					/* translators: %d: a number of runs */
+					__( 'A full backup every %d runs, only the changes in between.', 'siteferry' ),
+					Number( s.full_every )
+				)
+			);
+		}
+		return text;
 	}
 
 	/** The line under "Back up now": the schedule, the next and the last run. */

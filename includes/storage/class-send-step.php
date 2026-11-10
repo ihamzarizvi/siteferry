@@ -47,8 +47,101 @@ final class Send_Step implements Step {
 		$name   = basename( $file );
 		$driver = Destinations::driver( $destination );
 		$state  = $job->state( self::STATE );
-		$size   = is_file( $file ) ? (int) filesize( $file ) : -1;
 
+		// A changes-only backup is useless on a storage without its full backup: that goes first.
+		if ( ! array_key_exists( 'base_file', $state ) && ! isset( $state['upload'] ) ) {
+			$state['base_file'] = self::base_to_send( $file, $driver );
+			$job->set_state( self::STATE, $state );
+		}
+		$base_file = isset( $state['base_file'] ) ? (string) $state['base_file'] : '';
+		if ( '' !== $base_file && empty( $state['base']['finished'] ) ) {
+			$sub  = isset( $state['base'] ) ? (array) $state['base'] : array();
+			$done = $this->transfer(
+				$job,
+				$driver,
+				$destination,
+				$base_file,
+				$sub,
+				$budget,
+				static function ( array $sub ) use ( $job, &$state ) {
+					$state['base'] = $sub;
+					$job->set_state( self::STATE, $state );
+				}
+			);
+			if ( ! $done ) {
+				return false;
+			}
+			$job->log( 'info', sprintf( 'Sent the full backup %s first: the changes-only backup is built on it.', basename( $base_file ) ) );
+			if ( $budget->exhausted() ) {
+				return false;
+			}
+		}
+
+		$main = array_diff_key( $state, array_flip( array( 'base_file', 'base' ) ) );
+		$done = $this->transfer(
+			$job,
+			$driver,
+			$destination,
+			$file,
+			$main,
+			$budget,
+			static function ( array $sub ) use ( $job, &$state ) {
+				$state = array_merge( $state, $sub );
+				$job->set_state( self::STATE, $state );
+			}
+		);
+		if ( ! $done ) {
+			return false;
+		}
+
+		$result         = $job->result();
+		$result['sent'] = array(
+			'destination' => $destination,
+			'name'        => $name,
+			'size'        => $main['size'],
+			'parts'       => count( $main['pieces'] ),
+			'where'       => $driver->describe(),
+			'base'        => '' === $base_file ? '' : basename( $base_file ),
+		);
+		$job->log( 'info', count( $main['pieces'] ) > 1 ? sprintf( 'Sent %s to %s in %d parts.', $name, $driver->describe(), count( $main['pieces'] ) ) : sprintf( 'Sent %s to %s.', $name, $driver->describe() ) );
+
+		if ( $job->option( 'delete_after_send', false ) ) {
+			$deleted = Io::quiet(
+				static function () use ( $file ) {
+					return unlink( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+				}
+			);
+			$result['deleted_local'] = (bool) $deleted;
+			if ( $deleted ) {
+				$job->log( 'info', 'Deleted the copy on this server, as asked.' );
+			} else {
+				$job->warn( __( 'The copy on this server could not be deleted.', 'siteferry' ) );
+			}
+		}
+		$job->set_result( $result );
+		$job->set_progress( sprintf( /* translators: %s: where it went, such as Dropbox or another site's host name */ __( 'Sent to %s', 'siteferry' ), $driver->describe() ), 1, 1 );
+		return true;
+	}
+
+	/**
+	 * Uploads one file part by part; $state holds its progress and $save stores it.
+	 *
+	 * @param Job          $job         The job.
+	 * @param Driver       $driver      Storage.
+	 * @param string       $destination Destination id.
+	 * @param string       $file        File to send.
+	 * @param array        $state       Upload progress (empty to start); updated.
+	 * @param Slice_Budget $budget      Work limit.
+	 * @param callable     $save        function( array $state ): void, called after every part.
+	 * @return bool True when the whole file is stored.
+	 * @throws Job_Exception If the file is missing or changes.
+	 */
+	private function transfer( Job $job, Driver $driver, string $destination, string $file, array &$state, Slice_Budget $budget, callable $save ): bool {
+		$name = basename( $file );
+		$size = is_file( $file ) ? (int) filesize( $file ) : -1;
+		if ( ! empty( $state['finished'] ) ) {
+			return true;
+		}
 		if ( array() === $state ) {
 			if ( $size <= 0 ) {
 				throw new Job_Exception( __( 'The backup to send is missing or empty.', 'siteferry' ), Job_Exception::STEP );
@@ -64,7 +157,7 @@ final class Send_Step implements Step {
 				'upload'   => $driver->begin( $pieces[0][0], $pieces[0][2] ),
 				'finished' => false,
 			);
-			$job->set_state( self::STATE, $state );
+			$save( $state );
 			$job->save();
 			$job->log(
 				'info',
@@ -98,14 +191,14 @@ final class Send_Step implements Step {
 					$driver->finish( $state['upload'] );
 					++$state['piece'];
 					if ( $state['piece'] < count( $state['pieces'] ) ) {
-						$next             = $state['pieces'][ $state['piece'] ];
-						$state['upload']  = $driver->begin( $next[0], $next[2] );
-						$state['index']   = 0;
+						$next            = $state['pieces'][ $state['piece'] ];
+						$state['upload'] = $driver->begin( $next[0], $next[2] );
+						$state['index']  = 0;
 					} else {
 						$state['finished'] = true;
 					}
 				}
-				$job->set_state( self::STATE, $state );
+				$save( $state );
 				$job->set_progress( sprintf( /* translators: 1: where it goes, such as Dropbox or another site's host name, 2: a size, such as 12 MB, 3: a size, such as 12 MB */ __( 'Sending to %1$s: %2$s of %3$s', 'siteferry' ), Destinations::short_label( $destination ), size_format( $state['offset'], 1 ), size_format( $state['size'], 1 ) ), $state['offset'], $state['size'] );
 				$job->save();
 
@@ -116,35 +209,36 @@ final class Send_Step implements Step {
 		} finally {
 			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		}
-
-		$result         = $job->result();
-		$result['sent'] = array(
-			'destination' => $destination,
-			'name'        => $name,
-			'size'        => $state['size'],
-			'parts'       => count( $state['pieces'] ),
-			'where'       => $driver->describe(),
-		);
-		$job->log( 'info', count( $state['pieces'] ) > 1 ? sprintf( 'Sent %s to %s in %d parts.', $name, $driver->describe(), count( $state['pieces'] ) ) : sprintf( 'Sent %s to %s.', $name, $driver->describe() ) );
-
-		if ( $job->option( 'delete_after_send', false ) ) {
-			$deleted = Io::quiet(
-				static function () use ( $file ) {
-					return unlink( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
-				}
-			);
-			$result['deleted_local'] = (bool) $deleted;
-			if ( $deleted ) {
-				$job->log( 'info', 'Deleted the copy on this server, as asked.' );
-			} else {
-				$job->warn( __( 'The copy on this server could not be deleted.', 'siteferry' ) );
-			}
-		}
-		$job->set_result( $result );
-		$job->set_progress( sprintf( /* translators: %s: where it went, such as Dropbox or another site's host name */ __( 'Sent to %s', 'siteferry' ), $driver->describe() ), 1, 1 );
 		return true;
 	}
 
+	/**
+	 * The full backup to send before a changes-only backup: its path when the storage does not
+	 * have it yet, '' when it does or the backup is a full one.
+	 *
+	 * @param string $file   Backup to send.
+	 * @param Driver $driver Storage.
+	 * @throws Job_Exception If the full backup is neither here nor on the storage.
+	 */
+	private static function base_to_send( string $file, Driver $driver ): string {
+		$name = basename( $file );
+		if ( \SiteFerry\Backups::encrypted_name( $name ) || \SiteFerry\Wpress\Wpress::is_name( $name ) ) {
+			return '';
+		}
+		try {
+			$base = \SiteFerry\Incremental::base_of( \SiteFerry\Backups::manifest( $file ) );
+		} catch ( \Throwable $e ) {
+			return '';
+		}
+		if ( null === $base || null !== Parts::find( $driver, $base['name'] ) ) {
+			return '';
+		}
+		$path = dirname( $file ) . '/' . $base['name'];
+		if ( ! is_file( $path ) ) {
+			throw new Job_Exception( sprintf( /* translators: %s: a backup name */ __( 'This changes-only backup is built on the full backup %s, which is neither on this server nor on the storage; it could not be restored from there.', 'siteferry' ), $base['name'] ), Job_Exception::STEP );
+		}
+		return $path;
+	}
 	/**
 	 * {@inheritDoc}
 	 *
@@ -152,9 +246,22 @@ final class Send_Step implements Step {
 	 */
 	public function cleanup( Job $job ): void {
 		$state = $job->state( self::STATE );
+		if ( isset( $state['base']['upload'] ) && empty( $state['base']['finished'] ) ) {
+			self::abandon( $job, (array) $state['base'] );
+		}
 		if ( ! isset( $state['upload'] ) || ! empty( $state['finished'] ) ) {
 			return;
 		}
+		self::abandon( $job, $state );
+	}
+
+	/**
+	 * Aborts an unfinished upload and removes the parts already stored.
+	 *
+	 * @param Job   $job   The job.
+	 * @param array $state Upload progress.
+	 */
+	private static function abandon( Job $job, array $state ): void {
 		$driver = Destinations::driver( (string) $job->option( 'send_to' ) );
 		$driver->abort( $state['upload'] );
 		// Parts already stored are removed too: half a set is no backup.
