@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.43.0
+Stable tag: 0.43.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -505,6 +505,9 @@ with that version.
 
 == Changelog ==
 
+= 0.43.1 =
+* readme: the changelog keeps the newest versions; the full history moved to changelog.txt (WordPress.org shortens long changelogs).
+
 = 0.43.0 =
 * Passwords for copies sent to storages: a new schedule that sends to a storage has "Protect automatic backups with a password" ticked already; an existing one shows a dismissible recommendation instead (nothing changes by itself). Back up now recommends a password when sending to a storage.
 * "Test my password" in the Schedule panel checks that you still know the automatic backups' password: it is compared with the stored one and never shown, five tries per fifteen minutes. Once a month SiteFerry asks you to test it ("Remind me next month" waits another month).
@@ -534,209 +537,4 @@ with that version.
 * A 3-2-1 meter in the Schedule panel (3 copies, on 2 kinds of storage: this server, cloud, FTP; 1 away from this server), with what to add to complete it, and a small "3-2-1" chip in the schedule line on the Backups tab.
 * WP-CLI's schedule summary names every storage. "Back up now" still sends to one storage.
 
-= 0.37.0 =
-* Size and time forecast: under the size estimate in Customize, SiteFerry now says about how long making the backup takes (from the last backup of the same kind, compressed or not) and how long sending it takes (from the last upload to that storage), as ranges; and, for a compressed file, about how big it will be. Until a backup of that kind was made or sent there, it says so instead of guessing. The Back up now bar shows the total as a small clock chip. The speeds are measured on this site only and kept in one option (REST GET /forecast).
-
-= 0.36.0 =
-* Keeping scheduled backups by day, week and month: besides "keep the newest N", the Schedule panel can keep one backup a day for D days, one a week for W weeks and one a month for M months (defaults 7, 4 and 6), counted back from today in the site's time zone (calendar days, Monday-to-Sunday weeks, calendar months). It applies to scheduled backups wherever they are stored; a full backup that kept changes-only backups need always stays; backups you make yourself are never deleted. A preview under the choice lists each scheduled backup with why it would be kept, or that it would be deleted after the next run, and updates as you type (REST GET /schedule/retention; WP-CLI's schedule summary names the choice).
-
-= 0.35.0 =
-* Backups before risky changes: the same quick backup as before updates is now made just before a plugin is deleted (the database and that plugin, tagged "before-plugin-delete"; taken before the plugin's own uninstall code runs), a theme is deleted (the database and that theme, "before-theme-delete") and the theme is switched (the database, "before-theme-switch"; taken before the switch is written, from the Themes screen, the Customizer or WP-CLI). Each has its switch in the Schedule panel under "Before risky changes", on by default; they share "Keep the newest" with the backups made before updates, never block the change, and show on the timeline.
-* Fixed: when two quick backups finished within the same second, keeping "the newest N" could delete the newer one; runs recorded later now count as newer.
-
-= 0.34.1 =
-* Staging: `wp siteferry staging create --no-media` works (WP-CLI read it as an unknown --media option).
-* Staging: the red STAGING badge stays visible in the admin bar on phones and narrow windows, where WordPress hides added items.
-
-= 0.34.0 =
-* Staging copy: "Staging" on the Backups tab (and `wp siteferry staging create|status|delete`) makes a private copy of the site in a subfolder, with its own database tables, its own wp-config.php, a STAGING badge, noindex, and outgoing email held back; SiteFerry's storage, schedule and before-update backups stay with the live site. Made and deleted as resumable jobs with the progress ferry; deleting checks the record, the folder's marker and the table prefix every time. Single sites only; copying changes back comes later.
-
-= 0.33.0 =
-* Compare two backups: "Compare with…" in a backup's menu (or Shift+click two markers on the timeline) shows what differs from the older backup to the newer one: the versions it was made with, the site address, plugins and themes (added, removed, updated or older, turned on or off), the theme in use, how many posts, pages, media items, users and comments, database tables (added, removed, row counts, size) and files. Only the backups' own records are read, so it is quick. Also `wp siteferry backups compare <a> <b> [--format=json]`. Not yet for .wpress files or backups only on a storage.
-* Timeline: "Show timeline" above the backup list draws every backup by time, coloured by kind (made by you, scheduled, before an update, changes only, only on a storage), with restores as small diamonds. Arrow keys move between backups, Enter shows one in the list. The choice is remembered in this browser.
-
-= 0.32.1 =
-* With "Only changes since the last full backup" chosen, the Back up now summary no longer says it saves the whole site: it says it saves the whole database and only the changed files.
-
-= 0.32.0 =
-* Changes-only backups: the whole database and only the files added or changed since a full backup on this server (plus what was deleted). Customize: "Only changes since the last full backup"; schedule: "Make a full backup every N runs"; WP-CLI: `wp siteferry export --changes-only[=<backup>]`. Restoring one uses its full backup for the unchanged files, all checked against the checksums.
-* A full backup cannot be deleted, here or on a storage, while changes-only backups built on it are there; retention keeps it as long as needed. Sending a changes-only backup sends its full backup first; downloading one for a restore downloads its full backup too.
-* Not yet for password-protected backups or .wpress files.
-
-= 0.31.0 =
-* Emergency kit (Backups tab, "Emergency kit"): choose a password and download one PHP file that helps when the site shows a white screen and you cannot log in. Upload it into WordPress's main folder and open it: without loading WordPress, and after the password, it turns off every plugin except SiteFerry, switches to a default theme (both can be undone) and downloads SiteFerry's backups. It works for 7, 30 or 90 days, only on this site's address, and stops when revoked in SiteFerry; it deletes itself with one button. Wrong passwords are slowed down and locked out for 15 minutes after 5; every action is protected against cross-site requests; wp-config.php is read, never run.
-
-= 0.30.0 =
-* Look inside: "Restore" next to any file of wp-content puts that one file back from the backup, checked against the backup's checksum first; the file that was there is kept so it can be undone.
-* Look inside, Database: "Posts and pages" lists the posts and pages in the backup (searchable, with whether each is missing, changed or the same on the site now) and restores one of them with its custom fields and categories or tags, from SiteFerry backups of this site. Undo puts back what was there.
-* The 20 newest of these undo points are kept in SiteFerry's storage folder.
-
-= 0.29.0 =
-* Restore preview: before you confirm a restore (or a move here), "What this restore changes" lists the plugins and themes it puts back in an older or newer version, the ones it brings back, which plugins it turns on or off, a change of the theme in use, and how the number of posts, pages, media items, users and comments changes. Partial restores show only what they touch. Nothing is changed by the preview.
-* Backups now record the installed plugins and themes (name and version, only those whose files are in the backup) and those content counts. Older backups and .wpress files show which plugins are turned on or off.
-
-= 0.28.4 =
-* readme: the .wpress FAQ says plainly that SiteFerry is not affiliated with, endorsed or sponsored by ServMask or All-in-One WP Migration, and contains none of its code.
-
-= 0.28.3 =
-* readme: links to the privacy policy and terms of SiteFerry's sign-in service (auth.xsofty.com), and the plugin's home page.
-
-= 0.28.2 =
-* Passes the WordPress.org Plugin Check with no errors: wp_parse_url() instead of parse_url(), no empty strings for translation, and each deliberate direct file, database or time-limit call marked with the reason for it.
-* readme.txt: the technical details moved from Description into a new FAQ section, with a short Storage overview in Description, so WordPress.org shows all of it.
-
-= 0.28.1 =
-* Fixed: after "Use another account" in Google Drive, the folder chosen in the old account was kept, and the test failed with "HTTP 404 (notFound): File not found". Signing in with a different account now goes back to the top of that account's Drive (the folder name stays); a chosen folder that cannot be found says so and asks to choose again.
-
-= 0.28.0 =
-* Google Drive card redesigned: the connected account at the top (or "Sign in with Google" as the main button until then), "Use another account" and "Disconnect" as links; "Backups go to" shows the whole path (My Drive › chosen folder › backup folder) and follows what you type; the sign-in method and the largest file size are folded under Advanced, with their current values in its title; Save is the main button.
-* After signing in to Google Drive or Dropbox, the connection is tested at once, so the card says "Working" (or what fails) instead of "Not tested".
-
-= 0.27.1 =
-* Google Drive: Google's folder picker cannot make new folders, so the backup folder name may now be a path: "Backups/My site" makes a folder Backups (or reuses the one SiteFerry made before) with My site inside it, in the chosen folder or at the top of My Drive. Up to 5 levels; / separates the folders. The picker's title and the form say so.
-* Fixed: after choosing a folder, the message showed "%1" and "%2" instead of the folder names.
-
-= 0.27.0 =
-* Google Drive: "Choose a folder in Drive" opens Google's own folder picker; SiteFerry then keeps the backups in a folder inside the chosen one (named after the site, renameable), instead of only at the top of My Drive. Picking a folder gives SiteFerry access to that folder only (it keeps the drive.file permission). "Use the top of My Drive instead" goes back. With one-click sign-in the picker's details come from the sign-in service; with your own OAuth client, enter its Picker API key and project number.
-* Sign-in service (relay): new GET /google/picker with the Picker's public API key and project number (config: google_picker_key, google_app_id).
-
-= 0.26.0 =
-* FTP: downloading a backup from an FTP server (to restore or check it) keeps one transfer running from range to range instead of logging in again every 8 MB; a fresh transfer starts every 64 MB to keep memory small. Against the test server, 200 MB took 7.9 s instead of 48.1 s (4 logins instead of 25); over the internet the gain is larger.
-* Progress: after a job's first 15 seconds its slices grow from 3 to 8 seconds where the server handles one request at a time, so long transfers move data instead of reconnecting.
-* Tests: the fake FTP server no longer loses the end of an upload when TLS reports a momentary stall (a cause of rare test failures).
-
-= 0.25.1 =
-* Progress: the crossing moves as the work goes, not only at the end of each 15-second slice. A running slice writes its step and progress to a small live file, which the page reads every 0.7 seconds; slices start at 3 seconds and become full length once the server shows it answers those reads in parallel (on servers that handle one request at a time they stay short).
-
-= 0.25.0 =
-* Storage badges tell what is known: "Not tested" for complete settings that were never tested (or changed since), "Working" with the time of the last passed connection test, "Test failed" after a failed one. "Ready" is gone: it only meant that the settings were complete. Saving new settings, signing in again or disconnecting forgets the last result.
-
-= 0.24.2 =
-* FTPS: when SiteFerry stops a download early (reading the test file back, or part of a backup), servers that end TLS abruptly made PHP print an "SSL_read on shutdown" warning into the answer, so the connection test (and possibly a download step) failed although everything had worked. That warning is now captured, and anything printed during a connection test is kept out of the answer.
-
-= 0.24.1 =
-* When the server answers with something that is not readable (for example a PHP warning printed before the answer), the page says so and shows the start of that answer instead of a script error.
-* Connection test: passed checks stay green when a later one fails.
-
-= 0.24.0 =
-* Storage: the connection test shows live what it is doing: a bar and each check as it runs (connecting, opening the folder, writing, reading, listing, deleting), ticked when done and marked where it failed. The names of the checks are translatable.
-
-= 0.23.2 =
-* Storage: after Save, the test result says that the settings are saved and only the connection test failed, with the reason; the FTP server's own words end as a sentence before SiteFerry's advice.
-
-= 0.23.1 =
-* Storage: saving complete settings tests the connection at once; when it works, the card closes and a message says so. When it fails, the card stays open with the reason.
-
-= 0.23.0 =
-* Backups: "Back up now" sits in its own bar with what it will make shown as tags (whole site or what is left out, the file, where it goes) and a "Customize" button. Upload, Schedule (with its On/Off state) and Move a site are one row of matching buttons with icons; every page button has the same height and shape.
-* Customize: changes apply to the next backup; "Save as my settings" keeps them for every "Back up now", "Reset to defaults" goes back to the whole site on this server, and a "Not saved" tag shows unsaved changes. The name, note and tags (for one backup only) come last.
-* While a backup runs its button says "Backing up..."; the finished card can be closed and makes room when another panel opens; the new backup is marked New in the list.
-* Shorter action names: Download, Add a name or note, Edit name and note, Check for damage.
-* The page shows at once instead of after the storages have loaded; on phones "Back up now" comes first.
-
-= 0.22.0 =
-* Restore progress shows four stages (Check, Safety backup, Restore, Finish) instead of nine steps; the caption still names the step.
-* One panel at a time: opening Look inside, a restore or a drawer closes the others (a running restore stays).
-* Look inside lists the site's files only; the database dump, the backup's description and its checksums are one line of download links.
-* Activity names the backup of each entry, calls a site move "Move to another site" and a check "Check of a backup".
-* Storage: a greyed-out "Test connection" says why; Google Drive and Dropbox show "Save" only after signing in (signing in saves the settings); the S3 endpoint and addressing show only when the provider needs them or under "Advanced settings".
-
-= 0.21.0 =
-* Header: "Back up now" and "Backup options" sit together as one control; "Move" is now "Move a site"; the second "Set up a schedule" button is gone ("Schedule" does that).
-* Move a site: first choose which side this is ("Receive a site here" on the new site, "Send this site to another server" on the old one); each side shows numbered steps and only its own fields. The help under the list explains all three ways to move a site here.
-* Schedule: the list of parts is folded behind a one-line summary ("The whole site", "The site without media"); the backup before updates has its own box that says it works on its own; the button is "Save these settings".
-* Look inside says which parts can be ticked for restoring.
-
-= 0.20.0 =
-* Restore: the text says what this backup really puts back and what stays as it is (for example a backup of the database only, or one made without media); choices a backup or site cannot take are no longer offered ("Only the files" without files, a new site address on a network or without the options table, must-use plugins and drop-ins without files). Look inside shows no tick boxes on a network, which is restored whole.
-* Back up now: the choices in Options are remembered for each administrator, and a line under the buttons says what Back up now will make. "Use the defaults" goes back to the whole site on this server. A password, name, note or tags are never remembered.
-* Moving a site: "Open SiteFerry there" opens the right page on the other site.
-* Two warnings of the restore check are now translatable; the hint to import anyway is shown only in WP-CLI, which has that option.
-* Uninstalling also removes the remembered choices.
-
-= 0.19.0 =
-* Translation-ready: every message of the admin page (wp.i18n, with script translations), of the server (errors, warnings, progress, connection tests, the check, emails, automatic backup names) uses the "siteferry" text domain, with translator notes; the template is languages/siteferry.pot. WP-CLI output stays English.
-* readme: an "External services" section listing every service SiteFerry can contact, when, what it sends, and their terms and privacy policies.
-
-= 0.18.0 =
-* Multisite networks: whole-network backups (every site's tables, the network tables, all media) by super admins on the main site; restoring them into a network of the same kind, with every subsite's address mapped to the new network (subdomains keep their first label) and subsites made after the backup removed with their tables. The network stays network-activated for SiteFerry.
-
-= 0.17.0 =
-* Move a site straight to another server: "Move" makes a one-time key on the new site; pasted on the old site, it sends an encrypted backup straight there (resumable, checked chunks). "Move it here" on the new site restores it without asking for a password. WP-CLI: `wp siteferry receive` and `wp siteferry move <key>`.
-* Backup names, notes and tags are read fresh before each change, so a long-running process cannot undo another request's change.
-
-= 0.16.0 =
-* Backups in parts: "Largest file on this storage" in a storage's settings (100 MB to 4 GB) stores larger backups there as numbered parts (.001, .002, ...). The list shows them as one backup ("Dropbox · 3 parts"; a missing part is shown); downloading, checking, restoring and deleting handle all parts, and a cancelled send removes the parts already stored.
-* "Download in parts" in a backup's menu; uploading all parts of a backup at once joins them as they upload.
-
-= 0.15.0 =
-* Space report: opening Options measures the site (in short steps; kept for an hour) and shows about how big the backup will be with the choices made, before compression, next to the free space on the server, with a warning when it does not fit. "What takes the room" lists the database, media, plugins and themes (and what of them is inactive), cache and the rest, the largest files, media by year, the largest plugins, themes and tables, post revisions and spam comments. WP-CLI: `wp siteferry space`.
-
-= 0.14.0 =
-* Password-protected backups: AES-256-GCM encryption of the whole backup as it is written (.tar.enc / .tar.gz.enc), for backups made by hand (Options) and automatic ones (Schedule panel, also before updates). Restore, check and "Look inside" ask for the password; a wrong one is refused before anything changes. The key is derived with PBKDF2 (600,000 rounds); no password of a backup made by hand is kept. WP-CLI: `--password` for export, import and backups check (or the SITEFERRY_PASSWORD environment variable).
-* Uploads accept .enc files.
-
-= 0.13.0 =
-* Check a copy of a backup: "Check the copy on this server" and "Check the copy on <storage>" in a backup's menu read it from start to end and compare every file with its checksums, without unpacking anything; a copy on a storage is downloaded for the check and deleted again. The place badges show the outcome. WP-CLI: `wp siteferry backups check <name> [--storage=<id>]`.
-
-= 0.12.0 =
-* Look inside a backup: "Look inside" in a backup's menu lists its folders and files (sizes, dates) and its database tables, and downloads single files from it. A .tar.gz is read in short steps the first time; the list is kept until the backup changes or is deleted.
-* Restore only part of a backup: the whole database or single tables, all files, a folder of wp-content, or one plugin or theme. Tick them in "Look inside", or choose "Only the database" or "Only the files" under Advanced in the restore panel. Everything else on the site stays as it is. WP-CLI: `--only-database`, `--only-files`, `--tables=`, `--paths=`.
-* New backups record the exact number of rows of every table (older ones listed the database server's estimate).
-
-= 0.11.0 =
-* Backups before updates: just before WordPress, a plugin or a theme updates, a quick backup of the database and that plugin or theme (the database only for WordPress), tagged "before-update", keeping the newest 3. Off by default (Schedule panel). Made within a time allowance; when it cannot be made in time, or another job runs, the update goes ahead without it.
-
-= 0.10.0 =
-* Safety backup before every restore: after you confirm, SiteFerry backs up the whole site as it is (an ordinary backup tagged "before-restore") before anything changes. Untick it to skip; WP-CLI `--skip-safety-backup`.
-* "Undo this restore" on the Backups tab restores that safety backup. A restore that fails and leaves the site as it was removes its safety backup; one whose rollback had problems keeps it.
-* Jobs that run inside another job (the safety backup inside a restore) never count as the active job.
-
-= 0.9.0 =
-* Scheduled backups: every day, week or month at a set time in the site's time zone, with the same choices as a backup made by hand, to this server or a storage (optionally keeping a local copy). Runs without anyone logged in: WP-Cron starts it and each step asks the site for the next one, with a five-minute check as a fallback that also stops a backup stuck for an hour.
-* Retention: keep the newest N scheduled backups; older ones are deleted everywhere, only after a new one succeeded, and never backups made by hand.
-* Email on failure (default), after every backup, or never. "Run it now", a status line with the next and last run, `wp siteferry schedule show|run`.
-* A scheduled backup waits for another job (retrying every 15 minutes for two hours) instead of failing.
-* On Windows servers, saving a job's state no longer fails while a page or the watchdog reads it at the same moment.
-
-= 0.8.0 =
-* Dropbox storage: one-click "Sign in with Dropbox" through SiteFerry's sign-in service, or your own Dropbox app; PKCE without any app secret, so tokens go straight between the site and Dropbox; App folder access; encrypted tokens renewed automatically; upload sessions in 8 MB parts that continue after an interruption; ranged downloads; connection test; revoke on disconnect.
-* The sign-in service handles Dropbox as well (it only passes the browser through) and can be set up for Google Drive, Dropbox or both.
-
-= 0.7.0 =
-* Simpler backup and restore: one Backups tab with "Back up now", Options, "Upload a backup" and one list of all backups (this server and every storage) in columns; a guided panel to restore a backup of this site or move another site here, checked before anything changes; names, notes and tags for backups, with search and a tag filter. Export and Import tabs are folded into Backups, Log is now Activity.
-* .wpress backups (All-in-One WP Migration's format): import them, with each file's CRC-32 checked, and export as .wpress. Password-protected .wpress backups are recognized but not supported yet.
-* Reworked admin screen: a header with the site's backups and storages, "Where it goes" choices on the Export tab, a drop zone, a stored-backup picker and steps on the Import tab, list layouts that work on phones, storage cards, inline job logs, empty states and dismissible messages. Job progress is drawn as a route with one leg per step.
-* One-click "Sign in with Google" for Google Drive through SiteFerry's sign-in service (auth.xsofty.com); no Google Cloud project needed. Your own OAuth client stays available.
-* Google Drive storage with your own OAuth client: drive.file scope only, one-time state and PKCE, tokens saved only from an authenticated POST, encrypted tokens with refresh, revoke on disconnect, resumable uploads, ranged downloads.
-* Only storages that are ready (and, for Google Drive, connected) are offered for sending.
-* A refusal on the provider's consent page is shown even though WordPress removes "error" from the address bar.
-
-= 0.6.0 =
-* FTP/FTPS storage: explicit FTPS by default, passive mode, uploads in parts with resume, ranged downloads, connection test that also checks resume support.
-* The Storage tab forms work the same way for every storage.
-
-= 0.5.0 =
-* S3-compatible storage: settings with provider presets, connection test, send after an export or later, list, download to this server, delete.
-* Multipart uploads in slices with retries and backoff; cancelled uploads are aborted on the storage.
-* Storage keys encrypted at rest (libsodium, OpenSSL fallback) and never sent back to the browser.
-* WP-CLI: `wp siteferry storage ...`, `wp siteferry export --send=<id>`.
-* A second copy of a backup keeps its site and date in the file name.
-
-= 0.4.0 =
-* Admin screen: export, import with inspection and confirmation, backups list with download and delete, job log.
-* REST API (`siteferry/v1`) for the admin screen: administrator nonce for site actions, a per-job token for driving a job.
-* Chunked, resumable uploads with per-chunk SHA-256; downloads with Range support.
-* Jobs can be cancelled; their cleanups run in reverse order.
-
-= 0.3.0 =
-* Import: staging with checksum verification, temporary tables, serialization-safe search-replace, atomic table swap, journalled file moves, automatic rollback.
-* WP-CLI: `wp siteferry import`.
-
-= 0.2.0 =
-* Export: resumable wp-content scan with exclusions, batched database dump, archive with manifest and checksums.
-* Job runner with file-based state, per-job tokens and slice lock.
-* WP-CLI: `wp siteferry export`, `wp siteferry backups list`; works with `--require` on sites without SiteFerry.
-
-= 0.1.0 =
-* Plugin skeleton and streaming TAR reader/writer.
+Older versions: see changelog.txt in the plugin folder.
