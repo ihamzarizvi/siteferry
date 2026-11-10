@@ -30,8 +30,8 @@ final class Staging_Command {
 	 * [--folder=<name>]
 	 * : Subfolder for the copy (lower-case letters, digits, hyphens). Default: staging.
 	 *
-	 * [--no-media]
-	 * : Leave the media library out (the copy's images will be missing).
+	 * [--[no-]media]
+	 * : Copy the media library (default). --no-media leaves it out; the copy's images will be missing.
 	 *
 	 * ## EXAMPLES
 	 *
@@ -44,7 +44,7 @@ final class Staging_Command {
 		unset( $args );
 		$this->idle();
 		try {
-			list( $job ) = Staging::start( isset( $assoc_args['folder'] ) ? (string) $assoc_args['folder'] : 'staging', ! empty( $assoc_args['no-media'] ) );
+			list( $job ) = Staging::start( isset( $assoc_args['folder'] ) ? (string) $assoc_args['folder'] : 'staging', isset( $assoc_args['media'] ) && ! $assoc_args['media'] );
 		} catch ( Job_Exception $e ) {
 			WP_CLI::error( $e->getMessage() );
 			return;

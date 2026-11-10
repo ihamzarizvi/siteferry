@@ -106,7 +106,7 @@ add_action( 'admin_bar_menu', static function ( $bar ) {
 }, 5 );
 
 $siteferry_staging_style = static function () {
-	echo '<style>#wpadminbar #wp-admin-bar-siteferry-staging > .ab-item{background:#c2352d;color:#fff;font-weight:600}.siteferry-staging-bar{position:fixed;top:0;left:0;right:0;z-index:99999;padding:4px 12px;background:#c2352d;color:#fff;font:600 13px/1.6 system-ui,sans-serif;text-align:center}</style>';
+	echo '<style>#wpadminbar #wp-admin-bar-siteferry-staging > .ab-item{background:#c2352d;color:#fff;font-weight:600}@media screen and (max-width:782px){#wpadminbar li#wp-admin-bar-siteferry-staging{display:block;float:left}#wpadminbar #wp-admin-bar-siteferry-staging > .ab-item{width:auto;max-width:34vw;padding:0 8px;overflow:hidden;font-size:12px;line-height:46px;white-space:nowrap;text-overflow:ellipsis}}.siteferry-staging-bar{position:fixed;top:0;left:0;right:0;z-index:99999;padding:4px 12px;background:#c2352d;color:#fff;font:600 13px/1.6 system-ui,sans-serif;text-align:center}</style>';
 };
 add_action( 'admin_head', $siteferry_staging_style );
 add_action( 'wp_head', $siteferry_staging_style );

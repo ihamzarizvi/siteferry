@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.34.0
+Stable tag: 0.34.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -492,6 +492,10 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.34.1 =
+* Staging: `wp siteferry staging create --no-media` works (WP-CLI read it as an unknown --media option).
+* Staging: the red STAGING badge stays visible in the admin bar on phones and narrow windows, where WordPress hides added items.
 
 = 0.34.0 =
 * Staging copy: "Staging" on the Backups tab (and `wp siteferry staging create|status|delete`) makes a private copy of the site in a subfolder, with its own database tables, its own wp-config.php, a STAGING badge, noindex, and outgoing email held back; SiteFerry's storage, schedule and before-update backups stay with the live site. Made and deleted as resumable jobs with the progress ferry; deleting checks the record, the folder's marker and the table prefix every time. Single sites only; copying changes back comes later.
