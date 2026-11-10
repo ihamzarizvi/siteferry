@@ -10,6 +10,8 @@
 	const cfg = window.SiteFerryConfig || {};
 	const { __, _n, _x, sprintf } = wp.i18n;
 	const $ = ( id ) => document.getElementById( id );
+	/** Whether this user may do something (view, backup, restore, settings); the server checks again. */
+	const can = ( cap ) => ! cfg.caps || !! cfg.caps[ cap ];
 	const JOB_KEY = 'siteferry.job';
 	const JOB_NAMES = {
 		export: __( 'A backup', 'siteferry' ),
@@ -759,6 +761,9 @@
 	// ------------------------------------------------------------ back up
 
 	async function loadTables() {
+		if ( ! can( 'backup' ) ) {
+			return;
+		}
 		const box = $( 'siteferry-tables' );
 		try {
 			const tables = await api( 'GET', 'tables' );
@@ -2628,7 +2633,7 @@
 		places.push( ...missingBadges( item ) );
 
 		const actions = [];
-		if ( ! item.error ) {
+		if ( ! item.error && can( 'restore' ) ) {
 			actions.push( button( mine ? __( 'Restore', 'siteferry' ) : __( 'Move here', 'siteferry' ), () => openRestore( item ), 'button sf-quiet' ) );
 		}
 		actions.push( menu( item ) );
@@ -2753,15 +2758,17 @@
 
 	/** The "..." menu of a row: look inside, download, send, check, delete. */
 	function menu( item ) {
-		const entries = [ menuItem( __( 'Edit name and note', 'siteferry' ), () => openEditor( item ) ) ];
-		const ready = destinations.filter( ( d ) => d.ready );
+		const entries = can( 'backup' ) ? [ menuItem( __( 'Edit name and note', 'siteferry' ), () => openEditor( item ) ) ] : [];
+		const ready = can( 'backup' ) ? destinations.filter( ( d ) => d.ready ) : [];
 		if ( item.local ) {
 			entries.push( menuItem( __( 'Look inside', 'siteferry' ), () => openContents( item ) ) );
 			if ( ! item.error && item.format !== 'wpress' && comparable().length > 1 ) {
 				entries.push( menuItem( __( 'Compare with…', 'siteferry' ), () => openCompare( item ) ) );
 			}
-			entries.push( el( 'a', { class: 'sf-menu-item', href: downloadUrl( item.name ), text: __( 'Download', 'siteferry' ), role: 'menuitem' } ) );
-			if ( item.size > 100 * 1048576 ) {
+			if ( can( 'backup' ) ) {
+				entries.push( el( 'a', { class: 'sf-menu-item', href: downloadUrl( item.name ), text: __( 'Download', 'siteferry' ), role: 'menuitem' } ) );
+			}
+			if ( can( 'backup' ) && item.size > 100 * 1048576 ) {
 				entries.push( menuItem( __( 'Download in parts', 'siteferry' ), () => openParts( item ) ) );
 			}
 			if ( ! item.error ) {
@@ -2783,16 +2790,16 @@
 		}
 		item.places.forEach( ( id ) => {
 			const d = destination( id );
-			if ( d && ! item.local ) {
+			if ( d && ! item.local && can( 'backup' ) ) {
 				entries.push( menuItem( __( 'Download to this server', 'siteferry' ), () => fetchFrom( d, item.name ) ) );
 			}
 		} );
-		if ( item.local ) {
+		if ( item.local && can( 'backup' ) ) {
 			entries.push( menuItem( item.places.length ? __( 'Check the copy on this server', 'siteferry' ) : __( 'Check for damage', 'siteferry' ), () => checkCopy( item, 'local' ) ) );
 		}
 		item.places.forEach( ( id ) => {
 			const d = destination( id );
-			if ( d && d.ready ) {
+			if ( d && d.ready && can( 'backup' ) ) {
 				entries.push(
 					menuItem(
 						sprintf(
@@ -2805,12 +2812,12 @@
 				);
 			}
 		} );
-		if ( item.local ) {
+		if ( item.local && can( 'restore' ) ) {
 			entries.push( menuItem( __( 'Delete from this server', 'siteferry' ), () => deleteBackup( item ), true ) );
 		}
 		item.places.forEach( ( id ) => {
 			const d = destination( id );
-			if ( d ) {
+			if ( d && can( 'restore' ) ) {
 				entries.push(
 					menuItem(
 						sprintf(
@@ -4078,6 +4085,9 @@
 	}
 
 	async function loadForecast( total, compressed, sendTo ) {
+		if ( ! can( 'backup' ) ) {
+			return;
+		}
 		const seq = ++forecastSeq;
 		try {
 			const data = await api( 'GET', 'forecast', { query: { bytes: Math.round( total ), compress: compressed ? 1 : 0, send_to: sendTo } } );
@@ -4272,6 +4282,9 @@
 
 	/** Receiving: the key (when just made), and what has arrived. */
 	async function loadReceive( made ) {
+		if ( ! can( 'settings' ) ) {
+			return;
+		}
 		const box = $( 'siteferry-receive' );
 		let data = made;
 		if ( ! data ) {
@@ -5631,6 +5644,9 @@
 	 * not): each scheduled backup with "kept" and why, or "deleted".
 	 */
 	async function loadKeepPreview() {
+		if ( ! can( 'settings' ) ) {
+			return;
+		}
 		const form = $( 'siteferry-schedule-form' );
 		const box = $( 'siteferry-keep-preview' );
 		const mode = form.querySelector( 'input[name=retain_mode]:checked' );
@@ -6428,9 +6444,13 @@
 			move: [ 'siteferry-move', 'siteferry-move-toggle' ],
 			kit: [ 'siteferry-kit', 'siteferry-kit-toggle' ],
 			staging: [ 'siteferry-staging', 'siteferry-staging-toggle' ],
+			access: [ 'siteferry-access', 'siteferry-access-toggle' ],
 		};
 		Object.keys( drawers ).forEach( ( key ) => {
 			const [ panel, toggle ] = drawers[ key ];
+			if ( ! $( panel ) ) {
+				return; // Not on this site (a network has no roles to give access to).
+			}
 			const open = key === which ? ( force === undefined ? $( panel ).hidden : force ) : false;
 			$( panel ).hidden = ! open;
 			$( toggle ).setAttribute( 'aria-expanded', open ? 'true' : 'false' );
@@ -6445,11 +6465,99 @@
 		if ( which === 'staging' && ! $( 'siteferry-staging' ).hidden && ! stagingBusy ) {
 			loadStaging();
 		}
+		if ( which === 'access' && $( 'siteferry-access' ) && ! $( 'siteferry-access' ).hidden ) {
+			loadAccess();
+		}
 		if ( which === 'options' && ! $( 'siteferry-export-form' ).hidden && ! space ) {
 			loadSpace( false ); // Measured once the options are opened, not on every page load.
 		}
-		if ( which && drawers[ which ] && ! $( drawers[ which ][ 0 ] ).hidden ) {
+		if ( which && drawers[ which ] && $( drawers[ which ][ 0 ] ) && ! $( drawers[ which ][ 0 ] ).hidden ) {
 			closePanels( 'drawers' );
+		}
+	}
+
+	// ------------------------------------------------------------ Who can use SiteFerry
+
+	const ACCESS_CAPS = [ 'view', 'backup', 'restore', 'settings' ];
+
+	/** Roles and what each may do in SiteFerry. */
+	async function loadAccess() {
+		try {
+			renderAccess( await api( 'GET', 'access' ) );
+		} catch ( error ) {
+			accessResult( false, error.message );
+		}
+	}
+
+	function accessResult( ok, text ) {
+		const box = $( 'siteferry-access-result' );
+		box.className = 'sf-result' + ( ok === true ? ' is-done' : ok === false ? ' is-failed' : '' );
+		box.replaceChildren( el( 'p', { text } ) );
+		box.hidden = false;
+	}
+
+	function renderAccess( data ) {
+		const rows = ( data.roles || [] ).map( ( role ) =>
+			el( 'tr', { 'data-role': role.role }, [
+				el( 'th', { scope: 'row', text: role.name } ),
+				...ACCESS_CAPS.map( ( cap ) =>
+					el( 'td', {}, [
+						tickBox( !! role.caps[ cap ], {
+							type: 'checkbox',
+							name: role.role + '[' + cap + ']',
+							'data-cap': cap,
+							'aria-label': sprintf(
+								/* translators: 1: a user role, such as Editor, 2: what they may do, such as Restore */
+								__( '%1$s: %2$s', 'siteferry' ),
+								role.name,
+								{ view: __( 'See backups and activity', 'siteferry' ), backup: __( 'Make backups', 'siteferry' ), restore: __( 'Restore', 'siteferry' ), settings: __( 'Settings', 'siteferry' ) }[ cap ]
+							),
+						} ),
+					] )
+				),
+			] )
+		);
+		$( 'siteferry-access-rows' ).replaceChildren( ...rows );
+		syncAccess();
+	}
+
+	/** A checkbox, ticked or not (el() sets attributes, and any "checked" attribute ticks it). */
+	function tickBox( on, attrs ) {
+		const box = el( 'input', attrs );
+		box.checked = on;
+		return box;
+	}
+
+	/** Anything but "See" includes seeing: its box is ticked and locked. */
+	function syncAccess() {
+		document.querySelectorAll( '#siteferry-access-rows tr' ).forEach( ( row ) => {
+			const more = [ 'backup', 'restore', 'settings' ].some( ( cap ) => row.querySelector( '[data-cap=' + cap + ']' ).checked );
+			const view = row.querySelector( '[data-cap=view]' );
+			if ( more ) {
+				view.checked = true;
+			}
+			view.disabled = more;
+		} );
+	}
+
+	async function saveAccess( event ) {
+		event.preventDefault();
+		const roles = {};
+		document.querySelectorAll( '#siteferry-access-rows tr' ).forEach( ( row ) => {
+			roles[ row.dataset.role ] = {};
+			ACCESS_CAPS.forEach( ( cap ) => {
+				roles[ row.dataset.role ][ cap ] = row.querySelector( '[data-cap=' + cap + ']' ).checked;
+			} );
+		} );
+		const button = $( 'siteferry-access-save' );
+		button.disabled = true;
+		try {
+			renderAccess( await api( 'POST', 'access', { json: { roles } } ) );
+			accessResult( true, __( 'Saved. People with these roles see the change the next time they open SiteFerry.', 'siteferry' ) );
+		} catch ( error ) {
+			accessResult( false, error.message );
+		} finally {
+			button.disabled = false;
 		}
 	}
 
@@ -6631,6 +6739,9 @@
 	}
 
 	async function loadKits() {
+		if ( ! can( 'settings' ) ) {
+			return;
+		}
 		try {
 			renderKits( await api( 'GET', 'emergency-kits' ) );
 		} catch ( error ) {
@@ -6893,6 +7004,11 @@
 		$( 'siteferry-kit-toggle' ).addEventListener( 'click', () => toggleDrawer( 'kit' ) );
 		$( 'siteferry-kit-form' ).addEventListener( 'submit', makeKit );
 		$( 'siteferry-staging-toggle' ).addEventListener( 'click', () => toggleDrawer( 'staging' ) );
+		if ( $( 'siteferry-access-toggle' ) ) {
+			$( 'siteferry-access-toggle' ).addEventListener( 'click', () => toggleDrawer( 'access' ) );
+			$( 'siteferry-access-form' ).addEventListener( 'submit', saveAccess );
+			$( 'siteferry-access-rows' ).addEventListener( 'change', syncAccess );
+		}
 		$( 'siteferry-staging-form' ).addEventListener( 'submit', createStaging );
 		if ( cfg.stagingOf ) {
 			notice(

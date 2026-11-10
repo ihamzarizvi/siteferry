@@ -27,6 +27,7 @@ final class Plugin {
 		Schedule\Before_Updates::register();
 		Check\Recheck::register();
 		Admin\Admin_Bar::register();
+		Security\Caps::register();
 		if ( is_admin() ) {
 			Admin\Admin::init();
 		}

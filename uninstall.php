@@ -26,6 +26,13 @@ foreach ( $siteferry_options as $siteferry_option ) {
 // Each administrator's remembered choices for "Back up now".
 delete_metadata( 'user', 0, 'siteferry_backup_choices', '', true );
 
+// SiteFerry's capabilities on every role.
+foreach ( wp_roles()->role_objects as $siteferry_role ) {
+	foreach ( array( 'siteferry_view', 'siteferry_backup', 'siteferry_restore', 'siteferry_settings' ) as $siteferry_cap ) {
+		$siteferry_role->remove_cap( $siteferry_cap );
+	}
+}
+
 // Scheduled backups (deactivation removes these too).
 wp_unschedule_hook( 'siteferry_scheduled_backup' );
 wp_unschedule_hook( 'siteferry_schedule_watchdog' );

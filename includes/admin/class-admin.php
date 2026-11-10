@@ -43,7 +43,7 @@ final class Admin {
 		$hook = add_menu_page(
 			__( 'SiteFerry', 'siteferry' ),
 			__( 'SiteFerry', 'siteferry' ),
-			is_multisite() ? 'manage_network_options' : 'manage_options',
+			is_multisite() ? 'manage_network_options' : \SiteFerry\Security\Caps::VIEW,
 			self::SLUG,
 			array( self::class, 'render' ),
 			'dashicons-migrate',
@@ -85,6 +85,7 @@ final class Admin {
 					'siteName'   => wp_strip_all_tags( (string) get_bloginfo( 'name' ) ), // Default name of a backup folder in Google Drive.
 					'choices'    => Choices::get( get_current_user_id() ),
 					'stagingOf'  => self::staging_of(), // In a staging copy: the live site it copies.
+					'caps'       => \SiteFerry\Security\Caps::mine(), // What this user may do (the server checks again).
 				)
 			) . ';',
 			'before'
@@ -107,7 +108,7 @@ final class Admin {
 	 * Prints the page.
 	 */
 	public static function render(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! \SiteFerry\Security\Caps::can( \SiteFerry\Security\Caps::VIEW ) ) {
 			wp_die( esc_html__( 'You do not have permission to use SiteFerry.', 'siteferry' ) );
 		}
 		$tabs = array(
@@ -131,7 +132,16 @@ final class Admin {
 		$port        = wp_parse_url( home_url(), PHP_URL_PORT );
 		$host       .= $port ? ':' . $port : '';
 		?>
-		<div class="wrap siteferry" id="siteferry">
+		<?php
+		// What this user may not do is hidden (the server refuses it anyway).
+		$siteferry_hide = array();
+		foreach ( \SiteFerry\Security\Caps::mine() as $siteferry_cap => $siteferry_can ) {
+			if ( ! $siteferry_can ) {
+				$siteferry_hide[] = 'sf-no-' . $siteferry_cap;
+			}
+		}
+		?>
+		<div class="wrap siteferry <?php echo esc_attr( implode( ' ', $siteferry_hide ) ); ?>" id="siteferry">
 			<header class="sf-head">
 				<h1 class="sf-mark">
 					<svg class="sf-mark-icon" viewBox="0 0 32 20" aria-hidden="true" focusable="false"><path d="M9 3h9l3 5H6z"/><path d="M1 9h30l-4 8H5z"/></svg>
@@ -173,6 +183,9 @@ final class Admin {
 							<button type="button" class="button sf-btn" id="siteferry-move-toggle" aria-expanded="false" aria-controls="siteferry-move"><span class="dashicons dashicons-migrate" aria-hidden="true"></span><?php esc_html_e( 'Move a site', 'siteferry' ); ?></button>
 							<button type="button" class="button sf-btn" id="siteferry-kit-toggle" aria-expanded="false" aria-controls="siteferry-kit"><span class="dashicons dashicons-sos" aria-hidden="true"></span><?php esc_html_e( 'Emergency kit', 'siteferry' ); ?></button>
 							<button type="button" class="button sf-btn" id="siteferry-staging-toggle" aria-expanded="false" aria-controls="siteferry-staging"><span class="dashicons dashicons-admin-multisite" aria-hidden="true"></span><?php esc_html_e( 'Staging', 'siteferry' ); ?></button>
+							<?php if ( ! is_multisite() ) : ?>
+								<button type="button" class="button sf-btn" id="siteferry-access-toggle" aria-expanded="false" aria-controls="siteferry-access"><span class="dashicons dashicons-groups" aria-hidden="true"></span><?php esc_html_e( 'Who can use it', 'siteferry' ); ?></button>
+							<?php endif; ?>
 						</div>
 					</div>
 					<div class="sf-now">
@@ -381,6 +394,34 @@ final class Admin {
 						<ul class="sf-kit-list" id="siteferry-kit-list"></ul>
 						<p class="description"><?php esc_html_e( 'Revoke a kit you no longer trust (for example, a lost file): it then stops working as soon as it reads this site\'s database. A kit also stops working when it expires.', 'siteferry' ); ?></p>
 					</div>
+
+					<?php if ( ! is_multisite() ) : ?>
+					<div id="siteferry-access" class="sf-drawer sf-access" hidden>
+						<p class="sf-drawer-note"><?php esc_html_e( 'Administrators can always do everything. Here you can let other roles use parts of SiteFerry. Give these only to people you trust with the whole site.', 'siteferry' ); ?></p>
+						<ul class="sf-access-warnings">
+							<li><strong><?php esc_html_e( 'Make backups', 'siteferry' ); ?>:</strong> <?php esc_html_e( 'a backup holds the whole database, including every user\'s email address and password hash, and everything in wp-content. Whoever can download backups can take all of it.', 'siteferry' ); ?></li>
+							<li><strong><?php esc_html_e( 'Restore', 'siteferry' ); ?>:</strong> <?php esc_html_e( 'a restore can replace the whole site, including its users, and can delete backups.', 'siteferry' ); ?></li>
+							<li><strong><?php esc_html_e( 'Settings', 'siteferry' ); ?>:</strong> <?php esc_html_e( 'storages and their logins, the schedule, emergency kits, staging copies and moving the site, and this list.', 'siteferry' ); ?></li>
+						</ul>
+						<form id="siteferry-access-form" novalidate>
+							<table class="sf-access-table">
+								<thead>
+									<tr>
+										<th scope="col"><?php esc_html_e( 'Role', 'siteferry' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'See backups and activity', 'siteferry' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'Make backups', 'siteferry' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'Restore', 'siteferry' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'Settings', 'siteferry' ); ?></th>
+									</tr>
+								</thead>
+								<tbody id="siteferry-access-rows"></tbody>
+							</table>
+							<p class="description"><?php esc_html_e( 'Anything but "See" includes seeing. WP-CLI is not limited by these: it needs access to the server already.', 'siteferry' ); ?></p>
+							<p class="sf-actions"><button type="submit" class="button button-primary" id="siteferry-access-save"><?php esc_html_e( 'Save who can use SiteFerry', 'siteferry' ); ?></button></p>
+						</form>
+						<div class="sf-result" id="siteferry-access-result" role="status" hidden></div>
+					</div>
+					<?php endif; ?>
 
 					<div id="siteferry-staging" class="sf-drawer sf-staging" hidden>
 						<p class="sf-drawer-note"><?php esc_html_e( 'A private copy of this site in a subfolder, to try updates, plugins or design changes without touching the live site. It has its own database tables, is hidden from search engines and holds back outgoing email.', 'siteferry' ); ?></p>

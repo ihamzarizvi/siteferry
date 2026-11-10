@@ -25,6 +25,7 @@ use SiteFerry\Jobs\Runner;
 use SiteFerry\Jobs\Slice_Budget;
 use SiteFerry\Requirements;
 use SiteFerry\Schedule\Schedule;
+use SiteFerry\Security\Caps;
 use SiteFerry\Security\Storage;
 use SiteFerry\Storage\Destinations;
 use SiteFerry\Storage\Storage_Exception;
@@ -39,12 +40,13 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Routes for the admin screen.
  *
- * Every route has a permission callback. Most require manage_options (with WordPress's REST
- * nonce, checked by the cookie authentication). The job routes also accept the job's own token
+ * Every route has a permission callback: one of SiteFerry's capabilities (Security\Caps: view,
+ * backup, restore, settings; administrators hold all), with WordPress's REST nonce checked by the
+ * cookie authentication. The job routes also accept the job's own token
  * in the X-SiteFerry-Job header, compared with hash_equals(): an import replaces the users table,
  * after which the admin's login no longer exists, yet the job must be able to finish. The same
  * header lets these requests through SiteFerry's maintenance mode. Confirming an import needs
- * both the admin and the token.
+ * both the restore capability and the token.
  */
 final class Rest {
 
@@ -69,78 +71,93 @@ final class Rest {
 	 * Registers the routes.
 	 */
 	public static function routes(): void {
-		$admin   = array( self::class, 'can_manage' );
-		$job     = array( self::class, 'can_drive_job' );
-		$confirm = array( self::class, 'can_confirm' );
-		$key     = array( self::class, 'can_receive' );
+		// SiteFerry's capabilities (Security\Caps); administrators always hold all of them.
+		$view     = static function (): bool {
+			return Caps::can( Caps::VIEW );
+		};
+		$backup   = static function (): bool {
+			return Caps::can( Caps::BACKUP );
+		};
+		$restore  = static function (): bool {
+			return Caps::can( Caps::RESTORE );
+		};
+		$settings = static function (): bool {
+			return Caps::can( Caps::SETTINGS );
+		};
+		$job      = array( self::class, 'can_drive_job' );
+		$stop     = array( self::class, 'can_stop_job' );
+		$confirm  = array( self::class, 'can_confirm' );
+		$key      = array( self::class, 'can_receive' );
 
 		$routes = array(
-			array( '/status', WP_REST_Server::READABLE, 'status', $admin ),
-			array( '/bar', WP_REST_Server::READABLE, 'bar', $admin ),
-			array( '/tables', WP_REST_Server::READABLE, 'tables', $admin ),
-			array( '/backups', WP_REST_Server::READABLE, 'backups', $admin ),
-			array( '/backups/compare', WP_REST_Server::READABLE, 'compare_backups', $admin ),
-			array( '/labels', WP_REST_Server::READABLE, 'labels', $admin ),
-			array( '/labels/' . self::NAME, WP_REST_Server::CREATABLE, 'save_label', $admin ),
-			array( '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_backup', $admin ),
-			array( '/backups/' . self::NAME . '/download', WP_REST_Server::READABLE, 'download', $admin ),
-			array( '/backups/' . self::NAME . '/contents', WP_REST_Server::READABLE, 'contents_of', $admin ),
-			array( '/checks', WP_REST_Server::READABLE, 'checks', $admin ),
-			array( '/space', WP_REST_Server::READABLE, 'space', $admin ),
-			array( '/backups/' . self::NAME . '/unlock', WP_REST_Server::CREATABLE, 'unlock_backup', $admin ),
-			array( '/checks', WP_REST_Server::CREATABLE, 'start_check', $admin ),
-			array( '/backups/' . self::NAME . '/file', WP_REST_Server::READABLE, 'backup_file', $admin ),
-			array( '/backups/' . self::NAME . '/restore-file', WP_REST_Server::CREATABLE, 'restore_file', $admin ),
-			array( '/backups/' . self::NAME . '/posts', WP_REST_Server::READABLE, 'backup_posts', $admin ),
-			array( '/backups/' . self::NAME . '/posts/(?P<post>[0-9]{1,20})/restore', WP_REST_Server::CREATABLE, 'restore_post', $admin ),
-			array( '/undo/(?P<token>[a-f0-9]{24})', WP_REST_Server::CREATABLE, 'undo_single', $admin ),
-			array( '/exports', WP_REST_Server::CREATABLE, 'start_export', $admin ),
-			array( '/imports', WP_REST_Server::CREATABLE, 'start_import', $admin ),
-			array( '/jobs', WP_REST_Server::READABLE, 'jobs', $admin ),
-			array( '/activity/csv', WP_REST_Server::READABLE, 'activity_csv', $admin ),
+			array( '/status', WP_REST_Server::READABLE, 'status', $view ),
+			array( '/bar', WP_REST_Server::READABLE, 'bar', $view ),
+			array( '/tables', WP_REST_Server::READABLE, 'tables', $backup ),
+			array( '/backups', WP_REST_Server::READABLE, 'backups', $view ),
+			array( '/backups/compare', WP_REST_Server::READABLE, 'compare_backups', $view ),
+			array( '/labels', WP_REST_Server::READABLE, 'labels', $view ),
+			array( '/labels/' . self::NAME, WP_REST_Server::CREATABLE, 'save_label', $backup ),
+			array( '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_backup', $restore ),
+			array( '/backups/' . self::NAME . '/download', WP_REST_Server::READABLE, 'download', $backup ),
+			array( '/backups/' . self::NAME . '/contents', WP_REST_Server::READABLE, 'contents_of', $view ),
+			array( '/checks', WP_REST_Server::READABLE, 'checks', $view ),
+			array( '/space', WP_REST_Server::READABLE, 'space', $view ),
+			array( '/backups/' . self::NAME . '/unlock', WP_REST_Server::CREATABLE, 'unlock_backup', $view ),
+			array( '/checks', WP_REST_Server::CREATABLE, 'start_check', $backup ),
+			array( '/backups/' . self::NAME . '/file', WP_REST_Server::READABLE, 'backup_file', $backup ),
+			array( '/backups/' . self::NAME . '/restore-file', WP_REST_Server::CREATABLE, 'restore_file', $restore ),
+			array( '/backups/' . self::NAME . '/posts', WP_REST_Server::READABLE, 'backup_posts', $restore ),
+			array( '/backups/' . self::NAME . '/posts/(?P<post>[0-9]{1,20})/restore', WP_REST_Server::CREATABLE, 'restore_post', $restore ),
+			array( '/undo/(?P<token>[a-f0-9]{24})', WP_REST_Server::CREATABLE, 'undo_single', $restore ),
+			array( '/exports', WP_REST_Server::CREATABLE, 'start_export', $backup ),
+			array( '/imports', WP_REST_Server::CREATABLE, 'start_import', $restore ),
+			array( '/jobs', WP_REST_Server::READABLE, 'jobs', $view ),
+			array( '/activity/csv', WP_REST_Server::READABLE, 'activity_csv', $view ),
 			array( '/jobs/' . self::ID, WP_REST_Server::READABLE, 'job', $job ),
 			array( '/jobs/' . self::ID . '/run', WP_REST_Server::CREATABLE, 'run', $job ),
 			array( '/jobs/' . self::ID . '/confirm', WP_REST_Server::CREATABLE, 'confirm', $confirm ),
-			array( '/jobs/' . self::ID . '/cancel', WP_REST_Server::CREATABLE, 'cancel', $job ),
-			array( '/jobs/' . self::ID . '/log', WP_REST_Server::READABLE, 'log', $admin ),
-			array( '/uploads', WP_REST_Server::READABLE, 'uploads', $admin ),
-			array( '/uploads/new', WP_REST_Server::CREATABLE, 'start_upload', $admin ),
-			array( '/uploads/' . self::UP, WP_REST_Server::READABLE, 'upload', $admin ),
-			array( '/uploads/' . self::UP . '/chunk', WP_REST_Server::CREATABLE, 'chunk', $admin ),
-			array( '/uploads/' . self::UP . '/finish', WP_REST_Server::CREATABLE, 'finish_upload', $admin ),
-			array( '/uploads/' . self::UP . '/cancel', WP_REST_Server::CREATABLE, 'cancel_upload', $admin ),
-			array( '/storage', WP_REST_Server::READABLE, 'storage', $admin ),
-			array( '/storage/' . self::DEST, WP_REST_Server::CREATABLE, 'save_storage', $admin ),
-			array( '/storage/' . self::DEST, WP_REST_Server::DELETABLE, 'remove_storage', $admin ),
-			array( '/storage/' . self::DEST . '/test', WP_REST_Server::CREATABLE, 'test_storage', $admin ),
-			array( '/storage/' . self::DEST . '/test', WP_REST_Server::READABLE, 'test_progress', $admin ),
-			array( '/storage/gdrive/picker', WP_REST_Server::READABLE, 'gdrive_picker', $admin ),
-			array( '/storage/' . self::DEST . '/backups', WP_REST_Server::READABLE, 'remote_backups', $admin ),
-			array( '/storage/' . self::DEST . '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_remote', $admin ),
-			array( '/storage/' . self::DEST . '/send', WP_REST_Server::CREATABLE, 'start_send', $admin ),
-			array( '/storage/' . self::DEST . '/fetch', WP_REST_Server::CREATABLE, 'start_fetch', $admin ),
-			array( '/storage/' . self::DEST . '/authorize', WP_REST_Server::CREATABLE, 'authorize_storage', $admin ),
-			array( '/storage/' . self::DEST . '/connect', WP_REST_Server::CREATABLE, 'connect_storage', $admin ),
-			array( '/storage/' . self::DEST . '/disconnect', WP_REST_Server::CREATABLE, 'disconnect_storage', $admin ),
-			array( '/schedule', WP_REST_Server::READABLE, 'schedule', $admin ),
-			array( '/schedule', WP_REST_Server::CREATABLE, 'save_schedule', $admin ),
-			array( '/schedule/run', WP_REST_Server::CREATABLE, 'run_schedule', $admin ),
-			array( '/schedule/retention', WP_REST_Server::READABLE, 'schedule_retention', $admin ),
-			array( '/forecast', WP_REST_Server::READABLE, 'forecast', $admin ),
-			array( '/undo/dismiss', WP_REST_Server::CREATABLE, 'dismiss_undo', $admin ),
-			array( '/emergency-kits', WP_REST_Server::READABLE, 'emergency_kits', $admin ),
-			array( '/emergency-kits', WP_REST_Server::CREATABLE, 'make_emergency_kit', $admin ),
-			array( '/emergency-kits/(?P<kit>[a-f0-9]{8})/revoke', WP_REST_Server::CREATABLE, 'revoke_emergency_kit', $admin ),
-			array( '/staging', WP_REST_Server::READABLE, 'staging', $admin ),
-			array( '/staging', WP_REST_Server::CREATABLE, 'start_staging', $admin ),
-			array( '/staging/delete', WP_REST_Server::CREATABLE, 'delete_staging', $admin ),
-			array( '/choices', WP_REST_Server::CREATABLE, 'save_choices', $admin ),
-			array( '/choices', WP_REST_Server::DELETABLE, 'reset_choices', $admin ),
-			array( '/receive', WP_REST_Server::READABLE, 'receive_status', $admin ),
-			array( '/receive', WP_REST_Server::CREATABLE, 'receive_key', $admin ),
-			array( '/receive', WP_REST_Server::DELETABLE, 'receive_cancel', $admin ),
-			array( '/move/check', WP_REST_Server::CREATABLE, 'move_check', $admin ),
-			array( '/move/send', WP_REST_Server::CREATABLE, 'move_send', $admin ),
+			array( '/jobs/' . self::ID . '/cancel', WP_REST_Server::CREATABLE, 'cancel', $stop ),
+			array( '/jobs/' . self::ID . '/log', WP_REST_Server::READABLE, 'log', $view ),
+			array( '/uploads', WP_REST_Server::READABLE, 'uploads', $backup ),
+			array( '/uploads/new', WP_REST_Server::CREATABLE, 'start_upload', $backup ),
+			array( '/uploads/' . self::UP, WP_REST_Server::READABLE, 'upload', $backup ),
+			array( '/uploads/' . self::UP . '/chunk', WP_REST_Server::CREATABLE, 'chunk', $backup ),
+			array( '/uploads/' . self::UP . '/finish', WP_REST_Server::CREATABLE, 'finish_upload', $backup ),
+			array( '/uploads/' . self::UP . '/cancel', WP_REST_Server::CREATABLE, 'cancel_upload', $backup ),
+			array( '/storage', WP_REST_Server::READABLE, 'storage', $view ),
+			array( '/storage/' . self::DEST, WP_REST_Server::CREATABLE, 'save_storage', $settings ),
+			array( '/storage/' . self::DEST, WP_REST_Server::DELETABLE, 'remove_storage', $settings ),
+			array( '/storage/' . self::DEST . '/test', WP_REST_Server::CREATABLE, 'test_storage', $settings ),
+			array( '/storage/' . self::DEST . '/test', WP_REST_Server::READABLE, 'test_progress', $settings ),
+			array( '/storage/gdrive/picker', WP_REST_Server::READABLE, 'gdrive_picker', $settings ),
+			array( '/storage/' . self::DEST . '/backups', WP_REST_Server::READABLE, 'remote_backups', $view ),
+			array( '/storage/' . self::DEST . '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_remote', $restore ),
+			array( '/storage/' . self::DEST . '/send', WP_REST_Server::CREATABLE, 'start_send', $backup ),
+			array( '/storage/' . self::DEST . '/fetch', WP_REST_Server::CREATABLE, 'start_fetch', $backup ),
+			array( '/storage/' . self::DEST . '/authorize', WP_REST_Server::CREATABLE, 'authorize_storage', $settings ),
+			array( '/storage/' . self::DEST . '/connect', WP_REST_Server::CREATABLE, 'connect_storage', $settings ),
+			array( '/storage/' . self::DEST . '/disconnect', WP_REST_Server::CREATABLE, 'disconnect_storage', $settings ),
+			array( '/schedule', WP_REST_Server::READABLE, 'schedule', $view ),
+			array( '/schedule', WP_REST_Server::CREATABLE, 'save_schedule', $settings ),
+			array( '/schedule/run', WP_REST_Server::CREATABLE, 'run_schedule', $settings ),
+			array( '/schedule/retention', WP_REST_Server::READABLE, 'schedule_retention', $settings ),
+			array( '/forecast', WP_REST_Server::READABLE, 'forecast', $backup ),
+			array( '/undo/dismiss', WP_REST_Server::CREATABLE, 'dismiss_undo', $restore ),
+			array( '/emergency-kits', WP_REST_Server::READABLE, 'emergency_kits', $settings ),
+			array( '/emergency-kits', WP_REST_Server::CREATABLE, 'make_emergency_kit', $settings ),
+			array( '/emergency-kits/(?P<kit>[a-f0-9]{8})/revoke', WP_REST_Server::CREATABLE, 'revoke_emergency_kit', $settings ),
+			array( '/staging', WP_REST_Server::READABLE, 'staging', $view ),
+			array( '/staging', WP_REST_Server::CREATABLE, 'start_staging', $settings ),
+			array( '/staging/delete', WP_REST_Server::CREATABLE, 'delete_staging', $restore ),
+			array( '/choices', WP_REST_Server::CREATABLE, 'save_choices', $backup ),
+			array( '/choices', WP_REST_Server::DELETABLE, 'reset_choices', $backup ),
+			array( '/receive', WP_REST_Server::READABLE, 'receive_status', $settings ),
+			array( '/receive', WP_REST_Server::CREATABLE, 'receive_key', $settings ),
+			array( '/receive', WP_REST_Server::DELETABLE, 'receive_cancel', $settings ),
+			array( '/move/check', WP_REST_Server::CREATABLE, 'move_check', $settings ),
+			array( '/move/send', WP_REST_Server::CREATABLE, 'move_send', $settings ),
+			array( '/access', WP_REST_Server::READABLE, 'access', $settings ),
+			array( '/access', WP_REST_Server::CREATABLE, 'save_access', $settings ),
 			// The site being moved here, with the key only (no login on this site).
 			array( '/move/hello', WP_REST_Server::READABLE, 'move_hello', $key ),
 			array( '/move/start', WP_REST_Server::CREATABLE, 'move_start', $key ),
@@ -288,29 +305,68 @@ final class Rest {
 		return (string) \SiteFerry\Move\Receiver::password_for( $name );
 	}
 	/**
-	 * Permission: administrators.
+	 * Permission: anyone who may use SiteFerry at all (seeing it is the least).
 	 */
 	public static function can_manage(): bool {
-		// A network is backed up and restored whole: by super admins, on its main site.
-		return is_multisite() ? is_main_site() && current_user_can( 'manage_network_options' ) : current_user_can( 'manage_options' );
+		// On a network: super admins, on its main site (Caps::can()).
+		return Caps::can( Caps::VIEW );
 	}
 
 	/**
-	 * Permission: administrators, or a request carrying this job's token.
+	 * Permission to follow and advance a job: someone who may see SiteFerry, or a request carrying
+	 * this job's token (an import replaces the users table, after which the login is gone).
 	 *
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function can_drive_job( WP_REST_Request $request ): bool {
-		return self::can_manage() || null !== self::job_from_token( $request );
+		return Caps::can( Caps::VIEW ) || null !== self::job_from_token( $request );
 	}
 
 	/**
-	 * Permission: an administrator who also holds this job's token.
+	 * Permission to stop a job: someone who may make backups or restore, or the job's token.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function can_stop_job( WP_REST_Request $request ): bool {
+		return Caps::can( Caps::BACKUP ) || Caps::can( Caps::RESTORE ) || null !== self::job_from_token( $request );
+	}
+
+	/**
+	 * Permission: someone who may restore and also holds this job's token.
 	 *
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function can_confirm( WP_REST_Request $request ): bool {
-		return self::can_manage() && null !== self::job_from_token( $request );
+		return Caps::can( Caps::RESTORE ) && null !== self::job_from_token( $request );
+	}
+
+	/**
+	 * Who may use SiteFerry: roles and what each may do (administrators always may do everything).
+	 */
+	public static function access(): array {
+		return array(
+			'network' => is_multisite(),
+			'roles'   => is_multisite() ? array() : Caps::roles(),
+		);
+	}
+
+	/**
+	 * Sets what roles may do in SiteFerry.
+	 *
+	 * @param WP_REST_Request $request Request with "roles": role => {view, backup, restore, settings}.
+	 * @throws Job_Exception On a network, or an unknown role.
+	 */
+	public static function save_access( WP_REST_Request $request ): array {
+		if ( is_multisite() ) {
+			throw new Job_Exception( __( 'On a network only network administrators use SiteFerry; roles cannot be given access.', 'siteferry' ), Job_Exception::STEP );
+		}
+		$params = (array) $request->get_json_params();
+		try {
+			Caps::set( isset( $params['roles'] ) && is_array( $params['roles'] ) ? $params['roles'] : array() );
+		} catch ( \InvalidArgumentException $e ) {
+			throw new Job_Exception( __( 'Unknown role.', 'siteferry' ), Job_Exception::STEP );
+		}
+		return self::access();
 	}
 
 	/**

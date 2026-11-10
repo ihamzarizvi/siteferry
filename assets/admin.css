@@ -3799,3 +3799,55 @@ details.sf-dest[open] > .sf-dest-head::after {
 	align-items: center;
 	gap: 6px;
 }
+/* ------------------------------------------------- What a role may not do (Caps) */
+
+.siteferry.sf-no-backup .sf-now,
+.siteferry.sf-no-backup #siteferry-upload-toggle,
+.siteferry.sf-no-settings #siteferry-schedule-toggle,
+.siteferry.sf-no-settings #siteferry-move-toggle,
+.siteferry.sf-no-settings #siteferry-kit-toggle,
+.siteferry.sf-no-settings #siteferry-staging-toggle,
+.siteferry.sf-no-settings #siteferry-access-toggle,
+.siteferry.sf-no-settings .siteferry-storage-form .sf-form-actions,
+.siteferry.sf-no-settings .siteferry-storage-form [data-role=connect],
+.siteferry.sf-no-settings .siteferry-storage-form [data-role=disconnect] {
+	display: none !important;
+}
+/* ------------------------------------------------- Who can use SiteFerry */
+
+.siteferry .sf-access-warnings {
+	margin: 0 0 12px 18px;
+	list-style: disc;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-access-table {
+	width: 100%;
+	max-width: 760px;
+	border-collapse: collapse;
+}
+
+.siteferry .sf-access-table th,
+.siteferry .sf-access-table td {
+	padding: 8px 10px;
+	border-bottom: 1px solid var(--sf-fog);
+	text-align: center;
+}
+
+.siteferry .sf-access-table th[scope=row],
+.siteferry .sf-access-table thead th:first-child {
+	text-align: left;
+}
+
+.siteferry .sf-access-table thead th {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--sf-ink-soft);
+}
+
+@media (max-width: 600px) {
+	.siteferry .sf-access-table {
+		display: block;
+		overflow-x: auto;
+	}
+}

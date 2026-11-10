@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.41.0
+Stable tag: 0.42.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -210,6 +210,10 @@ On the Backups tab, click "Staging", choose a subfolder name (default: staging) 
 Sign in to the copy with the same user name and password. One copy at a time; delete it from the same place: SiteFerry checks the record and the folder's marker file and drops only the copy's tables and folder. Uninstalling SiteFerry does not delete the copy: delete it first.
 
 Not supported yet: multisite networks, sites whose WordPress files are in a different folder from the site's address, wp-content or the media folder moved elsewhere, a wp-config.php that sets the table prefix or ABSPATH in an unusual way or loads other files by a relative path (SiteFerry says which), copying changes back to the live site. On nginx servers, pretty permalinks in the copy need one rule in the site's nginx configuration; SiteFerry shows it.
+
+= Can other users use SiteFerry? =
+
+Administrators can always do everything. To let other roles use parts of SiteFerry, click "Who can use it" on the Backups tab and tick, per role: see backups and activity; make backups (make, download, check, send); restore (restore whole sites, single files or posts, delete backups and the staging copy); settings (storages, schedule, emergency kits, staging, moving the site, and this list). Anything but "see" includes seeing. Give these only to people you trust with the whole site: a backup holds the whole database, including every user's email address and password hash, and a restore can replace the site and its users. On a multisite network only network administrators use SiteFerry. WP-CLI is not limited by these settings, as it already needs access to the server. The capabilities are siteferry_view, siteferry_backup, siteferry_restore and siteferry_settings, so role editor plugins can set them too.
 
 = What if my site shows a white screen? =
 
@@ -492,6 +496,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.42.0 =
+* Who can use SiteFerry: four capabilities (see backups and activity; make backups; restore; settings) that "Who can use it" on the Backups tab gives to other roles, with plain warnings about what each allows. Administrators always have all of them. Every REST route checks the matching one, and the page hides what a user may not do. On a network only network administrators use SiteFerry, as before; WP-CLI is not limited. Uninstalling removes the capabilities from every role.
 
 = 0.41.0 =
 * Activity: "Download CSV" saves the whole activity list as a spreadsheet file: time (site time zone and UTC), kind, backup, result, duration, size, where, who started it and the message. Opens correctly in Excel (UTF-8); cells that a spreadsheet would treat as formulas are made plain text.
