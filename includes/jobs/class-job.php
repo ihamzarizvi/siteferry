@@ -300,6 +300,9 @@ final class Job {
 			if ( '' !== (string) $job->option( 'parent', '' ) ) {
 				continue; // Runs inside another job, which is the active one.
 			}
+			if ( $job->option( 'background', false ) ) {
+				continue; // A read-only check of the weekly re-check: it never stands in the way.
+			}
 			if ( ! $job->finished() && time() - $job->updated() < $stale_age ) {
 				return $job;
 			}

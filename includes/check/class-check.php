@@ -32,6 +32,11 @@ final class Check {
 
 	const LOCAL = 'local';
 
+	/** What a check found: intact, damaged, or the copy is not there (any more). */
+	const OK      = 'ok';
+	const DAMAGED = 'damaged';
+	const MISSING = 'missing';
+
 	const LOCAL_STEPS  = array( 'check.verify' );
 	const REMOTE_STEPS = array( 'check.download', 'check.verify' );
 
@@ -47,6 +52,7 @@ final class Check {
 	 * @param string $name     Backup file name.
 	 * @param string $place    "local" for the copy on this server, or a storage id.
 	 * @param string $password Password of an encrypted backup.
+	 * @param array  $extra    More job options ("background" => true for the weekly re-check).
 	 * @return array{0:Job,1:string} The job and its token.
 	 * @throws Job_Exception If there is no such copy, or no room to download it.
 	 * @throws \SiteFerry\Archive\Archive_Exception If the backup is encrypted and the password is missing or wrong.
@@ -55,8 +61,10 @@ final class Check {
 		string $name,
 		string $place,
 		#[\SensitiveParameter]
-		string $password = ''
+		string $password = '',
+		array $extra = array()
 	): array {
+		$extra = array_intersect_key( $extra, array( 'background' => true ) );
 		$encrypted = Backups::encrypted_name( $name );
 		if ( $encrypted && '' === $password ) {
 			throw new \SiteFerry\Archive\Archive_Exception( 'This backup is protected with a password; enter it to check the backup.', \SiteFerry\Archive\Archive_Exception::LOCKED );
@@ -76,7 +84,7 @@ final class Check {
 					'place' => self::LOCAL,
 					'file'  => $file,
 					'size'  => (int) filesize( $file ),
-				)
+				) + $extra
 			);
 			if ( null !== $key ) {
 				\SiteFerry\Security\Archive_Keys::store( $created[0], $key );
@@ -109,7 +117,7 @@ final class Check {
 				'size'   => (int) $found['size'],
 				'pieces' => $found['pieces'],
 				'adopt'  => false,
-			)
+			) + $extra
 		);
 		if ( $encrypted ) {
 			// The key needs the copy's header: the password is kept (encrypted) until it is downloaded.
@@ -146,14 +154,16 @@ final class Check {
 	 * @param bool   $ok      Whether the copy is intact.
 	 * @param int    $size    Size of the copy that was checked.
 	 * @param string $summary What was found, in words.
+	 * @param string $state   OK, DAMAGED or MISSING ('' : from $ok).
 	 */
-	public static function record( string $name, string $place, bool $ok, int $size, string $summary ): void {
+	public static function record( string $name, string $place, bool $ok, int $size, string $summary, string $state = '' ): void {
 		$all    = self::all();
 		$places = isset( $all[ $name ] ) && is_array( $all[ $name ] ) ? $all[ $name ] : array();
 		unset( $all[ $name ] );
 		$places[ $place ] = array(
 			'time'    => time(),
 			'ok'      => $ok,
+			'state'   => '' === $state ? ( $ok ? self::OK : self::DAMAGED ) : $state,
 			'size'    => $size,
 			'summary' => substr( $summary, 0, 500 ),
 		);

@@ -25,6 +25,7 @@ final class Plugin {
 		Rest\Rest::register();
 		Schedule\Schedule::register();
 		Schedule\Before_Updates::register();
+		Check\Recheck::register();
 		if ( is_admin() ) {
 			Admin\Admin::init();
 		}

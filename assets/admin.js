@@ -2480,8 +2480,33 @@
 		return el( 'span', { class: 'sf-badge is-place ' + ( outcome.ok ? 'is-checked' : 'is-bad' ), title: when }, [
 			el( 'span', { class: 'sf-check-mark', 'aria-hidden': 'true', text: outcome.ok ? '✓' : '!' } ),
 			text,
+			// Health at a glance: "· checked 3 days ago", or "· damaged" in red.
+			el( 'span', { class: 'sf-check-when', text: ' · ' + ( outcome.ok ? checkedAgo( outcome.time ) : __( 'damaged', 'siteferry' ) ) } ),
 			el( 'span', { class: 'screen-reader-text', text: outcome.ok ? __( ', checked: intact', 'siteferry' ) : __( ', checked: damaged', 'siteferry' ) } ),
 		] );
+	}
+
+	/** Places where the weekly re-check found a scheduled copy missing (not in the listing any more). */
+	function missingBadges( item ) {
+		const outcomes = checks[ item.name ] || {};
+		return Object.keys( outcomes )
+			.filter( ( place ) => outcomes[ place ].state === 'missing' && ( item.places || [] ).indexOf( place ) === -1 )
+			.map( ( place ) => {
+				const d = destination( place );
+				return el( 'span', {
+					class: 'sf-badge is-place is-bad',
+					title: sprintf(
+						/* translators: %s: date and time of the check */
+						__( 'Not found on the storage by the check of %s.', 'siteferry' ),
+						date( outcomes[ place ].time )
+					),
+					text: sprintf(
+						/* translators: %s: name of the storage, such as Dropbox */
+						__( 'Missing on %s', 'siteferry' ),
+						d ? d.short : place
+					),
+				} );
+			} );
 	}
 
 	function row( item ) {
@@ -2600,6 +2625,7 @@
 				)
 			);
 		} );
+		places.push( ...missingBadges( item ) );
 
 		const actions = [];
 		if ( ! item.error ) {
@@ -5855,7 +5881,7 @@
 				data[ input.name ] = input.value.trim();
 			}
 		} );
-		[ 'weekday', 'monthday', 'retain', 'update_retain', 'full_every', 'keep_daily', 'keep_weekly', 'keep_monthly' ].forEach( ( key ) => {
+		[ 'weekday', 'monthday', 'retain', 'update_retain', 'full_every', 'keep_daily', 'keep_weekly', 'keep_monthly', 'recheck_cap_mb' ].forEach( ( key ) => {
 			data[ key ] = data[ key ] === '' ? NaN : Number( data[ key ] );
 		} );
 		return data;
@@ -6015,6 +6041,7 @@
 			bits.push( sprintf( _n( '%d scheduled backup kept so far.', '%d scheduled backups kept so far.', schedule.kept, 'siteferry' ), schedule.kept ) );
 		}
 		box.textContent = bits.join( ' ' );
+		renderRecheckLine();
 
 		const update = schedule.last_update;
 		const line = $( 'siteferry-update-last' );
@@ -6067,6 +6094,55 @@
 			}
 			line.textContent = text;
 		}
+	}
+
+	/** The weekly re-check in the Schedule panel: off without a storage, running, next, last round. */
+	function renderRecheckLine() {
+		const line = $( 'siteferry-recheck-last' );
+		const r = schedule.recheck;
+		if ( ! r ) {
+			line.hidden = true;
+			return;
+		}
+		const bits = [];
+		if ( ! r.storages ) {
+			bits.push( __( 'No storage is set up, so there is nothing to check yet.', 'siteferry' ) );
+		} else if ( r.running ) {
+			bits.push( __( 'A check of stored copies is running in the background now.', 'siteferry' ) );
+		} else if ( r.enabled && r.next ) {
+			/* translators: %s: when the next weekly check runs, such as Monday, 3:00 AM */
+			bits.push( sprintf( __( 'Next check: %s.', 'siteferry' ), upcoming( r.next ) ) );
+		}
+		const last = r.last;
+		if ( last ) {
+			bits.push(
+				sprintf(
+					/* translators: 1: when, such as yesterday, 2: number of copies checked, 3: number found intact */
+					__( 'Last check %1$s: %2$d checked, %3$d intact.', 'siteferry' ),
+					when( last.time, true ),
+					last.checked,
+					last.ok
+				)
+			);
+			( last.bad || [] ).forEach( ( problem ) => bits.push( problem ) );
+			if ( last.skipped && last.skipped.length ) {
+				/* translators: %s: backup names */
+				bits.push( sprintf( __( 'Skipped for their size: %s.', 'siteferry' ), last.skipped.join( ', ' ) ) );
+			}
+		}
+		line.textContent = bits.join( ' ' );
+		line.classList.toggle( 'is-bad', !! ( last && last.bad && last.bad.length ) );
+		line.hidden = ! bits.length;
+	}
+
+	/** "checked today", "checked 3 days ago". */
+	function checkedAgo( time ) {
+		const days = Math.max( 0, Math.floor( ( Date.now() / 1000 - time ) / 86400 ) );
+		if ( days === 0 ) {
+			return __( 'checked today', 'siteferry' );
+		}
+		/* translators: %d: number of days */
+		return sprintf( _n( 'checked %d day ago', 'checked %d days ago', days, 'siteferry' ), days );
 	}
 
 	function scheduleResult( ok, text ) {

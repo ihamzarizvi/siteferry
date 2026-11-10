@@ -218,4 +218,43 @@ final class Backups_Command {
 		\WP_CLI\Utils\format_items( 'table', $rows, array( 'area', 'item', 'older', 'newer', 'change' ) );
 		WP_CLI::log( sprintf( '%d plugins and %d themes the same; %d tables with the same row count.', $diff['plugins_same'], $diff['themes_same'], $diff['tables']['same'] ) );
 	}
+
+	/**
+	 * Runs the weekly check of stored copies now, in this process: up to two copies from each
+	 * storage that is set up (the ones not checked yet first), downloaded and checked, and the
+	 * scheduled backups missing on a storage. Damaged or missing copies are emailed as the
+	 * schedule's email setting says.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp siteferry backups recheck
+	 *
+	 * @param array $args       Positional arguments (none).
+	 * @param array $assoc_args Options (none).
+	 */
+	public function recheck( $args, $assoc_args ): void {
+		unset( $args, $assoc_args );
+		if ( array() === \SiteFerry\Check\Recheck::storages() ) {
+			WP_CLI::error( 'No storage is set up, so there is nothing to check.' );
+		}
+		$state = \SiteFerry\Check\Recheck::state();
+		if ( array() !== $state['queue'] || ! empty( $state['current'] ) ) {
+			WP_CLI::error( 'A check of stored copies is already running in the background.' );
+		}
+		$round = \SiteFerry\Check\Recheck::start_round();
+		WP_CLI::log( sprintf( 'Checking %d stored copies; %d skipped for their size; %d missing.', count( $round['queue'] ), count( $round['skipped'] ), count( $round['missing'] ) ) );
+		do {
+			\SiteFerry\Check\Recheck::on_slice();
+			$state = \SiteFerry\Check\Recheck::state();
+		} while ( array() !== $state['queue'] || ! empty( $state['current'] ) );
+		wp_clear_scheduled_hook( \SiteFerry\Check\Recheck::HOOK_SLICE );
+		$last = $state['last'];
+		WP_CLI::log( sprintf( '%d checked, %d intact.', $last['checked'], $last['ok'] ) );
+		foreach ( array_merge( (array) $last['bad'], (array) $last['errors'] ) as $line ) {
+			WP_CLI::warning( $line );
+		}
+		if ( array() === (array) $last['bad'] ) {
+			WP_CLI::success( 'No damaged or missing copies found.' );
+		}
+	}
 }

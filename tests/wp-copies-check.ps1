@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
-    Runs tests\wp\test-schedule-copies.php (a scheduled backup sent to several storages) on a Local
-    test site, against a fake S3 server and a fake FTPS server started together.
+    Runs tests\wp\test-schedule-copies.php (a scheduled backup sent to several storages) or, with
+    -Test test-recheck.php, the weekly re-check of stored copies, on a Local test site, against a
+    fake S3 server and a fake FTPS server started together.
 
 .DESCRIPTION
     The fake servers run on 127.0.0.1 with test logins generated for this run (data in tests\tmp\):
@@ -11,9 +12,11 @@
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File tests\wp-copies-check.ps1 -Site siteferry-dst
+    powershell -ExecutionPolicy Bypass -File tests\wp-copies-check.ps1 -Test test-recheck.php
 #>
 param(
     [string] $Site = 'siteferry-dst',
+    [ValidateSet('test-schedule-copies.php', 'test-recheck.php')] [string] $Test = 'test-schedule-copies.php',
     [switch] $Keep
 )
 
@@ -90,7 +93,7 @@ try {
     $env:SITEFERRY_FAKE_S3_URL = 'http://127.0.0.1:18765'
     $env:SITEFERRY_FAKE_FTP_DIR = $ftpDir
     $ErrorActionPreference = 'Continue'
-    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'wp-cli.ps1') $Site --skip-themes "--exec=define('DISABLE_WP_CRON', true);" eval-file tests/wp/test-schedule-copies.php
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'wp-cli.ps1') $Site --skip-themes "--exec=define('DISABLE_WP_CRON', true);" eval-file "tests/wp/$Test"
     $code = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
 }

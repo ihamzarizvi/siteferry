@@ -118,6 +118,10 @@ final class Schedule {
 		'before_theme_switch'      => true,
 		'before_plugin_delete'     => true,
 		'before_theme_delete'      => true,
+		// The weekly re-check of stored copies (see Check\Recheck); runs only when a storage is set up.
+		'recheck'                  => true,
+		// Most MB the re-check downloads in a week (0: no limit); larger copies are skipped and named.
+		'recheck_cap_mb'           => 2048,
 	);
 
 	/**
@@ -227,6 +231,9 @@ final class Schedule {
 		if ( $out['update_retain'] < 1 || $out['update_retain'] > 50 ) {
 			throw new Job_Exception( __( 'Keep between 1 and 50 backups made before updates.', 'siteferry' ), Job_Exception::STEP );
 		}
+		if ( $out['recheck_cap_mb'] < 0 || $out['recheck_cap_mb'] > 1048576 ) {
+			throw new Job_Exception( __( 'Download at most 0 (no limit) to 1048576 MB a week for the check of stored copies.', 'siteferry' ), Job_Exception::STEP );
+		}
 		if ( $out['full_every'] < 1 || $out['full_every'] > 30 ) {
 			throw new Job_Exception( __( 'Make a full backup every 1 to 30 runs.', 'siteferry' ), Job_Exception::STEP );
 		}
@@ -332,6 +339,11 @@ final class Schedule {
 		}
 		update_option( self::OPTION, $settings, false );
 		self::reschedule( $settings );
+		if ( empty( $settings['recheck'] ) ) {
+			\SiteFerry\Check\Recheck::stop();
+		} else {
+			\SiteFerry\Check\Recheck::ensure_scheduled();
+		}
 		return $settings;
 	}
 
@@ -972,6 +984,8 @@ final class Schedule {
 			'has_password'   => null !== self::password(),
 			// 3-2-1: the newest scheduled backup's copies, and what these settings would make.
 			'copies'         => self::copies_overview( $settings, $state['runs'] ),
+			// The weekly re-check of stored copies: on (with a storage), next, running, last round.
+			'recheck'        => \SiteFerry\Check\Recheck::overview(),
 		);
 	}
 

@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.38.0
+Stable tag: 0.39.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -492,6 +492,10 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.39.0 =
+* Weekly check of stored copies: once a week SiteFerry downloads up to two copies from each storage that is set up (the ones never checked first, newest first, then the ones checked longest ago, so every copy gets its turn) and checks every file against the backup's own checksums, in the background, without blocking backups or restores. Scheduled backups that should be on a storage but are not are reported as missing. Damaged or missing copies are emailed (the schedule's email setting) and shown in red in the backups list; intact ones show "checked 3 days ago". On by default when a storage is set up; turn it off, or change the most it downloads in a week (default 2 GB; larger copies are skipped and named), in the Schedule panel.
+* WP-CLI: `wp siteferry backups recheck` runs a round now.
 
 = 0.38.0 =
 * Scheduled backups can go to several places at once: tick this server and any storages that are set up under "Where it goes". Each run sends the backup to them one after the other; a storage that fails does not stop the others, and the email and the job log name it. The copy on this server is deleted after sending (when unticked) only if every storage got the backup. Retention deletes old scheduled backups everywhere they went. Settings saved before keep working (one storage).

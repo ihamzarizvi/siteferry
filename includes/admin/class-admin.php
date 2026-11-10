@@ -761,6 +761,19 @@ final class Admin {
 				<p class="description" id="siteferry-update-last" hidden></p>
 			</div>
 
+			<div class="sf-before-updates sf-recheck">
+				<h3 class="sf-sub"><?php esc_html_e( 'Check stored copies every week', 'siteferry' ); ?></h3>
+				<p class="description"><?php esc_html_e( 'Separate from the automatic backups above, and saved with the same button. It runs only when a storage is set up.', 'siteferry' ); ?></p>
+				<p class="sf-switch"><label><input type="checkbox" name="recheck"> <strong><?php esc_html_e( 'Check a few stored copies for damage every week', 'siteferry' ); ?></strong></label></p>
+				<p class="description"><?php esc_html_e( 'Once a week SiteFerry downloads up to two copies from each storage (the ones not checked yet first, newest first) and checks every file against the backup\'s own checksums, in the background. Scheduled backups that should be on a storage but are not are reported too. Damaged or missing copies are emailed (with the email setting above) and marked in red in the backups list.', 'siteferry' ); ?></p>
+				<p class="sf-field sf-inline-field">
+					<label for="siteferry-recheck-cap"><?php esc_html_e( 'Download at most', 'siteferry' ); ?></label>
+					<input type="number" class="small-text" id="siteferry-recheck-cap" name="recheck_cap_mb" min="0" max="1048576" step="1" value="2048">
+					<span><?php esc_html_e( 'MB a week (0: no limit; larger copies are skipped and named)', 'siteferry' ); ?></span>
+				</p>
+				<p class="description" id="siteferry-recheck-last" hidden></p>
+			</div>
+
 			<p class="sf-schedule-status" id="siteferry-schedule-status"></p>
 			<div class="sf-drawer-actions">
 				<button type="submit" class="button button-primary button-large"><?php esc_html_e( 'Save these settings', 'siteferry' ); ?></button>

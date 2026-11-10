@@ -3746,3 +3746,13 @@ details.sf-dest[open] > .sf-dest-head::after {
 	outline: 2px solid var(--sf-focus);
 	outline-offset: 2px;
 }
+/* ------------------------------------------------- Weekly re-check */
+
+.siteferry .sf-check-when {
+	font-weight: 400;
+	opacity: 0.85;
+}
+
+.siteferry #siteferry-recheck-last.is-bad {
+	color: var(--sf-port);
+}
