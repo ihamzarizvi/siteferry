@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.42.0
+Stable tag: 0.43.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -388,6 +388,14 @@ backup made by hand is not kept anywhere. The password of automatic backups is k
 encrypted with a key from the WordPress salts. Safety backups made before a restore are not
 encrypted (they stay on this server). Needs the PHP OpenSSL extension.
 
+Copies sent to a storage leave your server, so a password is recommended for them: a new schedule
+that sends to a storage has it ticked already, and an existing one shows the advice until you set a
+password or click "Not now". With a password, the whole backup is encrypted, the copy on this server
+too. "Test my password" in the Schedule panel checks that you still know it (it is compared with the
+stored one and never shown; five tries per fifteen minutes), and once a month SiteFerry asks you to
+test it. Changes-only backups cannot have a password yet: choose full backups every run, or no
+password.
+
 = Does it work on multisite networks? =
 
 On a network, SiteFerry is for super admins, on the main site, and backs up the whole network:
@@ -496,6 +504,11 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.43.0 =
+* Passwords for copies sent to storages: a new schedule that sends to a storage has "Protect automatic backups with a password" ticked already; an existing one shows a dismissible recommendation instead (nothing changes by itself). Back up now recommends a password when sending to a storage.
+* "Test my password" in the Schedule panel checks that you still know the automatic backups' password: it is compared with the stored one and never shown, five tries per fifteen minutes. Once a month SiteFerry asks you to test it ("Remind me next month" waits another month).
+* Changes-only backups still cannot have a password; the schedule says so when both are chosen.
 
 = 0.42.0 =
 * Who can use SiteFerry: four capabilities (see backups and activity; make backups; restore; settings) that "Who can use it" on the Backups tab gives to other roles, with plain warnings about what each allows. Administrators always have all of them. Every REST route checks the matching one, and the page hides what a user may not do. On a network only network administrators use SiteFerry, as before; WP-CLI is not limited. Uninstalling removes the capabilities from every role.

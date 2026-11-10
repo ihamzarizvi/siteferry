@@ -16,7 +16,7 @@
 #>
 param(
     [string] $Site = 'siteferry-dst',
-    [ValidateSet('test-schedule-copies.php', 'test-recheck.php')] [string] $Test = 'test-schedule-copies.php',
+    [ValidateSet('test-schedule-copies.php', 'test-recheck.php', 'test-encrypted-schedule.php')] [string] $Test = 'test-schedule-copies.php',
     [switch] $Keep
 )
 

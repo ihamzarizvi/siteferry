@@ -982,6 +982,8 @@ final class Schedule {
 			'last_update'    => $state['last_update'],
 			'update_kept'    => count( $state['update_runs'] ),
 			'has_password'   => null !== self::password(),
+			// Advice and the monthly "do you still know it?" reminder, for the current user.
+			'password'       => Password_Check::overview( $settings, get_current_user_id(), time() ),
 			// 3-2-1: the newest scheduled backup's copies, and what these settings would make.
 			'copies'         => self::copies_overview( $settings, $state['runs'] ),
 			// The weekly re-check of stored copies: on (with a storage), next, running, last round.

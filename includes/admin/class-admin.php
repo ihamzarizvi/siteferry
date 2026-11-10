@@ -177,6 +177,13 @@ final class Admin {
 							<h2 class="sf-card-title"><?php esc_html_e( 'Backups', 'siteferry' ); ?></h2>
 							<p class="sf-home-summary" id="siteferry-summary"><?php esc_html_e( 'Make a backup of this whole site, or restore one from the list below.', 'siteferry' ); ?></p>
 						</div>
+						<div class="sf-reminder" id="siteferry-password-reminder" role="status" hidden>
+							<p><strong><?php esc_html_e( 'Do you still know your backup password?', 'siteferry' ); ?></strong> <?php esc_html_e( 'Your automatic backups are protected with it, and they cannot be restored without it. Test it now and then.', 'siteferry' ); ?></p>
+							<p class="sf-actions">
+								<button type="button" class="button" id="siteferry-password-reminder-test"><?php esc_html_e( 'Test it', 'siteferry' ); ?></button>
+								<button type="button" class="button-link" id="siteferry-password-reminder-later"><?php esc_html_e( 'Remind me next month', 'siteferry' ); ?></button>
+							</p>
+						</div>
 						<div class="sf-tools">
 							<button type="button" class="button sf-btn" id="siteferry-upload-toggle" aria-expanded="false" aria-controls="siteferry-upload"><span class="dashicons dashicons-upload" aria-hidden="true"></span><?php esc_html_e( 'Upload a backup', 'siteferry' ); ?></button>
 							<button type="button" class="button sf-btn" id="siteferry-schedule-toggle" aria-expanded="false" aria-controls="siteferry-schedule-form"><span class="dashicons dashicons-clock" aria-hidden="true"></span><?php esc_html_e( 'Schedule', 'siteferry' ); ?><span class="sf-btn-state" id="siteferry-schedule-state" hidden></span></button>
@@ -252,6 +259,7 @@ final class Admin {
 							<?php if ( \SiteFerry\Archive\Crypto::available() ) : ?>
 								<div class="sf-encrypt" id="siteferry-encrypt-row">
 									<p><label><input type="checkbox" id="siteferry-encrypt"> <?php esc_html_e( 'Protect the backup with a password', 'siteferry' ); ?></label></p>
+									<p class="description sf-encrypt-hint" id="siteferry-encrypt-hint" hidden><?php esc_html_e( 'Recommended when the backup is sent to a storage: it then leaves this server.', 'siteferry' ); ?></p>
 									<div class="sf-encrypt-fields" id="siteferry-encrypt-fields" hidden>
 										<p class="sf-field">
 											<label for="siteferry-password"><?php esc_html_e( 'Password', 'siteferry' ); ?></label>
@@ -724,6 +732,23 @@ final class Admin {
 								<input type="password" id="siteferry-schedule-password" name="password" autocomplete="new-password" minlength="8">
 								<span class="description"><?php esc_html_e( 'Kept on this site, encrypted, so backups can run by themselves. Write it down somewhere safe: a backup cannot be restored without it, for example on a new server.', 'siteferry' ); ?></span>
 							</p>
+							<div class="sf-encrypt-advice" data-role="encrypt-advice" hidden>
+								<p><?php esc_html_e( 'These backups are sent to a storage, so they leave this server. A password keeps whoever reaches the storage from reading your database. Recommended.', 'siteferry' ); ?></p>
+								<p class="sf-actions">
+									<button type="button" class="button" data-role="encrypt-advice-yes"><?php esc_html_e( 'Protect them with a password', 'siteferry' ); ?></button>
+									<button type="button" class="button-link" data-role="encrypt-advice-no"><?php esc_html_e( 'Not now', 'siteferry' ); ?></button>
+								</p>
+							</div>
+							<div class="sf-password-test" data-role="password-test" hidden>
+								<p class="sf-field">
+									<label for="siteferry-password-test"><?php esc_html_e( 'Test my password', 'siteferry' ); ?></label>
+									<span class="sf-inline-field">
+										<input type="password" id="siteferry-password-test" autocomplete="off">
+										<button type="button" class="button" data-role="password-test-go"><?php esc_html_e( 'Test', 'siteferry' ); ?></button>
+									</span>
+									<span class="description" data-role="password-test-result" aria-live="polite"><?php esc_html_e( 'Type the password to check you still know it. It is compared with the stored one and never shown.', 'siteferry' ); ?></span>
+								</p>
+							</div>
 						</div>
 					<?php endif; ?>
 				</fieldset>

@@ -141,6 +141,9 @@ final class Rest {
 			array( '/schedule', WP_REST_Server::CREATABLE, 'save_schedule', $settings ),
 			array( '/schedule/run', WP_REST_Server::CREATABLE, 'run_schedule', $settings ),
 			array( '/schedule/retention', WP_REST_Server::READABLE, 'schedule_retention', $settings ),
+			array( '/schedule/password-test', WP_REST_Server::CREATABLE, 'test_password', $settings ),
+			array( '/schedule/password-advice', WP_REST_Server::DELETABLE, 'dismiss_password_advice', $settings ),
+			array( '/schedule/password-reminder', WP_REST_Server::DELETABLE, 'snooze_password_reminder', $settings ),
 			array( '/forecast', WP_REST_Server::READABLE, 'forecast', $backup ),
 			array( '/undo/dismiss', WP_REST_Server::CREATABLE, 'dismiss_undo', $restore ),
 			array( '/emergency-kits', WP_REST_Server::READABLE, 'emergency_kits', $settings ),
@@ -338,6 +341,35 @@ final class Rest {
 	 */
 	public static function can_confirm( WP_REST_Request $request ): bool {
 		return Caps::can( Caps::RESTORE ) && null !== self::job_from_token( $request );
+	}
+
+	/**
+	 * Whether the typed password is the automatic backups' one (never sends the stored one back).
+	 *
+	 * @param WP_REST_Request $request Request with "password".
+	 */
+	public static function test_password( WP_REST_Request $request ): \WP_REST_Response {
+		$params   = (array) $request->get_json_params();
+		$password = isset( $params['password'] ) && is_string( $params['password'] ) ? $params['password'] : '';
+		$response = new \WP_REST_Response( array( 'ok' => '' !== $password && \SiteFerry\Schedule\Password_Check::test( get_current_user_id(), $password ) ) );
+		$response->header( 'Cache-Control', 'no-store' );
+		return $response;
+	}
+
+	/**
+	 * "Not now" for the advice to protect copies sent to storages.
+	 */
+	public static function dismiss_password_advice(): array {
+		\SiteFerry\Schedule\Password_Check::dismiss_advice( get_current_user_id() );
+		return array( 'dismissed' => true );
+	}
+
+	/**
+	 * "Remind me next month" for the password reminder.
+	 */
+	public static function snooze_password_reminder(): array {
+		\SiteFerry\Schedule\Password_Check::snooze( get_current_user_id() );
+		return array( 'snoozed' => true );
 	}
 
 	/**

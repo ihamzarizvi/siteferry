@@ -3851,3 +3851,49 @@ details.sf-dest[open] > .sf-dest-head::after {
 		overflow-x: auto;
 	}
 }
+/* ------------------------------------------------- Backup password: advice, test, reminder */
+
+.siteferry .sf-encrypt-advice {
+	margin: 8px 0 0;
+	padding: 10px 14px;
+	border-left: 4px solid var(--sf-amber);
+	border-radius: 0 var(--sf-radius) var(--sf-radius) 0;
+	background: var(--sf-amber-wash);
+}
+
+.siteferry .sf-encrypt-advice p {
+	margin: 4px 0;
+}
+
+.siteferry .sf-password-test {
+	margin: 10px 0 0;
+}
+
+.siteferry .sf-password-test .sf-inline-field {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.siteferry [data-role=password-test-result].is-good {
+	color: var(--sf-starboard);
+	font-weight: 600;
+}
+
+.siteferry [data-role=password-test-result].is-bad {
+	color: var(--sf-port);
+	font-weight: 600;
+}
+
+.siteferry .sf-reminder {
+	flex-basis: 100%;
+	margin: 0 0 12px;
+	padding: 10px 14px;
+	border-left: 4px solid var(--sf-accent);
+	border-radius: 0 var(--sf-radius) var(--sf-radius) 0;
+	background: var(--sf-fog);
+}
+
+.siteferry .sf-reminder p {
+	margin: 4px 0;
+}

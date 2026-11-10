@@ -852,6 +852,9 @@
 		if ( $( 'siteferry-encrypt-row' ) ) {
 			$( 'siteferry-encrypt-row' ).hidden = wpress;
 			$( 'siteferry-encrypt-fields' ).hidden = wpress || ! $( 'siteferry-encrypt' ).checked;
+			// Sent to a storage without a password: recommend one.
+			const sendTo = $( 'siteferry-export-form' ).querySelector( 'input[name=send_to]:checked' );
+			$( 'siteferry-encrypt-hint' ).hidden = wpress || $( 'siteferry-encrypt' ).checked || ! sendTo || ! sendTo.value;
 		}
 		syncChangesOnly();
 	}
@@ -5589,10 +5592,53 @@
 		}
 	}
 
+	// The automatic backups' password: advice, first-time default, reminder (from the schedule).
+	const passwordState = { advise: false, newSetup: false, touched: false, autoTicked: false };
+
+	function renderPasswordState() {
+		const p = ( schedule && schedule.password ) || {};
+		passwordState.advise = !! p.advise;
+		passwordState.newSetup = !! p.new_setup;
+		const reminder = $( 'siteferry-password-reminder' );
+		if ( reminder ) {
+			reminder.hidden = ! p.remind || ! can( 'settings' );
+		}
+	}
+
+	/** Checks the typed password against the stored one (the answer is only yes or no). */
+	async function testPassword() {
+		const form = $( 'siteferry-schedule-form' );
+		const input = $( 'siteferry-password-test' );
+		const result = form.querySelector( '[data-role=password-test-result]' );
+		const go = form.querySelector( '[data-role=password-test-go]' );
+		if ( ! input.value ) {
+			input.focus();
+			return;
+		}
+		go.disabled = true;
+		try {
+			const answer = await api( 'POST', 'schedule/password-test', { json: { password: input.value } } );
+			result.textContent = answer.ok ? __( 'Correct: that is the password of your automatic backups.', 'siteferry' ) : __( 'That is not the password. Look for where you wrote it down, or set a new one above (backups made before keep the old one).', 'siteferry' );
+			result.classList.toggle( 'is-good', !! answer.ok );
+			result.classList.toggle( 'is-bad', ! answer.ok );
+			if ( answer.ok ) {
+				$( 'siteferry-password-reminder' ).hidden = true;
+			}
+		} catch ( error ) {
+			result.textContent = error.message;
+			result.classList.remove( 'is-good' );
+			result.classList.add( 'is-bad' );
+		} finally {
+			input.value = '';
+			go.disabled = false;
+		}
+	}
+
 	/** Puts the saved schedule into the form. */
 	function fillScheduleForm() {
 		const form = $( 'siteferry-schedule-form' );
 		const s = schedule.settings;
+		renderPasswordState();
 		Array.from( form.elements ).forEach( ( input ) => {
 			if ( ! input.name || ! ( input.name in s ) ) {
 				return;
@@ -5849,7 +5895,14 @@
 		const encrypt = form.querySelector( '[data-role=encrypt]' );
 		if ( encrypt ) {
 			encrypt.hidden = !! format && format.value === 'wpress';
+			// A schedule set up for the first time: sending to a storage ticks the password too.
+			if ( anyStorage && passwordState.newSetup && ! passwordState.touched && ! passwordState.autoTicked && ! encrypt.hidden ) {
+				form.elements.encrypt.checked = true;
+				passwordState.autoTicked = true;
+			}
 			form.querySelector( '[data-role=encrypt-password]' ).hidden = encrypt.hidden || ! form.elements.encrypt.checked;
+			form.querySelector( '[data-role=encrypt-advice]' ).hidden = encrypt.hidden || ! anyStorage || form.elements.encrypt.checked || ! passwordState.advise;
+			form.querySelector( '[data-role=password-test]' ).hidden = encrypt.hidden || ! form.elements.encrypt.checked || ! ( schedule && schedule.has_password );
 		}
 		if ( compress ) {
 			compress.hidden = !! format && format.value === 'wpress';
@@ -7038,6 +7091,44 @@
 		} );
 		$( 'siteferry-schedule-form' ).addEventListener( 'submit', saveSchedule );
 		$( 'siteferry-schedule-form' ).addEventListener( 'change', syncScheduleForm );
+		$( 'siteferry-schedule-form' ).addEventListener( 'change', ( event ) => {
+			if ( event.target && event.target.name === 'encrypt' ) {
+				passwordState.touched = true; // The user decided; the first-time default no longer applies.
+			}
+		} );
+		const scheduleForm = $( 'siteferry-schedule-form' );
+		if ( scheduleForm.querySelector( '[data-role=encrypt-advice]' ) ) {
+			scheduleForm.querySelector( '[data-role=encrypt-advice-yes]' ).addEventListener( 'click', () => {
+				scheduleForm.elements.encrypt.checked = true;
+				passwordState.touched = true;
+				syncScheduleForm();
+				scheduleForm.elements.password.focus();
+			} );
+			scheduleForm.querySelector( '[data-role=encrypt-advice-no]' ).addEventListener( 'click', () => {
+				passwordState.advise = false;
+				syncScheduleForm();
+				api( 'DELETE', 'schedule/password-advice' ).catch( () => {} );
+			} );
+			scheduleForm.querySelector( '[data-role=password-test-go]' ).addEventListener( 'click', testPassword );
+			$( 'siteferry-password-test' ).addEventListener( 'keydown', ( event ) => {
+				if ( event.key === 'Enter' ) {
+					event.preventDefault(); // Not a schedule save.
+					testPassword();
+				}
+			} );
+		}
+		if ( $( 'siteferry-password-reminder' ) ) {
+			$( 'siteferry-password-reminder-test' ).addEventListener( 'click', () => {
+				toggleDrawer( 'schedule', true );
+				syncScheduleForm();
+				$( 'siteferry-password-test' ).scrollIntoView( { block: 'center' } );
+				$( 'siteferry-password-test' ).focus();
+			} );
+			$( 'siteferry-password-reminder-later' ).addEventListener( 'click', () => {
+				$( 'siteferry-password-reminder' ).hidden = true;
+				api( 'DELETE', 'schedule/password-reminder' ).catch( () => {} );
+			} );
+		}
 		$( 'siteferry-schedule-keep' ).addEventListener( 'input', keepPreviewSoon );
 		$( 'siteferry-schedule-keep' ).addEventListener( 'change', keepPreviewSoon );
 		$( 'siteferry-schedule-run' ).addEventListener( 'click', runScheduleNow );
@@ -7046,6 +7137,12 @@
 		$( 'siteferry-tables' ).addEventListener( 'change', countLeftOutTables );
 		if ( $( 'siteferry-encrypt' ) ) {
 			$( 'siteferry-encrypt' ).addEventListener( 'change', syncFormat );
+			// The storage choices are drawn once the storages are known: listen on the form.
+			$( 'siteferry-export-form' ).addEventListener( 'change', ( event ) => {
+				if ( event.target && event.target.name === 'send_to' ) {
+					syncFormat();
+				}
+			} );
 		}
 		$( 'siteferry-file' ).addEventListener( 'change', onFileChosen );
 		setUpDropZone();
