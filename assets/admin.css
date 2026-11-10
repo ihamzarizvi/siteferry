@@ -3756,3 +3756,38 @@ details.sf-dest[open] > .sf-dest-head::after {
 .siteferry #siteferry-recheck-last.is-bad {
 	color: var(--sf-port);
 }
+/* ------------------------------------------------- Maker credit (footer) */
+
+#wpfooter .sf-credit {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	color: #50575e;
+	font-style: normal;
+	text-decoration: none;
+}
+
+#wpfooter .sf-credit:hover,
+#wpfooter .sf-credit:focus-visible {
+	color: #1d2327;
+}
+
+#wpfooter .sf-credit:focus-visible {
+	outline: 2px solid var(--sf-focus, #2271b1);
+	outline-offset: 4px;
+	border-radius: 2px;
+}
+
+#wpfooter .sf-credit-by {
+	font-family: var(--sf-mono, ui-monospace, monospace);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+#wpfooter .sf-credit img {
+	display: block;
+	width: 80px;
+	height: auto;
+}

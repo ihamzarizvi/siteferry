@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.39.0
+Stable tag: 0.39.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -492,6 +492,10 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.39.1 =
+* Fixed: checking a changes-only backup (by hand or in the weekly check) reported the files kept in its full backup as missing, so a healthy copy was called damaged. Those files are now counted as in the full backup, and the result says so.
+* The SiteFerry page footer credits xsofty with "Plugin by" and its logo; the logo ships with the plugin.
 
 = 0.39.0 =
 * Weekly check of stored copies: once a week SiteFerry downloads up to two copies from each storage that is set up (the ones never checked first, newest first, then the ones checked longest ago, so every copy gets its turn) and checks every file against the backup's own checksums, in the background, without blocking backups or restores. Scheduled backups that should be on a storage but are not are reported as missing. Damaged or missing copies are emailed (the schedule's email setting) and shown in red in the backups list; intact ones show "checked 3 days ago". On by default when a storage is set up; turn it off, or change the most it downloads in a week (default 2 GB; larger copies are skipped and named), in the Schedule panel.

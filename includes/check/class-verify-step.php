@@ -311,6 +311,8 @@ final class Verify_Step implements Step {
 		$problems = array();
 		$listed   = 0;
 		$unlisted = 0;
+		$in_base  = 0;
+		$base     = null;
 		$tail     = (string) base64_decode( (string) $state['tail'] ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
 		$lines    = explode( "\n", rtrim( $tail ) );
 		$complete = Dumper::END_MARKER === trim( (string) end( $lines ) );
@@ -347,9 +349,15 @@ final class Verify_Step implements Step {
 			} else {
 				$missing = array();
 				$changed = array();
+				// A changes-only backup lists the whole site; the files it does not hold are in its full backup.
+				$base = \SiteFerry\Incremental::base_of( $manifest );
 				foreach ( $expected as $path => $sum ) {
 					if ( ! isset( $computed[ $path ] ) ) {
-						$missing[] = $path;
+						if ( null === $base ) {
+							$missing[] = $path;
+						} else {
+							++$in_base;
+						}
 					} elseif ( ! hash_equals( $sum, $computed[ $path ] ) ) {
 						$changed[] = $path;
 					}
@@ -360,7 +368,7 @@ final class Verify_Step implements Step {
 				if ( array() !== $changed ) {
 					$problems[] = sprintf( /* translators: 1: a number, 2: a list of file names */ _n( '%1$d file does not match its checksum: %2$s', '%1$d files do not match their checksums: %2$s', count( $changed ), 'siteferry' ), count( $changed ), self::names( $changed ) );
 				}
-				$listed   = count( $expected ) - count( $missing ) - count( $changed );
+				$listed   = count( $expected ) - count( $missing ) - count( $changed ) - $in_base;
 				$unlisted = count( array_diff( array_keys( (array) $computed ), array_keys( $expected ), array( Manifest::ENTRY, Manifest::CHECKSUMS ) ) );
 			}
 		}
@@ -384,6 +392,10 @@ final class Verify_Step implements Step {
 			$summary = sprintf( /* translators: %s: a number */ _n( 'The %s file matches its checksum; the database dump is complete.', 'All %s files match their checksums; the database dump is complete.', $listed, 'siteferry' ), number_format( $listed ) );
 			if ( $unlisted > 0 ) {
 				$summary .= sprintf( /* translators: %s: a number */ _n( ' %s file has no checksum (it changed while the backup was made).', ' %s files have no checksum (they changed while the backup was made).', $unlisted, 'siteferry' ), number_format( $unlisted ) );
+			}
+			if ( null !== $base && $in_base > 0 ) {
+				/* translators: 1: a number of files, 2: name of the full backup */
+				$summary .= ' ' . sprintf( _n( 'This is a changes-only backup: %1$s more file is in its full backup %2$s, which this check does not read.', 'This is a changes-only backup: %1$s more files are in its full backup %2$s, which this check does not read.', $in_base, 'siteferry' ), number_format( $in_base ), $base['name'] );
 			}
 		}
 		Check::record( $name, $place, true, $size, $summary );

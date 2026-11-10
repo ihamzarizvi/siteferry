@@ -95,11 +95,12 @@ final class Admin {
 	 * Footer text on the SiteFerry page.
 	 */
 	public static function footer_text(): string {
-		return sprintf(
-			/* translators: %s: link to the maker's website */
-			esc_html__( 'SiteFerry is a product of %s.', 'siteferry' ),
-			'<a href="' . esc_url( self::MAKER_URL ) . '" target="_blank" rel="noopener noreferrer">xsofty</a>'
-		);
+		// The logo ships with the plugin; nothing is loaded from elsewhere.
+		return '<a class="sf-credit" href="' . esc_url( self::MAKER_URL ) . '" target="_blank" rel="noopener noreferrer">'
+			. '<span class="sf-credit-by">' . esc_html__( 'Plugin by', 'siteferry' ) . '</span>'
+			. '<img src="' . esc_url( plugins_url( 'assets/images/xsofty-logo.svg', SITEFERRY_FILE ) ) . '" alt="Xsofty" width="80" height="26" decoding="async">'
+			. '<span class="screen-reader-text"> ' . esc_html__( '(opens in a new tab)', 'siteferry' ) . '</span>'
+			. '</a>';
 	}
 
 	/**
