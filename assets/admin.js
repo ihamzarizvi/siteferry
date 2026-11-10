@@ -2348,6 +2348,7 @@
 		$( 'siteferry-summary' ).textContent = summary;
 
 		$( 'siteferry-columns' ).hidden = ! visible.length;
+		renderTimeline();
 		if ( null === localBackups ) {
 			list.replaceChildren( el( 'li', { class: 'sf-empty', text: __( 'Loading...', 'siteferry' ) } ) );
 			return;
@@ -2716,6 +2717,9 @@
 		const ready = destinations.filter( ( d ) => d.ready );
 		if ( item.local ) {
 			entries.push( menuItem( __( 'Look inside', 'siteferry' ), () => openContents( item ) ) );
+			if ( ! item.error && item.format !== 'wpress' && comparable().length > 1 ) {
+				entries.push( menuItem( __( 'Compare with…', 'siteferry' ), () => openCompare( item ) ) );
+			}
 			entries.push( el( 'a', { class: 'sf-menu-item', href: downloadUrl( item.name ), text: __( 'Download', 'siteferry' ), role: 'menuitem' } ) );
 			if ( item.size > 100 * 1048576 ) {
 				entries.push( menuItem( __( 'Download in parts', 'siteferry' ), () => openParts( item ) ) );
@@ -3752,7 +3756,7 @@
 					el( 'span', { class: 'dashicons dashicons-admin-appearance', 'aria-hidden': 'true' } ),
 					el( 'span', {
 						text: sprintf(
-							/* translators: 1: theme used now, 2: theme used after the restore */
+							/* translators: 1: the theme in use before, 2: the theme in use after */
 							__( 'Theme in use: %1$s → %2$s', 'siteferry' ),
 							preview.theme.now,
 							preview.theme.then
@@ -4329,6 +4333,511 @@
 	function closeContents() {
 		inside = null;
 		$( 'siteferry-contents' ).hidden = true;
+	}
+
+	// ------------------------------------------------------------ Compare two backups
+
+	/** Local backups that can be compared: SiteFerry backups on this server without an error. */
+	const comparable = () => items().filter( ( item ) => item.local && ! item.error && item.format !== 'wpress' );
+
+	let comparing = null;
+
+	/**
+	 * Opens the compare panel for a backup: first a choice of the other one (newest first), then
+	 * the differences. With two backups given, it compares them straight away.
+	 */
+	function openCompare( item, other ) {
+		closeMenus();
+		closePanels( 'compare' );
+		comparing = { item, seq: 0 };
+		const panel = $( 'siteferry-compare' );
+		$( 'siteferry-compare-title' ).textContent = sprintf(
+			/* translators: %s: name of the backup */
+			__( 'Compare %s with…', 'siteferry' ),
+			item.title || when( item.time )
+		);
+		panel.hidden = false;
+		panel.scrollIntoView( { block: 'start' } );
+		panel.focus( { preventScroll: true } );
+		if ( other ) {
+			runCompare( item, other );
+			return;
+		}
+		const others = comparable().filter( ( b ) => b.name !== item.name );
+		const body = $( 'siteferry-compare-body' );
+		if ( ! others.length ) {
+			body.replaceChildren( el( 'p', { class: 'sf-lead', text: __( 'There is no other backup on this server to compare it with.', 'siteferry' ) } ) );
+			return;
+		}
+		body.replaceChildren(
+			el( 'p', { class: 'sf-lead', text: __( 'Choose the other backup. Only what the backups record about themselves is compared, so this is quick.', 'siteferry' ) } ),
+			el(
+				'ul',
+				{ class: 'sf-compare-choose' },
+				others.map( ( b ) =>
+					el( 'li', {}, [
+						button(
+							b.title ? b.title + ' · ' + when( b.time ) : when( b.time ),
+							() => runCompare( item, b ),
+							'button-link'
+						),
+						el( 'span', { class: 'sf-compare-choose-meta', text: [ b.base ? __( 'Changes only', 'siteferry' ) : '', bytes( b.size ) ].filter( Boolean ).join( ' · ' ) } ),
+					] )
+				)
+			)
+		);
+		const first = body.querySelector( 'button' );
+		if ( first ) {
+			first.focus();
+		}
+	}
+
+	function closeCompare() {
+		comparing = null;
+		$( 'siteferry-compare' ).hidden = true;
+	}
+
+	/** An unlock token for a password-protected backup ('' when none is needed, null when cancelled). */
+	async function unlockFor( item, error ) {
+		if ( ! isEncrypted( item ) ) {
+			return '';
+		}
+		const password = await askPassword(
+			sprintf(
+				/* translators: %s: name of the backup */
+				__( 'Open %s', 'siteferry' ),
+				called( item )
+			),
+			__( 'This backup is protected with a password. Enter it to compare it.', 'siteferry' ),
+			error
+		);
+		if ( null === password ) {
+			return null;
+		}
+		try {
+			return ( await api( 'POST', 'backups/' + encodeURIComponent( item.name ) + '/unlock', { json: { password } } ) ).unlock;
+		} catch ( failure ) {
+			return failure.code === 'siteferry_locked' ? unlockFor( item, failure.message ) : Promise.reject( failure );
+		}
+	}
+
+	async function runCompare( a, b ) {
+		if ( ! comparing ) {
+			return;
+		}
+		const seq = ++comparing.seq;
+		const body = $( 'siteferry-compare-body' );
+		$( 'siteferry-compare-title' ).textContent = __( 'Compare two backups', 'siteferry' );
+		body.replaceChildren( el( 'p', { class: 'sf-contents-wait', text: __( 'Reading the two backups...', 'siteferry' ) } ) );
+		try {
+			const unlockA = await unlockFor( a );
+			const unlockB = null === unlockA ? null : await unlockFor( b );
+			if ( null === unlockA || null === unlockB ) {
+				closeCompare();
+				return;
+			}
+			const query = { a: a.name, b: b.name };
+			if ( unlockA ) {
+				query.unlock_a = unlockA;
+			}
+			if ( unlockB ) {
+				query.unlock_b = unlockB;
+			}
+			const diff = await api( 'GET', 'backups/compare', { query } );
+			if ( comparing && seq === comparing.seq ) {
+				renderCompare( diff );
+			}
+		} catch ( error ) {
+			if ( comparing && seq === comparing.seq ) {
+				body.replaceChildren( el( 'p', { class: 'sf-warn-text', text: error.message } ) );
+			}
+		}
+	}
+
+	/** The differences, from the older backup to the newer, grouped. */
+	function renderCompare( diff ) {
+		const byName = new Map( items().map( ( item ) => [ item.name, item ] ) );
+		const label = ( side ) => {
+			const item = byName.get( side.name );
+			const at = side.created ? when( Math.round( Date.parse( side.created ) / 1000 ) ) : side.name;
+			return item && item.title ? item.title + ' · ' + at : at;
+		};
+		const kind = ( side ) => {
+			const words = [ side.kind === 'changes' ? __( 'Changes only', 'siteferry' ) : __( 'Full backup', 'siteferry' ) ];
+			if ( side.tags.indexOf( 'before-update' ) !== -1 ) {
+				words.push( __( 'before an update', 'siteferry' ) );
+			} else if ( side.tags.indexOf( 'scheduled' ) !== -1 ) {
+				words.push( __( 'scheduled', 'siteferry' ) );
+			}
+			if ( side.encrypted ) {
+				words.push( __( 'password-protected', 'siteferry' ) );
+			}
+			return words.join( ', ' );
+		};
+		const head = el( 'div', { class: 'sf-compare-head' }, [
+			el( 'div', { class: 'sf-compare-side' }, [ el( 'span', { class: 'sf-compare-which', text: __( 'Older', 'siteferry' ) } ), el( 'strong', { text: label( diff.older ) } ), el( 'span', { text: kind( diff.older ) } ) ] ),
+			el( 'span', { class: 'sf-compare-arrow', 'aria-hidden': 'true', text: '→' } ),
+			el( 'div', { class: 'sf-compare-side' }, [ el( 'span', { class: 'sf-compare-which', text: __( 'Newer', 'siteferry' ) } ), el( 'strong', { text: label( diff.newer ) } ), el( 'span', { text: kind( diff.newer ) } ) ] ),
+		] );
+
+		const section = ( title, children, empty ) =>
+			el( 'section', { class: 'sf-compare-part' }, [ el( 'h4', { text: title } ), ...( children.length ? children : [ el( 'p', { class: 'sf-pv-foot', text: empty } ) ] ) ] );
+		const pair = ( older, newer ) => el( 'span', { class: 'sf-pv-ver', text: ( older === null || older === '' ? '–' : older ) + ' → ' + ( newer === null || newer === '' ? '–' : newer ) } );
+		const tags = {
+			added: [ __( 'Added', 'siteferry' ), 'is-good' ],
+			removed: [ __( 'Removed', 'siteferry' ), 'is-warn' ],
+			up: [ __( 'Updated', 'siteferry' ), 'is-info' ],
+			down: [ __( 'Older version', 'siteferry' ), 'is-warn' ],
+			on: [ __( 'Turned on', 'siteferry' ), 'is-info' ],
+			off: [ __( 'Turned off', 'siteferry' ), 'is-warn' ],
+		};
+		const line = ( item, kindLabel ) =>
+			el( 'li', {}, [
+				el( 'span', { class: 'sf-pv-kind', text: kindLabel } ),
+				el( 'strong', { text: item.name } ),
+				...( item.older || item.newer ? [ pair( item.older, item.newer ) ] : [] ),
+				...[ item.change, item.activity ].filter( ( key ) => tags[ key ] ).map( ( key ) => el( 'span', { class: 'sf-pv-tag ' + tags[ key ][ 1 ], text: tags[ key ][ 0 ] } ) ),
+			] );
+		const table = ( rows ) =>
+			el( 'table', { class: 'sf-pv-content' }, [
+				el( 'thead', {}, [ el( 'tr', {}, [ el( 'th', { scope: 'col', text: '' } ), el( 'th', { scope: 'col', text: __( 'Older', 'siteferry' ) } ), el( 'th', { scope: 'col', text: __( 'Newer', 'siteferry' ) } ), el( 'th', { scope: 'col', text: __( 'Change', 'siteferry' ) } ) ] ) ] ),
+				el(
+					'tbody',
+					{},
+					rows.map( ( [ name, older, newer, shown ] ) => {
+						const delta = newer - older;
+						return el( 'tr', {}, [
+							el( 'th', { scope: 'row', text: name } ),
+							el( 'td', { text: shown ? shown[ 0 ] : String( older ) } ),
+							el( 'td', { text: shown ? shown[ 1 ] : String( newer ) } ),
+							el( 'td', { class: delta < 0 ? 'is-less' : delta > 0 ? 'is-more' : '', text: delta === 0 ? '=' : ( delta > 0 ? '+' : '−' ) + ( shown ? bytes( Math.abs( delta ) ) : Math.abs( delta ) ) } ),
+						] );
+					} )
+				),
+			] );
+
+		const parts = [ head ];
+
+		// How and where it was made.
+		const names = { siteferry: 'SiteFerry', wordpress: 'WordPress', php: 'PHP', mysql: 'MySQL' };
+		const made = diff.versions.map( ( v ) => el( 'p', { class: 'sf-compare-line' }, [ el( 'strong', { text: names[ v.what ] || v.what } ), pair( v.older, v.newer ) ] ) );
+		if ( diff.address ) {
+			made.push( el( 'p', { class: 'sf-compare-line' }, [ el( 'strong', { text: __( 'Site address', 'siteferry' ) } ), pair( diff.address.older, diff.address.newer ) ] ) );
+		}
+		parts.push( section( __( 'Made with', 'siteferry' ), made, __( 'Same versions of WordPress, PHP, MySQL and SiteFerry, and the same site address.', 'siteferry' ) ) );
+
+		// Plugins and themes.
+		const changed = [ ...diff.plugins.map( ( item ) => line( item, __( 'Plugin', 'siteferry' ) ) ), ...diff.themes.map( ( item ) => line( item, __( 'Theme', 'siteferry' ) ) ) ];
+		const pluginParts = [];
+		if ( diff.theme ) {
+			pluginParts.push(
+				el( 'p', { class: 'sf-pv-theme' }, [
+					el( 'span', { class: 'dashicons dashicons-admin-appearance', 'aria-hidden': 'true' } ),
+					el( 'span', {
+						text: sprintf(
+							/* translators: 1: the theme in use before, 2: the theme in use after */
+							__( 'Theme in use: %1$s → %2$s', 'siteferry' ),
+							diff.theme.older,
+							diff.theme.newer
+						),
+					} ),
+				] )
+			);
+		}
+		if ( changed.length ) {
+			pluginParts.push( el( 'ul', { class: 'sf-pv-list' }, changed ) );
+		}
+		if ( diff.plugins_known && pluginParts.length && ( diff.plugins_same || diff.themes_same ) ) {
+			pluginParts.push(
+				el( 'p', {
+					class: 'sf-pv-foot',
+					text: sprintf(
+						/* translators: 1: number of plugins, such as 12 plugins, 2: number of themes, such as 3 themes */
+						__( 'Nothing else differs: %1$s and %2$s are the same.', 'siteferry' ),
+						/* translators: %d: a number of plugins */
+						sprintf( _n( '%d plugin', '%d plugins', diff.plugins_same, 'siteferry' ), diff.plugins_same ),
+						/* translators: %d: a number of themes */
+						sprintf( _n( '%d theme', '%d themes', diff.themes_same, 'siteferry' ), diff.themes_same )
+					),
+				} )
+			);
+		}
+		if ( ! diff.plugins_known ) {
+			pluginParts.push( el( 'p', { class: 'sf-pv-foot', text: __( 'At least one of these backups does not record plugin and theme versions (made before SiteFerry 0.29.0), so only which plugins are turned on is compared.', 'siteferry' ) } ) );
+		}
+		parts.push( section( __( 'Plugins and themes', 'siteferry' ), pluginParts, __( 'Nothing differs: the same plugins and themes, in the same versions, turned on the same way.', 'siteferry' ) ) );
+
+		// Content.
+		const labels = { posts: __( 'Posts', 'siteferry' ), pages: __( 'Pages', 'siteferry' ), media: __( 'Media items', 'siteferry' ), users: __( 'Users', 'siteferry' ), comments: __( 'Comments', 'siteferry' ) };
+		if ( diff.content ) {
+			const rows = Object.keys( labels )
+				.filter( ( key ) => diff.content[ key ] && diff.content[ key ].older !== diff.content[ key ].newer )
+				.map( ( key ) => [ labels[ key ], diff.content[ key ].older, diff.content[ key ].newer ] );
+			parts.push( section( __( 'Content', 'siteferry' ), rows.length ? [ table( rows ) ] : [], __( 'The same number of posts, pages, media items, users and comments.', 'siteferry' ) ) );
+		} else {
+			parts.push( section( __( 'Content', 'siteferry' ), [], __( 'Not recorded by at least one of these backups (made before SiteFerry 0.29.0).', 'siteferry' ) ) );
+		}
+
+		// Database.
+		const db = [];
+		if ( diff.tables.added.length ) {
+			db.push( el( 'p', { class: 'sf-compare-line' }, [ el( 'span', { class: 'sf-pv-tag is-good', text: __( 'Added', 'siteferry' ) } ), el( 'span', { text: diff.tables.added.join( ', ' ) } ) ] ) );
+		}
+		if ( diff.tables.removed.length ) {
+			db.push( el( 'p', { class: 'sf-compare-line' }, [ el( 'span', { class: 'sf-pv-tag is-warn', text: __( 'Removed', 'siteferry' ) } ), el( 'span', { text: diff.tables.removed.join( ', ' ) } ) ] ) );
+		}
+		const rowsChanged = diff.tables.changed.slice( 0, 10 ).map( ( t ) => [ t.name, t.older, t.newer ] );
+		rowsChanged.push( [ __( 'Database size', 'siteferry' ), diff.tables.size.older, diff.tables.size.newer, [ bytes( diff.tables.size.older ), bytes( diff.tables.size.newer ) ] ] );
+		db.push( table( rowsChanged ) );
+		db.push(
+			el( 'p', {
+				class: 'sf-pv-foot',
+				text:
+					( diff.tables.changed.length > 10
+						? sprintf(
+								/* translators: %d: a number of tables */
+								_n( '%d more table has a different number of rows.', '%d more tables have a different number of rows.', diff.tables.changed.length - 10, 'siteferry' ),
+								diff.tables.changed.length - 10
+						  ) + ' '
+						: '' ) +
+					sprintf(
+						/* translators: %d: a number of tables */
+						_n( '%d table has the same number of rows.', '%d tables have the same number of rows.', diff.tables.same, 'siteferry' ),
+						diff.tables.same
+					),
+			} )
+		);
+		parts.push( section( __( 'Database', 'siteferry' ), db, '' ) );
+
+		// Files.
+		const files = [ table( [ [ __( 'Files', 'siteferry' ), diff.files.older.files, diff.files.newer.files ], [ __( 'Size', 'siteferry' ), diff.files.older.bytes, diff.files.newer.bytes, [ bytes( diff.files.older.bytes ), bytes( diff.files.newer.bytes ) ] ] ] ) ];
+		[ diff.older, diff.newer ].forEach( ( side, i ) => {
+			const f = i ? diff.files.newer : diff.files.older;
+			if ( side.kind === 'changes' ) {
+				files.push(
+					el( 'p', {
+						class: 'sf-pv-foot',
+						text: sprintf(
+							/* translators: %s: Older or Newer */
+							__( '%s is a changes-only backup: it holds only the files that changed since its full backup; the rest comes from that one when it is restored.', 'siteferry' ),
+							i ? __( 'Newer', 'siteferry' ) : __( 'Older', 'siteferry' )
+						),
+					} )
+				);
+			}
+			if ( f.left_out && f.left_out.length ) {
+				files.push(
+					el( 'p', {
+						class: 'sf-pv-foot',
+						text: sprintf(
+							/* translators: 1: Older or Newer, 2: what was left out, such as media, plugins */
+							__( '%1$s leaves out: %2$s.', 'siteferry' ),
+							i ? __( 'Newer', 'siteferry' ) : __( 'Older', 'siteferry' ),
+							f.left_out.join( ', ' )
+						),
+					} )
+				);
+			}
+		} );
+		parts.push( section( __( 'Files', 'siteferry' ), files, '' ) );
+
+		$( 'siteferry-compare-body' ).replaceChildren( ...parts );
+	}
+
+	// ------------------------------------------------------------ Timeline
+
+	const TIMELINE_KEY = 'siteferry_timeline';
+	let timelineJobs = null;
+	let timelinePick = [];
+
+	function timelineOn() {
+		try {
+			return window.localStorage.getItem( TIMELINE_KEY ) === '1';
+		} catch ( e ) {
+			return false;
+		}
+	}
+
+	function setTimeline( on ) {
+		try {
+			window.localStorage.setItem( TIMELINE_KEY, on ? '1' : '0' );
+		} catch ( e ) {}
+		renderTimeline();
+	}
+
+	/** What kind of backup a marker shows, for its colour and words. */
+	function markerKind( item ) {
+		const tags = ( item.tags || [] ).map( ( tag ) => String( tag ).toLowerCase() );
+		if ( item.base ) {
+			return [ 'changes', __( 'Changes only', 'siteferry' ) ];
+		}
+		if ( tags.indexOf( 'before-update' ) !== -1 ) {
+			return [ 'update', __( 'Before an update', 'siteferry' ) ];
+		}
+		if ( tags.indexOf( 'scheduled' ) !== -1 ) {
+			return [ 'scheduled', __( 'Scheduled', 'siteferry' ) ];
+		}
+		return [ 'full', __( 'Made by you', 'siteferry' ) ];
+	}
+
+	/**
+	 * A strip with one marker per backup by time (and restores as small diamonds), day or week
+	 * labels, keyboard focus (arrows move, Enter shows the backup in the list, Shift+Enter or
+	 * Shift+click picks two to compare).
+	 */
+	async function renderTimeline() {
+		const wrap = $( 'siteferry-timeline-wrap' );
+		const box = $( 'siteferry-timeline' );
+		const toggle = $( 'siteferry-timeline-toggle' );
+		const all = items().filter( ( item ) => item.time );
+		wrap.hidden = all.length < 2;
+		const on = timelineOn() && ! wrap.hidden;
+		box.hidden = ! on;
+		toggle.setAttribute( 'aria-expanded', on ? 'true' : 'false' );
+		toggle.lastChild.textContent = ' ' + ( on ? __( 'Hide timeline', 'siteferry' ) : __( 'Show timeline', 'siteferry' ) );
+		if ( ! on ) {
+			return;
+		}
+		if ( null === timelineJobs ) {
+			timelineJobs = [];
+			try {
+				timelineJobs = await api( 'GET', 'jobs' );
+			} catch ( e ) {}
+		}
+		const restores = ( timelineJobs || [] ).filter( ( job ) => job.type === 'import' && job.status === 'done' && job.created );
+		const times = all.map( ( item ) => item.time ).concat( restores.map( ( job ) => job.created ) );
+		const first = Math.min( ...times );
+		const last = Math.max( ...times );
+		const span = Math.max( last - first, 3600 );
+		const day = 86400;
+		const step = span <= 14 * day ? day : span <= 120 * day ? 7 * day : 30 * day;
+		// Positions in pixels: by time across the box (at least 60 px per label step), then nudged so
+		// markers made close together stay apart; the strip scrolls inside its own box when wider.
+		const room = Math.max( 240, ( $( 'siteferry-timeline-scroll' ).clientWidth || 600 ) - 24 );
+		const width = Math.min( 6000, Math.max( room, Math.ceil( span / step ) * 60 ) );
+		const at = ( t ) => 10 + ( ( width - 20 ) * ( t - first ) ) / span;
+		const placed = new Map();
+		let lastX = -Infinity;
+		all.slice()
+			.sort( ( a, b ) => a.time - b.time )
+			.forEach( ( item ) => {
+				lastX = Math.max( at( item.time ), lastX + 16 );
+				placed.set( item.name, lastX );
+			} );
+		const track = el( 'div', { class: 'sf-tl-track', style: 'width:' + Math.ceil( Math.max( width, lastX + 10 ) ) + 'px' } );
+
+		// Labels at day (or week, or month) starts.
+		const start = new Date( first * 1000 );
+		start.setHours( 0, 0, 0, 0 );
+		let lastTick = -Infinity;
+		for ( let t = start.getTime() / 1000; t <= last; t += step ) {
+			// The first label (the day of the first backup) sits at the start of the strip; a label
+			// too close to the one before it is left out.
+			const x = Math.max( 10, at( t ) );
+			if ( x - lastTick >= 46 ) {
+				lastTick = x;
+				const d = new Date( t * 1000 );
+				track.appendChild(
+					el( 'span', {
+						class: 'sf-tl-tick',
+						style: 'left:' + x + 'px',
+						text: d.toLocaleDateString( undefined, step >= 30 * day ? { month: 'short', year: 'numeric' } : { month: 'short', day: 'numeric' } ),
+					} )
+				);
+			}
+		}
+		const sorted = all.slice().sort( ( a, b ) => a.time - b.time );
+		const markers = sorted.map( ( item, index ) => {
+			const [ kind, kindLabel ] = markerKind( item );
+			const where = [ item.local ? __( 'this server', 'siteferry' ) : '', ...item.places.map( ( id ) => ( destination( id ) || { short: id } ).short ) ].filter( Boolean ).join( ', ' );
+			const text = [ item.title || when( item.time ), kindLabel, bytes( item.size ), where ].filter( Boolean ).join( ' · ' );
+			const marker = el( 'button', {
+				type: 'button',
+				class: 'sf-tl-marker is-' + kind + ( item.local ? '' : ' is-remote' ) + ( timelinePick.indexOf( item.name ) !== -1 ? ' is-picked' : '' ),
+				style: 'left:' + placed.get( item.name ) + 'px',
+				title: text,
+				'aria-label': text,
+				tabindex: index === sorted.length - 1 ? '0' : '-1',
+				'data-name': item.name,
+			} );
+			marker.addEventListener( 'click', ( event ) => ( event.shiftKey ? pickMarker( item ) : showRow( item ) ) );
+			marker.addEventListener( 'keydown', ( event ) => {
+				const move = { ArrowRight: 1, ArrowLeft: -1, Home: -Infinity, End: Infinity }[ event.key ];
+				if ( move !== undefined ) {
+					event.preventDefault();
+					const next = Math.max( 0, Math.min( markers.length - 1, index + ( Number.isFinite( move ) ? move : move > 0 ? markers.length : -markers.length ) ) );
+					markers.forEach( ( m ) => m.setAttribute( 'tabindex', '-1' ) );
+					markers[ next ].setAttribute( 'tabindex', '0' );
+					markers[ next ].focus();
+				} else if ( event.key === 'Enter' && event.shiftKey ) {
+					event.preventDefault();
+					pickMarker( item );
+				}
+			} );
+			return marker;
+		} );
+		markers.forEach( ( m ) => track.appendChild( m ) );
+		restores.forEach( ( job ) => {
+			const text = sprintf(
+				/* translators: 1: when, such as today, 7:21 PM, 2: name of a backup */
+				__( 'Restored %1$s from %2$s', 'siteferry' ),
+				when( job.created ),
+				job.backup || '?'
+			);
+			track.appendChild( el( 'span', { class: 'sf-tl-event', style: 'left:' + at( job.created ) + 'px', title: text, role: 'img', 'aria-label': text } ) );
+		} );
+		$( 'siteferry-timeline-scroll' ).replaceChildren( track );
+		$( 'siteferry-timeline-scroll' ).scrollLeft = 99999; // Newest in view.
+		const legend = [
+			[ 'full', __( 'Made by you', 'siteferry' ) ],
+			[ 'scheduled', __( 'Scheduled', 'siteferry' ) ],
+			[ 'update', __( 'Before an update', 'siteferry' ) ],
+			[ 'changes', __( 'Changes only', 'siteferry' ) ],
+		].map( ( [ kind, text ] ) => el( 'span', { class: 'sf-tl-key' }, [ el( 'span', { class: 'sf-tl-dot is-' + kind, 'aria-hidden': 'true' } ), el( 'span', { text } ) ] ) );
+		legend.push( el( 'span', { class: 'sf-tl-key' }, [ el( 'span', { class: 'sf-tl-dot is-remote', 'aria-hidden': 'true' } ), el( 'span', { text: __( 'Only on a storage', 'siteferry' ) } ) ] ) );
+		if ( restores.length ) {
+			legend.push( el( 'span', { class: 'sf-tl-key' }, [ el( 'span', { class: 'sf-tl-diamond', 'aria-hidden': 'true' } ), el( 'span', { text: __( 'Restore', 'siteferry' ) } ) ] ) );
+		}
+		legend.push( el( 'span', { class: 'sf-tl-hint', text: __( 'Shift+click two backups to compare them.', 'siteferry' ) } ) );
+		$( 'siteferry-timeline-legend' ).replaceChildren( ...legend );
+	}
+
+	/** Picks a marker for comparing; the second pick opens Compare. */
+	function pickMarker( item ) {
+		if ( ! item.local || item.error || item.format === 'wpress' ) {
+			notice( __( 'Only SiteFerry backups on this server can be compared.', 'siteferry' ), 'error' );
+			return;
+		}
+		timelinePick = timelinePick.filter( ( name ) => name !== item.name ).concat( item.name ).slice( -2 );
+		if ( timelinePick.length === 2 ) {
+			const [ a, b ] = timelinePick.map( ( name ) => items().find( ( i ) => i.name === name ) );
+			timelinePick = [];
+			renderTimeline();
+			if ( a && b ) {
+				openCompare( a, b );
+			}
+			return;
+		}
+		renderTimeline();
+	}
+
+	/** Shows a backup's row in the list (clearing a filter that hides it) and focuses it. */
+	function showRow( item ) {
+		let li = $( 'siteferry-backups' ).querySelector( '[data-name="' + CSS.escape( item.name ) + '"]' );
+		if ( ! li ) {
+			clearFilter();
+			li = $( 'siteferry-backups' ).querySelector( '[data-name="' + CSS.escape( item.name ) + '"]' );
+		}
+		if ( ! li ) {
+			return;
+		}
+		li.scrollIntoView( { block: 'center', behavior: window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ? 'auto' : 'smooth' } );
+		li.classList.add( 'is-flash' );
+		setTimeout( () => li.classList.remove( 'is-flash' ), 1600 );
+		const target = li.querySelector( 'button' );
+		if ( target ) {
+			target.focus( { preventScroll: true } );
+		}
 	}
 
 	/** Shows one folder; the first call may need several requests while the backup is read. */
@@ -5453,6 +5962,9 @@
 		if ( keep !== 'contents' && inside ) {
 			closeContents();
 		}
+		if ( keep !== 'compare' && comparing ) {
+			closeCompare();
+		}
 		if ( keep !== 'restore' && restore && restore.phase !== 'running' && restore.phase !== 'fetch' ) {
 			closeRestore();
 		}
@@ -5829,6 +6341,8 @@
 			}
 		} );
 		$( 'siteferry-contents-close' ).addEventListener( 'click', closeContents );
+		$( 'siteferry-compare-close' ).addEventListener( 'click', closeCompare );
+		$( 'siteferry-timeline-toggle' ).addEventListener( 'click', () => setTimeline( ! timelineOn() ) );
 		$( 'siteferry-contents-clear' ).addEventListener( 'click', clearPicks );
 		$( 'siteferry-contents-restore' ).addEventListener( 'click', restorePicked );
 		$( 'siteferry-jobs-refresh' ).addEventListener( 'click', loadJobs );

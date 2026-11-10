@@ -439,6 +439,14 @@ final class Admin {
 					</div>
 				</div>
 
+				<div class="sf-card sf-compare" id="siteferry-compare" hidden tabindex="-1" aria-labelledby="siteferry-compare-title">
+					<div class="sf-restore-head">
+						<h2 class="sf-card-title" id="siteferry-compare-title"><?php esc_html_e( 'Compare two backups', 'siteferry' ); ?></h2>
+						<button type="button" class="sf-notice-close" id="siteferry-compare-close" aria-label="<?php esc_attr_e( 'Close', 'siteferry' ); ?>">&times;</button>
+					</div>
+					<div class="sf-compare-body" id="siteferry-compare-body" aria-live="polite"></div>
+				</div>
+
 				<div class="sf-card sf-restore" id="siteferry-restore" hidden tabindex="-1" aria-labelledby="siteferry-restore-title">
 					<div class="sf-restore-head">
 						<h2 class="sf-card-title" id="siteferry-restore-title"></h2>
@@ -487,6 +495,13 @@ final class Admin {
 							<span class="sf-list-summary" id="siteferry-backups-summary"></span>
 							<button type="button" class="button sf-quiet sf-quiet-small" id="siteferry-backups-refresh"><?php esc_html_e( 'Refresh', 'siteferry' ); ?></button>
 						</span>
+					</div>
+					<div class="sf-timeline-wrap" id="siteferry-timeline-wrap" hidden>
+						<button type="button" class="button-link sf-timeline-toggle" id="siteferry-timeline-toggle" aria-expanded="false" aria-controls="siteferry-timeline"><span class="dashicons dashicons-chart-line" aria-hidden="true"></span> <?php esc_html_e( 'Show timeline', 'siteferry' ); ?></button>
+						<div class="sf-timeline" id="siteferry-timeline" hidden>
+							<div class="sf-timeline-scroll" id="siteferry-timeline-scroll"></div>
+							<p class="sf-timeline-legend" id="siteferry-timeline-legend"></p>
+						</div>
 					</div>
 					<div class="sf-filter" id="siteferry-filter" hidden>
 						<label class="screen-reader-text" for="siteferry-search"><?php esc_html_e( 'Search backups', 'siteferry' ); ?></label>

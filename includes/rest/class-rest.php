@@ -78,6 +78,7 @@ final class Rest {
 			array( '/status', WP_REST_Server::READABLE, 'status', $admin ),
 			array( '/tables', WP_REST_Server::READABLE, 'tables', $admin ),
 			array( '/backups', WP_REST_Server::READABLE, 'backups', $admin ),
+			array( '/backups/compare', WP_REST_Server::READABLE, 'compare_backups', $admin ),
 			array( '/labels', WP_REST_Server::READABLE, 'labels', $admin ),
 			array( '/labels/' . self::NAME, WP_REST_Server::CREATABLE, 'save_label', $admin ),
 			array( '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_backup', $admin ),
@@ -607,7 +608,42 @@ final class Rest {
 	 * @param WP_REST_Request $request Request with "unlock".
 	 */
 	private static function unlocked( WP_REST_Request $request ): ?string {
-		$token = (string) $request->get_param( 'unlock' );
+		return self::key_for( (string) $request->get_param( 'unlock' ), (string) $request['name'] );
+	}
+
+	/**
+	 * What differs between two backups on this server (?a=&b=, names; unlock_a/unlock_b for
+	 * password-protected ones), from the older to the newer. Read only.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function compare_backups( WP_REST_Request $request ): WP_REST_Response {
+		$a = (string) $request->get_param( 'a' );
+		$b = (string) $request->get_param( 'b' );
+		foreach ( array( $a, $b ) as $name ) {
+			if ( ! preg_match( Backups::SAFE_NAME, $name ) ) {
+				throw new Job_Exception( __( 'Choose two backups on this server to compare.', 'siteferry' ), Job_Exception::STEP );
+			}
+		}
+		$out = new WP_REST_Response(
+			\SiteFerry\Backup_Compare::files(
+				$a,
+				$b,
+				self::key_for( (string) $request->get_param( 'unlock_a' ), $a ),
+				self::key_for( (string) $request->get_param( 'unlock_b' ), $b )
+			)
+		);
+		$out->header( 'Cache-Control', 'no-store' );
+		return $out;
+	}
+
+	/**
+	 * The key an "unlock" token stands for, if it was made for the named backup.
+	 *
+	 * @param string $token Token.
+	 * @param string $for   Backup file name.
+	 */
+	private static function key_for( string $token, string $for ): ?string {
 		if ( ! preg_match( '/^[a-f0-9]{32}$/', $token ) ) {
 			return null;
 		}
@@ -621,7 +657,7 @@ final class Rest {
 			return null;
 		}
 		$key = base64_decode( $key, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
-		return $name === (string) $request['name'] && false !== $key ? $key : null;
+		return $name === $for && false !== $key ? $key : null;
 	}
 
 	/**

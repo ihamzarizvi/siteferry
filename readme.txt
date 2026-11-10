@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.32.1
+Stable tag: 0.33.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -484,6 +484,10 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.33.0 =
+* Compare two backups: "Compare with…" in a backup's menu (or Shift+click two markers on the timeline) shows what differs from the older backup to the newer one: the versions it was made with, the site address, plugins and themes (added, removed, updated or older, turned on or off), the theme in use, how many posts, pages, media items, users and comments, database tables (added, removed, row counts, size) and files. Only the backups' own records are read, so it is quick. Also `wp siteferry backups compare <a> <b> [--format=json]`. Not yet for .wpress files or backups only on a storage.
+* Timeline: "Show timeline" above the backup list draws every backup by time, coloured by kind (made by you, scheduled, before an update, changes only, only on a storage), with restores as small diamonds. Arrow keys move between backups, Enter shows one in the list. The choice is remembered in this browser.
 
 = 0.32.1 =
 * With "Only changes since the last full backup" chosen, the Back up now summary no longer says it saves the whole site: it says it saves the whole database and only the changed files.
