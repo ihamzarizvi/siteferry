@@ -225,4 +225,37 @@ Sf_Test::run(
 	}
 );
 
+Sf_Test::run(
+	'the must-use plugin: an address that contains a placeholder name stays one string literal (single pass)',
+	static function () {
+		// Before 0.45.1 the second replacement rewrote __SF_NAME__ inside the inserted address.
+		$live = 'http://.phpinfo()/1.?__SF_NAME__&x=__SF_LIVE__';
+		$src  = Mu_Plugin::source( $live );
+		$file = Sf_Test::temp_dir( 'staging-mu-placeholder' ) . '/mu.php';
+		file_put_contents( $file, $src );
+		exec( escapeshellarg( PHP_BINARY ) . ' -n -l ' . escapeshellarg( $file ), $lines, $code );
+		Sf_Test::same( 0, $code, 'php -l: ' . implode( ' ', $lines ) );
+		// The define() for SITEFERRY_STAGING_OF takes exactly one string literal: the address as given.
+		$tokens = array_values(
+			array_filter(
+				token_get_all( $src ),
+				static function ( $t ) {
+					return ! is_array( $t ) || ! in_array( $t[0], array( T_WHITESPACE, T_COMMENT, T_DOC_COMMENT ), true );
+				}
+			)
+		);
+		$found = null;
+		foreach ( $tokens as $i => $t ) {
+			if ( is_array( $t ) && T_CONSTANT_ENCAPSED_STRING === $t[0] && "'SITEFERRY_STAGING_OF'" === $t[1] && isset( $tokens[ $i + 1 ] ) && ',' === $tokens[ $i + 1 ] && isset( $tokens[ $i - 2 ] ) && is_array( $tokens[ $i - 2 ] ) && 'define' === $tokens[ $i - 2 ][1] ) {
+				$found = array( $tokens[ $i + 2 ], $tokens[ $i + 3 ] );
+			}
+		}
+		Sf_Test::ok( null !== $found, 'the define() is there' );
+		Sf_Test::ok( is_array( $found[0] ) && T_CONSTANT_ENCAPSED_STRING === $found[0][0], 'its value is one string literal' );
+		Sf_Test::same( ')', $found[1], 'and nothing follows it:' );
+		Sf_Test::same( var_export( $live, true ), $found[0][1], 'the address exactly:' );
+		Sf_Test::ok( false === strpos( $src, '__SF_' ) || false !== strpos( $src, var_export( $live, true ) ), 'placeholders only inside the address literal' );
+	}
+);
+
 exit( Sf_Test::finish( 'test-staging' ) );

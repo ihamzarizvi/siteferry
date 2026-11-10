@@ -164,4 +164,79 @@ Sf_Test::run(
 	}
 );
 
+Sf_Test::run(
+	'the session key needs the server\'s salts: a copy of the file alone cannot sign in',
+	static function () use ( $sfk_test_config ) {
+		$config = "<?php\ndefine( 'AUTH_KEY', 'k-1-a long random phrase here' );\ndefine( 'NONCE_SALT', 's-8-another long random phrase' );\n\$table_prefix = 'wp_';\n";
+		$server = sfk_server_secret( sfk_parse_config( $config ) );
+		Sf_Test::ok( 64 === strlen( $server ), 'salts give a server secret' );
+		$c      = $sfk_test_config;
+		$onsite = array( 'server' => $server ) + $c;
+		$now    = 1800000000;
+		$forged = sfk_session_token( $c, $now + 3600 ); // What a copy of the file alone can compute.
+		Sf_Test::ok( ! sfk_session_valid( $onsite, $forged, $now ), 'a session made without the salts is refused' );
+		Sf_Test::ok( sfk_session_valid( $onsite, sfk_session_token( $onsite, $now + 3600 ), $now ), 'one made with them is accepted' );
+		Sf_Test::ok( ! sfk_csrf_valid( $onsite, $forged, 'download', sfk_csrf( $c, $forged, 'download' ) ), 'a form token made without them is refused' );
+
+		$other = sfk_server_secret( sfk_parse_config( str_replace( 'k-1-', 'k-2-', $config ) ) );
+		Sf_Test::ok( $other !== $server, 'other salts, another secret' );
+		Sf_Test::same( '', sfk_server_secret( sfk_parse_config( "<?php\ndefine( 'AUTH_KEY', 'put your unique phrase here' );\ndefine( 'NONCE_KEY', getenv( 'K' ) );\n" ) ), 'default phrases and getenv() give none:' );
+		Sf_Test::same( '', sfk_server_secret( null ), 'no wp-config.php, none:' );
+		Sf_Test::same( sfk_key( $c ), sfk_key( array( 'server' => '' ) + $c ), 'without salts the key is the file-only key, as before:' );
+	}
+);
+
+Sf_Test::run(
+	'revocation: checked before any action (a download included); an unknown kit counts as revoked',
+	static function () use ( $sfk_test_code ) {
+		Sf_Test::same( 'ok', sfk_revocation( array( array( 'id' => 'ab12cd34', 'revoked' => false ) ), 'ab12cd34' ) );
+		Sf_Test::same( 'revoked', sfk_revocation( array( array( 'id' => 'ffffffff' ), array( 'id' => 'ab12cd34', 'revoked' => true ) ), 'ab12cd34' ) );
+		Sf_Test::same( 'unknown', sfk_revocation( array( array( 'id' => 'ffffffff' ) ), 'ab12cd34' ), 'no record:' );
+		Sf_Test::same( 'unknown', sfk_revocation( null, 'ab12cd34' ), 'no option at all:' );
+		Sf_Test::same( 'unknown', sfk_revocation( 'junk', 'ab12cd34' ) );
+
+		// In sfk_main the check comes before signing in, before the session, and before the download.
+		$main  = substr( $sfk_test_code, (int) strpos( $sfk_test_code, 'function sfk_main(' ) );
+		$check = strpos( $main, 'sfk_revocation(' );
+		Sf_Test::ok( false !== $check, 'sfk_main checks the record' );
+		foreach ( array( '$session = isset( $_COOKIE', "'login' === \$action", "'download' === \$action", "'plugins' === \$action" ) as $later ) {
+			$at = strpos( $main, $later );
+			Sf_Test::ok( false !== $at && $check < $at, 'the check comes before ' . $later );
+		}
+		Sf_Test::ok( strpos( $main, 'sfk_server_secret(' ) < strpos( $main, '$session = isset( $_COOKIE' ), 'the server secret is set before the session is checked' );
+		Sf_Test::same( 1, substr_count( $main, 'sfk_revocation(' ), 'one check:' );
+	}
+);
+
+Sf_Test::run(
+	'kit records: expired ones go, revoked ones stay until they expire, at most 20 working kits',
+	static function () {
+		$now  = 1800000000;
+		$kit  = static function ( $n, $revoked = false, $expires = 1900000000 ) {
+			return array(
+				'id'          => sprintf( '%08x', $n ),
+				'made'        => 1700000000 + $n,
+				'expires'     => $expires,
+				'fingerprint' => '',
+				'revoked'     => $revoked,
+			);
+		};
+		$kits = array();
+		for ( $n = 30; $n >= 1; $n-- ) { // Newest first: 30 working kits made after...
+			$kits[] = $kit( 100 + $n );
+		}
+		$kits[] = $kit( 1, true );                 // ...an older revoked kit, still valid,
+		$kits[] = $kit( 2, true, $now - 1 );       // a revoked kit that has expired,
+		$kits[] = $kit( 3, false, $now - 1 );      // and an expired working kit.
+		$kept   = Emergency_Kit::retain( $kits, $now );
+		$ids    = array_column( $kept, 'id' );
+		Sf_Test::ok( in_array( '00000001', $ids, true ), 'the revoked, unexpired kit is kept' );
+		Sf_Test::ok( ! in_array( '00000002', $ids, true ) && ! in_array( '00000003', $ids, true ), 'expired kits are dropped' );
+		Sf_Test::same( 21, count( $kept ), '20 working kits plus the revoked one:' );
+		Sf_Test::same( sprintf( '%08x', 130 ), $kept[0]['id'], 'newest first:' );
+		Sf_Test::same( 'revoked', sfk_revocation( $kept, '00000001' ), 'so the revoked kit still stops:' );
+		Sf_Test::same( 'unknown', sfk_revocation( $kept, sprintf( '%08x', 101 ) ), 'and the 21st working kit stops too (no record):' );
+	}
+);
+
 exit( Sf_Test::finish( 'test-emergency-kit' ) );

@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.45.0
+Stable tag: 0.45.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -239,7 +239,7 @@ used for either yet.
 
 = What if my site shows a white screen? =
 
-Make an emergency kit before you need it: on the Backups tab, click "Emergency kit", choose a password (at least 12 characters) and download the file. Keep it, with its password, somewhere safe and private, not on the server. If the site later breaks and you cannot log in, upload the file by FTP or your hosting file manager into WordPress's main folder (the one with wp-config.php or wp-load.php and wp-admin) and open it in your browser at your site's address followed by the file name. Sign in with the kit's password. It works without WordPress: it can turn off every plugin except SiteFerry, switch to a default "Twenty" theme (both can be undone) and download SiteFerry's backups. Once the dashboard opens again, restore a backup with SiteFerry if needed, and delete the kit with its "Delete this kit" button. A kit works for 7, 30 or 90 days, only on the site it was made for; revoke it in SiteFerry if you lose the file. It cannot repair damaged WordPress files or a broken database: then restore through your hosting control panel, or ask your host.
+Make an emergency kit before you need it: on the Backups tab, click "Emergency kit", choose a password (at least 12 characters) and download the file. Keep it, with its password, somewhere safe and private, not on the server. If the site later breaks and you cannot log in, upload the file by FTP or your hosting file manager into WordPress's main folder (the one with wp-config.php or wp-load.php and wp-admin) and open it in your browser at your site's address followed by the file name. Sign in with the kit's password. It works without WordPress: it can turn off every plugin except SiteFerry, switch to a default "Twenty" theme (both can be undone) and download SiteFerry's backups. Once the dashboard opens again, restore a backup with SiteFerry if needed, and delete the kit with its "Delete this kit" button. A kit works for 7, 30 or 90 days, only on the site it was made for, and only while SiteFerry has a record of it: revoke it in SiteFerry if you lose the file, and it stops at once, downloads included. At most 20 working kits are kept; making more retires the oldest. Its sign-in also depends on the WordPress keys and salts in the server's wp-config.php, so the file alone is not enough to sign in (unless wp-config.php takes its salts from elsewhere, for example getenv()). It cannot repair damaged WordPress files or a broken database: then restore through your hosting control panel, or ask your host.
 
 = How does S3-compatible storage work? =
 
@@ -527,6 +527,12 @@ with that version.
 
 == Changelog ==
 
+= 0.45.1 =
+* Emergency kit, security: a revoked kit now stops before anything else, a download included (before, a session started earlier could still download backups after the kit was revoked). A kit the site has no record of any more also stops.
+* Emergency kit, security: the kit's sign-in session is now also keyed with the WordPress keys and salts in the server's wp-config.php, so a copy of the kit file alone can no longer sign in without the password. (When wp-config.php gives no salts as plain text, for example from getenv(), the key comes from the file alone, as before.)
+* Emergency kit: a revoked kit's record is kept until the kit expires, so making 20 or more new kits no longer brings a revoked kit back. At most 20 working kits are kept; expired kits are dropped.
+* Staging: the must-use plugin in a staging copy is filled in a single pass, so a site address containing one of its placeholder names can no longer turn into code.
+
 = 0.45.0 =
 * Networks: take one site out of a network backup as an ordinary single-site backup ("Take one site out…" in a network backup's menu, `wp siteferry backups extract <backup> --site=<id>`, or `wp siteferry export --site=<id|address>` on a network). It holds the site's tables renamed for a single site, its users (super admins become administrators), its media and all plugins and themes; it imports into any single site.
 * Networks: add a single-site backup to a network as a new site ("Add as a new site of this network" when restoring on a network, or `wp siteferry import <file> --as-new-site=<name>`). Nothing of the network is replaced: users with an e-mail address the network has are matched to them, others are added with their passwords (a taken login gets -2), media go to the new site's folder, and only plugins and themes the network lacks are copied. A failure removes the new site again.
@@ -555,9 +561,5 @@ with that version.
 
 = 0.40.0 =
 * While SiteFerry works (a backup, restore, upload, download, check or staging copy), every admin page shows "SiteFerry 42%" in the admin bar, linking to the SiteFerry page; when it ends, "Backup done ✓" (or a red "… failed"). It updates every three seconds while the tab is visible and stops when the job has ended; nothing is loaded when no job runs. It stays visible on phones. Background checks of the weekly re-check are not shown.
-
-= 0.39.1 =
-* Fixed: checking a changes-only backup (by hand or in the weekly check) reported the files kept in its full backup as missing, so a healthy copy was called damaged. Those files are now counted as in the full backup, and the result says so.
-* The SiteFerry page footer credits xsofty with "Plugin by" and its logo; the logo ships with the plugin.
 
 Older versions: see changelog.txt in the plugin folder.

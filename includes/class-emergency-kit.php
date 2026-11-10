@@ -42,7 +42,7 @@ final class Emergency_Kit {
 	/** Shortest password accepted. */
 	const MIN_PASSWORD = 12;
 
-	/** Records kept. */
+	/** Working (not revoked) kits kept; revoked kits are kept until they expire. */
 	const KEEP = 20;
 
 	/** Placeholder in the template for the kit's settings. */
@@ -93,7 +93,7 @@ final class Emergency_Kit {
 				'revoked'     => false,
 			)
 		);
-		update_option( self::OPTION, array_slice( $kits, 0, self::KEEP ), false );
+		update_option( self::OPTION, self::retain( $kits, time() ), false );
 
 		return array(
 			'name'    => self::file_name( $id ),
@@ -101,6 +101,33 @@ final class Emergency_Kit {
 			'id'      => $id,
 			'expires' => $expires,
 		);
+	}
+
+	/**
+	 * The records to keep, newest first: expired kits are dropped, every revoked kit is kept until
+	 * it expires (a kit treats a missing record as revoked, but keeping it shows the admin that it
+	 * was revoked), and at most KEEP kits that are not revoked. A working kit beyond KEEP loses its
+	 * record and so stops working.
+	 *
+	 * @param array $kits Records, newest first.
+	 * @param int   $now  Current time.
+	 * @return array
+	 */
+	public static function retain( array $kits, int $now ): array {
+		$kept  = array();
+		$plain = 0;
+		foreach ( $kits as $kit ) {
+			if ( (int) $kit['expires'] < $now ) {
+				continue;
+			}
+			if ( ! empty( $kit['revoked'] ) ) {
+				$kept[] = $kit;
+			} elseif ( $plain < self::KEEP ) {
+				$kept[] = $kit;
+				++$plain;
+			}
+		}
+		return $kept;
 	}
 
 	/**
@@ -248,11 +275,16 @@ final class Emergency_Kit {
  *
  * Security notes:
  * - It works only until it expires, under its own file name, on the address it was made for,
- *   and while SiteFerry has not revoked it (checked in the database after sign-in).
+ *   and while the site's database has a record of it that is not revoked. That is checked first,
+ *   before signing in and before any action (a download included). When the database cannot be
+ *   reached, the kit still opens, so that backups can be downloaded.
  * - The password is kept only as a password_hash(). Wrong passwords are slowed down (1 to 2
  *   seconds) and locked out for 15 minutes after 5 in a row (a small file in the system's temp
  *   folder). A signed-in session is an HMAC-signed cookie (HttpOnly, SameSite=Strict, Secure over
- *   HTTPS) that lasts one hour; the key comes from a random secret in this file.
+ *   HTTPS) that lasts one hour. Its key comes from a random secret in this file and from the
+ *   WordPress keys and salts in the server's wp-config.php, so a copy of this file alone cannot
+ *   sign in without the password. Only when wp-config.php gives no salts as plain text (for
+ *   example from getenv()) does the key come from this file alone.
  * - Every action is a POST carrying a token bound to the session and the action (no CSRF), and
  *   nothing happens on a GET.
  * - wp-config.php is read, never run: only plain literal values are accepted.
@@ -280,7 +312,46 @@ function sfk_h( $text ) {
  * @param array $c Settings.
  */
 function sfk_key( array $c ) {
-	return hash_hmac( 'sha256', 'siteferry-emergency|' . $c['id'], $c['secret'] . '|' . $c['hash'] );
+	$server = isset( $c['server'] ) && is_string( $c['server'] ) ? $c['server'] : '';
+	return hash_hmac( 'sha256', 'siteferry-emergency|' . $c['id'], $c['secret'] . '|' . $c['hash'] . ( '' === $server ? '' : '|' . $server ) );
+}
+
+/**
+ * A secret only the server has: a hash of the WordPress keys and salts in wp-config.php (plain
+ * literals only). It goes into the session key, so a copy of this file alone cannot sign in.
+ * Empty when none can be read (for example when wp-config.php takes them from getenv()); the key
+ * then comes from this file only.
+ *
+ * @param array|null $parsed sfk_parse_config() result.
+ */
+function sfk_server_secret( $parsed ) {
+	if ( ! is_array( $parsed ) || ! isset( $parsed['defines'] ) || ! is_array( $parsed['defines'] ) ) {
+		return '';
+	}
+	$parts = array();
+	foreach ( array( 'AUTH_KEY', 'SECURE_AUTH_KEY', 'LOGGED_IN_KEY', 'NONCE_KEY', 'AUTH_SALT', 'SECURE_AUTH_SALT', 'LOGGED_IN_SALT', 'NONCE_SALT' ) as $name ) {
+		$value = isset( $parsed['defines'][ $name ] ) && is_string( $parsed['defines'][ $name ] ) ? $parsed['defines'][ $name ] : '';
+		if ( strlen( $value ) >= 16 && 'put your unique phrase here' !== $value ) {
+			$parts[] = $name . '=' . $value;
+		}
+	}
+	return array() === $parts ? '' : hash( 'sha256', implode( "\n", $parts ) );
+}
+
+/**
+ * What the site's record says about this kit: "ok", "revoked", or "unknown" (no record, which
+ * the kit treats like revoked).
+ *
+ * @param mixed  $kits The siteferry_emergency_kits option, unserialized.
+ * @param string $id   This kit's id.
+ */
+function sfk_revocation( $kits, $id ) {
+	foreach ( is_array( $kits ) ? $kits : array() as $kit ) {
+		if ( is_array( $kit ) && isset( $kit['id'] ) && $kit['id'] === $id ) {
+			return empty( $kit['revoked'] ) ? 'ok' : 'revoked';
+		}
+	}
+	return 'unknown';
 }
 
 /**
@@ -830,16 +901,46 @@ function sfk_main( array $c ) {
 
 	$https   = ! empty( $_SERVER['HTTPS'] ) && 'off' !== strtolower( (string) $_SERVER['HTTPS'] );
 	$cookie  = 'sfk_' . $c['id'];
-	$session = isset( $_COOKIE[ $cookie ] ) && sfk_session_valid( $c, $_COOKIE[ $cookie ], $now ) ? (string) $_COOKIE[ $cookie ] : '';
-	$post    = isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'];
-	$action  = $post && isset( $_POST['action'] ) && is_string( $_POST['action'] ) ? $_POST['action'] : '';
-	$expires = 'This kit works until ' . gmdate( 'j M Y, H:i', (int) $c['expires'] ) . ' UTC.';
 	$cookies = array(
 		'path'     => '',
 		'secure'   => $https,
 		'httponly' => true,
 		'samesite' => 'Strict',
 	);
+
+	// wp-config.php and the database come first: the session key needs the site's salts, and a
+	// revoked kit (or one the site no longer knows) stops here, before any action, a download
+	// included. When the database cannot be reached, the kit still opens, so backups can be saved.
+	$db       = null;
+	$p        = null;
+	$db_error = '';
+	$config   = sfk_config_file( __DIR__ );
+	$parsed   = null;
+	if ( null === $config ) {
+		$db_error = 'There is no wp-config.php in this folder or the one above it.';
+	} else {
+		$parsed = sfk_parse_config( (string) file_get_contents( $config ) );
+		$p      = $parsed['prefix'];
+		if ( null === $p || ! preg_match( '/^[A-Za-z0-9_]{1,64}\z/', $p ) ) {
+			$db_error = 'wp-config.php does not set $table_prefix as plain text, so the kit cannot find the tables.';
+		} else {
+			$db = sfk_connect( $parsed['defines'], $db_error );
+		}
+	}
+	$network     = is_array( $parsed ) && ! empty( $parsed['defines']['MULTISITE'] );
+	$c['server'] = sfk_server_secret( $parsed );
+	if ( null !== $db ) {
+		$state = sfk_revocation( sfk_unserialize( sfk_get( $db, $p, 'siteferry_emergency_kits' ) ), (string) $c['id'] );
+		if ( 'ok' !== $state ) {
+			setcookie( $cookie, '', array( 'expires' => 1 ) + $cookies );
+			sfk_stop( 'revoked' === $state ? 'This kit was revoked in SiteFerry. Delete it from the server.' : 'This site no longer has a record of this kit (it was removed, or SiteFerry was reinstalled), so it does not work. Delete it from the server and make a new one in SiteFerry.' );
+		}
+	}
+
+	$session = isset( $_COOKIE[ $cookie ] ) && sfk_session_valid( $c, $_COOKIE[ $cookie ], $now ) ? (string) $_COOKIE[ $cookie ] : '';
+	$post    = isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'];
+	$action  = $post && isset( $_POST['action'] ) && is_string( $_POST['action'] ) ? $_POST['action'] : '';
+	$expires = 'This kit works until ' . gmdate( 'j M Y, H:i', (int) $c['expires'] ) . ' UTC.';
 
 	// Signing in.
 	if ( '' === $session ) {
@@ -924,35 +1025,6 @@ function sfk_main( array $c ) {
 			exit;
 		}
 		$notices[] = array( 'bad', 'That backup is not there.' );
-	}
-
-	// The database.
-	$db       = null;
-	$p        = null;
-	$db_error = '';
-	$config   = sfk_config_file( __DIR__ );
-	$parsed   = null;
-	if ( null === $config ) {
-		$db_error = 'There is no wp-config.php in this folder or the one above it.';
-	} else {
-		$parsed = sfk_parse_config( (string) file_get_contents( $config ) );
-		$p      = $parsed['prefix'];
-		if ( null === $p || ! preg_match( '/^[A-Za-z0-9_]{1,64}\z/', $p ) ) {
-			$db_error = 'wp-config.php does not set $table_prefix as plain text, so the kit cannot find the tables.';
-		} else {
-			$db = sfk_connect( $parsed['defines'], $db_error );
-		}
-	}
-	$network = is_array( $parsed ) && ! empty( $parsed['defines']['MULTISITE'] );
-
-	if ( null !== $db ) {
-		$kits = sfk_unserialize( sfk_get( $db, $p, 'siteferry_emergency_kits' ) );
-		foreach ( is_array( $kits ) ? $kits : array() as $kit ) {
-			if ( is_array( $kit ) && isset( $kit['id'] ) && $kit['id'] === $c['id'] && ! empty( $kit['revoked'] ) ) {
-				setcookie( $cookie, '', array( 'expires' => 1 ) + $cookies );
-				sfk_stop( 'This kit was revoked in SiteFerry. Delete it from the server.' );
-			}
-		}
 	}
 
 	if ( null !== $db && in_array( $action, array( 'plugins', 'theme', 'undo' ), true ) ) {

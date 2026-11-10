@@ -30,10 +30,14 @@ final class Mu_Plugin {
 		$host = (string) wp_parse_url( $live, PHP_URL_HOST );
 		$port = wp_parse_url( $live, PHP_URL_PORT );
 		$name = $host . ( $port ? ':' . $port : '' ) . (string) wp_parse_url( $live, PHP_URL_PATH );
-		return str_replace(
-			array( '__SF_LIVE__', '__SF_NAME__' ),
-			array( var_export( $live, true ), var_export( '' === $name ? $live : $name, true ) ), // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_export -- writes PHP string literals.
-			self::TEMPLATE
+		// One pass (strtr): text put in is never searched again, so an address that contains a
+		// placeholder name cannot be rewritten inside its own string literal.
+		return strtr(
+			self::TEMPLATE,
+			array(
+				'__SF_LIVE__' => var_export( $live, true ), // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_export -- writes a PHP string literal.
+				'__SF_NAME__' => var_export( '' === $name ? $live : $name, true ), // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_export -- writes a PHP string literal.
+			)
 		);
 	}
 
