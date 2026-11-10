@@ -1240,17 +1240,21 @@
 				: /* translators: %s: name of the storage, such as Dropbox */
 				  sprintf( __( 'sent to %s and kept here too', 'siteferry' ), target.short );
 		}
-		let text = sprintf(
-			/* translators: 1: what is backed up, such as the whole site, 2: the file, such as a .tar file, 3: where it goes, such as kept on this server */
-			__( '“Back up now” saves %1$s as %2$s, %3$s.', 'siteferry' ),
-			what,
-			file,
-			where
-		);
 		const changesFrom = changesOnlyBase( c );
-		if ( changesFrom ) {
-			text += ' ' + __( 'It holds only the files changed since the last full backup, and the whole database.', 'siteferry' );
-		}
+		let text = changesFrom
+			? sprintf(
+					/* translators: 1: the file, such as a .tar file, 2: where it goes, such as kept on this server */
+					__( '“Back up now” saves the whole database and only the files changed since the last full backup, as %1$s, %2$s.', 'siteferry' ),
+					file,
+					where
+			  )
+			: sprintf(
+					/* translators: 1: what is backed up, such as the whole site, 2: the file, such as a .tar file, 3: where it goes, such as kept on this server */
+					__( '“Back up now” saves %1$s as %2$s, %3$s.', 'siteferry' ),
+					what,
+					file,
+					where
+			  );
 		const downloads = c.download && ! ( target && c.delete_after_send ); // (A backup deleted here is not there to download.)
 		if ( downloads ) {
 			text += ' ' + __( 'It is also downloaded to your computer.', 'siteferry' );

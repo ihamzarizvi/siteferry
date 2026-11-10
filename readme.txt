@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.32.0
+Stable tag: 0.32.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -484,6 +484,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.32.1 =
+* With "Only changes since the last full backup" chosen, the Back up now summary no longer says it saves the whole site: it says it saves the whole database and only the changed files.
 
 = 0.32.0 =
 * Changes-only backups: the whole database and only the files added or changed since a full backup on this server (plus what was deleted). Customize: "Only changes since the last full backup"; schedule: "Make a full backup every N runs"; WP-CLI: `wp siteferry export --changes-only[=<backup>]`. Restoring one uses its full backup for the unchanged files, all checked against the checksums.
