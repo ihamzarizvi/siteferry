@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.39.1
+Stable tag: 0.40.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -492,6 +492,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.40.0 =
+* While SiteFerry works (a backup, restore, upload, download, check or staging copy), every admin page shows "SiteFerry 42%" in the admin bar, linking to the SiteFerry page; when it ends, "Backup done ✓" (or a red "… failed"). It updates every three seconds while the tab is visible and stops when the job has ended; nothing is loaded when no job runs. It stays visible on phones. Background checks of the weekly re-check are not shown.
 
 = 0.39.1 =
 * Fixed: checking a changes-only backup (by hand or in the weekly check) reported the files kept in its full backup as missing, so a healthy copy was called damaged. Those files are now counted as in the full backup, and the result says so.

@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: SiteFerry 0.39.1\n"
+"Project-Id-Version: SiteFerry 0.40.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/siteferry\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T14:41:09+00:00\n"
+"POT-Creation-Date: 2026-11-10T14:50:46+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: siteferry\n"
@@ -40,6 +40,86 @@ msgstr ""
 #. Author URI of the plugin
 #: siteferry.php
 msgid "https://xsofty.com/"
+msgstr ""
+
+#. translators: %d: how far the job is, in percent
+#: includes/admin/class-admin-bar.php:69
+#, php-format
+msgid "SiteFerry %d%%"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:76
+msgid "SiteFerry: waiting for you"
+msgstr ""
+
+#. translators: %s: what was done, such as Backup
+#: includes/admin/class-admin-bar.php:84
+#, php-format
+msgid "%s done ✓"
+msgstr ""
+
+#. translators: %s: what failed, such as Backup
+#: includes/admin/class-admin-bar.php:92
+#, php-format
+msgid "%s failed"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:120
+#: includes/admin/class-admin.php:538
+#: assets/admin.js:24
+#: assets/admin.js:2139
+#: assets/admin.js:3540
+#: assets/admin.js:3882
+#: assets/admin.js:5065
+#: assets/admin.js:5307
+#: assets/admin.js:6855
+msgid "Backup"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:122
+#: assets/admin.js:25
+#: assets/admin.js:328
+#: assets/admin.js:2632
+#: assets/admin.js:4949
+#: assets/admin.js:5194
+#: assets/admin.js:5345
+msgid "Restore"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:124
+#: assets/admin.js:67
+msgid "Upload"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:126
+#: assets/admin.js:47
+#: assets/admin.js:60
+#: assets/admin.js:1049
+#: assets/admin.js:2763
+#: assets/admin.js:5185
+msgid "Download"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:128
+#: assets/admin.js:48
+#: assets/admin.js:326
+msgid "Check"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:130
+#: assets/admin.js:29
+#: assets/admin.js:6499
+#: assets/admin.js:6583
+msgid "Staging copy"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:132
+#: assets/admin.js:21
+msgid "Deleting the staging copy"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:134
+msgid "SiteFerry job"
 msgstr ""
 
 #: includes/admin/class-admin.php:100
@@ -668,17 +748,6 @@ msgstr ""
 
 #: includes/admin/class-admin.php:534
 msgid "Show only backups with this tag"
-msgstr ""
-
-#: includes/admin/class-admin.php:538
-#: assets/admin.js:24
-#: assets/admin.js:2139
-#: assets/admin.js:3540
-#: assets/admin.js:3882
-#: assets/admin.js:5065
-#: assets/admin.js:5307
-#: assets/admin.js:6855
-msgid "Backup"
 msgstr ""
 
 #: includes/admin/class-admin.php:539
@@ -1609,7 +1678,7 @@ msgid "A file is still being written; call continue_file() first."
 msgstr ""
 
 #: includes/check/class-check.php:73
-#: includes/rest/class-rest.php:1182
+#: includes/rest/class-rest.php:1192
 #: includes/storage/class-transfer.php:63
 msgid "Unknown backup."
 msgstr ""
@@ -1821,8 +1890,8 @@ msgstr ""
 
 #: includes/class-contents.php:212
 #: includes/class-single-restore.php:129
-#: includes/rest/class-rest.php:750
-#: includes/rest/class-rest.php:766
+#: includes/rest/class-rest.php:760
+#: includes/rest/class-rest.php:776
 msgid "That file is not in the backup."
 msgstr ""
 
@@ -1888,11 +1957,11 @@ msgstr ""
 msgid "The backup %s has no checksum list."
 msgstr ""
 
-#: includes/class-plugin.php:48
+#: includes/class-plugin.php:49
 msgid "SiteFerry cannot run on this server:"
 msgstr ""
 
-#: includes/class-plugin.php:51
+#: includes/class-plugin.php:52
 msgid "Plugin activation failed"
 msgstr ""
 
@@ -2775,71 +2844,71 @@ msgstr ""
 msgid "The other site answered: %s"
 msgstr ""
 
-#: includes/rest/class-rest.php:255
-#: includes/rest/class-rest.php:1041
+#: includes/rest/class-rest.php:256
+#: includes/rest/class-rest.php:1051
 msgid "Missing or invalid chunk offset."
 msgstr ""
 
-#: includes/rest/class-rest.php:438
+#: includes/rest/class-rest.php:448
 #: assets/admin.js:1199
 #: assets/admin.js:3368
 #: assets/admin.js:3409
 msgid "media"
 msgstr ""
 
-#: includes/rest/class-rest.php:439
+#: includes/rest/class-rest.php:449
 #: assets/admin.js:1202
 #: assets/admin.js:3369
 #: assets/admin.js:3410
 msgid "plugins"
 msgstr ""
 
-#: includes/rest/class-rest.php:440
+#: includes/rest/class-rest.php:450
 #: assets/admin.js:1207
 #: assets/admin.js:3370
 #: assets/admin.js:3411
 msgid "themes"
 msgstr ""
 
-#: includes/rest/class-rest.php:448
+#: includes/rest/class-rest.php:458
 msgid "some tables"
 msgstr ""
 
-#: includes/rest/class-rest.php:451
+#: includes/rest/class-rest.php:461
 #: assets/admin.js:1281
 msgid "Whole site"
 msgstr ""
 
 #. translators: %s: list of left-out parts, such as "media and plugins"
-#: includes/rest/class-rest.php:454
+#: includes/rest/class-rest.php:464
 #: assets/admin.js:1278
 #, php-format,js-format
 msgid "Without %s"
 msgstr ""
 
-#: includes/rest/class-rest.php:470
+#: includes/rest/class-rest.php:480
 msgid "The backup could not be deleted."
 msgstr ""
 
-#: includes/rest/class-rest.php:490
+#: includes/rest/class-rest.php:500
 msgid "There is no such part."
 msgstr ""
 
-#: includes/rest/class-rest.php:663
+#: includes/rest/class-rest.php:673
 msgid "Choose two backups on this server to compare."
 msgstr ""
 
-#: includes/rest/class-rest.php:1132
+#: includes/rest/class-rest.php:1142
 msgid "Google Drive is not set up."
 msgstr ""
 
-#: includes/rest/class-rest.php:1311
+#: includes/rest/class-rest.php:1321
 #: includes/storage/class-destinations.php:422
 msgid "Unknown storage."
 msgstr ""
 
 #. translators: 1: a kind of job, such as "export" or "import", 2: the job's ID
-#: includes/rest/class-rest.php:1353
+#: includes/rest/class-rest.php:1363
 #: includes/schedule/class-schedule.php:459
 #, php-format
 msgid "Another %1$s is still in progress (job %2$s). Finish or cancel it first."
@@ -3068,7 +3137,7 @@ msgid "A saved secret cannot be read (the WordPress salts may have changed). Ent
 msgstr ""
 
 #. translators: %s: dir
-#: includes/security/class-storage.php:94
+#: includes/security/class-storage.php:106
 #, php-format
 msgid "Cannot create the folder \"%s\". Check that wp-content is writable."
 msgstr ""
@@ -4151,19 +4220,6 @@ msgstr ""
 msgid "A staging copy"
 msgstr ""
 
-#: assets/admin.js:21
-msgid "Deleting the staging copy"
-msgstr ""
-
-#: assets/admin.js:25
-#: assets/admin.js:328
-#: assets/admin.js:2632
-#: assets/admin.js:4949
-#: assets/admin.js:5194
-#: assets/admin.js:5345
-msgid "Restore"
-msgstr ""
-
 #: assets/admin.js:26
 msgid "Send to storage"
 msgstr ""
@@ -4174,12 +4230,6 @@ msgstr ""
 
 #: assets/admin.js:28
 msgid "Check of a backup"
-msgstr ""
-
-#: assets/admin.js:29
-#: assets/admin.js:6499
-#: assets/admin.js:6583
-msgid "Staging copy"
 msgstr ""
 
 #: assets/admin.js:30
@@ -4226,19 +4276,6 @@ msgstr ""
 #: assets/admin.js:45
 #: assets/admin.js:46
 msgid "Send"
-msgstr ""
-
-#: assets/admin.js:47
-#: assets/admin.js:60
-#: assets/admin.js:1049
-#: assets/admin.js:2763
-#: assets/admin.js:5185
-msgid "Download"
-msgstr ""
-
-#: assets/admin.js:48
-#: assets/admin.js:326
-msgid "Check"
 msgstr ""
 
 #: assets/admin.js:49
@@ -4302,10 +4339,6 @@ msgstr ""
 
 #: assets/admin.js:66
 msgid "Delete"
-msgstr ""
-
-#: assets/admin.js:67
-msgid "Upload"
 msgstr ""
 
 #: assets/admin.js:71

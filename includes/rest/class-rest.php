@@ -76,6 +76,7 @@ final class Rest {
 
 		$routes = array(
 			array( '/status', WP_REST_Server::READABLE, 'status', $admin ),
+			array( '/bar', WP_REST_Server::READABLE, 'bar', $admin ),
 			array( '/tables', WP_REST_Server::READABLE, 'tables', $admin ),
 			array( '/backups', WP_REST_Server::READABLE, 'backups', $admin ),
 			array( '/backups/compare', WP_REST_Server::READABLE, 'compare_backups', $admin ),
@@ -332,6 +333,15 @@ final class Rest {
 				Upload::all( self::uploads_dir() )
 			),
 		);
+	}
+
+	/**
+	 * What the admin bar shows about the running (or just ended) job.
+	 */
+	public static function bar(): \WP_REST_Response {
+		$response = new \WP_REST_Response( array( 'shown' => \SiteFerry\Admin\Admin_Bar::current() ) );
+		$response->header( 'Cache-Control', 'no-store' );
+		return $response;
 	}
 
 	/**

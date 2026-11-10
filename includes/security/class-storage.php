@@ -70,6 +70,18 @@ final class Storage {
 	}
 
 	/**
+	 * Jobs folder if SiteFerry has created one, without creating anything.
+	 */
+	public static function existing_jobs_dir(): ?string {
+		$name = get_option( self::OPTION );
+		if ( ! is_string( $name ) || ! preg_match( self::NAME_PATTERN, $name ) ) {
+			return null;
+		}
+		$dir = WP_CONTENT_DIR . '/' . $name . '/jobs';
+		return is_dir( $dir ) ? $dir : null;
+	}
+
+	/**
 	 * Folder for job state and temporary files.
 	 */
 	public static function jobs_dir(): string {
