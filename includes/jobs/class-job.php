@@ -107,6 +107,7 @@ final class Job {
 				'created'       => $now,
 				'updated'       => $now,
 				'token_hash'    => hash( 'sha256', $token ),
+				'by'            => self::starter( $options ),
 				'steps'         => array_values( $steps ),
 				'step'          => 0,
 				'options'       => $options,
@@ -125,6 +126,35 @@ final class Job {
 		$job->save();
 		$job->log( 'info', sprintf( '%s job created.', ucfirst( $type ) ) );
 		return array( $job, $token );
+	}
+
+	/**
+	 * Who starts a job, for the Activity list: "WP-CLI", "schedule", "automatic" (a backup before
+	 * an update or a risky change), "weekly check", or the signed-in user's login.
+	 *
+	 * @param array $options Job options.
+	 */
+	private static function starter( array $options ): string {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			return 'WP-CLI';
+		}
+		$origin = isset( $options['origin'] ) ? (string) $options['origin'] : '';
+		if ( 'schedule' === $origin ) {
+			return 'schedule';
+		}
+		if ( ! empty( $options['background'] ) ) {
+			return 'weekly check';
+		}
+		if ( 'update' === $origin ) {
+			return 'automatic';
+		}
+		if ( function_exists( 'wp_get_current_user' ) ) {
+			$user = wp_get_current_user();
+			if ( $user && $user->exists() ) {
+				return (string) $user->user_login;
+			}
+		}
+		return '';
 	}
 
 	/**
@@ -230,6 +260,8 @@ final class Job {
 			'status'   => $this->data['status'],
 			// The backup the job is about (for the Activity list), or ''.
 			'backup'   => $this->backup_name(),
+			// Who started it (since 0.41.0; '' for older jobs).
+			'by'       => isset( $this->data['by'] ) ? (string) $this->data['by'] : '',
 			'step'     => array(
 				'index' => $index,
 				'count' => count( $steps ),

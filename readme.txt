@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.40.0
+Stable tag: 0.41.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -492,6 +492,11 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.41.0 =
+* Activity: "Download CSV" saves the whole activity list as a spreadsheet file: time (site time zone and UTC), kind, backup, result, duration, size, where, who started it and the message. Opens correctly in Excel (UTF-8); cells that a spreadsheet would treat as formulas are made plain text.
+* WP-CLI: `wp siteferry activity [--since=<YYYY-MM-DD>] [--type=<kind>] [--format=table|csv|json]`.
+* Jobs now record who started them (a user, WP-CLI, the schedule or an automatic backup).
 
 = 0.40.0 =
 * While SiteFerry works (a backup, restore, upload, download, check or staging copy), every admin page shows "SiteFerry 42%" in the admin bar, linking to the SiteFerry page; when it ends, "Backup done ✓" (or a red "… failed"). It updates every three seconds while the tab is visible and stops when the job has ended; nothing is loaded when no job runs. It stays visible on phones. Background checks of the weekly re-check are not shown.

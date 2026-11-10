@@ -97,6 +97,7 @@ final class Rest {
 			array( '/exports', WP_REST_Server::CREATABLE, 'start_export', $admin ),
 			array( '/imports', WP_REST_Server::CREATABLE, 'start_import', $admin ),
 			array( '/jobs', WP_REST_Server::READABLE, 'jobs', $admin ),
+			array( '/activity/csv', WP_REST_Server::READABLE, 'activity_csv', $admin ),
 			array( '/jobs/' . self::ID, WP_REST_Server::READABLE, 'job', $job ),
 			array( '/jobs/' . self::ID . '/run', WP_REST_Server::CREATABLE, 'run', $job ),
 			array( '/jobs/' . self::ID . '/confirm', WP_REST_Server::CREATABLE, 'confirm', $confirm ),
@@ -856,6 +857,36 @@ final class Rest {
 			},
 			array_slice( Job::all( Storage::jobs_dir() ), 0, 30 )
 		);
+	}
+
+	/**
+	 * The Activity list as a CSV file (a link with the REST nonce in _wpnonce), and ends the request.
+	 *
+	 * @param WP_REST_Request $request Request with optional "since" (YYYY-MM-DD) and "type".
+	 * @throws Job_Exception On a malformed date or type.
+	 */
+	public static function activity_csv( WP_REST_Request $request ): void {
+		$type = (string) $request->get_param( 'type' );
+		if ( '' !== $type && ! preg_match( '/^[a-z-]{1,20}$/', $type ) ) {
+			throw new Job_Exception( __( 'Unknown kind of activity.', 'siteferry' ), Job_Exception::STEP );
+		}
+		try {
+			$rows = \SiteFerry\Activity::all( (string) $request->get_param( 'since' ), $type );
+		} catch ( \InvalidArgumentException $e ) {
+			throw new Job_Exception( __( 'Use a date such as 2026-11-01.', 'siteferry' ), Job_Exception::STEP );
+		}
+		$csv = \SiteFerry\Activity::csv( $rows );
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
+		status_header( 200 );
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="siteferry-activity-' . gmdate( 'Y-m-d' ) . '.csv"' );
+		header( 'Content-Length: ' . strlen( $csv ) );
+		header( 'Cache-Control: no-store' );
+		header( 'X-Content-Type-Options: nosniff' );
+		echo $csv; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a CSV file download, not HTML; cells are quoted and formula-safe.
+		exit;
 	}
 
 	/**

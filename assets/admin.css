@@ -3791,3 +3791,11 @@ details.sf-dest[open] > .sf-dest-head::after {
 	width: 80px;
 	height: auto;
 }
+/* ------------------------------------------------- Activity tools */
+
+.siteferry .sf-list-tools {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+}

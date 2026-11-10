@@ -571,7 +571,10 @@ final class Admin {
 				<div class="sf-card sf-card-flush">
 					<div class="sf-list-head">
 						<h2 class="sf-card-title"><?php esc_html_e( 'Recent activity', 'siteferry' ); ?></h2>
-						<button type="button" class="button sf-quiet sf-quiet-small" id="siteferry-jobs-refresh"><?php esc_html_e( 'Refresh', 'siteferry' ); ?></button>
+						<span class="sf-list-tools">
+							<a class="button sf-quiet sf-quiet-small" id="siteferry-activity-csv" href="<?php echo esc_url( add_query_arg( '_wpnonce', wp_create_nonce( 'wp_rest' ), rest_url( 'siteferry/v1/activity/csv' ) ) ); ?>" download><?php esc_html_e( 'Download CSV', 'siteferry' ); ?></a>
+							<button type="button" class="button sf-quiet sf-quiet-small" id="siteferry-jobs-refresh"><?php esc_html_e( 'Refresh', 'siteferry' ); ?></button>
+						</span>
 					</div>
 					<ul class="sf-list" id="siteferry-jobs"></ul>
 				</div>

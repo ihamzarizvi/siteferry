@@ -466,6 +466,69 @@ final class Command {
 	 * @param array    $assoc_args Options.
 	 */
 	public function space( $args, $assoc_args ): void {
+		$this->space_report( $assoc_args );
+	}
+
+	/**
+	 * Lists SiteFerry's activity: backups, restores, uploads, downloads, checks and staging copies,
+	 * newest first.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--since=<date>]
+	 * : Only from this day on (YYYY-MM-DD, in the site's time zone).
+	 *
+	 * [--type=<type>]
+	 * : Only this kind: export, import, send, fetch, check, staging or staging-delete.
+	 *
+	 * [--format=<format>]
+	 * : Output format. csv is the same file as "Download CSV" on the Activity tab.
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - csv
+	 *   - json
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp siteferry activity
+	 *     wp siteferry activity --since=2026-11-01 --type=export --format=csv > activity.csv
+	 *
+	 * @param string[] $args       Positional arguments (none).
+	 * @param array    $assoc_args Options.
+	 */
+	public function activity( $args, $assoc_args ): void {
+		unset( $args );
+		$type = (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'type', '' );
+		try {
+			$rows = \SiteFerry\Activity::all( (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'since', '' ), $type );
+		} catch ( \InvalidArgumentException $e ) {
+			WP_CLI::error( $e->getMessage() );
+		}
+		$format = (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'table' );
+		if ( 'csv' === $format ) {
+			fwrite( STDOUT, \SiteFerry\Activity::csv( $rows ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- WP-CLI output.
+			return;
+		}
+		if ( 'json' === $format ) {
+			WP_CLI::line( (string) wp_json_encode( $rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+			return;
+		}
+		if ( array() === $rows ) {
+			WP_CLI::log( 'No activity.' );
+			return;
+		}
+		\WP_CLI\Utils\format_items( 'table', $rows, array( 'time', 'type', 'what', 'result', 'duration', 'started_by', 'message' ) );
+	}
+
+	/**
+	 * The space report (wp siteferry space).
+	 *
+	 * @param array $assoc_args Options.
+	 */
+	private function space_report( $assoc_args ): void {
 		$fresh = (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'fresh', false );
 		do {
 			$result = \SiteFerry\Space::report( self::SLICE_SECONDS, $fresh );
