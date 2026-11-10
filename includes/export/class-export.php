@@ -50,6 +50,8 @@ final class Export {
 		'exclude_paths'            => array(),
 		'snapshot'                 => false,
 		'send_to'                  => '',
+		// More storages it goes to after send_to, one after the other (scheduled backups).
+		'send_also'                => array(),
 		'delete_after_send'        => false,
 		// A changes-only backup: the name of the full backup on this server it is built on.
 		'changes_since'            => '',
@@ -107,7 +109,10 @@ final class Export {
 		}
 		if ( '' !== $options['send_to'] ) {
 			// Fails now, not after the export, if the destination is not set up (or not connected).
-			\SiteFerry\Storage\Destinations::require_ready( $options['send_to'] );
+			// With several storages, one that is not ready fails only its own sending (see Send_Step).
+			if ( array() === $options['send_also'] ) {
+				\SiteFerry\Storage\Destinations::require_ready( $options['send_to'] );
+			}
 			$steps[] = self::SEND_STEP;
 		}
 		if ( 'schedule' === $origin ) {
@@ -248,6 +253,16 @@ final class Export {
 		if ( '' !== $normalized['send_to'] && ! preg_match( '/^[a-z0-9]{1,20}$/', $normalized['send_to'] ) ) {
 			throw new Job_Exception( __( 'Unknown storage to send the backup to.', 'siteferry' ), Job_Exception::STEP );
 		}
+		$also = array();
+		foreach ( $normalized['send_also'] as $id ) {
+			if ( ! preg_match( '/^[a-z0-9]{1,20}$/', $id ) ) {
+				throw new Job_Exception( __( 'Unknown storage to send the backup to.', 'siteferry' ), Job_Exception::STEP );
+			}
+			if ( $id !== $normalized['send_to'] && ! in_array( $id, $also, true ) ) {
+				$also[] = $id;
+			}
+		}
+		$normalized['send_also'] = '' === $normalized['send_to'] ? array() : array_slice( $also, 0, 9 );
 		if ( '' === $normalized['send_to'] ) {
 			$normalized['delete_after_send'] = false;
 		}

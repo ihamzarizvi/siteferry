@@ -3665,3 +3665,84 @@ details.sf-dest[open] > .sf-dest-head::after {
 	background: var(--sf-fog);
 	color: var(--sf-ink);
 }
+/* ------------------------------------------------- 3-2-1 meter */
+
+.siteferry .sf-meter {
+	margin: 12px 0 0;
+}
+
+.siteferry .sf-meter-box {
+	padding: 12px 14px;
+	border: 1px solid var(--sf-rope);
+	border-left: 4px solid var(--sf-amber);
+	border-radius: var(--sf-radius);
+	background: var(--sf-deck);
+}
+
+.siteferry .sf-meter-box.is-good {
+	border-left-color: var(--sf-starboard);
+}
+
+.siteferry .sf-meter-head {
+	margin: 0 0 8px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-meter-ticks {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 18px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.siteferry .sf-meter-ticks li {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	margin: 0;
+}
+
+.siteferry .sf-meter-mark {
+	display: inline-grid;
+	place-items: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	font-size: 12px;
+	font-weight: 700;
+	background: var(--sf-amber-wash);
+	color: var(--sf-amber);
+}
+
+.siteferry .sf-meter-ticks .is-ok .sf-meter-mark {
+	background: var(--sf-starboard-wash);
+	color: var(--sf-starboard);
+}
+
+.siteferry .sf-meter-now {
+	font-size: 12px;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-meter-note {
+	margin: 8px 0 0;
+	font-size: 12px;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-chip-button {
+	border: 0;
+	cursor: pointer;
+	font: inherit;
+}
+
+.siteferry .sf-chip-button:focus-visible {
+	outline: 2px solid var(--sf-focus);
+	outline-offset: 2px;
+}

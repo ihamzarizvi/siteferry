@@ -98,6 +98,8 @@ final class Schedule {
 		'compress'                 => false,
 		'encrypt'                  => false,
 		'send_to'                  => '',
+		// More storages each run also goes to, after send_to (since 0.38.0).
+		'send_also'                => array(),
 		'keep_local'               => false,
 		'retain'                   => 7,
 		// "newest": keep the newest "retain"; "periods": the newest of each of the last days, weeks, months.
@@ -154,10 +156,23 @@ final class Schedule {
 	 * @throws Job_Exception On invalid input.
 	 */
 	public static function normalize( array $input, array $ready ): array {
+		// Where it goes: "send_to" may be a list of storages (the page sends one); the first stays
+		// send_to, the others become send_also. Saved settings from before 0.38.0 have one storage.
+		$targets = self::targets_of( $input );
+		foreach ( $targets as $id ) {
+			if ( ! in_array( $id, $ready, true ) ) {
+				throw new Job_Exception( __( 'That storage is not set up (or not connected) yet. Set it up on the Storage tab, or keep the backups on this server.', 'siteferry' ), Job_Exception::STEP );
+			}
+		}
+		$input['send_to']   = isset( $targets[0] ) ? $targets[0] : '';
+		$input['send_also'] = array_slice( $targets, 1 );
+
 		$out = array();
 		foreach ( self::DEFAULTS as $key => $default ) {
 			$value = array_key_exists( $key, $input ) ? $input[ $key ] : $default;
-			if ( is_bool( $default ) ) {
+			if ( is_array( $default ) ) {
+				$value = array_values( (array) $value );
+			} elseif ( is_bool( $default ) ) {
 				$value = filter_var( $value, FILTER_VALIDATE_BOOLEAN );
 			} elseif ( is_int( $default ) ) {
 				if ( ! is_numeric( $value ) ) {
@@ -187,9 +202,6 @@ final class Schedule {
 		if ( 'wpress' === $out['format'] ) {
 			$out['compress'] = false;
 			$out['encrypt']  = false; // SiteFerry encrypts only its own format.
-		}
-		if ( '' !== $out['send_to'] && ! in_array( $out['send_to'], $ready, true ) ) {
-			throw new Job_Exception( __( 'That storage is not set up (or not connected) yet. Set it up on the Storage tab, or keep the backups on this server.', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( '' === $out['send_to'] ) {
 			$out['keep_local'] = true;
@@ -237,6 +249,46 @@ final class Schedule {
 	}
 
 	/**
+	 * The storages a run goes to, in order, from send_to (one id, or a list) and send_also; ids are
+	 * checked and duplicates dropped.
+	 *
+	 * @param array $input Settings or raw input.
+	 * @return string[]
+	 * @throws Job_Exception On an invalid id or too many storages.
+	 */
+	public static function targets_of( array $input ): array {
+		$raw = array();
+		foreach ( array( 'send_to', 'send_also' ) as $key ) {
+			if ( ! isset( $input[ $key ] ) ) {
+				continue;
+			}
+			$value = $input[ $key ];
+			if ( is_string( $value ) ) {
+				$value = '' === trim( $value ) ? array() : explode( ',', $value );
+			}
+			foreach ( (array) $value as $id ) {
+				$raw[] = trim( is_scalar( $id ) ? (string) $id : '' );
+			}
+		}
+		$targets = array();
+		foreach ( $raw as $id ) {
+			if ( '' === $id ) {
+				continue;
+			}
+			if ( ! preg_match( '/^[a-z0-9]{1,20}$/', $id ) ) {
+				throw new Job_Exception( __( 'That storage is not set up (or not connected) yet. Set it up on the Storage tab, or keep the backups on this server.', 'siteferry' ), Job_Exception::STEP );
+			}
+			if ( ! in_array( $id, $targets, true ) ) {
+				$targets[] = $id;
+			}
+		}
+		if ( count( $targets ) > 10 ) {
+			throw new Job_Exception( __( 'Send scheduled backups to at most 10 storages.', 'siteferry' ), Job_Exception::STEP );
+		}
+		return $targets;
+	}
+
+	/**
 	 * The saved settings (defaults when there are none).
 	 */
 	public static function settings(): array {
@@ -267,7 +319,11 @@ final class Schedule {
 				$ready[] = $entry['id'];
 			}
 		}
-		$settings = self::normalize( $input + self::settings(), $ready );
+		$saved = self::settings();
+		if ( array_key_exists( 'send_to', $input ) ) {
+			unset( $saved['send_also'] ); // A new "where it goes" replaces the whole list.
+		}
+		$settings = self::normalize( $input + $saved, $ready );
 		if ( $settings['encrypt'] && null === self::password() ) {
 			throw new Job_Exception( __( 'Enter a password for the automatic backups, or untick the encryption.', 'siteferry' ), Job_Exception::STEP );
 		}
@@ -417,6 +473,7 @@ final class Schedule {
 	 */
 	public static function export_options( array $settings ): array {
 		$options = array_intersect_key( $settings, array_flip( array( 'exclude_media', 'exclude_plugins', 'exclude_themes', 'exclude_inactive_plugins', 'exclude_inactive_themes', 'exclude_cache', 'exclude_spam_comments', 'exclude_revisions', 'format', 'compress', 'send_to' ) ) );
+		$options['send_also']         = isset( $settings['send_also'] ) ? array_values( (array) $settings['send_also'] ) : array();
 		$options['delete_after_send'] = '' !== $settings['send_to'] && ! $settings['keep_local'];
 		$options['tags']              = array( self::TAG );
 		if ( isset( $settings['full_every'] ) && (int) $settings['full_every'] > 1 ) {
@@ -600,6 +657,8 @@ final class Schedule {
 			'time'        => time(),
 			'local'       => (bool) $backup['local'],
 			'destination' => (string) $backup['destination'],
+			// Every storage it reached (since 0.38.0; older runs have only "destination").
+			'destinations' => isset( $backup['destinations'] ) ? array_values( (array) $backup['destinations'] ) : ( '' === (string) $backup['destination'] ? array() : array( (string) $backup['destination'] ) ),
 			'base'        => isset( $backup['base'] ) ? (string) $backup['base'] : '',
 		);
 		$settings        = self::settings();
@@ -672,7 +731,7 @@ final class Schedule {
 	 */
 	public static function retention_preview( array $input ): array {
 		$saved    = self::settings();
-		$settings = self::normalize( array_intersect_key( $input, array_flip( array( 'retain_mode', 'retain', 'keep_daily', 'keep_weekly', 'keep_monthly' ) ) ) + $saved, array( $saved['send_to'] ) ); // Only the keep values are checked here.
+		$settings = self::normalize( array_intersect_key( $input, array_flip( array( 'retain_mode', 'retain', 'keep_daily', 'keep_weekly', 'keep_monthly' ) ) ) + $saved, self::targets_of( $saved ) ); // Only the keep values are checked here.
 		$state    = self::state();
 		$next     = wp_next_scheduled( self::HOOK_START );
 		$when     = false === $next ? time() : (int) $next;
@@ -763,13 +822,17 @@ final class Schedule {
 		} catch ( \Throwable $e ) {
 			unset( $e ); // Not a backup name any more, or gone: nothing to delete here.
 		}
-		if ( '' !== (string) $run['destination'] ) {
+		$failed = array();
+		foreach ( self::places_of( $run ) as $destination ) {
 			try {
-				\SiteFerry\Storage\Parts::delete( Destinations::driver( (string) $run['destination'] ), $name );
-				\SiteFerry\Check\Check::forget( $name, (string) $run['destination'] );
+				\SiteFerry\Storage\Parts::delete( Destinations::driver( $destination ), $name );
+				\SiteFerry\Check\Check::forget( $name, $destination );
 			} catch ( \Throwable $e ) {
-				return sprintf( '%s could not be deleted on %s: %s', $name, Destinations::short_label( (string) $run['destination'] ), $e->getMessage() );
+				$failed[] = sprintf( '%s could not be deleted on %s: %s', $name, Destinations::short_label( $destination ), $e->getMessage() );
 			}
+		}
+		if ( array() !== $failed ) {
+			return implode( ' ', $failed );
 		}
 		try {
 			\SiteFerry\Labels::set( $name, '', '', array() );
@@ -777,6 +840,20 @@ final class Schedule {
 			unset( $e );
 		}
 		return null;
+	}
+
+	/**
+	 * The storages a recorded run was sent to.
+	 *
+	 * @param array $run Run: destination, and since 0.38.0 destinations.
+	 * @return string[]
+	 */
+	public static function places_of( array $run ): array {
+		$places = isset( $run['destinations'] ) && is_array( $run['destinations'] ) ? array_map( 'strval', $run['destinations'] ) : array();
+		if ( isset( $run['destination'] ) && '' !== (string) $run['destination'] ) {
+			$places[] = (string) $run['destination'];
+		}
+		return array_values( array_unique( array_filter( $places, 'strlen' ) ) );
 	}
 
 	/**
@@ -893,6 +970,24 @@ final class Schedule {
 			'last_update'    => $state['last_update'],
 			'update_kept'    => count( $state['update_runs'] ),
 			'has_password'   => null !== self::password(),
+			// 3-2-1: the newest scheduled backup's copies, and what these settings would make.
+			'copies'         => self::copies_overview( $settings, $state['runs'] ),
+		);
+	}
+
+	/**
+	 * The 3-2-1 meter for the admin screen: of the newest scheduled backup (still in the places it
+	 * was sent to, as recorded), and of what the saved settings would make.
+	 *
+	 * @param array $settings Settings.
+	 * @param array $runs     Recorded runs.
+	 */
+	private static function copies_overview( array $settings, array $runs ): array {
+		$newest  = Copies::newest( $runs );
+		$planned = Copies::planned( $settings );
+		return array(
+			'newest'  => null === $newest ? null : Copies::meter( $newest ) + array( 'places' => $newest ),
+			'planned' => Copies::meter( $planned ) + array( 'places' => $planned ),
 		);
 	}
 

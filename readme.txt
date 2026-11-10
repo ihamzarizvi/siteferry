@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.37.0
+Stable tag: 0.38.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -492,6 +492,11 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.38.0 =
+* Scheduled backups can go to several places at once: tick this server and any storages that are set up under "Where it goes". Each run sends the backup to them one after the other; a storage that fails does not stop the others, and the email and the job log name it. The copy on this server is deleted after sending (when unticked) only if every storage got the backup. Retention deletes old scheduled backups everywhere they went. Settings saved before keep working (one storage).
+* A 3-2-1 meter in the Schedule panel (3 copies, on 2 kinds of storage: this server, cloud, FTP; 1 away from this server), with what to add to complete it, and a small "3-2-1" chip in the schedule line on the Backups tab.
+* WP-CLI's schedule summary names every storage. "Back up now" still sends to one storage.
 
 = 0.37.0 =
 * Size and time forecast: under the size estimate in Customize, SiteFerry now says about how long making the backup takes (from the last backup of the same kind, compressed or not) and how long sending it takes (from the last upload to that storage), as ranges; and, for a compressed file, about how big it will be. Until a backup of that kind was made or sent there, it says so instead of guessing. The Back up now bar shows the total as a small clock chip. The speeds are measured on this site only and kept in one option (REST GET /forecast).

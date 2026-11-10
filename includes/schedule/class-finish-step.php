@@ -37,19 +37,31 @@ final class Finish_Step implements Step {
 		if ( $local ) {
 			$where[] = 'this server';
 		}
-		if ( isset( $result['sent']['where'] ) ) {
-			$where[] = (string) $result['sent']['where'];
+		// Several storages (0.38.0): each one that got it, and what went wrong with the others.
+		$sent     = isset( $result['sent_all'] ) ? (array) $result['sent_all'] : ( isset( $result['sent'] ) ? array( $result['sent'] + array( 'ok' => true ) ) : array() );
+		$places   = array();
+		$failures = array();
+		foreach ( $sent as $one ) {
+			if ( ! empty( $one['ok'] ) ) {
+				$where[]  = (string) $one['where'];
+				$places[] = (string) $one['destination'];
+			} else {
+				/* translators: 1: a storage, such as Dropbox, 2: what went wrong */
+				$failures[] = sprintf( __( 'Not sent to %1$s: %2$s', 'siteferry' ), (string) $one['where'], (string) $one['error'] );
+			}
 		}
 		$backup = array(
-			'name'        => (string) $result['name'],
-			'size'        => isset( $result['size'] ) ? (int) $result['size'] : 0,
-			'local'       => $local,
-			'destination' => $destination,
-			'where'       => implode( ' and ', $where ),
-			'base'        => isset( $result['base'] ) ? (string) $result['base'] : '',
+			'name'         => (string) $result['name'],
+			'size'         => isset( $result['size'] ) ? (int) $result['size'] : 0,
+			'local'        => $local,
+			'destination'  => isset( $places[0] ) ? $places[0] : ( array() === $sent ? $destination : '' ),
+			'destinations' => $places,
+			'where'        => implode( ', ', $where ),
+			'base'         => isset( $result['base'] ) ? (string) $result['base'] : '',
 		);
 
-		$kept = Schedule::record_success( $job, $backup );
+		$kept             = Schedule::record_success( $job, $backup );
+		$kept['problems'] = array_merge( $failures, $kept['problems'] );
 		foreach ( $kept['held'] as $name ) {
 			$job->log( 'info', sprintf( 'Kept the older full backup %s beyond the number to keep: newer changes-only backups are built on it.', $name ) );
 		}

@@ -34,28 +34,188 @@ final class Send_Step implements Step {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * With one storage (send_to), its progress lives at the top of the step state, as before 0.38.0.
+	 * With more (send_also), each storage has its own progress under "to", and they are sent one
+	 * after the other; one that fails is recorded and the others still get the backup. The job
+	 * fails only when none got it.
+	 *
 	 * @param Job          $job    The job.
 	 * @param Slice_Budget $budget Work limit.
-	 * @throws Job_Exception If the backup is missing or changes.
+	 * @throws Job_Exception If the backup is missing or changes, or no storage got it.
 	 */
 	public function run( Job $job, Slice_Budget $budget ): bool {
-		$destination = (string) $job->option( 'send_to', '' );
-		if ( '' === $destination ) {
+		$targets = self::targets( $job );
+		if ( array() === $targets ) {
 			return true;
 		}
-		$file   = self::source( $job );
+		$file = self::source( $job );
+		if ( 1 === count( $targets ) ) {
+			$state = $job->state( self::STATE );
+			$sent  = $this->deliver(
+				$job,
+				$targets[0],
+				$file,
+				$state,
+				$budget,
+				static function ( array $sub ) use ( $job ) {
+					$job->set_state( self::STATE, $sub );
+				}
+			);
+			if ( null === $sent ) {
+				return false;
+			}
+			$result         = $job->result();
+			$result['sent'] = $sent;
+			$this->finish_sending( $job, $file, $result, true );
+			$job->set_progress( sprintf( /* translators: %s: where it went, such as Dropbox or another site's host name */ __( 'Sent to %s', 'siteferry' ), $sent['where'] ), 1, 1 );
+			return true;
+		}
+
+		$state = $job->state( self::STATE );
+		$state += array(
+			'to'      => array(),
+			'results' => array(),
+		);
+		foreach ( $targets as $destination ) {
+			if ( isset( $state['results'][ $destination ] ) ) {
+				continue;
+			}
+			$sub = isset( $state['to'][ $destination ] ) ? (array) $state['to'][ $destination ] : array();
+			try {
+				$sent = $this->deliver(
+					$job,
+					$destination,
+					$file,
+					$sub,
+					$budget,
+					static function ( array $changed ) use ( $job, &$state, $destination ) {
+						$state['to'][ $destination ] = $changed;
+						$job->set_state( self::STATE, $state );
+					}
+				);
+			} catch ( \Throwable $e ) {
+				if ( ! is_file( $file ) ) {
+					throw $e; // The backup itself is gone: no storage can get it.
+				}
+				if ( isset( $sub['upload'] ) && empty( $sub['finished'] ) ) {
+					self::abandon_quietly( $job, $destination, $sub );
+				}
+				$state['results'][ $destination ] = array(
+					'destination' => $destination,
+					'ok'          => false,
+					'error'       => $e->getMessage(),
+					'where'       => Destinations::short_label( $destination ),
+				);
+				unset( $state['to'][ $destination ] );
+				$job->set_state( self::STATE, $state );
+				$job->warn( sprintf( /* translators: 1: a storage, such as Dropbox, 2: what went wrong */ __( 'Not sent to %1$s: %2$s', 'siteferry' ), Destinations::short_label( $destination ), $e->getMessage() ) );
+				$job->save();
+				continue;
+			}
+			if ( null === $sent ) {
+				return false;
+			}
+			$state['results'][ $destination ] = $sent + array( 'ok' => true );
+			$job->set_state( self::STATE, $state );
+			$job->save();
+			if ( $budget->exhausted() && count( $state['results'] ) < count( $targets ) ) {
+				return false;
+			}
+		}
+
+		$all = array();
+		foreach ( $targets as $destination ) {
+			$all[] = $state['results'][ $destination ];
+		}
+		$ok = array_values(
+			array_filter(
+				$all,
+				static function ( array $one ): bool {
+					return ! empty( $one['ok'] );
+				}
+			)
+		);
+		if ( array() === $ok ) {
+			throw new Job_Exception(
+				sprintf(
+					/* translators: %s: each storage with what went wrong */
+					__( 'The backup could not be sent to any storage: %s', 'siteferry' ),
+					implode(
+						'; ',
+						array_map(
+							static function ( array $one ): string {
+								return $one['where'] . ': ' . $one['error'];
+							},
+							$all
+						)
+					)
+				),
+				Job_Exception::STEP
+			);
+		}
+		$result             = $job->result();
+		$result['sent']     = $ok[0];
+		$result['sent_all'] = $all;
+		// The copy here is deleted only when every storage has the backup.
+		$this->finish_sending( $job, $file, $result, count( $ok ) === count( $all ) );
+		$job->set_progress(
+			sprintf(
+				/* translators: 1: number of storages that got the backup, 2: number of storages chosen */
+				__( 'Sent to %1$d of %2$d storages', 'siteferry' ),
+				count( $ok ),
+				count( $all )
+			),
+			1,
+			1
+		);
+		return true;
+	}
+
+	/**
+	 * The storages this job sends to, in order: send_to, then send_also.
+	 *
+	 * @param Job $job The job.
+	 * @return string[]
+	 */
+	public static function targets( Job $job ): array {
+		$first = (string) $job->option( 'send_to', '' );
+		if ( '' === $first ) {
+			return array();
+		}
+		$targets = array( $first );
+		foreach ( (array) $job->option( 'send_also', array() ) as $also ) {
+			$also = (string) $also;
+			if ( '' !== $also && ! in_array( $also, $targets, true ) ) {
+				$targets[] = $also;
+			}
+		}
+		return $targets;
+	}
+
+	/**
+	 * Sends the backup (and, for a changes-only backup, its full backup first) to one storage.
+	 *
+	 * @param Job          $job         The job.
+	 * @param string       $destination Destination id.
+	 * @param string       $file        The backup.
+	 * @param array        $state       This storage's progress (empty to start); updated.
+	 * @param Slice_Budget $budget      Work limit.
+	 * @param callable     $save        function( array $state ): void.
+	 * @return array|null What was sent (destination, name, size, parts, where, base), or null when not finished yet.
+	 * @throws Job_Exception If the backup is missing or changes.
+	 */
+	private function deliver( Job $job, string $destination, string $file, array &$state, Slice_Budget $budget, callable $save ): ?array {
 		$name   = basename( $file );
 		$driver = Destinations::driver( $destination );
-		$state  = $job->state( self::STATE );
 		if ( ! isset( $state['started_at'] ) ) {
 			$state['started_at'] = microtime( true ); // For the forecast's upload speed.
-			$job->set_state( self::STATE, $state );
+			$save( $state );
 		}
 
 		// A changes-only backup is useless on a storage without its full backup: that goes first.
 		if ( ! array_key_exists( 'base_file', $state ) && ! isset( $state['upload'] ) ) {
 			$state['base_file'] = self::base_to_send( $file, $driver );
-			$job->set_state( self::STATE, $state );
+			$save( $state );
 		}
 		$base_file = isset( $state['base_file'] ) ? (string) $state['base_file'] : '';
 		if ( '' !== $base_file && empty( $state['base']['finished'] ) ) {
@@ -67,17 +227,17 @@ final class Send_Step implements Step {
 				$base_file,
 				$sub,
 				$budget,
-				static function ( array $sub ) use ( $job, &$state ) {
+				static function ( array $sub ) use ( &$state, $save ) {
 					$state['base'] = $sub;
-					$job->set_state( self::STATE, $state );
+					$save( $state );
 				}
 			);
 			if ( ! $done ) {
-				return false;
+				return null;
 			}
-			$job->log( 'info', sprintf( 'Sent the full backup %s first: the changes-only backup is built on it.', basename( $base_file ) ) );
+			$job->log( 'info', sprintf( 'Sent the full backup %s to %s first: the changes-only backup is built on it.', basename( $base_file ), $driver->describe() ) );
 			if ( $budget->exhausted() ) {
-				return false;
+				return null;
 			}
 		}
 
@@ -89,24 +249,14 @@ final class Send_Step implements Step {
 			$file,
 			$main,
 			$budget,
-			static function ( array $sub ) use ( $job, &$state ) {
+			static function ( array $sub ) use ( &$state, $save ) {
 				$state = array_merge( $state, $sub );
-				$job->set_state( self::STATE, $state );
+				$save( $state );
 			}
 		);
 		if ( ! $done ) {
-			return false;
+			return null;
 		}
-
-		$result         = $job->result();
-		$result['sent'] = array(
-			'destination' => $destination,
-			'name'        => $name,
-			'size'        => $main['size'],
-			'parts'       => count( $main['pieces'] ),
-			'where'       => $driver->describe(),
-			'base'        => '' === $base_file ? '' : basename( $base_file ),
-		);
 		$job->log( 'info', count( $main['pieces'] ) > 1 ? sprintf( 'Sent %s to %s in %d parts.', $name, $driver->describe(), count( $main['pieces'] ) ) : sprintf( 'Sent %s to %s.', $name, $driver->describe() ) );
 		\SiteFerry\Forecast::record_transfer(
 			$destination,
@@ -118,25 +268,44 @@ final class Send_Step implements Step {
 			) ),
 			microtime( true ) - (float) $state['started_at']
 		);
+		return array(
+			'destination' => $destination,
+			'name'        => $name,
+			'size'        => $main['size'],
+			'parts'       => count( $main['pieces'] ),
+			'where'       => $driver->describe(),
+			'base'        => '' === $base_file ? '' : basename( $base_file ),
+		);
+	}
 
+	/**
+	 * Stores the result and, when asked and allowed, deletes the copy on this server.
+	 *
+	 * @param Job    $job       The job.
+	 * @param string $file      The backup.
+	 * @param array  $result    Job result with "sent".
+	 * @param bool   $may_delete Whether every storage has the backup.
+	 */
+	private function finish_sending( Job $job, string $file, array $result, bool $may_delete ): void {
 		if ( $job->option( 'delete_after_send', false ) ) {
-			$deleted = Io::quiet(
-				static function () use ( $file ) {
-					return unlink( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
-				}
-			);
-			$result['deleted_local'] = (bool) $deleted;
-			if ( $deleted ) {
-				$job->log( 'info', 'Deleted the copy on this server, as asked.' );
+			if ( ! $may_delete ) {
+				$job->warn( __( 'The copy on this server was kept: not every storage got the backup.', 'siteferry' ) );
 			} else {
-				$job->warn( __( 'The copy on this server could not be deleted.', 'siteferry' ) );
+				$deleted = Io::quiet(
+					static function () use ( $file ) {
+						return unlink( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+					}
+				);
+				$result['deleted_local'] = (bool) $deleted;
+				if ( $deleted ) {
+					$job->log( 'info', 'Deleted the copy on this server, as asked.' );
+				} else {
+					$job->warn( __( 'The copy on this server could not be deleted.', 'siteferry' ) );
+				}
 			}
 		}
 		$job->set_result( $result );
-		$job->set_progress( sprintf( /* translators: %s: where it went, such as Dropbox or another site's host name */ __( 'Sent to %s', 'siteferry' ), $driver->describe() ), 1, 1 );
-		return true;
 	}
-
 	/**
 	 * Uploads one file part by part; $state holds its progress and $save stores it.
 	 *
@@ -259,24 +428,59 @@ final class Send_Step implements Step {
 	 * @param Job $job The job.
 	 */
 	public function cleanup( Job $job ): void {
-		$state = $job->state( self::STATE );
-		if ( isset( $state['base']['upload'] ) && empty( $state['base']['finished'] ) ) {
-			self::abandon( $job, (array) $state['base'] );
-		}
-		if ( ! isset( $state['upload'] ) || ! empty( $state['finished'] ) ) {
+		$state   = $job->state( self::STATE );
+		$targets = self::targets( $job );
+		if ( isset( $state['to'] ) && is_array( $state['to'] ) ) {
+			foreach ( $state['to'] as $destination => $sub ) {
+				self::abandon_all( $job, (string) $destination, (array) $sub );
+			}
 			return;
 		}
-		self::abandon( $job, $state );
+		if ( isset( $targets[0] ) ) {
+			self::abandon_all( $job, $targets[0], $state );
+		}
+	}
+
+	/**
+	 * Aborts one storage's unfinished uploads (the full backup sent first, and the backup).
+	 *
+	 * @param Job    $job         The job.
+	 * @param string $destination Destination id.
+	 * @param array  $state       That storage's progress.
+	 */
+	private static function abandon_all( Job $job, string $destination, array $state ): void {
+		if ( isset( $state['base']['upload'] ) && empty( $state['base']['finished'] ) ) {
+			self::abandon( $job, $destination, (array) $state['base'] );
+		}
+		if ( isset( $state['upload'] ) && empty( $state['finished'] ) ) {
+			self::abandon( $job, $destination, $state );
+		}
+	}
+
+	/**
+	 * Like abandon_all(), but never throws: used while carrying on with the other storages.
+	 *
+	 * @param Job    $job         The job.
+	 * @param string $destination Destination id.
+	 * @param array  $state       That storage's progress.
+	 */
+	private static function abandon_quietly( Job $job, string $destination, array $state ): void {
+		try {
+			self::abandon_all( $job, $destination, $state );
+		} catch ( \Throwable $e ) {
+			$job->warn( sprintf( /* translators: 1: a storage, such as Dropbox, 2: what went wrong */ __( 'The unfinished upload to %1$s could not be removed: %2$s', 'siteferry' ), Destinations::short_label( $destination ), $e->getMessage() ) );
+		}
 	}
 
 	/**
 	 * Aborts an unfinished upload and removes the parts already stored.
 	 *
-	 * @param Job   $job   The job.
-	 * @param array $state Upload progress.
+	 * @param Job    $job         The job.
+	 * @param string $destination Destination id.
+	 * @param array  $state       Upload progress.
 	 */
-	private static function abandon( Job $job, array $state ): void {
-		$driver = Destinations::driver( (string) $job->option( 'send_to' ) );
+	private static function abandon( Job $job, string $destination, array $state ): void {
+		$driver = Destinations::driver( $destination );
 		$driver->abort( $state['upload'] );
 		// Parts already stored are removed too: half a set is no backup.
 		for ( $i = 0; isset( $state['piece'], $state['pieces'] ) && $i < $state['piece']; $i++ ) {
@@ -288,7 +492,6 @@ final class Send_Step implements Step {
 		}
 		$job->log( 'info', 'Removed the unfinished upload from the storage.' );
 	}
-
 	/**
 	 * The backup file this job sends.
 	 *

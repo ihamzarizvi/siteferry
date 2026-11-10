@@ -39,7 +39,8 @@ final class Schedule_Command {
 		} else {
 			$days  = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
 			$when  = 'daily' === $settings['frequency'] ? 'every day' : ( 'weekly' === $settings['frequency'] ? 'every ' . $days[ $settings['weekday'] ] : 'on day ' . $settings['monthday'] . ' of every month' );
-			$where = '' === $settings['send_to'] ? 'this server' : Destinations::short_label( $settings['send_to'] ) . ( $settings['keep_local'] ? ' (and this server)' : '' );
+			$targets = Schedule::targets_of( $settings );
+			$where   = array() === $targets ? 'this server' : implode( ', ', array_map( array( Destinations::class, 'short_label' ), $targets ) ) . ( $settings['keep_local'] ? ' (and this server)' : '' );
 			$keep = 0 === $settings['retain'] ? 'every scheduled backup' : 'the newest ' . $settings['retain'];
 			if ( \SiteFerry\Schedule\Retention::PERIODS === $settings['retain_mode'] ) {
 				$keep = sprintf( 'one a day for %d days, one a week for %d weeks and one a month for %d months', $settings['keep_daily'], $settings['keep_weekly'], $settings['keep_monthly'] );

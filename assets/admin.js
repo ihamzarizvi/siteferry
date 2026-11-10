@@ -5674,26 +5674,118 @@
 		box.hidden = false;
 	}
 
-	/** "Where it goes": this server, or a storage that is ready. */
+	/** The storages a schedule sends to, in order (send_to, then send_also). */
+	function scheduleTargets( s ) {
+		return [ s.send_to, ...( Array.isArray( s.send_also ) ? s.send_also : [] ) ].filter( ( id, i, all ) => id && all.indexOf( id ) === i );
+	}
+
+	/** "Where it goes": this server and any of the storages that are ready, ticked. */
 	function renderScheduleWhere( fromSaved ) {
 		const box = $( 'siteferry-schedule-where' );
-		const checked = box.querySelector( 'input:checked' );
-		const current = fromSaved || ! checked ? schedule.settings.send_to : checked.value;
+		const here = box.querySelector( 'input[name=keep_local]' );
+		const wanted = fromSaved ? scheduleTargets( schedule.settings ) : Array.from( box.querySelectorAll( 'input[name=send_to]:checked' ) ).map( ( input ) => input.value );
+		const keepHere = fromSaved ? !! schedule.settings.keep_local || ! wanted.length : here.checked;
 		const ready = destinations.filter( ( d ) => d.ready );
 		box.replaceChildren(
-			box.querySelector( '.sf-choice' ),
+			here.closest( '.sf-choice' ),
 			...ready.map( ( d ) =>
 				el( 'label', { class: 'sf-choice' }, [
-					el( 'input', { type: 'radio', name: 'send_to', value: d.id } ),
+					el( 'input', { type: 'checkbox', name: 'send_to', value: d.id } ),
 					el( 'span', { class: 'sf-choice-name', text: d.label } ),
 					el( 'span', { class: 'sf-choice-note', text: d.description } ),
 				] )
 			)
 		);
-		const pick = Array.from( box.querySelectorAll( 'input' ) ).find( ( input ) => input.value === current ) || box.querySelector( 'input' );
-		pick.checked = true;
+		box.querySelectorAll( 'input[name=send_to]' ).forEach( ( input ) => {
+			input.checked = wanted.indexOf( input.value ) !== -1;
+		} );
+		here.checked = keepHere;
 		$( 'siteferry-schedule-no-storage' ).hidden = ready.length > 0;
 		syncScheduleForm();
+	}
+
+	/** The kind of a place for the 3-2-1 rule: this server, cloud storage or an FTP server. */
+	function placeKind( place ) {
+		if ( place === 'local' ) {
+			return 'server';
+		}
+		return place === 'ftp' ? 'ftp' : 'cloud';
+	}
+
+	/** The 3-2-1 meter for a backup in these places (the same rules as Schedule\Copies::meter). */
+	function copiesMeter( places ) {
+		const unique = places.filter( ( place, i ) => place && places.indexOf( place ) === i );
+		const kinds = unique.map( placeKind ).filter( ( kind, i, all ) => all.indexOf( kind ) === i );
+		const offsite = unique.filter( ( place ) => place !== 'local' ).length;
+		const meter = { copies: unique.length, kinds: kinds.length, offsite, three: unique.length >= 3, two: kinds.length >= 2, one: offsite >= 1, missing: [] };
+		if ( ! meter.one ) {
+			meter.missing.push( 'offsite' );
+		}
+		if ( ! meter.two ) {
+			meter.missing.push( 'kind' );
+		}
+		if ( ! meter.three ) {
+			meter.missing.push( 'copies' );
+		}
+		meter.ok = ! meter.missing.length;
+		return meter;
+	}
+
+	/** Three ticks (3 copies, 2 kinds, 1 away), one plain line, and what would complete it. */
+	function meterView( meter, heading ) {
+		const ticks = [
+			[ meter.three, sprintf( /* translators: %d: number of copies */ _n( '%d copy', '%d copies', meter.copies, 'siteferry' ), meter.copies ), __( '3 copies', 'siteferry' ) ],
+			[ meter.two, sprintf( /* translators: %d: number of kinds of storage */ _n( '%d kind of storage', '%d kinds of storage', meter.kinds, 'siteferry' ), meter.kinds ), __( '2 kinds of storage', 'siteferry' ) ],
+			[ meter.one, sprintf( /* translators: %d: number of copies away from this server */ _n( '%d away from this server', '%d away from this server', meter.offsite, 'siteferry' ), meter.offsite ), __( '1 away from this server', 'siteferry' ) ],
+		];
+		const hints = {
+			offsite: __( 'Add a storage away from this server, such as Google Drive, Dropbox, S3 or an FTP server.', 'siteferry' ),
+			kind: __( 'Add a different kind of place: this server, a cloud storage or an FTP server.', 'siteferry' ),
+			copies: __( 'Add one more place, so there are three copies.', 'siteferry' ),
+		};
+		return el( 'div', { class: 'sf-meter-box' + ( meter.ok ? ' is-good' : '' ) }, [
+			el( 'p', { class: 'sf-meter-head', text: heading } ),
+			el(
+				'ul',
+				{ class: 'sf-meter-ticks' },
+				ticks.map( ( [ ok, now, goal ] ) =>
+					el( 'li', { class: ok ? 'is-ok' : 'is-missing' }, [ el( 'span', { class: 'sf-meter-mark', 'aria-hidden': 'true', text: ok ? '✓' : '○' } ), el( 'strong', { text: goal } ), el( 'span', { class: 'sf-meter-now', text: now } ) ] )
+				)
+			),
+			el( 'p', {
+				class: 'sf-meter-note',
+				text: meter.ok
+					? __( 'This follows the 3-2-1 rule: if one copy is lost, two others are left, and one of them is away from this server.', 'siteferry' )
+					: meter.missing.map( ( key ) => hints[ key ] )[ 0 ],
+			} ),
+		] );
+	}
+
+	/** The 3-2-1 meter in the Schedule panel: for the ticked places, and the newest scheduled backup. */
+	function renderScheduleMeter() {
+		const box = $( 'siteferry-schedule-meter' );
+		const form = $( 'siteferry-schedule-form' );
+		const places = [ ...( form.elements.keep_local.checked ? [ 'local' ] : [] ), ...Array.from( form.querySelectorAll( 'input[name=send_to]:checked' ) ).map( ( input ) => input.value ) ];
+		const parts = [ meterView( copiesMeter( places ), __( '3-2-1 with these places', 'siteferry' ) ) ];
+		const newest = schedule && schedule.copies ? schedule.copies.newest : null;
+		if ( newest ) {
+			parts.push(
+				el( 'p', {
+					class: 'description',
+					text: newest.ok
+						? __( 'The newest scheduled backup follows the 3-2-1 rule.', 'siteferry' )
+						: sprintf(
+								/* translators: 1: number of copies, 2: number of kinds of storage, 3: number away from this server */
+								__( 'The newest scheduled backup: %1$d copies, %2$d kinds of storage, %3$d away from this server.', 'siteferry' ),
+								newest.copies,
+								newest.kinds,
+								newest.offsite
+						  ),
+				} )
+			);
+		}
+		box.replaceChildren( ...parts );
+		box.hidden = false;
 	}
 
 	/** Shows the fields that apply: the day for weekly or monthly, keeping a copy, compression. */
@@ -5703,8 +5795,13 @@
 		form.querySelectorAll( '[data-when]' ).forEach( ( field ) => {
 			field.hidden = field.dataset.when !== frequency;
 		} );
-		const where = form.querySelector( 'input[name=send_to]:checked' );
-		$( 'siteferry-schedule-keep-local' ).hidden = ! where || ! where.value;
+		// At least one place: with no storage ticked, the backups stay on this server.
+		const anyStorage = !! form.querySelector( 'input[name=send_to]:checked' );
+		if ( ! anyStorage ) {
+			form.elements.keep_local.checked = true;
+		}
+		form.elements.keep_local.disabled = ! anyStorage;
+		renderScheduleMeter();
 		const format = form.querySelector( 'input[name=format]:checked' );
 		const compress = form.querySelector( '[data-role=compress]' );
 		const encrypt = form.querySelector( '[data-role=encrypt]' );
@@ -5735,11 +5832,16 @@
 	function collectSchedule() {
 		const form = $( 'siteferry-schedule-form' );
 		const data = {};
+		data.send_to = []; // The ticked storages, in order.
 		Array.from( form.elements ).forEach( ( input ) => {
 			if ( ! input.name ) {
 				return;
 			}
-			if ( input.type === 'checkbox' ) {
+			if ( input.name === 'send_to' ) {
+				if ( input.checked ) {
+					data.send_to.push( input.value );
+				}
+			} else if ( input.type === 'checkbox' ) {
 				data[ input.name ] = input.checked;
 			} else if ( input.type === 'radio' ) {
 				if ( input.checked ) {
@@ -5772,14 +5874,17 @@
 			/* translators: %s: time of day, such as 03:00 */
 			when = sprintf( __( 'every day at %s', 'siteferry' ), s.time );
 		}
-		const target = s.send_to ? destination( s.send_to ) : null;
+		const names = scheduleTargets( s ).map( ( id ) => {
+			const target = destination( id );
+			return target ? target.short : id;
+		} );
 		let where = __( 'on this server', 'siteferry' );
-		if ( s.send_to ) {
+		if ( names.length ) {
 			where = s.keep_local
-				? /* translators: %s: name of the storage, such as Dropbox */
-				  sprintf( __( 'to %s and this server', 'siteferry' ), target ? target.short : s.send_to )
-				: /* translators: %s: name of the storage, such as Dropbox */
-				  sprintf( __( 'to %s', 'siteferry' ), target ? target.short : s.send_to );
+				? /* translators: %s: names of storages, such as Dropbox and FTP server */
+				  sprintf( __( 'to %s and this server', 'siteferry' ), listOf( names ) )
+				: /* translators: %s: names of storages, such as Dropbox and FTP server */
+				  sprintf( __( 'to %s', 'siteferry' ), listOf( names ) );
 		}
 		let keep =
 			s.retain > 0
@@ -5842,6 +5947,24 @@
 				);
 			}
 			parts.push( ' ', button( __( 'Change', 'siteferry' ), open, 'button sf-quiet sf-quiet-small' ) );
+			// 3-2-1 at a glance: of the newest scheduled backup, or of what the schedule will make.
+			const copies = schedule.copies ? schedule.copies.newest || schedule.copies.planned : null;
+			if ( copies ) {
+				const done = [ copies.three, copies.two, copies.one ].filter( Boolean ).length;
+				const chip = button(
+					copies.ok
+						? __( '3-2-1 ✓', 'siteferry' )
+						: sprintf(
+								/* translators: %d: how many of the three 3-2-1 conditions are met */
+								__( '3-2-1: %d of 3', 'siteferry' ),
+								done
+						  ),
+					open,
+					'sf-chip sf-chip-button' + ( copies.ok ? ' is-good' : ' is-warn' )
+				);
+				chip.title = __( '3 copies, on 2 kinds of storage, 1 away from this server. Click to change where scheduled backups go.', 'siteferry' );
+				parts.push( ' ', chip );
+			}
 		}
 		if ( s.before_updates ) {
 			parts.push( el( 'span', { class: 'sf-schedule-last', text: __( 'A backup is also made before WordPress, a plugin or a theme updates.', 'siteferry' ) } ) );
@@ -6014,8 +6137,14 @@
 		}
 		watching = job.id;
 		const s = schedule ? schedule.settings : { send_to: '' };
-		const target = destination( s.send_to );
-		const view = progressView( 'siteferry-job-progress', [ __( 'This site', 'siteferry' ), target ? target.short : __( 'This server', 'siteferry' ) ] );
+		const targets = scheduleTargets( s );
+		const target = targets.length === 1 ? destination( targets[ 0 ] ) : null;
+		let far = target ? target.short : __( 'This server', 'siteferry' );
+		if ( targets.length > 1 ) {
+			/* translators: %d: number of storages */
+			far = sprintf( __( '%d storages', 'siteferry' ), targets.length );
+		}
+		const view = progressView( 'siteferry-job-progress', [ __( 'This site', 'siteferry' ), far ] );
 		view.start( __( 'Scheduled backup running...', 'siteferry' ) );
 		const banner = $( 'siteferry-active' );
 		$( 'siteferry-active-resume' ).hidden = true;

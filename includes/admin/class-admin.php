@@ -684,14 +684,15 @@ final class Admin {
 				</fieldset>
 
 				<h3 class="sf-sub"><?php esc_html_e( 'Where it goes', 'siteferry' ); ?></h3>
-				<div class="sf-choices" id="siteferry-schedule-where" role="radiogroup" aria-label="<?php esc_attr_e( 'Where scheduled backups go', 'siteferry' ); ?>">
+				<p class="description"><?php esc_html_e( 'Tick every place that should get each scheduled backup; it is sent to them one after the other.', 'siteferry' ); ?></p>
+				<div class="sf-choices" id="siteferry-schedule-where" role="group" aria-label="<?php esc_attr_e( 'Where scheduled backups go', 'siteferry' ); ?>">
 					<label class="sf-choice">
-						<input type="radio" name="send_to" value="" checked>
+						<input type="checkbox" name="keep_local" checked>
 						<span class="sf-choice-name"><?php esc_html_e( 'This server', 'siteferry' ); ?></span>
 						<span class="sf-choice-note"><?php esc_html_e( 'Kept in SiteFerry\'s protected folder.', 'siteferry' ); ?></span>
 					</label>
 				</div>
-				<p class="sf-delete-after" id="siteferry-schedule-keep-local" hidden><label><input type="checkbox" name="keep_local"> <?php esc_html_e( 'Also keep a copy on this server', 'siteferry' ); ?></label></p>
+				<div class="sf-meter" id="siteferry-schedule-meter" aria-live="polite" hidden></div>
 				<p class="description" id="siteferry-schedule-no-storage" hidden>
 					<?php esc_html_e( 'To send scheduled backups to S3, an FTP server, Google Drive or Dropbox, set one up first.', 'siteferry' ); ?>
 					<a href="#storage" data-goto="storage"><?php esc_html_e( 'Set up storage', 'siteferry' ); ?></a>
