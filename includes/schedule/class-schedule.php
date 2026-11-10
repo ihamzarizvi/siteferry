@@ -100,6 +100,11 @@ final class Schedule {
 		'send_to'                  => '',
 		'keep_local'               => false,
 		'retain'                   => 7,
+		// "newest": keep the newest "retain"; "periods": the newest of each of the last days, weeks, months.
+		'retain_mode'              => 'newest',
+		'keep_daily'               => 7,
+		'keep_weekly'              => 4,
+		'keep_monthly'             => 6,
 		// A full backup every this many runs, changes-only backups in between (1: always full).
 		'full_every'               => 1,
 		'notify'                   => 'failure',
@@ -192,6 +197,15 @@ final class Schedule {
 		if ( $out['retain'] < 0 || $out['retain'] > 100 ) {
 			throw new Job_Exception( __( 'Keep between 1 and 100 scheduled backups, or 0 to keep them all.', 'siteferry' ), Job_Exception::STEP );
 		}
+		if ( ! in_array( $out['retain_mode'], array( Retention::NEWEST, Retention::PERIODS ), true ) ) {
+			throw new Job_Exception( __( 'Choose which scheduled backups to keep: the newest few, or one a day, week and month.', 'siteferry' ), Job_Exception::STEP );
+		}
+		if ( $out['keep_daily'] < 0 || $out['keep_daily'] > 60 || $out['keep_weekly'] < 0 || $out['keep_weekly'] > 52 || $out['keep_monthly'] < 0 || $out['keep_monthly'] > 120 ) {
+			throw new Job_Exception( __( 'Keep a backup a day for 0 to 60 days, a week for 0 to 52 weeks and a month for 0 to 120 months.', 'siteferry' ), Job_Exception::STEP );
+		}
+		if ( Retention::PERIODS === $out['retain_mode'] && 0 === $out['keep_daily'] + $out['keep_weekly'] + $out['keep_monthly'] ) {
+			throw new Job_Exception( __( 'Keep at least one day, week or month of backups.', 'siteferry' ), Job_Exception::STEP );
+		}
 		if ( ! in_array( $out['notify'], self::NOTIFY, true ) ) {
 			throw new Job_Exception( __( 'Choose when to send an email.', 'siteferry' ), Job_Exception::STEP );
 		}
@@ -215,7 +229,7 @@ final class Schedule {
 			if ( ! $out['keep_local'] ) {
 				throw new Job_Exception( __( 'Changes-only backups need their full backup on this server; keep a copy on this server, or make a full backup every run.', 'siteferry' ), Job_Exception::STEP );
 			}
-			if ( 0 !== $out['retain'] && $out['retain'] < $out['full_every'] ) {
+			if ( Retention::NEWEST === $out['retain_mode'] && 0 !== $out['retain'] && $out['retain'] < $out['full_every'] ) {
 				throw new Job_Exception( __( 'Keep at least as many scheduled backups as the runs between full backups.', 'siteferry' ), Job_Exception::STEP );
 			}
 		}
@@ -588,11 +602,17 @@ final class Schedule {
 			'destination' => (string) $backup['destination'],
 			'base'        => isset( $backup['base'] ) ? (string) $backup['base'] : '',
 		);
-		$keep            = (int) self::settings()['retain'];
+		$settings        = self::settings();
 		$deleted         = array();
 		$problems        = array();
 		$left            = array();
-		list( $expired, $held ) = \SiteFerry\Incremental::expired( $state['runs'], $keep );
+		if ( Retention::PERIODS === $settings['retain_mode'] ) {
+			$chosen  = Retention::select( $state['runs'], $settings, time(), wp_timezone() );
+			$expired = $chosen['expired'];
+			$held    = $chosen['held'];
+		} else {
+			list( $expired, $held ) = \SiteFerry\Incremental::expired( $state['runs'], (int) $settings['retain'] );
+		}
 		// Changes-only backups first, so the full backups they were built on are free to go after them.
 		usort(
 			$expired,
@@ -639,6 +659,64 @@ final class Schedule {
 			return array();
 		}
 		return array_reverse( array_slice( self::newest_first( $runs ), $keep ) );
+	}
+
+	/**
+	 * What keeping would do after the next scheduled backup, for settings that may not be saved
+	 * yet: each recorded scheduled backup (newest first) with why it is kept, or that it would be
+	 * deleted, and the next backup itself. Changes nothing.
+	 *
+	 * @param array $input retain_mode, retain, keep_daily, keep_weekly, keep_monthly (missing: the saved ones).
+	 * @return array{next:int,items:array<int,array{name:string,time:int,keep:bool,reasons:string[],next:bool}>,deleted:int}
+	 * @throws Job_Exception On invalid values.
+	 */
+	public static function retention_preview( array $input ): array {
+		$saved    = self::settings();
+		$settings = self::normalize( array_intersect_key( $input, array_flip( array( 'retain_mode', 'retain', 'keep_daily', 'keep_weekly', 'keep_monthly' ) ) ) + $saved, array( $saved['send_to'] ) ); // Only the keep values are checked here.
+		$state    = self::state();
+		$next     = wp_next_scheduled( self::HOOK_START );
+		$when     = false === $next ? time() : (int) $next;
+		$runs     = $state['runs'];
+		$runs[]   = array(
+			'name' => '',
+			'time' => $when,
+			'base' => '',
+		);
+		if ( Retention::PERIODS === $settings['retain_mode'] ) {
+			$chosen = Retention::select( $runs, $settings, $when, wp_timezone() );
+		} else {
+			list( $expired, $held ) = \SiteFerry\Incremental::expired( $runs, (int) $settings['retain'] );
+			$keep                   = array();
+			foreach ( $runs as $run ) {
+				$keep[ (string) $run['name'] ] = array( 'newest' );
+			}
+			foreach ( $expired as $run ) {
+				unset( $keep[ (string) $run['name'] ] );
+			}
+			foreach ( $held as $name ) {
+				$keep[ $name ] = array( 'base' );
+			}
+			$chosen = array( 'keep' => $keep );
+		}
+		$items   = array();
+		$deleted = 0;
+		foreach ( self::newest_first( $runs ) as $run ) {
+			$name    = (string) $run['name'];
+			$kept    = isset( $chosen['keep'][ $name ] );
+			$deleted += $kept ? 0 : 1;
+			$items[] = array(
+				'name'    => $name,
+				'time'    => (int) $run['time'],
+				'keep'    => $kept,
+				'reasons' => $kept ? array_values( array_unique( $chosen['keep'][ $name ] ) ) : array(),
+				'next'    => '' === $name,
+			);
+		}
+		return array(
+			'next'    => $when,
+			'items'   => $items,
+			'deleted' => $deleted,
+		);
 	}
 
 	/**

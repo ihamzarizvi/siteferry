@@ -697,12 +697,24 @@ final class Admin {
 				</p>
 
 				<h3 class="sf-sub"><?php esc_html_e( 'How many to keep', 'siteferry' ); ?></h3>
-				<p class="sf-field sf-inline-field">
-					<label for="siteferry-schedule-retain"><?php esc_html_e( 'Keep the newest', 'siteferry' ); ?></label>
-					<input type="number" class="small-text" id="siteferry-schedule-retain" name="retain" min="0" max="100" step="1" value="7">
-					<span><?php esc_html_e( 'scheduled backups', 'siteferry' ); ?></span>
-				</p>
-				<p class="description"><?php esc_html_e( 'After a new scheduled backup succeeds, older scheduled backups beyond this number are deleted wherever they are stored. 0 keeps them all. Backups you make yourself are never deleted.', 'siteferry' ); ?></p>
+				<div class="sf-keep" id="siteferry-schedule-keep" role="radiogroup" aria-label="<?php esc_attr_e( 'Which scheduled backups to keep', 'siteferry' ); ?>">
+					<p class="sf-keep-row">
+						<label><input type="radio" name="retain_mode" value="newest" checked> <?php esc_html_e( 'Keep the newest', 'siteferry' ); ?></label>
+						<input type="number" class="small-text" id="siteferry-schedule-retain" name="retain" min="0" max="100" step="1" value="7" aria-label="<?php esc_attr_e( 'Number of scheduled backups to keep (0 keeps them all)', 'siteferry' ); ?>">
+						<span><?php esc_html_e( 'scheduled backups', 'siteferry' ); ?></span>
+					</p>
+					<p class="sf-keep-row">
+						<label><input type="radio" name="retain_mode" value="periods"> <?php esc_html_e( 'Keep one a day for', 'siteferry' ); ?></label>
+						<input type="number" class="small-text" name="keep_daily" min="0" max="60" step="1" value="7" aria-label="<?php esc_attr_e( 'Days', 'siteferry' ); ?>">
+						<span><?php esc_html_e( 'days, one a week for', 'siteferry' ); ?></span>
+						<input type="number" class="small-text" name="keep_weekly" min="0" max="52" step="1" value="4" aria-label="<?php esc_attr_e( 'Weeks', 'siteferry' ); ?>">
+						<span><?php esc_html_e( 'weeks and one a month for', 'siteferry' ); ?></span>
+						<input type="number" class="small-text" name="keep_monthly" min="0" max="120" step="1" value="6" aria-label="<?php esc_attr_e( 'Months', 'siteferry' ); ?>">
+						<span><?php esc_html_e( 'months', 'siteferry' ); ?></span>
+					</p>
+				</div>
+				<p class="description"><?php esc_html_e( 'After a new scheduled backup succeeds, the scheduled backups not kept are deleted wherever they are stored. "One a day, week and month" keeps the newest backup of each, counted back from today in the site\'s time zone. A full backup that kept changes-only backups need always stays. Backups you make yourself are never deleted.', 'siteferry' ); ?></p>
+				<div class="sf-keep-preview" id="siteferry-keep-preview" aria-live="polite" hidden></div>
 				<p class="sf-field sf-inline-field">
 					<label for="siteferry-schedule-full-every"><?php esc_html_e( 'Make a full backup every', 'siteferry' ); ?></label>
 					<input type="number" class="small-text" id="siteferry-schedule-full-every" name="full_every" min="1" max="30" step="1" value="1">

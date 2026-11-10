@@ -5476,6 +5476,90 @@
 		renderScheduleWhere( true );
 		syncScheduleForm();
 		renderScheduleStatus();
+		loadKeepPreview();
+	}
+
+	let keepTimer = null;
+	let keepSeq = 0;
+
+	/** The keep preview, a moment after the keep values stop changing. */
+	function keepPreviewSoon() {
+		window.clearTimeout( keepTimer );
+		keepTimer = window.setTimeout( loadKeepPreview, 400 );
+	}
+
+	/**
+	 * What keeping would do after the next scheduled backup, for the values in the form (saved or
+	 * not): each scheduled backup with "kept" and why, or "deleted".
+	 */
+	async function loadKeepPreview() {
+		const form = $( 'siteferry-schedule-form' );
+		const box = $( 'siteferry-keep-preview' );
+		const mode = form.querySelector( 'input[name=retain_mode]:checked' );
+		const query = { retain_mode: mode ? mode.value : 'newest' };
+		[ 'retain', 'keep_daily', 'keep_weekly', 'keep_monthly' ].forEach( ( key ) => {
+			query[ key ] = form.elements[ key ].value;
+		} );
+		const seq = ++keepSeq;
+		let data;
+		try {
+			data = await api( 'GET', 'schedule/retention', { query } );
+		} catch ( error ) {
+			if ( seq === keepSeq ) {
+				box.replaceChildren( el( 'p', { class: 'sf-keep-error', text: error.message } ) );
+				box.hidden = false;
+			}
+			return;
+		}
+		if ( seq !== keepSeq ) {
+			return;
+		}
+		const reasons = {
+			newest: __( 'newest', 'siteferry' ),
+			day: __( 'newest of its day', 'siteferry' ),
+			week: __( 'newest of its week', 'siteferry' ),
+			month: __( 'newest of its month', 'siteferry' ),
+			base: __( 'changes-only backups need it', 'siteferry' ),
+		};
+		const old = data.items.filter( ( item ) => ! item.next );
+		if ( ! old.length ) {
+			box.replaceChildren( el( 'p', { text: __( 'No scheduled backups yet, so nothing would be deleted.', 'siteferry' ) } ) );
+			box.hidden = false;
+			return;
+		}
+		const shown = data.items.slice( 0, 40 );
+		box.replaceChildren(
+			el( 'p', {
+				class: 'sf-keep-head',
+				text: data.deleted
+					? sprintf(
+							/* translators: 1: when the next scheduled backup runs, 2: number of backups that would be deleted */
+							_n( 'After the next scheduled backup (%1$s), %2$d scheduled backup would be deleted:', 'After the next scheduled backup (%1$s), %2$d scheduled backups would be deleted:', data.deleted, 'siteferry' ),
+							when( data.next, true ),
+							data.deleted
+					  )
+					: sprintf(
+							/* translators: %s: when the next scheduled backup runs */
+							__( 'After the next scheduled backup (%s), all are kept:', 'siteferry' ),
+							when( data.next, true )
+					  ),
+			} ),
+			el(
+				'ul',
+				{ class: 'sf-keep-list' },
+				shown.map( ( item ) =>
+					el( 'li', { class: item.keep ? 'is-kept' : 'is-gone' }, [
+						el( 'span', { class: 'sf-keep-when', text: item.next ? __( 'Next backup', 'siteferry' ) : when( item.time, true ) } ),
+						el( 'span', {
+							class: 'sf-keep-what',
+							text: item.keep ? __( 'Kept', 'siteferry' ) + ( item.reasons.length ? ' · ' + item.reasons.map( ( r ) => reasons[ r ] || r ).join( ', ' ) : '' ) : __( 'Deleted', 'siteferry' ),
+						} ),
+					] )
+				)
+			),
+			...( data.items.length > shown.length ? [ el( 'p', { class: 'description', text: sprintf( /* translators: %d: a number of backups */ __( 'and %d older ones.', 'siteferry' ), data.items.length - shown.length ) } ) ] : [] )
+		);
+		box.hidden = false;
 	}
 
 	/** "Where it goes": this server, or a storage that is ready. */
@@ -5557,7 +5641,7 @@
 				data[ input.name ] = input.value.trim();
 			}
 		} );
-		[ 'weekday', 'monthday', 'retain', 'update_retain', 'full_every' ].forEach( ( key ) => {
+		[ 'weekday', 'monthday', 'retain', 'update_retain', 'full_every', 'keep_daily', 'keep_weekly', 'keep_monthly' ].forEach( ( key ) => {
 			data[ key ] = data[ key ] === '' ? NaN : Number( data[ key ] );
 		} );
 		return data;
@@ -5585,11 +5669,20 @@
 				: /* translators: %s: name of the storage, such as Dropbox */
 				  sprintf( __( 'to %s', 'siteferry' ), target ? target.short : s.send_to );
 		}
-		const keep =
+		let keep =
 			s.retain > 0
 				? /* translators: %d: number of scheduled backups kept */
 				  sprintf( _n( 'keeping the newest %d', 'keeping the newest %d', s.retain, 'siteferry' ), s.retain )
 				: __( 'keeping them all', 'siteferry' );
+		if ( s.retain_mode === 'periods' ) {
+			keep = sprintf(
+				/* translators: 1: number of days, 2: number of weeks, 3: number of months */
+				__( 'keeping one a day for %1$d days, one a week for %2$d weeks and one a month for %3$d months', 'siteferry' ),
+				Number( s.keep_daily ),
+				Number( s.keep_weekly ),
+				Number( s.keep_monthly )
+			);
+		}
 		const text = sprintf(
 			/* translators: 1: how often, such as every Monday at 03:00, 2: where, such as to Dropbox, 3: how many are kept, such as keeping the newest 7 */
 			__( '%1$s, %2$s, %3$s.', 'siteferry' ),
@@ -6512,6 +6605,8 @@
 		} );
 		$( 'siteferry-schedule-form' ).addEventListener( 'submit', saveSchedule );
 		$( 'siteferry-schedule-form' ).addEventListener( 'change', syncScheduleForm );
+		$( 'siteferry-schedule-keep' ).addEventListener( 'input', keepPreviewSoon );
+		$( 'siteferry-schedule-keep' ).addEventListener( 'change', keepPreviewSoon );
 		$( 'siteferry-schedule-run' ).addEventListener( 'click', runScheduleNow );
 		$( 'siteferry-send-options' ).addEventListener( 'change', syncDeleteAfter );
 		$( 'siteferry-export-form' ).querySelectorAll( 'input[name=format]' ).forEach( ( input ) => input.addEventListener( 'change', syncFormat ) );

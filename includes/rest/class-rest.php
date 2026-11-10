@@ -123,6 +123,7 @@ final class Rest {
 			array( '/schedule', WP_REST_Server::READABLE, 'schedule', $admin ),
 			array( '/schedule', WP_REST_Server::CREATABLE, 'save_schedule', $admin ),
 			array( '/schedule/run', WP_REST_Server::CREATABLE, 'run_schedule', $admin ),
+			array( '/schedule/retention', WP_REST_Server::READABLE, 'schedule_retention', $admin ),
 			array( '/undo/dismiss', WP_REST_Server::CREATABLE, 'dismiss_undo', $admin ),
 			array( '/emergency-kits', WP_REST_Server::READABLE, 'emergency_kits', $admin ),
 			array( '/emergency-kits', WP_REST_Server::CREATABLE, 'make_emergency_kit', $admin ),
@@ -892,6 +893,23 @@ final class Rest {
 		$params = (array) $request->get_json_params();
 		Schedule::save( array_intersect_key( $params, Schedule::DEFAULTS ), isset( $params['password'] ) && is_string( $params['password'] ) ? $params['password'] : null );
 		return Schedule::overview();
+	}
+
+	/**
+	 * What keeping scheduled backups would do after the next run, for the keep values in the
+	 * request (not saved). Changes nothing.
+	 *
+	 * @param WP_REST_Request $request Request with retain_mode, retain, keep_daily, keep_weekly, keep_monthly.
+	 */
+	public static function schedule_retention( WP_REST_Request $request ): array {
+		$input = array();
+		foreach ( array( 'retain_mode', 'retain', 'keep_daily', 'keep_weekly', 'keep_monthly' ) as $key ) {
+			$value = $request->get_param( $key );
+			if ( null !== $value && is_scalar( $value ) ) {
+				$input[ $key ] = 'retain_mode' === $key ? (string) $value : $value;
+			}
+		}
+		return Schedule::retention_preview( $input );
 	}
 
 	/**

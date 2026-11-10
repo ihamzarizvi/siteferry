@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: SiteFerry 0.35.0\n"
+"Project-Id-Version: SiteFerry 0.36.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/siteferry\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T13:43:09+00:00\n"
+"POT-Creation-Date: 2026-11-10T13:52:00+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: siteferry\n"
@@ -113,7 +113,7 @@ msgid "Resume"
 msgstr ""
 
 #: includes/admin/class-admin.php:152
-#: assets/admin.js:5862
+#: assets/admin.js:5955
 msgid "Cancel it"
 msgstr ""
 
@@ -190,7 +190,7 @@ msgstr ""
 
 #: includes/admin/class-admin.php:207
 #: assets/admin.js:2362
-#: assets/admin.js:5948
+#: assets/admin.js:6041
 msgid "Loading..."
 msgstr ""
 
@@ -255,7 +255,7 @@ msgstr ""
 #: includes/admin/class-admin.php:242
 #: includes/admin/class-admin.php:428
 #: includes/admin/class-admin.php:677
-#: includes/admin/class-admin.php:1097
+#: includes/admin/class-admin.php:1109
 #: assets/admin.js:1290
 #: assets/admin.js:2529
 msgid "Password"
@@ -287,7 +287,7 @@ msgstr ""
 #: assets/admin.js:2566
 #: assets/admin.js:2991
 #: assets/admin.js:3454
-#: assets/admin.js:5813
+#: assets/admin.js:5906
 msgid "This server"
 msgstr ""
 
@@ -359,7 +359,7 @@ msgstr ""
 #: includes/admin/class-admin.php:446
 #: includes/admin/class-admin.php:468
 #: includes/admin/class-admin.php:476
-#: includes/admin/class-admin.php:754
+#: includes/admin/class-admin.php:766
 #: assets/admin.js:471
 #: assets/admin.js:3575
 msgid "Close"
@@ -587,7 +587,7 @@ msgid "Compare two backups"
 msgstr ""
 
 #: includes/admin/class-admin.php:485
-#: includes/admin/class-admin.php:932
+#: includes/admin/class-admin.php:944
 msgid "Advanced"
 msgstr ""
 
@@ -678,7 +678,7 @@ msgstr ""
 #: assets/admin.js:3851
 #: assets/admin.js:4927
 #: assets/admin.js:5169
-#: assets/admin.js:6445
+#: assets/admin.js:6538
 msgid "Backup"
 msgstr ""
 
@@ -692,7 +692,7 @@ msgstr ""
 
 #: includes/admin/class-admin.php:539
 #: assets/admin.js:4622
-#: assets/admin.js:6084
+#: assets/admin.js:6177
 msgid "Size"
 msgstr ""
 
@@ -820,7 +820,7 @@ msgid "Every month"
 msgstr ""
 
 #: includes/admin/class-admin.php:615
-#: assets/admin.js:5671
+#: assets/admin.js:5764
 msgid "On"
 msgstr ""
 
@@ -837,7 +837,7 @@ msgid "WP-Cron is turned off on this site (DISABLE_WP_CRON). Scheduled backups o
 msgstr ""
 
 #: includes/admin/class-admin.php:640
-#: assets/admin.js:5535
+#: assets/admin.js:5619
 msgid "The whole site"
 msgstr ""
 
@@ -869,441 +869,477 @@ msgstr ""
 msgid "How many to keep"
 msgstr ""
 
-#: includes/admin/class-admin.php:701
-#: includes/admin/class-admin.php:736
+#: includes/admin/class-admin.php:700
+msgid "Which scheduled backups to keep"
+msgstr ""
+
+#: includes/admin/class-admin.php:702
+#: includes/admin/class-admin.php:748
 msgid "Keep the newest"
 msgstr ""
 
 #: includes/admin/class-admin.php:703
+msgid "Number of scheduled backups to keep (0 keeps them all)"
+msgstr ""
+
+#: includes/admin/class-admin.php:704
 msgid "scheduled backups"
 msgstr ""
 
-#: includes/admin/class-admin.php:705
-msgid "After a new scheduled backup succeeds, older scheduled backups beyond this number are deleted wherever they are stored. 0 keeps them all. Backups you make yourself are never deleted."
+#: includes/admin/class-admin.php:707
+msgid "Keep one a day for"
 msgstr ""
 
-#: includes/admin/class-admin.php:707
-msgid "Make a full backup every"
+#: includes/admin/class-admin.php:708
+msgid "Days"
 msgstr ""
 
 #: includes/admin/class-admin.php:709
-msgid "runs, only the changes in between"
+msgid "days, one a week for"
+msgstr ""
+
+#: includes/admin/class-admin.php:710
+msgid "Weeks"
 msgstr ""
 
 #: includes/admin/class-admin.php:711
-msgid "1 makes a full backup every time. With a higher number the runs in between hold only the files changed since the last full backup (and the whole database), so they are much smaller. They need SiteFerry's format, no password, and a copy kept on this server; a full backup is kept as long as changes built on it are."
+msgid "weeks and one a month for"
+msgstr ""
+
+#: includes/admin/class-admin.php:712
+msgid "Months"
 msgstr ""
 
 #: includes/admin/class-admin.php:713
-msgid "Email"
+msgid "months"
 msgstr ""
 
 #: includes/admin/class-admin.php:716
-msgid "Send an email"
-msgstr ""
-
-#: includes/admin/class-admin.php:718
-msgid "When a backup fails"
+msgid "After a new scheduled backup succeeds, the scheduled backups not kept are deleted wherever they are stored. \"One a day, week and month\" keeps the newest backup of each, counted back from today in the site's time zone. A full backup that kept changes-only backups need always stays. Backups you make yourself are never deleted."
 msgstr ""
 
 #: includes/admin/class-admin.php:719
-msgid "After every backup"
+msgid "Make a full backup every"
 msgstr ""
 
-#: includes/admin/class-admin.php:720
-msgid "Never"
+#: includes/admin/class-admin.php:721
+msgid "runs, only the changes in between"
 msgstr ""
 
-#: includes/admin/class-admin.php:724
-msgid "To"
+#: includes/admin/class-admin.php:723
+msgid "1 makes a full backup every time. With a higher number the runs in between hold only the files changed since the last full backup (and the whole database), so they are much smaller. They need SiteFerry's format, no password, and a copy kept on this server; a full backup is kept as long as changes built on it are."
+msgstr ""
+
+#: includes/admin/class-admin.php:725
+msgid "Email"
+msgstr ""
+
+#: includes/admin/class-admin.php:728
+msgid "Send an email"
+msgstr ""
+
+#: includes/admin/class-admin.php:730
+msgid "When a backup fails"
 msgstr ""
 
 #: includes/admin/class-admin.php:731
-msgid "A backup before updates and risky changes"
+msgid "After every backup"
 msgstr ""
 
 #: includes/admin/class-admin.php:732
-msgid "Separate from the automatic backups above: it works whether they are on or off. It is saved with the same button."
+msgid "Never"
 msgstr ""
 
-#: includes/admin/class-admin.php:733
-msgid "Back up before WordPress, a plugin or a theme updates"
-msgstr ""
-
-#: includes/admin/class-admin.php:734
-msgid "Just before an update starts: the database and the plugin or theme being updated (the database only for WordPress itself), on this server, tagged \"before-update\". Restoring it puts those back as they were and leaves the rest of the site alone. If it cannot be made within about two minutes, the update goes ahead without it."
-msgstr ""
-
-#: includes/admin/class-admin.php:738
-msgid "backups made before updates and risky changes"
-msgstr ""
-
-#: includes/admin/class-admin.php:741
-msgid "Before risky changes"
-msgstr ""
-
-#: includes/admin/class-admin.php:742
-msgid "Deleting a plugin (the database and that plugin)"
+#: includes/admin/class-admin.php:736
+msgid "To"
 msgstr ""
 
 #: includes/admin/class-admin.php:743
-msgid "Deleting a theme (the database and that theme)"
+msgid "A backup before updates and risky changes"
 msgstr ""
 
 #: includes/admin/class-admin.php:744
-msgid "Switching the theme (the database; the theme files stay)"
+msgid "Separate from the automatic backups above: it works whether they are on or off. It is saved with the same button."
+msgstr ""
+
+#: includes/admin/class-admin.php:745
+msgid "Back up before WordPress, a plugin or a theme updates"
 msgstr ""
 
 #: includes/admin/class-admin.php:746
-msgid "The same quick backup, on this server, made just before the change and tagged with what happened. If it takes more than about two minutes, the change goes ahead without it."
+msgid "Just before an update starts: the database and the plugin or theme being updated (the database only for WordPress itself), on this server, tagged \"before-update\". Restoring it puts those back as they were and leaves the rest of the site alone. If it cannot be made within about two minutes, the update goes ahead without it."
 msgstr ""
 
-#: includes/admin/class-admin.php:752
-msgid "Save these settings"
+#: includes/admin/class-admin.php:750
+msgid "backups made before updates and risky changes"
 msgstr ""
 
 #: includes/admin/class-admin.php:753
+msgid "Before risky changes"
+msgstr ""
+
+#: includes/admin/class-admin.php:754
+msgid "Deleting a plugin (the database and that plugin)"
+msgstr ""
+
+#: includes/admin/class-admin.php:755
+msgid "Deleting a theme (the database and that theme)"
+msgstr ""
+
+#: includes/admin/class-admin.php:756
+msgid "Switching the theme (the database; the theme files stay)"
+msgstr ""
+
+#: includes/admin/class-admin.php:758
+msgid "The same quick backup, on this server, made just before the change and tagged with what happened. If it takes more than about two minutes, the change goes ahead without it."
+msgstr ""
+
+#: includes/admin/class-admin.php:764
+msgid "Save these settings"
+msgstr ""
+
+#: includes/admin/class-admin.php:765
 msgid "Run it now"
 msgstr ""
 
-#: includes/admin/class-admin.php:774
+#: includes/admin/class-admin.php:786
 msgid "No limit: whole backups"
 msgstr ""
 
-#: includes/admin/class-admin.php:779
+#: includes/admin/class-admin.php:791
 msgid "4 GB (FAT32 and many FTP servers)"
 msgstr ""
 
-#: includes/admin/class-admin.php:783
+#: includes/admin/class-admin.php:795
 msgid "Largest file on this storage"
 msgstr ""
 
-#: includes/admin/class-admin.php:790
+#: includes/admin/class-admin.php:802
 msgid "Larger backups are stored in numbered parts (.001, .002, ...). SiteFerry joins them again when it downloads, checks or restores one."
 msgstr ""
 
-#: includes/admin/class-admin.php:812
+#: includes/admin/class-admin.php:824
 #: assets/admin.js:1409
 msgid "Not set up"
 msgstr ""
 
-#: includes/admin/class-admin.php:827
+#: includes/admin/class-admin.php:839
 msgid "Endpoint"
 msgstr ""
 
-#: includes/admin/class-admin.php:827
+#: includes/admin/class-admin.php:839
 msgid "Host name of the service. Leave empty to use the provider's endpoint for the region."
 msgstr ""
 
-#: includes/admin/class-admin.php:828
+#: includes/admin/class-admin.php:840
 msgid "Region"
 msgstr ""
 
-#: includes/admin/class-admin.php:829
+#: includes/admin/class-admin.php:841
 msgid "Bucket"
 msgstr ""
 
-#: includes/admin/class-admin.php:829
+#: includes/admin/class-admin.php:841
 msgid "Create the bucket at the provider first; keep it private."
 msgstr ""
 
-#: includes/admin/class-admin.php:830
+#: includes/admin/class-admin.php:842
 msgid "Folder in the bucket"
 msgstr ""
 
-#: includes/admin/class-admin.php:830
+#: includes/admin/class-admin.php:842
 msgid "Backups are stored as folder/file name. Default: siteferry."
 msgstr ""
 
-#: includes/admin/class-admin.php:831
+#: includes/admin/class-admin.php:843
 msgid "Access key ID"
 msgstr ""
 
-#: includes/admin/class-admin.php:837
+#: includes/admin/class-admin.php:849
 msgid "Provider"
 msgstr ""
 
-#: includes/admin/class-admin.php:859
+#: includes/admin/class-admin.php:871
 msgid "Secret access key"
 msgstr ""
 
-#: includes/admin/class-admin.php:862
-#: includes/admin/class-admin.php:966
-#: includes/admin/class-admin.php:1100
+#: includes/admin/class-admin.php:874
+#: includes/admin/class-admin.php:978
+#: includes/admin/class-admin.php:1112
 #: assets/admin.js:1490
 msgid "Stored encrypted. It is never shown again."
 msgstr ""
 
-#: includes/admin/class-admin.php:866
+#: includes/admin/class-admin.php:878
 msgid "Addressing"
 msgstr ""
 
-#: includes/admin/class-admin.php:867
+#: includes/admin/class-admin.php:879
 msgid "Path-style requests (endpoint/bucket/file instead of bucket.endpoint/file)"
 msgstr ""
 
-#: includes/admin/class-admin.php:870
+#: includes/admin/class-admin.php:882
 msgid "Advanced settings: endpoint and addressing"
 msgstr ""
 
-#: includes/admin/class-admin.php:873
-#: includes/admin/class-admin.php:985
-#: includes/admin/class-admin.php:1053
-#: includes/admin/class-admin.php:1117
+#: includes/admin/class-admin.php:885
+#: includes/admin/class-admin.php:997
+#: includes/admin/class-admin.php:1065
+#: includes/admin/class-admin.php:1129
 #: assets/admin.js:2695
 msgid "Save"
 msgstr ""
 
-#: includes/admin/class-admin.php:874
-#: includes/admin/class-admin.php:986
-#: includes/admin/class-admin.php:1054
-#: includes/admin/class-admin.php:1118
+#: includes/admin/class-admin.php:886
+#: includes/admin/class-admin.php:998
+#: includes/admin/class-admin.php:1066
+#: includes/admin/class-admin.php:1130
 msgid "Test connection"
 msgstr ""
 
-#: includes/admin/class-admin.php:875
-#: includes/admin/class-admin.php:987
-#: includes/admin/class-admin.php:1056
-#: includes/admin/class-admin.php:1119
+#: includes/admin/class-admin.php:887
+#: includes/admin/class-admin.php:999
+#: includes/admin/class-admin.php:1068
+#: includes/admin/class-admin.php:1131
 msgid "Remove these settings"
 msgstr ""
 
-#: includes/admin/class-admin.php:894
+#: includes/admin/class-admin.php:906
 #: assets/admin.js:1678
 msgid "Not connected yet"
 msgstr ""
 
-#: includes/admin/class-admin.php:895
+#: includes/admin/class-admin.php:907
 #: assets/admin.js:1681
 msgid "Sign in with the Google account whose Drive should keep the backups."
 msgstr ""
 
-#: includes/admin/class-admin.php:898
+#: includes/admin/class-admin.php:910
 msgid "Sign in with Google"
 msgstr ""
 
-#: includes/admin/class-admin.php:898
+#: includes/admin/class-admin.php:910
 msgid "Connect to Google Drive"
 msgstr ""
 
-#: includes/admin/class-admin.php:899
-#: includes/admin/class-admin.php:1055
+#: includes/admin/class-admin.php:911
+#: includes/admin/class-admin.php:1067
 msgid "Disconnect"
 msgstr ""
 
 #. translators: %s: host name of the sign-in service
-#: includes/admin/class-admin.php:905
+#: includes/admin/class-admin.php:917
 #, php-format
 msgid "Signing in goes through SiteFerry's sign-in service at %s, which stores nothing. SiteFerry sees only the files and folders it creates, and backups go straight between this site and your Drive."
 msgstr ""
 
-#: includes/admin/class-admin.php:913
+#: includes/admin/class-admin.php:925
 msgid "Backups go to"
 msgstr ""
 
-#: includes/admin/class-admin.php:917
+#: includes/admin/class-admin.php:929
 #: assets/admin.js:1525
 msgid "My Drive"
 msgstr ""
 
-#: includes/admin/class-admin.php:919
+#: includes/admin/class-admin.php:931
 #: assets/admin.js:1546
 msgid "Choose a folder in Drive"
 msgstr ""
 
-#: includes/admin/class-admin.php:920
+#: includes/admin/class-admin.php:932
 msgid "Use the top of My Drive"
 msgstr ""
 
-#: includes/admin/class-admin.php:923
+#: includes/admin/class-admin.php:935
 msgid "After signing in you can choose any folder of yours; SiteFerry gets access to that folder only."
 msgstr ""
 
-#: includes/admin/class-admin.php:925
+#: includes/admin/class-admin.php:937
 msgid "Backup folder"
 msgstr ""
 
-#: includes/admin/class-admin.php:928
+#: includes/admin/class-admin.php:940
 msgid "SiteFerry creates it when it is missing. Put / between names for folders inside each other, for example Backups/My site."
 msgstr ""
 
-#: includes/admin/class-admin.php:934
+#: includes/admin/class-admin.php:946
 msgid "Sign-in method"
 msgstr ""
 
-#: includes/admin/class-admin.php:936
+#: includes/admin/class-admin.php:948
 msgid "Sign in with Google (recommended)"
 msgstr ""
 
-#: includes/admin/class-admin.php:937
+#: includes/admin/class-admin.php:949
 msgid "Use my own OAuth client"
 msgstr ""
 
-#: includes/admin/class-admin.php:941
+#: includes/admin/class-admin.php:953
 msgid "How to create your own OAuth client (once)"
 msgstr ""
 
-#: includes/admin/class-admin.php:943
+#: includes/admin/class-admin.php:955
 msgid "In the Google Cloud console, create a project and enable the Google Drive API for it."
 msgstr ""
 
-#: includes/admin/class-admin.php:944
+#: includes/admin/class-admin.php:956
 msgid "Set up the OAuth consent screen (External; add yourself as a test user). Apps left in \"Testing\" lose their authorization after 7 days; publish the app to keep it. SiteFerry asks only for the drive.file scope."
 msgstr ""
 
-#: includes/admin/class-admin.php:945
+#: includes/admin/class-admin.php:957
 msgid "Create an OAuth client ID of type \"Web application\" and add the redirect URI below as an authorized redirect URI."
 msgstr ""
 
-#: includes/admin/class-admin.php:946
+#: includes/admin/class-admin.php:958
 msgid "Enter the client ID and secret here, then click \"Connect to Google Drive\" (this also saves them)."
 msgstr ""
 
-#: includes/admin/class-admin.php:951
-#: includes/admin/class-admin.php:1031
+#: includes/admin/class-admin.php:963
+#: includes/admin/class-admin.php:1043
 msgid "Redirect URI"
 msgstr ""
 
-#: includes/admin/class-admin.php:954
-#: includes/admin/class-admin.php:1034
+#: includes/admin/class-admin.php:966
+#: includes/admin/class-admin.php:1046
 msgid "Copy"
 msgstr ""
 
-#: includes/admin/class-admin.php:955
+#: includes/admin/class-admin.php:967
 msgid "Register exactly this address with your OAuth client."
 msgstr ""
 
-#: includes/admin/class-admin.php:959
+#: includes/admin/class-admin.php:971
 msgid "Client ID"
 msgstr ""
 
-#: includes/admin/class-admin.php:963
+#: includes/admin/class-admin.php:975
 msgid "Client secret"
 msgstr ""
 
-#: includes/admin/class-admin.php:970
+#: includes/admin/class-admin.php:982
 msgid "Picker API key"
 msgstr ""
 
-#: includes/admin/class-admin.php:973
+#: includes/admin/class-admin.php:985
 msgid "Optional, to choose a folder in Google Drive: an API key restricted to the Google Picker API (APIs & Services, Credentials)."
 msgstr ""
 
-#: includes/admin/class-admin.php:977
+#: includes/admin/class-admin.php:989
 msgid "Project number"
 msgstr ""
 
-#: includes/admin/class-admin.php:1005
+#: includes/admin/class-admin.php:1017
 msgid "Sign-in:"
 msgstr ""
 
-#: includes/admin/class-admin.php:1007
+#: includes/admin/class-admin.php:1019
 msgid "Sign in with Dropbox (recommended)"
 msgstr ""
 
-#: includes/admin/class-admin.php:1008
+#: includes/admin/class-admin.php:1020
 msgid "Use my own Dropbox app (advanced)"
 msgstr ""
 
 #. translators: %s: host name of the sign-in service
-#: includes/admin/class-admin.php:1015
+#: includes/admin/class-admin.php:1027
 #, php-format
 msgid "Sign in with your Dropbox account; no keys needed. The sign-in page opens through SiteFerry's sign-in service at %s, which only passes your browser on to Dropbox and back: the access itself goes straight to this site and never through the service. Backups go straight between this site and SiteFerry's own folder in your Dropbox (Apps, SiteFerry); SiteFerry cannot see anything else there."
 msgstr ""
 
-#: includes/admin/class-admin.php:1021
+#: includes/admin/class-admin.php:1033
 msgid "How to create your own Dropbox app (once)"
 msgstr ""
 
-#: includes/admin/class-admin.php:1023
+#: includes/admin/class-admin.php:1035
 msgid "In the Dropbox App Console (dropbox.com/developers/apps), click \"Create app\": choose \"Scoped access\" and \"App folder\", and give it a name. Its folder appears in your Dropbox under Apps."
 msgstr ""
 
-#: includes/admin/class-admin.php:1024
+#: includes/admin/class-admin.php:1036
 msgid "On the Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then click Submit."
 msgstr ""
 
-#: includes/admin/class-admin.php:1025
+#: includes/admin/class-admin.php:1037
 msgid "On the Settings tab, add the redirect URI below under OAuth 2, Redirect URIs (Dropbox accepts http only for localhost)."
 msgstr ""
 
-#: includes/admin/class-admin.php:1026
+#: includes/admin/class-admin.php:1038
 msgid "Enter the app key here (no app secret is needed), then click \"Connect to Dropbox\" (this also saves it)."
 msgstr ""
 
-#: includes/admin/class-admin.php:1035
+#: includes/admin/class-admin.php:1047
 msgid "Register exactly this address with your Dropbox app."
 msgstr ""
 
-#: includes/admin/class-admin.php:1039
+#: includes/admin/class-admin.php:1051
 msgid "App key"
 msgstr ""
 
-#: includes/admin/class-admin.php:1043
+#: includes/admin/class-admin.php:1055
 msgid "Folder in the app folder"
 msgstr ""
 
-#: includes/admin/class-admin.php:1045
+#: includes/admin/class-admin.php:1057
 msgid "(the app folder itself)"
 msgstr ""
 
-#: includes/admin/class-admin.php:1046
+#: includes/admin/class-admin.php:1058
 msgid "Optional, for example the site's name when several sites share one Dropbox. Dropbox creates it with the first backup."
 msgstr ""
 
-#: includes/admin/class-admin.php:1052
+#: includes/admin/class-admin.php:1064
 msgid "Sign in with Dropbox"
 msgstr ""
 
-#: includes/admin/class-admin.php:1052
+#: includes/admin/class-admin.php:1064
 msgid "Connect to Dropbox"
 msgstr ""
 
-#: includes/admin/class-admin.php:1071
+#: includes/admin/class-admin.php:1083
 msgid "This server's PHP has no ftp extension, so FTP cannot be used here. Ask the host to enable it."
 msgstr ""
 
-#: includes/admin/class-admin.php:1075
+#: includes/admin/class-admin.php:1087
 msgid "Server"
 msgstr ""
 
-#: includes/admin/class-admin.php:1078
+#: includes/admin/class-admin.php:1090
 msgid "Port"
 msgstr ""
 
-#: includes/admin/class-admin.php:1083
+#: includes/admin/class-admin.php:1095
 msgid "Encryption"
 msgstr ""
 
-#: includes/admin/class-admin.php:1086
+#: includes/admin/class-admin.php:1098
 msgid "Explicit FTPS (TLS) - recommended"
 msgstr ""
 
-#: includes/admin/class-admin.php:1087
+#: includes/admin/class-admin.php:1099
 msgid "None: plain FTP (password and backups unencrypted)"
 msgstr ""
 
-#: includes/admin/class-admin.php:1089
+#: includes/admin/class-admin.php:1101
 msgid "FTPS on port 990 (\"implicit\") and SFTP are not supported. PHP's FTP functions encrypt the connection but cannot check the server's certificate."
 msgstr ""
 
-#: includes/admin/class-admin.php:1093
+#: includes/admin/class-admin.php:1105
 msgid "User name"
 msgstr ""
 
-#: includes/admin/class-admin.php:1104
+#: includes/admin/class-admin.php:1116
 msgid "Folder"
 msgstr ""
 
-#: includes/admin/class-admin.php:1107
+#: includes/admin/class-admin.php:1119
 msgid "Relative to the folder you land in after logging in, or starting with / from the server's top. Created if missing. Keep it outside the public web folder."
 msgstr ""
 
-#: includes/admin/class-admin.php:1111
+#: includes/admin/class-admin.php:1123
 msgid "Connection"
 msgstr ""
 
-#: includes/admin/class-admin.php:1112
+#: includes/admin/class-admin.php:1124
 msgid "Passive mode (works through most firewalls)"
 msgstr ""
 
@@ -1550,7 +1586,7 @@ msgid "A file is still being written; call continue_file() first."
 msgstr ""
 
 #: includes/check/class-check.php:65
-#: includes/rest/class-rest.php:1144
+#: includes/rest/class-rest.php:1162
 #: includes/storage/class-transfer.php:63
 msgid "Unknown backup."
 msgstr ""
@@ -1720,8 +1756,8 @@ msgstr ""
 
 #: includes/class-contents.php:212
 #: includes/class-single-restore.php:129
-#: includes/rest/class-rest.php:748
-#: includes/rest/class-rest.php:764
+#: includes/rest/class-rest.php:749
+#: includes/rest/class-rest.php:765
 msgid "That file is not in the backup."
 msgstr ""
 
@@ -1733,7 +1769,7 @@ msgstr ""
 
 #: includes/class-emergency-kit.php:72
 #: assets/admin.js:929
-#: assets/admin.js:6250
+#: assets/admin.js:6343
 msgid "The two passwords are not the same."
 msgstr ""
 
@@ -2046,13 +2082,13 @@ msgstr ""
 
 #. translators: %d: a number
 #: includes/export/class-export.php:201
-#: includes/schedule/class-schedule.php:246
+#: includes/schedule/class-schedule.php:260
 #, php-format
 msgid "The password needs at least %d characters."
 msgstr ""
 
 #: includes/export/class-export.php:204
-#: includes/schedule/class-schedule.php:261
+#: includes/schedule/class-schedule.php:275
 msgid "Encrypted backups need the PHP OpenSSL extension with AES-256-GCM, which this server does not have."
 msgstr ""
 
@@ -2063,7 +2099,7 @@ msgid "Unknown export option: %s"
 msgstr ""
 
 #: includes/export/class-export.php:243
-#: includes/schedule/class-schedule.php:180
+#: includes/schedule/class-schedule.php:185
 msgid "Unknown backup format; use \"tar\" or \"wpress\"."
 msgstr ""
 
@@ -2673,72 +2709,72 @@ msgstr ""
 msgid "The other site answered: %s"
 msgstr ""
 
-#: includes/rest/class-rest.php:253
-#: includes/rest/class-rest.php:1003
+#: includes/rest/class-rest.php:254
+#: includes/rest/class-rest.php:1021
 msgid "Missing or invalid chunk offset."
 msgstr ""
 
-#: includes/rest/class-rest.php:436
+#: includes/rest/class-rest.php:437
 #: assets/admin.js:1199
 #: assets/admin.js:3337
 #: assets/admin.js:3378
 msgid "media"
 msgstr ""
 
-#: includes/rest/class-rest.php:437
+#: includes/rest/class-rest.php:438
 #: assets/admin.js:1202
 #: assets/admin.js:3338
 #: assets/admin.js:3379
 msgid "plugins"
 msgstr ""
 
-#: includes/rest/class-rest.php:438
+#: includes/rest/class-rest.php:439
 #: assets/admin.js:1207
 #: assets/admin.js:3339
 #: assets/admin.js:3380
 msgid "themes"
 msgstr ""
 
-#: includes/rest/class-rest.php:446
+#: includes/rest/class-rest.php:447
 msgid "some tables"
 msgstr ""
 
-#: includes/rest/class-rest.php:449
+#: includes/rest/class-rest.php:450
 #: assets/admin.js:1281
 msgid "Whole site"
 msgstr ""
 
 #. translators: %s: list of left-out parts, such as "media and plugins"
-#: includes/rest/class-rest.php:452
+#: includes/rest/class-rest.php:453
 #: assets/admin.js:1278
 #, php-format,js-format
 msgid "Without %s"
 msgstr ""
 
-#: includes/rest/class-rest.php:468
+#: includes/rest/class-rest.php:469
 msgid "The backup could not be deleted."
 msgstr ""
 
-#: includes/rest/class-rest.php:488
+#: includes/rest/class-rest.php:489
 msgid "There is no such part."
 msgstr ""
 
-#: includes/rest/class-rest.php:661
+#: includes/rest/class-rest.php:662
 msgid "Choose two backups on this server to compare."
 msgstr ""
 
-#: includes/rest/class-rest.php:1094
+#: includes/rest/class-rest.php:1112
 msgid "Google Drive is not set up."
 msgstr ""
 
-#: includes/rest/class-rest.php:1273
+#: includes/rest/class-rest.php:1291
 #: includes/storage/class-destinations.php:422
 msgid "Unknown storage."
 msgstr ""
 
 #. translators: 1: a kind of job, such as "export" or "import", 2: the job's ID
-#: includes/rest/class-rest.php:1315
-#: includes/schedule/class-schedule.php:377
+#: includes/rest/class-rest.php:1333
+#: includes/schedule/class-schedule.php:391
 #, php-format
 msgid "Another %1$s is still in progress (job %2$s). Finish or cancel it first."
 msgstr ""
@@ -2772,148 +2808,160 @@ msgid "Scheduled backup done"
 msgstr ""
 
 #. translators: %s: a setting name
-#: includes/schedule/class-schedule.php:159
+#: includes/schedule/class-schedule.php:164
 #, php-format
 msgid "The schedule setting \"%s\" must be a number."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:168
+#: includes/schedule/class-schedule.php:173
 msgid "Choose how often to back up: every day, week or month."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:171
+#: includes/schedule/class-schedule.php:176
 msgid "Enter the time as hours and minutes, for example 03:00."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:174
+#: includes/schedule/class-schedule.php:179
 msgid "Choose a day of the week."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:177
+#: includes/schedule/class-schedule.php:182
 msgid "Choose a day of the month from 1 to 28 (every month has those)."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:187
+#: includes/schedule/class-schedule.php:192
 msgid "That storage is not set up (or not connected) yet. Set it up on the Storage tab, or keep the backups on this server."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:193
+#: includes/schedule/class-schedule.php:198
 msgid "Keep between 1 and 100 scheduled backups, or 0 to keep them all."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:196
-msgid "Choose when to send an email."
+#: includes/schedule/class-schedule.php:201
+msgid "Choose which scheduled backups to keep: the newest few, or one a day, week and month."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:199
-msgid "Enter one email address, or leave it empty for the site's admin email."
+#: includes/schedule/class-schedule.php:204
+msgid "Keep a backup a day for 0 to 60 days, a week for 0 to 52 weeks and a month for 0 to 120 months."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:202
-msgid "Keep between 1 and 50 backups made before updates."
-msgstr ""
-
-#: includes/schedule/class-schedule.php:205
-msgid "Make a full backup every 1 to 30 runs."
+#: includes/schedule/class-schedule.php:207
+msgid "Keep at least one day, week or month of backups."
 msgstr ""
 
 #: includes/schedule/class-schedule.php:210
-msgid "Changes-only backups are always SiteFerry backups; choose that format, or make a full backup every run."
+msgid "Choose when to send an email."
 msgstr ""
 
 #: includes/schedule/class-schedule.php:213
-msgid "Changes-only backups cannot be protected with a password yet; turn the password off, or make a full backup every run."
+msgid "Enter one email address, or leave it empty for the site's admin email."
 msgstr ""
 
 #: includes/schedule/class-schedule.php:216
-msgid "Changes-only backups need their full backup on this server; keep a copy on this server, or make a full backup every run."
+msgid "Keep between 1 and 50 backups made before updates."
 msgstr ""
 
 #: includes/schedule/class-schedule.php:219
+msgid "Make a full backup every 1 to 30 runs."
+msgstr ""
+
+#: includes/schedule/class-schedule.php:224
+msgid "Changes-only backups are always SiteFerry backups; choose that format, or make a full backup every run."
+msgstr ""
+
+#: includes/schedule/class-schedule.php:227
+msgid "Changes-only backups cannot be protected with a password yet; turn the password off, or make a full backup every run."
+msgstr ""
+
+#: includes/schedule/class-schedule.php:230
+msgid "Changes-only backups need their full backup on this server; keep a copy on this server, or make a full backup every run."
+msgstr ""
+
+#: includes/schedule/class-schedule.php:233
 msgid "Keep at least as many scheduled backups as the runs between full backups."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:258
+#: includes/schedule/class-schedule.php:272
 msgid "Enter a password for the automatic backups, or untick the encryption."
 msgstr ""
 
 #. translators: %s: site address
-#: includes/schedule/class-schedule.php:747
+#: includes/schedule/class-schedule.php:825
 #, php-format
 msgid "[%s] Scheduled backup done"
 msgstr ""
 
 #. translators: %s: the site's address
-#: includes/schedule/class-schedule.php:748
+#: includes/schedule/class-schedule.php:826
 #, php-format
 msgid "SiteFerry made the scheduled backup of %s."
 msgstr ""
 
 #. translators: %s: backup name (and size)
-#: includes/schedule/class-schedule.php:751
+#: includes/schedule/class-schedule.php:829
 #, php-format
 msgid "Backup: %s"
 msgstr ""
 
 #. translators: %s: where it is stored
-#: includes/schedule/class-schedule.php:753
+#: includes/schedule/class-schedule.php:831
 #, php-format
 msgid "Stored: %s"
 msgstr ""
 
 #. translators: %s: how long, such as 5 mins
-#: includes/schedule/class-schedule.php:756
+#: includes/schedule/class-schedule.php:834
 #, php-format
 msgid "Took: %s"
 msgstr ""
 
 #. translators: %d: a number
-#: includes/schedule/class-schedule.php:759
+#: includes/schedule/class-schedule.php:837
 #, php-format
 msgid "Warnings: %d (see the job log on the Activity tab)"
 msgstr ""
 
 #. translators: %s: backup names
-#: includes/schedule/class-schedule.php:763
+#: includes/schedule/class-schedule.php:841
 #, php-format
 msgid "Older scheduled backups deleted: %s"
 msgstr ""
 
 #. translators: %s: what went wrong
-#: includes/schedule/class-schedule.php:767
+#: includes/schedule/class-schedule.php:845
 #, php-format
 msgid "Problem: %s"
 msgstr ""
 
 #. translators: %s: site address
-#: includes/schedule/class-schedule.php:771
+#: includes/schedule/class-schedule.php:849
 #, php-format
 msgid "[%s] Scheduled backup FAILED"
 msgstr ""
 
 #. translators: %s: the site's address
-#: includes/schedule/class-schedule.php:772
+#: includes/schedule/class-schedule.php:850
 #, php-format
 msgid "SiteFerry could not make the scheduled backup of %s."
 msgstr ""
 
 #. translators: %s: what went wrong
-#: includes/schedule/class-schedule.php:775
+#: includes/schedule/class-schedule.php:853
 #, php-format
 msgid "Reason: %s"
 msgstr ""
 
 #. translators: %s: what went wrong
-#: includes/schedule/class-schedule.php:775
+#: includes/schedule/class-schedule.php:853
 #: assets/admin.js:4268
 msgid "unknown"
 msgstr ""
 
-#: includes/schedule/class-schedule.php:776
+#: includes/schedule/class-schedule.php:854
 msgid "Earlier backups were not touched."
 msgstr ""
 
-#: includes/schedule/class-schedule.php:848
+#: includes/schedule/class-schedule.php:926
 msgid "Automatic backups are set to be encrypted, but their password cannot be read (were the WordPress salts changed?). Enter it again in the Schedule panel."
 msgstr ""
 
@@ -3017,7 +3065,7 @@ msgid "wp-config.php could not be found or read."
 msgstr ""
 
 #: includes/staging/class-finish-step.php:76
-#: assets/admin.js:6179
+#: assets/admin.js:6272
 msgid "Staging copy ready"
 msgstr ""
 
@@ -4025,8 +4073,8 @@ msgid "Check of a backup"
 msgstr ""
 
 #: assets/admin.js:29
-#: assets/admin.js:6089
-#: assets/admin.js:6173
+#: assets/admin.js:6182
+#: assets/admin.js:6266
 msgid "Staging copy"
 msgstr ""
 
@@ -4039,7 +4087,7 @@ msgid "Not started"
 msgstr ""
 
 #: assets/admin.js:34
-#: assets/admin.js:6078
+#: assets/admin.js:6171
 msgid "Not finished"
 msgstr ""
 
@@ -4129,7 +4177,7 @@ msgstr ""
 
 #: assets/admin.js:59
 #: assets/admin.js:327
-#: assets/admin.js:5915
+#: assets/admin.js:6008
 msgid "Safety backup"
 msgstr ""
 
@@ -4184,7 +4232,7 @@ msgstr ""
 
 #. translators: %d: HTTP status code, such as 500
 #: assets/admin.js:185
-#: assets/admin.js:6266
+#: assets/admin.js:6359
 #, js-format
 msgid "Request failed (HTTP %d)."
 msgstr ""
@@ -4329,9 +4377,9 @@ msgstr ""
 #: assets/admin.js:3509
 #: assets/admin.js:3851
 #: assets/admin.js:4278
-#: assets/admin.js:5813
-#: assets/admin.js:6173
-#: assets/admin.js:6445
+#: assets/admin.js:5906
+#: assets/admin.js:6266
+#: assets/admin.js:6538
 msgid "This site"
 msgstr ""
 
@@ -4749,7 +4797,7 @@ msgstr ""
 #. translators: %s: error message
 #: assets/admin.js:1879
 #: assets/admin.js:2708
-#: assets/admin.js:5775
+#: assets/admin.js:5868
 #, js-format
 msgid "Not saved: %s"
 msgstr ""
@@ -4786,8 +4834,8 @@ msgstr ""
 
 #: assets/admin.js:2009
 #: assets/admin.js:3865
-#: assets/admin.js:6182
-#: assets/admin.js:6185
+#: assets/admin.js:6275
+#: assets/admin.js:6278
 msgid "Stopped"
 msgstr ""
 
@@ -5325,7 +5373,7 @@ msgid "Restore this site to %s"
 msgstr ""
 
 #: assets/admin.js:3247
-#: assets/admin.js:6440
+#: assets/admin.js:6533
 msgid "Restore a backup"
 msgstr ""
 
@@ -5721,7 +5769,7 @@ msgstr ""
 
 #: assets/admin.js:3809
 #: assets/admin.js:4512
-#: assets/admin.js:5639
+#: assets/admin.js:5732
 msgid "Change"
 msgstr ""
 
@@ -6505,134 +6553,196 @@ msgstr ""
 msgid "In the site's time zone (%s, set under Settings, General). WordPress starts scheduled tasks when the site gets a visit, so on a quiet site a backup can start a little late."
 msgstr ""
 
+#: assets/admin.js:5518
+msgid "newest"
+msgstr ""
+
+#: assets/admin.js:5519
+msgid "newest of its day"
+msgstr ""
+
+#: assets/admin.js:5520
+msgid "newest of its week"
+msgstr ""
+
+#: assets/admin.js:5521
+msgid "newest of its month"
+msgstr ""
+
+#: assets/admin.js:5522
+msgid "changes-only backups need it"
+msgstr ""
+
+#: assets/admin.js:5526
+msgid "No scheduled backups yet, so nothing would be deleted."
+msgstr ""
+
+#. translators: 1: when the next scheduled backup runs, 2: number of backups that would be deleted
+#: assets/admin.js:5537
+#, js-format
+msgid "After the next scheduled backup (%1$s), %2$d scheduled backup would be deleted:"
+msgid_plural "After the next scheduled backup (%1$s), %2$d scheduled backups would be deleted:"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: when the next scheduled backup runs
+#: assets/admin.js:5543
+#, js-format
+msgid "After the next scheduled backup (%s), all are kept:"
+msgstr ""
+
+#: assets/admin.js:5552
+msgid "Next backup"
+msgstr ""
+
+#: assets/admin.js:5555
+msgid "Kept"
+msgstr ""
+
+#: assets/admin.js:5555
+msgid "Deleted"
+msgstr ""
+
+#. translators: %d: a number of backups
+#: assets/admin.js:5560
+#, js-format
+msgid "and %d older ones."
+msgstr ""
+
 #. translators: %s: list of parts left out, such as media and plugins
-#: assets/admin.js:5532
+#: assets/admin.js:5616
 #, js-format
 msgid "The site without %s"
 msgstr ""
 
 #. translators: 1: day of the week, such as Monday, 2: time of day, such as 03:00
-#: assets/admin.js:5571
+#: assets/admin.js:5655
 #, js-format
 msgid "every %1$s at %2$s"
 msgstr ""
 
 #. translators: 1: day of the month, such as 15, 2: time of day, such as 03:00
-#: assets/admin.js:5574
+#: assets/admin.js:5658
 #, js-format
 msgid "on day %1$s of every month at %2$s"
 msgstr ""
 
 #. translators: %s: time of day, such as 03:00
-#: assets/admin.js:5577
+#: assets/admin.js:5661
 #, js-format
 msgid "every day at %s"
 msgstr ""
 
-#: assets/admin.js:5580
+#: assets/admin.js:5664
 msgid "on this server"
 msgstr ""
 
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:5584
+#: assets/admin.js:5668
 #, js-format
 msgid "to %s and this server"
 msgstr ""
 
 #. translators: %s: name of the storage, such as Dropbox
-#: assets/admin.js:5586
+#: assets/admin.js:5670
 #, js-format
 msgid "to %s"
 msgstr ""
 
 #. translators: %d: number of scheduled backups kept
-#: assets/admin.js:5591
+#: assets/admin.js:5675
 #, js-format
 msgid "keeping the newest %d"
 msgid_plural "keeping the newest %d"
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:5592
+#: assets/admin.js:5676
 msgid "keeping them all"
 msgstr ""
 
+#. translators: 1: number of days, 2: number of weeks, 3: number of months
+#: assets/admin.js:5680
+#, js-format
+msgid "keeping one a day for %1$d days, one a week for %2$d weeks and one a month for %3$d months"
+msgstr ""
+
 #. translators: 1: how often, such as every Monday at 03:00, 2: where, such as to Dropbox, 3: how many are kept, such as keeping the newest 7
-#: assets/admin.js:5595
+#: assets/admin.js:5688
 #, js-format
 msgid "%1$s, %2$s, %3$s."
 msgstr ""
 
 #. translators: %d: a number of runs
-#: assets/admin.js:5606
+#: assets/admin.js:5699
 #, js-format
 msgid "A full backup every %d runs, only the changes in between."
 msgstr ""
 
-#: assets/admin.js:5622
+#: assets/admin.js:5715
 msgid "Automatic backups off"
 msgstr ""
 
-#: assets/admin.js:5624
+#: assets/admin.js:5717
 msgid "Automatic backups on"
 msgstr ""
 
 #. translators: %s: when the next scheduled backup runs, such as tomorrow, 3:00 AM
-#: assets/admin.js:5627
+#: assets/admin.js:5720
 #, js-format
 msgid "Next: %s."
 msgstr ""
 
 #. translators: %s: when the next try is, such as today, 9:00 AM
-#: assets/admin.js:5634
+#: assets/admin.js:5727
 #, js-format
 msgid "Waiting for another job to finish; trying again %s."
 msgstr ""
 
-#: assets/admin.js:5642
+#: assets/admin.js:5735
 msgid "A backup is also made before WordPress, a plugin or a theme updates."
 msgstr ""
 
-#: assets/admin.js:5645
+#: assets/admin.js:5738
 msgid "A quick backup is made before a plugin or theme is deleted or the theme is switched (Schedule, Before risky changes)."
 msgstr ""
 
 #. translators: 1: when, such as today, 3:00 AM, 2: the reason
-#: assets/admin.js:5654
+#: assets/admin.js:5747
 #, js-format
 msgid "Last scheduled backup %1$s: skipped. %2$s"
 msgstr ""
 
 #. translators: 1: when, such as today, 3:00 AM, 2: error message
-#: assets/admin.js:5657
+#: assets/admin.js:5750
 #, js-format
 msgid "Last scheduled backup %1$s: failed. %2$s"
 msgstr ""
 
 #. translators: 1: when, such as today, 3:00 AM, 2: where it is stored, such as Dropbox
-#: assets/admin.js:5660
+#: assets/admin.js:5753
 #, js-format
 msgid "Last scheduled backup %1$s: done, stored on %2$s."
 msgstr ""
 
 #. translators: %s: when, such as today, 3:00 AM
-#: assets/admin.js:5663
+#: assets/admin.js:5756
 #, js-format
 msgid "Last scheduled backup %s: done."
 msgstr ""
 
-#: assets/admin.js:5671
+#: assets/admin.js:5764
 msgid "Off"
 msgstr ""
 
 #. translators: %s: when the next scheduled backup runs, such as tomorrow, 3:00 AM
-#: assets/admin.js:5683
+#: assets/admin.js:5776
 #, js-format
 msgid "Next backup: %s."
 msgstr ""
 
 #. translators: %d: number of scheduled backups kept
-#: assets/admin.js:5687
+#: assets/admin.js:5780
 #, js-format
 msgid "%d scheduled backup kept so far."
 msgid_plural "%d scheduled backups kept so far."
@@ -6640,25 +6750,25 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: what the backup was made before, such as Before deleting the plugin Akismet 5.3, 2: when, such as today, 3:00 AM, 3: size such as 12 MB
-#: assets/admin.js:5700
+#: assets/admin.js:5793
 #, js-format
 msgid "Last quick backup: %1$s, %2$s, made (%3$s)."
 msgstr ""
 
 #. translators: 1: what the backup was made before, such as Before deleting the plugin Akismet 5.3, 2: when, such as today, 3:00 AM, 3: the reason
-#: assets/admin.js:5703
+#: assets/admin.js:5796
 #, js-format
 msgid "Last quick backup: %1$s, %2$s, skipped: %3$s"
 msgstr ""
 
 #. translators: 1: what the backup was made before, such as Before deleting the plugin Akismet 5.3, 2: when, such as today, 3:00 AM, 3: error message
-#: assets/admin.js:5706
+#: assets/admin.js:5799
 #, js-format
 msgid "Last quick backup: %1$s, %2$s, failed: %3$s"
 msgstr ""
 
 #. translators: %d: number of quick backups made before updates and changes that are kept
-#: assets/admin.js:5713
+#: assets/admin.js:5806
 #, js-format
 msgid "%d quick backup is kept."
 msgid_plural "%d quick backups are kept."
@@ -6666,25 +6776,25 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: what was updated, such as the plugin Akismet, 2: when, such as today, 3:00 AM, 3: size such as 12 MB
-#: assets/admin.js:5723
+#: assets/admin.js:5816
 #, js-format
 msgid "Last backup before an update: %1$s, %2$s, made (%3$s)."
 msgstr ""
 
 #. translators: 1: what was updated, such as the plugin Akismet, 2: when, such as today, 3:00 AM, 3: the reason
-#: assets/admin.js:5726
+#: assets/admin.js:5819
 #, js-format
 msgid "Last backup before an update: %1$s, %2$s, skipped: %3$s."
 msgstr ""
 
 #. translators: 1: what was updated, such as the plugin Akismet, 2: when, such as today, 3:00 AM, 3: error message
-#: assets/admin.js:5729
+#: assets/admin.js:5822
 #, js-format
 msgid "Last backup before an update: %1$s, %2$s, failed: %3$s."
 msgstr ""
 
 #. translators: %d: number of backups made before updates that are kept
-#: assets/admin.js:5736
+#: assets/admin.js:5829
 #, js-format
 msgid "%d backup made before updates is kept."
 msgid_plural "%d backups made before updates are kept."
@@ -6692,384 +6802,384 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: when the next scheduled backup runs, such as tomorrow, 3:00 AM
-#: assets/admin.js:5767
+#: assets/admin.js:5860
 #, js-format
 msgid "Saved. Next backup: %s."
 msgstr ""
 
-#: assets/admin.js:5770
+#: assets/admin.js:5863
 msgid "Saved. Automatic backups are off."
 msgstr ""
 
 #. translators: %s: error message
-#: assets/admin.js:5796
+#: assets/admin.js:5889
 #, js-format
 msgid "Not started: %s"
 msgstr ""
 
-#: assets/admin.js:5814
+#: assets/admin.js:5907
 msgid "Scheduled backup running..."
 msgstr ""
 
-#: assets/admin.js:5817
+#: assets/admin.js:5910
 msgid "Stop it"
 msgstr ""
 
-#: assets/admin.js:5820
+#: assets/admin.js:5913
 msgid "Stop the scheduled backup? What it has done so far is removed; earlier backups stay."
 msgstr ""
 
-#: assets/admin.js:5821
+#: assets/admin.js:5914
 msgid "The scheduled backup was stopped."
 msgstr ""
 
 #. translators: %s: what the backup is doing, such as Packing files
-#: assets/admin.js:5830
+#: assets/admin.js:5923
 #, js-format
 msgid "A scheduled backup is running (%s). It runs by itself on the server; you can leave this page."
 msgstr ""
 
-#: assets/admin.js:5833
+#: assets/admin.js:5926
 msgid "A scheduled backup is running (starting). It runs by itself on the server; you can leave this page."
 msgstr ""
 
-#: assets/admin.js:5845
+#: assets/admin.js:5938
 msgid "Lost track of the scheduled backup"
 msgstr ""
 
 #. translators: %s: error message
-#: assets/admin.js:5849
+#: assets/admin.js:5942
 #, js-format
 msgid "%s It may still be running; reload the page to check."
 msgstr ""
 
 #. translators: %s: size such as 12 MB
-#: assets/admin.js:5868
+#: assets/admin.js:5961
 #, js-format
 msgid "%s · stored on this server."
 msgstr ""
 
 #. translators: 1: size such as 12 MB, 2: name of the storage, such as Dropbox
-#: assets/admin.js:5871
+#: assets/admin.js:5964
 #, js-format
 msgid "%1$s · stored on %2$s."
 msgstr ""
 
 #. translators: 1: size such as 12 MB, 2: name of the storage, such as Dropbox
-#: assets/admin.js:5874
+#: assets/admin.js:5967
 #, js-format
 msgid "%1$s · stored on this server and on %2$s."
 msgstr ""
 
 #. translators: %d: number of older scheduled backups deleted
-#: assets/admin.js:5882
+#: assets/admin.js:5975
 #, js-format
 msgid "%d older scheduled backup was deleted."
 msgid_plural "%d older scheduled backups were deleted."
 msgstr[0] ""
 msgstr[1] ""
 
-#: assets/admin.js:5886
+#: assets/admin.js:5979
 msgid "Scheduled backup ready"
 msgstr ""
 
-#: assets/admin.js:5892
+#: assets/admin.js:5985
 msgid "The scheduled backup was stopped"
 msgstr ""
 
-#: assets/admin.js:5892
+#: assets/admin.js:5985
 msgid "The scheduled backup failed"
 msgstr ""
 
-#: assets/admin.js:5910
+#: assets/admin.js:6003
 msgid "Nothing has run yet. Backups, restores and transfers show up here, each with its log."
 msgstr ""
 
-#: assets/admin.js:5914
+#: assets/admin.js:6007
 msgid "Scheduled backup"
 msgstr ""
 
-#: assets/admin.js:5916
+#: assets/admin.js:6009
 msgid "Backup before update"
 msgstr ""
 
-#: assets/admin.js:5921
+#: assets/admin.js:6014
 msgid "Cancelled"
 msgstr ""
 
-#: assets/admin.js:5923
-#: assets/admin.js:5945
+#: assets/admin.js:6016
+#: assets/admin.js:6038
 msgid "View log"
 msgstr ""
 
-#: assets/admin.js:5929
+#: assets/admin.js:6022
 msgid "Move to another site"
 msgstr ""
 
-#: assets/admin.js:5950
+#: assets/admin.js:6043
 msgid "Hide log"
 msgstr ""
 
-#: assets/admin.js:5953
+#: assets/admin.js:6046
 msgid "[earlier lines omitted]"
 msgstr ""
 
-#: assets/admin.js:6076
+#: assets/admin.js:6169
 msgid "Ready"
 msgstr ""
 
-#: assets/admin.js:6077
+#: assets/admin.js:6170
 msgid "Being made"
 msgstr ""
 
-#: assets/admin.js:6079
+#: assets/admin.js:6172
 msgid "Being deleted"
 msgstr ""
 
-#: assets/admin.js:6082
+#: assets/admin.js:6175
 msgid "Address"
 msgstr ""
 
-#: assets/admin.js:6083
+#: assets/admin.js:6176
 msgid "Made"
 msgstr ""
 
-#: assets/admin.js:6085
+#: assets/admin.js:6178
 msgid "Where"
 msgstr ""
 
 #. translators: 1: a folder, 2: a database table prefix
-#: assets/admin.js:6085
+#: assets/admin.js:6178
 #, js-format
 msgid "folder %1$s, tables %2$s…"
 msgstr ""
 
-#: assets/admin.js:6086
+#: assets/admin.js:6179
 msgid "Media"
 msgstr ""
 
-#: assets/admin.js:6086
+#: assets/admin.js:6179
 msgid "copied"
 msgstr ""
 
-#: assets/admin.js:6086
+#: assets/admin.js:6179
 msgid "left out"
 msgstr ""
 
-#: assets/admin.js:6095
+#: assets/admin.js:6188
 msgid "Open the copy"
 msgstr ""
 
-#: assets/admin.js:6096
+#: assets/admin.js:6189
 msgid "Open its dashboard"
 msgstr ""
 
-#: assets/admin.js:6099
+#: assets/admin.js:6192
 msgid "Sign in there with the same user name and password as here. Outgoing email is held back; the STAGING badge in its admin bar can turn it on."
 msgstr ""
 
-#: assets/admin.js:6101
+#: assets/admin.js:6194
 msgid "Making this copy did not finish. Delete it, then make a new one."
 msgstr ""
 
-#: assets/admin.js:6106
+#: assets/admin.js:6199
 msgid "Links inside the copy show the live site, or \"not found\"?"
 msgstr ""
 
-#: assets/admin.js:6107
+#: assets/admin.js:6200
 msgid "This server runs nginx, which does not read .htaccess files. For pretty permalinks in the copy, add this rule to the site's nginx configuration (or ask your host), before the rule for \"/\":"
 msgstr ""
 
-#: assets/admin.js:6112
+#: assets/admin.js:6205
 msgid "Delete the staging copy"
 msgstr ""
 
-#: assets/admin.js:6113
+#: assets/admin.js:6206
 msgid "Later: copying changes from the copy back to the live site."
 msgstr ""
 
-#: assets/admin.js:6121
+#: assets/admin.js:6214
 msgid "A staging copy cannot be made on this site:"
 msgstr ""
 
 #. translators: %s: a size, such as 12 MB
-#: assets/admin.js:6128
+#: assets/admin.js:6221
 #, js-format
 msgid "The database tables come to about %s; the files are measured when the copy starts, and it stops before copying if the disk is too full."
 msgstr ""
 
-#: assets/admin.js:6137
+#: assets/admin.js:6230
 msgid "Use 1 to 30 lower-case letters, digits or hyphens for the folder name."
 msgstr ""
 
 #. translators: 1: address of the staging copy, 2: a folder, 3: a database table prefix
-#: assets/admin.js:6156
+#: assets/admin.js:6249
 #, js-format
 msgid "Delete the staging copy at %1$s? Its folder %2$s and its database tables %3$s… are removed. The live site is not touched. This cannot be undone."
 msgstr ""
 
-#: assets/admin.js:6173
+#: assets/admin.js:6266
 msgid "Gone"
 msgstr ""
 
-#: assets/admin.js:6174
+#: assets/admin.js:6267
 msgid "Deleting the staging copy..."
 msgstr ""
 
-#: assets/admin.js:6174
+#: assets/admin.js:6267
 msgid "Making the staging copy..."
 msgstr ""
 
-#: assets/admin.js:6179
+#: assets/admin.js:6272
 msgid "Staging copy deleted"
 msgstr ""
 
-#: assets/admin.js:6180
+#: assets/admin.js:6273
 msgid "The staging copy was deleted."
 msgstr ""
 
-#: assets/admin.js:6180
+#: assets/admin.js:6273
 msgid "The staging copy is ready."
 msgstr ""
 
-#: assets/admin.js:6197
+#: assets/admin.js:6290
 msgid "Works"
 msgstr ""
 
-#: assets/admin.js:6198
+#: assets/admin.js:6291
 msgid "Expired"
 msgstr ""
 
-#: assets/admin.js:6199
+#: assets/admin.js:6292
 msgid "Revoked"
 msgstr ""
 
 #. translators: 1: when the kit was made, 2: when it stops working
-#: assets/admin.js:6210
+#: assets/admin.js:6303
 #, js-format
 msgid "made %1$s, works until %2$s"
 msgstr ""
 
-#: assets/admin.js:6216
+#: assets/admin.js:6309
 msgid "Revoke"
 msgstr ""
 
-#: assets/admin.js:6219
+#: assets/admin.js:6312
 msgid "No kit made yet."
 msgstr ""
 
-#: assets/admin.js:6245
+#: assets/admin.js:6338
 msgid "Choose a password of at least 12 characters."
 msgstr ""
 
 #. translators: %s: file name of the emergency kit
-#: assets/admin.js:6287
+#: assets/admin.js:6380
 #, js-format
 msgid "Downloaded %s. Keep it with its password somewhere safe, not on this server."
 msgstr ""
 
-#: assets/admin.js:6301
+#: assets/admin.js:6394
 msgid "Revoke this emergency kit? It stops working as soon as it reads this site's database. This cannot be undone; you can make a new kit."
 msgstr ""
 
-#: assets/admin.js:6306
+#: assets/admin.js:6399
 msgid "The kit is revoked."
 msgstr ""
 
 #. translators: 1: address of the other site, 2: when, such as today, 7:21 PM
-#: assets/admin.js:6326
+#: assets/admin.js:6419
 #, js-format
 msgid "Moved %1$s here %2$s."
 msgstr ""
 
 #. translators: %s: when, such as today, 7:21 PM
-#: assets/admin.js:6332
+#: assets/admin.js:6425
 #, js-format
 msgid "Restored %s."
 msgstr ""
 
-#: assets/admin.js:6336
+#: assets/admin.js:6429
 msgid "A safety backup of the site as it was just before is kept. Changed your mind?"
 msgstr ""
 
-#: assets/admin.js:6339
+#: assets/admin.js:6432
 msgid "Undo this restore"
 msgstr ""
 
-#: assets/admin.js:6340
+#: assets/admin.js:6433
 msgid "Keep it as it is"
 msgstr ""
 
 #. translators: name of the safety backup; used inside sentences such as Restore this site to “the site before the last restore”
-#: assets/admin.js:6356
+#: assets/admin.js:6449
 msgid "the site before the last restore"
 msgstr ""
 
-#: assets/admin.js:6365
+#: assets/admin.js:6458
 msgid "Kept as it is. The safety backup stays in the list until you delete it."
 msgstr ""
 
 #. translators: %s: error message
-#: assets/admin.js:6378
+#: assets/admin.js:6471
 #, js-format
 msgid "SiteFerry cannot reach its REST API: %s"
 msgstr ""
 
 #. translators: %s: comma-separated list of unfinished uploads, such as backup.tar (12 MB of 40 MB)
-#: assets/admin.js:6387
+#: assets/admin.js:6480
 #, js-format
 msgid "Unfinished upload: %s. Choose the same file to continue."
 msgstr ""
 
 #. translators: 1: file name, 2: size uploaded so far, 3: size of the file; sizes such as 12 MB
-#: assets/admin.js:6392
+#: assets/admin.js:6485
 #, js-format
 msgid "%1$s (%2$s of %3$s)"
 msgstr ""
 
-#: assets/admin.js:6413
+#: assets/admin.js:6506
 msgid "A job"
 msgstr ""
 
 #. translators: 1: the kind of job, such as A backup, 2: date and time it started, 3: what it was doing
-#: assets/admin.js:6417
+#: assets/admin.js:6510
 #, js-format
 msgid "%1$s started %2$s is not finished (%3$s)."
 msgstr ""
 
-#: assets/admin.js:6421
+#: assets/admin.js:6514
 msgid "This browser did not start it, so it can only be cancelled here."
 msgstr ""
 
-#: assets/admin.js:6428
-#: assets/admin.js:6446
+#: assets/admin.js:6521
+#: assets/admin.js:6539
 msgid "Resuming..."
 msgstr ""
 
-#: assets/admin.js:6434
+#: assets/admin.js:6527
 msgid "Resuming the backup..."
 msgstr ""
 
-#: assets/admin.js:6440
+#: assets/admin.js:6533
 msgid "Finishing the restore"
 msgstr ""
 
 #. translators: %s: the kind of job, such as A backup
-#: assets/admin.js:6455
+#: assets/admin.js:6548
 #, js-format
 msgid "%s was cancelled and its work undone."
 msgstr ""
 
 #. translators: %s: address of the live site
-#: assets/admin.js:6491
+#: assets/admin.js:6584
 #, js-format
 msgid "This is a staging copy of %s. SiteFerry's storage, schedule and backups before updates stay with the live site."
 msgstr ""
 
-#: assets/admin.js:6608
+#: assets/admin.js:6703
 msgid "Saving or signing in this way replaces the current connection."
 msgstr ""
 
-#: assets/admin.js:6623
+#: assets/admin.js:6718
 msgid "Copied"
 msgstr ""

@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.35.0
+Stable tag: 0.36.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -492,6 +492,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.36.0 =
+* Keeping scheduled backups by day, week and month: besides "keep the newest N", the Schedule panel can keep one backup a day for D days, one a week for W weeks and one a month for M months (defaults 7, 4 and 6), counted back from today in the site's time zone (calendar days, Monday-to-Sunday weeks, calendar months). It applies to scheduled backups wherever they are stored; a full backup that kept changes-only backups need always stays; backups you make yourself are never deleted. A preview under the choice lists each scheduled backup with why it would be kept, or that it would be deleted after the next run, and updates as you type (REST GET /schedule/retention; WP-CLI's schedule summary names the choice).
 
 = 0.35.0 =
 * Backups before risky changes: the same quick backup as before updates is now made just before a plugin is deleted (the database and that plugin, tagged "before-plugin-delete"; taken before the plugin's own uninstall code runs), a theme is deleted (the database and that theme, "before-theme-delete") and the theme is switched (the database, "before-theme-switch"; taken before the switch is written, from the Themes screen, the Customizer or WP-CLI). Each has its switch in the Schedule panel under "Before risky changes", on by default; they share "Keep the newest" with the backups made before updates, never block the change, and show on the timeline.

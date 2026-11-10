@@ -40,7 +40,11 @@ final class Schedule_Command {
 			$days  = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
 			$when  = 'daily' === $settings['frequency'] ? 'every day' : ( 'weekly' === $settings['frequency'] ? 'every ' . $days[ $settings['weekday'] ] : 'on day ' . $settings['monthday'] . ' of every month' );
 			$where = '' === $settings['send_to'] ? 'this server' : Destinations::short_label( $settings['send_to'] ) . ( $settings['keep_local'] ? ' (and this server)' : '' );
-			WP_CLI::log( sprintf( 'Schedule: %s at %s (%s), to %s, keeping %s.', $when, $settings['time'], $overview['timezone'], $where, 0 === $settings['retain'] ? 'every scheduled backup' : 'the newest ' . $settings['retain'] ) );
+			$keep = 0 === $settings['retain'] ? 'every scheduled backup' : 'the newest ' . $settings['retain'];
+			if ( \SiteFerry\Schedule\Retention::PERIODS === $settings['retain_mode'] ) {
+				$keep = sprintf( 'one a day for %d days, one a week for %d weeks and one a month for %d months', $settings['keep_daily'], $settings['keep_weekly'], $settings['keep_monthly'] );
+			}
+			WP_CLI::log( sprintf( 'Schedule: %s at %s (%s), to %s, keeping %s.', $when, $settings['time'], $overview['timezone'], $where, $keep ) );
 			WP_CLI::log( 'Next run: ' . ( null === $overview['next'] ? 'not planned' : wp_date( 'Y-m-d H:i T', $overview['next'] ) ) . ( null === $overview['retry'] ? '' : ' (retry after another job: ' . wp_date( 'Y-m-d H:i T', $overview['retry'] ) . ')' ) );
 			if ( $overview['cron_disabled'] ) {
 				WP_CLI::warning( 'DISABLE_WP_CRON is set: a server cron job must run wp-cron.php, or scheduled backups never start.' );

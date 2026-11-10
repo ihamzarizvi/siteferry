@@ -3590,3 +3590,66 @@ details.sf-dest[open] > .sf-dest-head::after {
 	font-size: 12px;
 	white-space: pre;
 }
+/* ------------------------------------------------- Keeping scheduled backups */
+
+.siteferry .sf-keep-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 8px;
+	margin: 0 0 8px;
+}
+
+.siteferry .sf-keep-row label {
+	font-weight: 600;
+}
+
+.siteferry .sf-keep-preview {
+	margin: 10px 0 0;
+	padding: 10px 14px;
+	border: 1px solid var(--sf-rope);
+	border-radius: var(--sf-radius);
+	background: var(--sf-deck);
+	font-size: 13px;
+}
+
+.siteferry .sf-keep-head {
+	margin: 0 0 6px;
+	font-weight: 600;
+}
+
+.siteferry .sf-keep-list {
+	max-height: 260px;
+	margin: 0;
+	padding: 0;
+	overflow-y: auto;
+	list-style: none;
+}
+
+.siteferry .sf-keep-list li {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: 2px 12px;
+	margin: 0;
+	padding: 4px 0;
+	border-top: 1px solid var(--sf-fog);
+}
+
+.siteferry .sf-keep-list li:first-child {
+	border-top: 0;
+}
+
+.siteferry .sf-keep-list .is-kept .sf-keep-what {
+	color: var(--sf-starboard);
+}
+
+.siteferry .sf-keep-list .is-gone .sf-keep-what {
+	color: var(--sf-port);
+	font-weight: 600;
+}
+
+.siteferry .sf-keep-error {
+	margin: 0;
+	color: var(--sf-port);
+}
