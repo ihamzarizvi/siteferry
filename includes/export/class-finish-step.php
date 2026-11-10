@@ -69,6 +69,16 @@ final class Finish_Step implements Step {
 				'base'     => null === $job->option( 'base' ) ? '' : (string) $job->option( 'base' )['name'],
 			)
 		);
+		// How long a whole backup took, for the forecast (a changes-only backup reads far less than it holds).
+		if ( null === $job->option( 'base' ) ) {
+			$database = $job->state( 'database' );
+			\SiteFerry\Forecast::record_backup(
+				(int) $pack['bytes'] + ( isset( $database['size'] ) ? (int) $database['size'] : 0 ),
+				(int) filesize( $final ),
+				(float) ( time() - $job->created() ),
+				(bool) $job->option( 'compress', false )
+			);
+		}
 		$job->set_progress( __( 'Backup complete', 'siteferry' ), 1, 1 );
 		$job->log( 'info', sprintf( 'Backup complete: %s (%s).', $job->option( 'archive' ), size_format( (int) filesize( $final ), 1 ) ) );
 		return true;

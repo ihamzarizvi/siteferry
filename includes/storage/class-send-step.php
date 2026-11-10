@@ -47,6 +47,10 @@ final class Send_Step implements Step {
 		$name   = basename( $file );
 		$driver = Destinations::driver( $destination );
 		$state  = $job->state( self::STATE );
+		if ( ! isset( $state['started_at'] ) ) {
+			$state['started_at'] = microtime( true ); // For the forecast's upload speed.
+			$job->set_state( self::STATE, $state );
+		}
 
 		// A changes-only backup is useless on a storage without its full backup: that goes first.
 		if ( ! array_key_exists( 'base_file', $state ) && ! isset( $state['upload'] ) ) {
@@ -77,7 +81,7 @@ final class Send_Step implements Step {
 			}
 		}
 
-		$main = array_diff_key( $state, array_flip( array( 'base_file', 'base' ) ) );
+		$main = array_diff_key( $state, array_flip( array( 'base_file', 'base', 'started_at' ) ) );
 		$done = $this->transfer(
 			$job,
 			$driver,
@@ -104,6 +108,16 @@ final class Send_Step implements Step {
 			'base'        => '' === $base_file ? '' : basename( $base_file ),
 		);
 		$job->log( 'info', count( $main['pieces'] ) > 1 ? sprintf( 'Sent %s to %s in %d parts.', $name, $driver->describe(), count( $main['pieces'] ) ) : sprintf( 'Sent %s to %s.', $name, $driver->describe() ) );
+		\SiteFerry\Forecast::record_transfer(
+			$destination,
+			'up',
+			(int) $main['size'] + ( '' === $base_file ? 0 : (int) Io::quiet(
+				static function () use ( $base_file ) {
+					return filesize( $base_file );
+				}
+			) ),
+			microtime( true ) - (float) $state['started_at']
+		);
 
 		if ( $job->option( 'delete_after_send', false ) ) {
 			$deleted = Io::quiet(

@@ -208,6 +208,7 @@ final class Admin {
 						</details>
 						<div class="sf-space" id="siteferry-space" aria-live="polite">
 							<p class="sf-space-line" id="siteferry-space-line"><?php esc_html_e( 'Measuring the site...', 'siteferry' ); ?></p>
+							<p class="sf-forecast" id="siteferry-forecast" aria-live="polite" hidden></p>
 							<details class="sf-more" id="siteferry-space-details" hidden>
 								<summary><?php esc_html_e( 'What takes the room', 'siteferry' ); ?></summary>
 								<div class="sf-space-body" id="siteferry-space-body"></div>

@@ -55,6 +55,10 @@ final class Fetch_Step implements Step {
 			if ( 0 === $state['offset'] ) {
 				$job->log( 'info', sprintf( 'Downloading %s (%s) from %s.', $name, size_format( $size, 1 ), $driver->describe() ) );
 			}
+			if ( ! isset( $state['started_at'] ) ) {
+				$state['started_at'] = microtime( true ); // For the forecast's download speed.
+				$job->set_state( self::STATE, $state );
+			}
 			$pieces = (array) $job->option( 'pieces', array( array( $name, $size ) ) );
 			$offset = (int) $state['offset'];
 			$done   = $this->download(
@@ -73,6 +77,9 @@ final class Fetch_Step implements Step {
 			);
 			if ( ! $done ) {
 				return false;
+			}
+			if ( isset( $state['started_at'] ) ) {
+				\SiteFerry\Forecast::record_transfer( $source, 'down', $size, microtime( true ) - (float) $state['started_at'] );
 			}
 
 			if ( false === $job->option( 'adopt', true ) ) {

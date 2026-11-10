@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.36.0
+Stable tag: 0.37.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -492,6 +492,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.37.0 =
+* Size and time forecast: under the size estimate in Customize, SiteFerry now says about how long making the backup takes (from the last backup of the same kind, compressed or not) and how long sending it takes (from the last upload to that storage), as ranges; and, for a compressed file, about how big it will be. Until a backup of that kind was made or sent there, it says so instead of guessing. The Back up now bar shows the total as a small clock chip. The speeds are measured on this site only and kept in one option (REST GET /forecast).
 
 = 0.36.0 =
 * Keeping scheduled backups by day, week and month: besides "keep the newest N", the Schedule panel can keep one backup a day for D days, one a week for W weeks and one a month for M months (defaults 7, 4 and 6), counted back from today in the site's time zone (calendar days, Monday-to-Sunday weeks, calendar months). It applies to scheduled backups wherever they are stored; a full backup that kept changes-only backups need always stays; backups you make yourself are never deleted. A preview under the choice lists each scheduled backup with why it would be kept, or that it would be deleted after the next run, and updates as you type (REST GET /schedule/retention; WP-CLI's schedule summary names the choice).

@@ -1308,6 +1308,11 @@
 		if ( downloads ) {
 			chips.push( chip( __( 'Downloaded too', 'siteferry' ), 'download' ) );
 		}
+		if ( forecast && forecast.make ) {
+			// About how long, from the last backup of this kind (and the last upload there).
+			const make = forecast.send ? [ forecast.make[ 0 ] + forecast.send[ 0 ], forecast.make[ 1 ] + forecast.send[ 1 ] ] : forecast.make;
+			chips.push( chip( duration( make, true ), 'clock', 'is-forecast' ) );
+		}
 		if ( choicesDirty() ) {
 			chips.push( el( 'span', { class: 'sf-pill is-unsaved', text: __( 'Not saved', 'siteferry' ) } ) );
 		}
@@ -4030,6 +4035,113 @@
 		line.replaceChildren( ...parts );
 		$( 'siteferry-space-details' ).hidden = false;
 		renderSpaceDetails();
+		const where = form.querySelector( 'input[name=send_to]:checked' );
+		forecastSoon( total, !! compressed, where ? where.value : '' );
+	}
+
+	// ------------------------------------------------------------ forecast
+
+	let forecast = null;
+	let forecastTimer = null;
+	let forecastSeq = 0;
+
+	/** Asks for the forecast a moment after the choices stop changing. */
+	function forecastSoon( total, compressed, sendTo ) {
+		window.clearTimeout( forecastTimer );
+		forecastTimer = window.setTimeout( () => loadForecast( total, compressed, sendTo ), 300 );
+	}
+
+	async function loadForecast( total, compressed, sendTo ) {
+		const seq = ++forecastSeq;
+		try {
+			const data = await api( 'GET', 'forecast', { query: { bytes: Math.round( total ), compress: compressed ? 1 : 0, send_to: sendTo } } );
+			if ( seq !== forecastSeq ) {
+				return;
+			}
+			forecast = Object.assign( data, { sendTo } );
+		} catch ( error ) {
+			forecast = null; // Only a forecast: nothing else depends on it.
+		}
+		renderForecast();
+		renderNowLine();
+	}
+
+	/** A time range in words: "under a minute", "about 4 minutes", "3 to 6 minutes", "1.2 to 2.0 hours". */
+	function duration( range, short ) {
+		const [ low, high ] = range;
+		if ( high < 60 ) {
+			return short ? __( '< 1 min', 'siteferry' ) : __( 'under a minute', 'siteferry' );
+		}
+		if ( high < 3600 ) {
+			const a = Math.max( 1, Math.round( low / 60 ) );
+			const b = Math.max( a, Math.round( high / 60 ) );
+			if ( short ) {
+				return a === b
+					? /* translators: %d: a number of minutes, shown short */
+					  sprintf( __( '~%d min', 'siteferry' ), a )
+					: /* translators: 1: fewest minutes, 2: most minutes, shown short */
+					  sprintf( __( '%1$d–%2$d min', 'siteferry' ), a, b );
+			}
+			return a === b
+				? /* translators: %d: a number of minutes */
+				  sprintf( _n( 'about %d minute', 'about %d minutes', a, 'siteferry' ), a )
+				: /* translators: 1: fewest minutes, 2: most minutes */
+				  sprintf( __( '%1$d to %2$d minutes', 'siteferry' ), a, b );
+		}
+		const hours = short
+			? /* translators: 1: fewest hours, 2: most hours, such as 1.5, shown short */
+			  __( '%1$s–%2$s h', 'siteferry' )
+			: /* translators: 1: fewest hours, 2: most hours, such as 1.5 */
+			  __( '%1$s to %2$s hours', 'siteferry' );
+		return sprintf( hours, ( low / 3600 ).toFixed( 1 ), ( high / 3600 ).toFixed( 1 ) );
+	}
+
+	/** The forecast under the size estimate: how long making and sending it will take. */
+	function renderForecast() {
+		const box = $( 'siteferry-forecast' );
+		if ( ! forecast ) {
+			box.hidden = true;
+			return;
+		}
+		const sentences = [];
+		sentences.push(
+			forecast.make
+				? sprintf(
+						/* translators: %s: how long, such as 3 to 6 minutes */
+						__( 'Making it takes %s, going by the last backup of this kind.', 'siteferry' ),
+						duration( forecast.make )
+				  )
+				: __( 'How long making it takes is shown after the first backup of this kind.', 'siteferry' )
+		);
+		const target = forecast.sendTo ? destination( forecast.sendTo ) : null;
+		if ( target ) {
+			sentences.push(
+				forecast.send
+					? sprintf(
+							/* translators: 1: name of the storage, such as Dropbox, 2: how long, such as 3 to 6 minutes */
+							__( 'Sending it to %1$s: %2$s.', 'siteferry' ),
+							target.short,
+							duration( forecast.send )
+					  )
+					: sprintf(
+							/* translators: %s: name of the storage, such as Dropbox */
+							__( 'How long sending it to %s takes is shown after the first backup sent there.', 'siteferry' ),
+							target.short
+					  )
+			);
+		}
+		if ( forecast.bytes[ 0 ] !== forecast.bytes[ 1 ] ) {
+			sentences.unshift(
+				sprintf(
+					/* translators: 1: smallest size, 2: largest size, such as 120 MB */
+					__( 'Compressed, the file will be about %1$s to %2$s.', 'siteferry' ),
+					bytes( forecast.bytes[ 0 ] ),
+					bytes( forecast.bytes[ 1 ] )
+				)
+			);
+		}
+		box.textContent = sentences.join( ' ' );
+		box.hidden = false;
 	}
 
 	function renderSpaceDetails() {

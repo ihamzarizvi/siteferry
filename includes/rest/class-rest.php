@@ -124,6 +124,7 @@ final class Rest {
 			array( '/schedule', WP_REST_Server::CREATABLE, 'save_schedule', $admin ),
 			array( '/schedule/run', WP_REST_Server::CREATABLE, 'run_schedule', $admin ),
 			array( '/schedule/retention', WP_REST_Server::READABLE, 'schedule_retention', $admin ),
+			array( '/forecast', WP_REST_Server::READABLE, 'forecast', $admin ),
 			array( '/undo/dismiss', WP_REST_Server::CREATABLE, 'dismiss_undo', $admin ),
 			array( '/emergency-kits', WP_REST_Server::READABLE, 'emergency_kits', $admin ),
 			array( '/emergency-kits', WP_REST_Server::CREATABLE, 'make_emergency_kit', $admin ),
@@ -910,6 +911,25 @@ final class Rest {
 			}
 		}
 		return Schedule::retention_preview( $input );
+	}
+
+	/**
+	 * About how big a backup will be and how long making and sending it will take, from the
+	 * uncompressed size the page works out (bytes) and the choices (compress, send_to).
+	 *
+	 * @param WP_REST_Request $request Request with bytes, compress, send_to.
+	 */
+	public static function forecast( WP_REST_Request $request ): array {
+		$bytes   = $request->get_param( 'bytes' );
+		$send_to = $request->get_param( 'send_to' );
+		return \SiteFerry\Forecast::estimate(
+			is_numeric( $bytes ) ? (int) min( (float) $bytes, (float) PHP_INT_MAX ) : 0,
+			array(
+				'compress' => filter_var( $request->get_param( 'compress' ), FILTER_VALIDATE_BOOLEAN ),
+				'send_to'  => is_string( $send_to ) && preg_match( '/^[a-z0-9_-]{1,40}$/', $send_to ) ? $send_to : '',
+			),
+			\SiteFerry\Forecast::speeds()
+		);
 	}
 
 	/**

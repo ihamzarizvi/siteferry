@@ -3653,3 +3653,15 @@ details.sf-dest[open] > .sf-dest-head::after {
 	margin: 0;
 	color: var(--sf-port);
 }
+/* ------------------------------------------------- Forecast */
+
+.siteferry .sf-forecast {
+	margin: 4px 0 0;
+	font-size: 13px;
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-pill.is-forecast {
+	background: var(--sf-fog);
+	color: var(--sf-ink);
+}
