@@ -2768,6 +2768,9 @@
 			if ( ! item.error && item.format !== 'wpress' && comparable().length > 1 ) {
 				entries.push( menuItem( __( 'Compare with…', 'siteferry' ), () => openCompare( item ) ) );
 			}
+			if ( can( 'backup' ) && ! item.error && item.holds && item.holds.network && ! item.encrypted ) {
+				entries.push( menuItem( __( 'Take one site out…', 'siteferry' ), () => extractSite( item ) ) );
+			}
 			if ( can( 'backup' ) ) {
 				entries.push( el( 'a', { class: 'sf-menu-item', href: downloadUrl( item.name ), text: __( 'Download', 'siteferry' ), role: 'menuitem' } ) );
 			}
@@ -3207,6 +3210,17 @@
 		document.querySelector( 'input[name=siteferry_restore_what][value=' + ( partial ? 'chosen' : 'all' ) + ']' ).checked = true;
 		$( 'siteferry-restore-advanced' ).open = !! partial;
 		$( 'siteferry-restore-advanced' ).hidden = false;
+		// On a network, a single-site backup can only become a new site of it.
+		const merging = !! cfg.network && !! restore.holds && restore.holds.network === false && ! partial;
+		$( 'siteferry-new-site-row' ).hidden = ! merging;
+		$( 'siteferry-new-site' ).value = merging
+			? ( hostOf( item.source ) || 'site' )
+					.split( '.' )[ 0 ]
+					.toLowerCase()
+					.replace( /[^a-z0-9-]+/g, '-' )
+					.replace( /^-+|-+$/g, '' )
+					.slice( 0, 40 ) || 'site'
+			: '';
 		syncRestoreChoices();
 		$( 'siteferry-inspection' ).hidden = true;
 		$( 'siteferry-preview' ).hidden = true;
@@ -3554,10 +3568,14 @@
 				json: {
 					...( restore.password ? { password: restore.password } : {} ),
 					backup: restore.name,
-					replace_url: $( 'siteferry-replace-url' ).value.trim(),
-					include_mu_plugins: $( 'siteferry-include-mu' ).checked,
-					include_drop_ins: $( 'siteferry-include-dropins' ).checked,
-					...restoreWhat().options,
+					...( $( 'siteferry-new-site-row' ).hidden
+						? {
+								replace_url: $( 'siteferry-replace-url' ).value.trim(),
+								include_mu_plugins: $( 'siteferry-include-mu' ).checked,
+								include_drop_ins: $( 'siteferry-include-dropins' ).checked,
+								...restoreWhat().options,
+						  }
+						: { new_site: $( 'siteferry-new-site' ).value.trim(), safety: false } ),
 				},
 			} );
 			if ( ! restore || seq !== restore.seq ) {
@@ -3747,6 +3765,25 @@
 		$( 'siteferry-inspection' ).hidden = false;
 		$( 'siteferry-inspection-warnings' ).replaceChildren( ...( info.warnings || [] ).map( ( w ) => el( 'li', { text: w } ) ) );
 		renderPreview( info.preview );
+		if ( info.new_site ) {
+			// Adding a new site replaces nothing: no safety backup, and its own words.
+			$( 'siteferry-preview' ).hidden = true;
+			$( 'siteferry-safety-row' ).hidden = true;
+			$( 'siteferry-safety' ).checked = false;
+			$( 'siteferry-restore-title' ).textContent = __( 'Add this backup as a new site', 'siteferry' );
+			$( 'siteferry-restore-lead' ).textContent = sprintf(
+				/* translators: 1: address of the new site, 2: its number in the network */
+				__( 'A new site of this network is made at %1$s (site %2$s) from this backup: its content, users, media, and the plugins and themes the network does not have yet. The network\'s other sites, plugins and users stay as they are.', 'siteferry' ),
+				info.new_site.url,
+				info.new_site.id
+			);
+			$( 'siteferry-confirm' ).textContent = __( 'Add the new site', 'siteferry' );
+			$( 'siteferry-confirm-text' ).textContent = sprintf(
+				/* translators: %s: address of the new site */
+				__( 'I understand that this adds a new site at %s and adds the backup\'s users to the network.', 'siteferry' ),
+				info.new_site.url
+			);
+		}
 		setConfirm( true );
 		if ( changed ) {
 			recheckSoon(); // A choice this backup cannot take was set back: check again with the new ones.
@@ -4504,6 +4541,57 @@
 	const comparable = () => items().filter( ( item ) => item.local && ! item.error && item.format !== 'wpress' );
 
 	let comparing = null;
+
+	/**
+	 * Takes one site out of a network backup: a choice of its sites (in the compare panel), then a
+	 * new single-site backup, made in one request.
+	 */
+	async function extractSite( item ) {
+		closeMenus();
+		closePanels( 'compare' );
+		const panel = $( 'siteferry-compare' );
+		const body = $( 'siteferry-compare-body' );
+		$( 'siteferry-compare-title' ).textContent = __( 'Take one site out of this network backup', 'siteferry' );
+		panel.hidden = false;
+		panel.scrollIntoView( { block: 'start' } );
+		body.replaceChildren( el( 'p', { class: 'sf-lead', text: __( 'Reading the backup...', 'siteferry' ) } ) );
+		let sites;
+		try {
+			sites = ( await api( 'POST', 'backups/' + encodeURIComponent( item.name ) + '/extract', { json: {} } ) ).sites || [];
+		} catch ( error ) {
+			body.replaceChildren( el( 'p', { class: 'sf-lead', text: error.message } ) );
+			return;
+		}
+		const run = async ( site ) => {
+			body.replaceChildren( el( 'p', { class: 'sf-lead', text: sprintf( /* translators: %s: a web address */ __( 'Taking %s out of the backup; this reads and writes the whole backup, so it can take a few minutes...', 'siteferry' ), site.url ) } ) );
+			try {
+				const made = ( await api( 'POST', 'backups/' + encodeURIComponent( item.name ) + '/extract', { json: { site: site.id } } ) ).extracted;
+				body.replaceChildren(
+					el( 'p', {
+						class: 'sf-lead',
+						text: sprintf(
+							/* translators: 1: a web address, 2: a file name, 3: a size */
+							__( 'Done: %1$s is now a backup of its own (%2$s, %3$s). It imports into any single site; the network backup stays as it was.', 'siteferry' ),
+							made.url,
+							made.name,
+							bytes( made.size )
+						),
+					} )
+				);
+				await loadBackups();
+			} catch ( error ) {
+				body.replaceChildren( el( 'p', { class: 'sf-lead', text: error.message } ) );
+			}
+		};
+		body.replaceChildren(
+			el( 'p', { class: 'sf-lead', text: __( 'Choose the site. The new backup holds its tables, its users (super admins become its administrators), its media and all plugins and themes, as a single site. The network backup and this site stay as they are.', 'siteferry' ) } ),
+			el(
+				'ul',
+				{ class: 'sf-compare-choose' },
+				sites.map( ( site ) => el( 'li', {}, [ button( site.url, () => run( site ), 'button-link' ), el( 'span', { class: 'sf-compare-choose-meta', text: sprintf( /* translators: %d: a site number */ __( 'site %d', 'siteferry' ), site.id ) } ) ] ) )
+			)
+		);
+	}
 
 	/**
 	 * Opens the compare panel for a backup: first a choice of the other one (newest first), then
@@ -7158,7 +7246,7 @@
 		$( 'siteferry-confirm' ).addEventListener( 'click', confirmImport );
 		$( 'siteferry-import-cancel' ).addEventListener( 'click', closeRestore );
 		$( 'siteferry-restore-close' ).addEventListener( 'click', closeRestore );
-		[ 'siteferry-replace-url', 'siteferry-include-mu', 'siteferry-include-dropins' ].forEach( ( id ) => {
+		[ 'siteferry-replace-url', 'siteferry-include-mu', 'siteferry-include-dropins', 'siteferry-new-site' ].forEach( ( id ) => {
 			$( id ).addEventListener( 'change', recheckSoon );
 		} );
 		$( 'siteferry-restore-what' ).addEventListener( 'change', () => {

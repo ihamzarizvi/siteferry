@@ -49,6 +49,8 @@ final class Import {
 		'restore_tables'     => array(),
 		'restore_files'      => true,
 		'restore_paths'      => array(),
+		// Add the backup as a new site of this network (its folder or subdomain) instead of restoring.
+		'new_site'           => '',
 	);
 
 	/** Drop-ins tied to a server's own services; not copied unless asked for. */
@@ -95,6 +97,11 @@ final class Import {
 		$options['own_network'] = is_multisite() && array_key_exists( Plugin::basename(), (array) get_site_option( 'active_sitewide_plugins', array() ) );
 
 		$steps   = $wpress ? array_merge( array( \SiteFerry\Wpress\Import_Step::STEP ), self::STEPS ) : self::STEPS; // The safety step skips itself when declined.
+		if ( '' !== $options['new_site'] ) {
+			// A new site of the network: nothing of the network is replaced, so no safety backup; the
+			// merge step makes the site instead of swapping.
+			$steps = array( 'import.inspect', 'import.confirm', 'import.extract', 'import.verify', 'import.database', 'import.replace', 'import.merge', 'import.finish' );
+		}
 		$created = Job::create( Storage::jobs_dir(), 'import', $steps, $options );
 		if ( null !== $key ) {
 			\SiteFerry\Security\Archive_Keys::store( $created[0], $key );
@@ -212,6 +219,7 @@ final class Import {
 			'restore_tables'     => $tables,
 			'restore_files'      => (bool) $options['restore_files'],
 			'restore_paths'      => $paths,
+			'new_site'           => substr( trim( (string) $options['new_site'] ), 0, 253 ),
 		);
 	}
 

@@ -87,6 +87,51 @@ final class Backups_Command {
 	}
 
 	/**
+	 * Takes one site out of a whole-network backup on this server, as a new single-site backup
+	 * that imports into any single site. The network backup and the live network stay as they are.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <name>
+	 * : The network backup's file name (see "wp siteferry backups list").
+	 *
+	 * --site=<id>
+	 * : The site's id in that network.
+	 *
+	 * [--porcelain]
+	 * : Print only the new backup's path.
+	 *
+	 * [--format=<format>]
+	 * : json: print only a JSON object (ok, name, path, size, site, url, tables, users, files,
+	 * warnings). Same as --json.
+	 *
+	 * [--json]
+	 * : The same as --format=json.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp siteferry backups extract example-com-2026-11-09-1a2b3c4d5e6f.tar --site=2
+	 *
+	 * @param string[] $args       Positional arguments: the network backup.
+	 * @param array    $assoc_args Options.
+	 */
+	public function extract( $args, $assoc_args ): void {
+		$mode = Output::mode( $assoc_args );
+		try {
+			$made = \SiteFerry\Network\Extract::run( Backups::path( Storage::backups_dir(), (string) $args[0] ), (int) \WP_CLI\Utils\get_flag_value( $assoc_args, 'site', 0 ) );
+		} catch ( \Throwable $e ) {
+			Output::fail( $mode, $e->getMessage() );
+			return;
+		}
+		Output::done(
+			$mode,
+			$made,
+			(string) $made['path'],
+			sprintf( 'Site %d (%s) taken out as %s (%s; %d tables, %s files, %d users).', $made['site'], $made['url'], $made['name'], size_format( $made['size'], 1 ), $made['tables'], number_format( $made['files'] ), $made['users'] )
+		);
+	}
+
+	/**
 	 * Deletes backups on this server. A full backup that changes-only backups are built on is
 	 * kept until they are deleted (delete them first, or in the same command after it is listed
 	 * last).

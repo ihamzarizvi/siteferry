@@ -58,8 +58,12 @@ final class Inspect_Step implements Step {
 		if ( null !== $from_network && null === $to_network ) {
 			throw new Job_Exception( __( 'This backup is of a whole multisite network. Restore it into a multisite network (of the same kind) instead of a single site.', 'siteferry' ), Job_Exception::STEP );
 		}
-		if ( null === $from_network && null !== $to_network ) {
-			throw new Job_Exception( __( 'This site is a multisite network; it can only take a backup of a whole network. Restoring a single site into a network is not supported yet.', 'siteferry' ), Job_Exception::STEP );
+		$merge = null;
+		if ( '' !== (string) $job->option( 'new_site', '' ) ) {
+			// A single-site backup added to this network as a new site.
+			$merge = \SiteFerry\Network\Merge_Step::plan( $job, $manifest, $site, $from_network, $to_network );
+		} elseif ( null === $from_network && null !== $to_network ) {
+			throw new Job_Exception( __( 'This site is a multisite network; it can only take a backup of a whole network. To add a single site to it, choose "Add as a new site of this network".', 'siteferry' ), Job_Exception::STEP );
 		}
 		if ( null !== $from_network ) {
 			if ( (bool) $from_network['subdomain_install'] !== (bool) $to_network['subdomain_install'] ) {
@@ -139,7 +143,7 @@ final class Inspect_Step implements Step {
 			throw new Job_Exception( sprintf( /* translators: 1: a size, such as 12 MB, 2: a size, such as 12 MB */ __( 'Not enough disk space: the import needs about %1$s, but only %2$s is free.', 'siteferry' ), size_format( $needed, 1 ), size_format( $free, 1 ) ), Job_Exception::STEP );
 		}
 
-		$target = self::target( $site, (string) $job->option( 'replace_url' ) );
+		$target = null === $merge ? self::target( $site, (string) $job->option( 'replace_url' ) ) : $merge['target'];
 		$source = array(
 			'home'           => $manifest['site']['home'],
 			'siteurl'        => $manifest['site']['siteurl'],
@@ -150,6 +154,12 @@ final class Inspect_Step implements Step {
 			'uploads_dir'    => $manifest['paths']['uploads_dir'],
 		);
 		$pairs  = Replacements::build( $source, $target, $job->option( 'replace', array() ) );
+		// A site taken out of a network: its media may also be written under the site's own address.
+		foreach ( isset( $manifest['extracted']['uploads_urls'] ) ? (array) $manifest['extracted']['uploads_urls'] : array() as $also ) {
+			if ( is_string( $also ) && '' !== $also ) {
+				$pairs += Replacements::build( array( 'uploads_url' => $also ), array( 'uploads_url' => $target['uploads_url'] ) );
+			}
+		}
 		$map    = null;
 		if ( null !== $from_network ) {
 			$map = self::network_map( $from_network, $to_network, (string) wp_parse_url( $target['home'], PHP_URL_SCHEME ) );
@@ -168,6 +178,7 @@ final class Inspect_Step implements Step {
 				'charset'   => (string) $manifest['database']['charset'],
 				'tables'    => $names,
 				'network'   => $map,
+				'merge'     => $merge,
 				'rows'      => (int) $manifest['database']['rows'],
 				'table_rows' => array_combine( $names, array_map( 'intval', array_column( $manifest['database']['tables'], 'rows' ) ) ),
 				'rows_exact' => ! empty( $manifest['database']['rows_exact'] ),
@@ -193,6 +204,7 @@ final class Inspect_Step implements Step {
 					'created'      => $manifest['created'],
 					'from'         => $source['home'],
 					'to'           => $target['home'],
+					'new_site'     => null === $merge ? null : $merge['summary'],
 					'wordpress'    => $manifest['versions']['wordpress'],
 					'php'          => $manifest['versions']['php'],
 					'mysql'        => $manifest['versions']['mysql'],

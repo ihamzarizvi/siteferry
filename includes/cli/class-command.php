@@ -118,6 +118,12 @@ final class Command {
 	 * value the password is taken from the SITEFERRY_PASSWORD environment variable, or asked for.
 	 * It is not saved anywhere: without it the backup cannot be restored.
 	 *
+	 * [--site=<site>]
+	 * : On a multisite network: back up only this site (its id or address) as a single-site backup,
+	 * which imports into any single site. A whole-network backup without the other sites is made
+	 * first, then the site is taken out of it and that backup is deleted. Not with --format=wpress,
+	 * --password, --changes-only, --send or --dir.
+	 *
 	 * [--changes-only[=<backup>]]
 	 * : Make a changes-only backup: the whole database, and only the files that are new or changed
 	 * since a full backup on this server (by default the newest suitable one; or give its file
@@ -185,6 +191,12 @@ final class Command {
 				Output::fail( $mode, 'There is no full backup of this site on this server to build a changes-only backup on. Make a full backup first.' );
 			}
 			$options['changes_since'] = $base;
+		}
+
+		$one = \WP_CLI\Utils\get_flag_value( $assoc_args, 'site', null );
+		if ( null !== $one ) {
+			$this->export_one_site( (string) $one, $options, $assoc_args, $mode );
+			return;
 		}
 
 		$dir = \WP_CLI\Utils\get_flag_value( $assoc_args, 'dir', null );
@@ -316,6 +328,11 @@ final class Command {
 	 * languages), or one plugin or theme (plugins/akismet, themes/twentytwentyfive). Unless
 	 * --tables is given too, the database is not restored.
 	 *
+	 * [--as-new-site=<name>]
+	 * : On a multisite network: add the single-site backup as a NEW site of the network instead of
+	 * restoring (its folder name, or its subdomain on a subdomain network). Nothing of the network is
+	 * replaced; users with an e-mail address the network has are matched to those users.
+	 *
 	 * [--yes]
 	 * : Do not ask for confirmation.
 	 *
@@ -361,7 +378,11 @@ final class Command {
 			'force'              => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'force', false ),
 			'safety'             => ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-safety-backup', false ),
 			'password'           => self::password( $assoc_args ),
+			'new_site'           => (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'as-new-site', '' ),
 		) + self::restore_parts( $assoc_args );
+		if ( '' !== $options['new_site'] ) {
+			$options['safety'] = false; // Nothing is replaced.
+		}
 
 		$quiet = Output::HUMAN !== $mode;
 		try {
@@ -380,7 +401,7 @@ final class Command {
 		if ( ! $quiet ) {
 			$this->print_inspection( $inspection );
 		}
-		WP_CLI::confirm( '' !== (string) $inspection['restores'] ? 'Replace these parts of this site with the backup\'s?' : 'Replace this site\'s database and files with the backup?', $assoc_args );
+		WP_CLI::confirm( ! empty( $inspection['new_site'] ) ? sprintf( 'Add this backup to the network as a new site at %s?', $inspection['new_site']['url'] ) : ( '' !== (string) $inspection['restores'] ? 'Replace these parts of this site with the backup\'s?' : 'Replace this site\'s database and files with the backup?' ), $assoc_args );
 		Import::confirm( $job );
 
 		self::drive( $job, $quiet );
@@ -397,6 +418,27 @@ final class Command {
 			Output::note( $mode, sprintf( 'Safety backup of the site as it was: %s. Restore it to undo this import.', $safety ) );
 		}
 		$imported = $result['imported'];
+		if ( isset( $result['merged'] ) ) {
+			$merged = $result['merged'];
+			Output::done(
+				$mode,
+				array(
+					'name'          => basename( (string) $job->option( 'archive' ) ),
+					'site'          => (int) $merged['site'],
+					'url'           => (string) $merged['url'],
+					'users_created' => (int) $merged['users_created'],
+					'users_matched' => (int) $merged['users_matched'],
+					'renamed'       => (array) $merged['renamed'],
+					'tables'        => (int) $imported['tables'],
+					'files'         => (int) $imported['files'],
+					'seconds'       => (int) $imported['seconds'],
+				),
+				(string) $merged['url'],
+				sprintf( 'Added as new site %d of the network: %s (%d users made, %d matched by e-mail%s).', $merged['site'], $merged['url'], $merged['users_created'], $merged['users_matched'], $merged['renamed'] ? '; renamed: ' . implode( ', ', $merged['renamed'] ) : '' ),
+				$job->warnings()
+			);
+			return;
+		}
 		$fields   = array(
 			'name'         => basename( (string) $job->option( 'archive' ) ),
 			'from'         => (string) $imported['from'],
@@ -421,6 +463,103 @@ final class Command {
 				human_time_diff( 0, max( 1, $imported['seconds'] ) )
 			);
 		Output::done( $mode, $fields, $safety, $message, $job->warnings() );
+	}
+
+	/**
+	 * Backs up one site of this network as a single-site backup: a network backup without the
+	 * other sites' tables and media, then the site taken out of it (that backup is then deleted).
+	 *
+	 * @param string $which      Site id or address.
+	 * @param array  $options    Export options.
+	 * @param array  $assoc_args Command options.
+	 * @param string $mode       Output mode.
+	 */
+	private function export_one_site( string $which, array $options, array $assoc_args, string $mode ): void {
+		global $wpdb;
+		if ( ! is_multisite() ) {
+			Output::fail( $mode, '--site works on a multisite network; this is a single site.' );
+		}
+		foreach ( array( 'password', 'changes-only', 'send', 'dir', 'delete-after-send' ) as $flag ) {
+			if ( isset( $assoc_args[ $flag ] ) ) {
+				Output::fail( $mode, sprintf( '--site cannot be combined with --%s.', $flag ) );
+			}
+		}
+		if ( 'tar' !== $options['format'] ) {
+			Output::fail( $mode, '--site makes a .tar backup; --format=wpress is not possible with it.' );
+		}
+		$id = ctype_digit( $which ) ? (int) $which : 0;
+		if ( 0 === $id ) {
+			$parts = wp_parse_url( false === strpos( $which, '://' ) ? 'http://' . $which : $which );
+			$host  = isset( $parts['host'] ) ? $parts['host'] . ( isset( $parts['port'] ) ? ':' . $parts['port'] : '' ) : '';
+			$path  = '/' . trim( isset( $parts['path'] ) ? $parts['path'] : '', '/' );
+			$found = get_sites(
+				array(
+					'domain' => $host,
+					'path'   => '/' === $path ? '/' : $path . '/',
+					'number' => 1,
+				)
+			);
+			$id    = $found ? (int) $found[0]->blog_id : 0;
+		}
+		if ( $id < 1 || ! get_site( $id ) ) {
+			Output::fail( $mode, sprintf( 'This network has no site "%s".', $which ) );
+		}
+		$base   = (string) $wpdb->base_prefix;
+		$tables = (array) $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $base ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- the list of tables, read once.
+		$keep   = \SiteFerry\Network\Rules::table_map( $tables, $base, $id );
+		$keep[ $base . 'sitemeta' ] = $base . 'sitemeta'; // Super admins and network plugins are read from it.
+		$options['exclude_tables']  = array_values( array_diff( $tables, array_keys( $keep ) ) );
+		$uploads                    = wp_upload_dir( null, false );
+		$root                       = (string) $uploads['basedir'];
+		if ( is_multisite() && 1 !== get_current_blog_id() ) {
+			$root = (string) preg_replace( '#/sites/\d+$#', '', $root );
+		}
+		$paths = array();
+		foreach ( (array) scandir( $root ) as $item ) {
+			if ( '.' === $item || '..' === $item ) {
+				continue;
+			}
+			if ( 'sites' === $item ) {
+				foreach ( (array) scandir( $root . '/sites' ) as $sub ) {
+					if ( ctype_digit( (string) $sub ) && (int) $sub !== $id ) {
+						$paths[] = 'uploads/sites/' . $sub;
+					}
+				}
+			} elseif ( 1 !== $id ) {
+				$paths[] = 'uploads/' . $item;
+			}
+		}
+		$options['exclude_paths'] = array_merge( $options['exclude_paths'], $paths );
+		try {
+			list( $job ) = Export::start( $options );
+		} catch ( \Throwable $e ) {
+			Output::fail( $mode, $e->getMessage() );
+			return;
+		}
+		Output::note( $mode, sprintf( 'Backing up the network without the other sites first (job %s).', $job->id() ) );
+		self::drive( $job, Output::HUMAN !== $mode );
+		if ( Job::STATUS_FAILED === $job->status() ) {
+			Output::fail( $mode, sprintf( 'Export failed: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
+		}
+		$network = (string) $job->result()['file'];
+		Output::note( $mode, sprintf( 'Taking site %d out of it...', $id ) );
+		try {
+			$made = \SiteFerry\Network\Extract::run( $network, $id );
+		} catch ( \Throwable $e ) {
+			Output::fail( $mode, 'The site could not be taken out: ' . $e->getMessage() );
+			return;
+		} finally {
+			if ( is_file( $network ) ) {
+				wp_delete_file( $network );
+				\SiteFerry\Contents::forget( basename( $network ) );
+			}
+		}
+		Output::done(
+			$mode,
+			$made,
+			(string) $made['path'],
+			sprintf( 'Backup of site %d (%s) written to %s (%s; %d tables, %s files, %d users). It imports into any single site.', $id, $made['url'], $made['path'], size_format( $made['size'], 1 ), $made['tables'], number_format( $made['files'] ), $made['users'] )
+		);
 	}
 
 	/**

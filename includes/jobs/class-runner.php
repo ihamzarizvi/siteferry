@@ -44,6 +44,7 @@ final class Runner {
 		'import.database' => \SiteFerry\Import\Database_Step::class,
 		'import.replace'  => \SiteFerry\Import\Replace_Step::class,
 		'import.swap'     => \SiteFerry\Import\Swap_Step::class,
+		'import.merge'    => \SiteFerry\Network\Merge_Step::class,
 		'import.finish'   => \SiteFerry\Import\Finish_Step::class,
 		'schedule.finish' => \SiteFerry\Schedule\Finish_Step::class,
 		'check.download'  => \SiteFerry\Storage\Fetch_Step::class,

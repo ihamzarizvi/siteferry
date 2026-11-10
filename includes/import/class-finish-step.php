@@ -61,7 +61,10 @@ final class Finish_Step implements Step {
 		// nothing to undo with (an earlier safety backup stays an ordinary backup).
 		$result = $job->result();
 		$safety = isset( $result['safety'] ) ? $result['safety'] : null;
-		if ( is_array( $safety ) ) {
+		if ( '' !== (string) $job->option( 'new_site', '' ) ) {
+			// A new site of the network replaced nothing: an earlier restore's undo point stays.
+			$safety = false;
+		} elseif ( is_array( $safety ) ) {
 			update_option(
 				Import::UNDO_OPTION,
 				array(

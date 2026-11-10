@@ -1,6 +1,10 @@
 SiteFerry changelog
 ===================
 
+= 0.45.0 =
+* Networks: take one site out of a network backup as an ordinary single-site backup ("Take one site out…" in a network backup's menu, `wp siteferry backups extract <backup> --site=<id>`, or `wp siteferry export --site=<id|address>` on a network). It holds the site's tables renamed for a single site, its users (super admins become administrators), its media and all plugins and themes; it imports into any single site.
+* Networks: add a single-site backup to a network as a new site ("Add as a new site of this network" when restoring on a network, or `wp siteferry import <file> --as-new-site=<name>`). Nothing of the network is replaced: users with an e-mail address the network has are matched to them, others are added with their passwords (a taken login gets -2), media go to the new site's folder, and only plugins and themes the network lacks are copied. A failure removes the new site again.
+
 = 0.44.0 =
 * WP-CLI for scripts, the same way in every command: lists and reports take `--format=table|csv|json|yaml|count` (sizes in bytes outside tables; backups list and storage list add kind, base, encrypted, place, complete); commands that do something take `--porcelain` (only the key result) and `--json` (one JSON object with ok, the result and warnings; a failure prints {"ok":false,"error":...}); exit code 0 or 1. `wp siteferry export --archive=wpress --json` makes a .wpress file with JSON output (WP-CLI turns --json into --format=json).
 * New `wp siteferry backups delete <name>... [--yes]` (a full backup that changes-only backups need is kept).

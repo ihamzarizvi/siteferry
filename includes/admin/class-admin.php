@@ -551,6 +551,11 @@ final class Admin {
 						<p id="siteferry-include-dropins-row"><label><input type="checkbox" id="siteferry-include-dropins"> <?php esc_html_e( 'Also copy server-specific drop-ins (object-cache.php, advanced-cache.php, db.php)', 'siteferry' ); ?></label></p>
 						<p class="description" id="siteferry-restore-whole-note" hidden><?php esc_html_e( 'A network is restored whole, and it keeps the address set in wp-config.php.', 'siteferry' ); ?></p>
 					</details>
+					<p class="sf-field" id="siteferry-new-site-row" hidden>
+						<label for="siteferry-new-site"><?php esc_html_e( 'Add as a new site of this network, named', 'siteferry' ); ?></label>
+						<input type="text" class="regular-text" id="siteferry-new-site" spellcheck="false" autocomplete="off" maxlength="63">
+						<span class="description"><?php esc_html_e( 'This single-site backup becomes a new site of the network: its folder name, or its subdomain on a subdomain network. Nothing of the network is replaced. Users whose e-mail address the network already has are matched to those users (their passwords and rights stay); the others are added with their own passwords.', 'siteferry' ); ?></span>
+					</p>
 					<p class="sf-safety" id="siteferry-safety-row" hidden>
 						<label><input type="checkbox" id="siteferry-safety" checked> <strong><?php esc_html_e( 'Make a safety backup of this site first (recommended)', 'siteferry' ); ?></strong></label>
 						<span class="description"><?php esc_html_e( 'A whole-site backup of this site as it is now, so you can undo the restore. It takes about as long as a normal backup and needs room for one.', 'siteferry' ); ?></span>

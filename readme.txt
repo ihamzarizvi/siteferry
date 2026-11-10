@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.44.0
+Stable tag: 0.45.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -219,6 +219,23 @@ Not supported yet: multisite networks, sites whose WordPress files are in a diff
 = Can other users use SiteFerry? =
 
 Administrators can always do everything. To let other roles use parts of SiteFerry, click "Who can use it" on the Backups tab and tick, per role: see backups and activity; make backups (make, download, check, send); restore (restore whole sites, single files or posts, delete backups and the staging copy); settings (storages, schedule, emergency kits, staging, moving the site, and this list). Anything but "see" includes seeing. Give these only to people you trust with the whole site: a backup holds the whole database, including every user's email address and password hash, and a restore can replace the site and its users. On a multisite network only network administrators use SiteFerry. WP-CLI is not limited by these settings, as it already needs access to the server. The capabilities are siteferry_view, siteferry_backup, siteferry_restore and siteferry_settings, so role editor plugins can set them too.
+
+= Can I take one site out of a network, or add a site to one? =
+
+Yes. "Take one site out…" in a network backup's menu (or `wp siteferry backups extract`) makes a
+single-site backup of one of its sites: its tables, its users (super admins become its
+administrators), its media and all plugins and themes. It imports into any single site, and
+the network backup and the network stay as they are. On a network, `wp siteferry export
+--site=<id>` does the same from the live network.
+
+The other way round, restoring a single-site backup on a network offers "Add as a new site of
+this network": the backup becomes a new site at the name you give, and nothing of the network is
+replaced. A backup user whose e-mail address the network already has is that user (password and
+rights unchanged) and gets the backup's role on the new site; the others are added with their
+own passwords, and a login that is taken gets "-2". Post, comment and link authors follow the
+new user numbers; plugin tables that store user numbers are not changed. Plugins and themes the
+network already has are never replaced. Password-protected and .wpress backups cannot be
+used for either yet.
 
 = What if my site shows a white screen? =
 
@@ -510,6 +527,10 @@ with that version.
 
 == Changelog ==
 
+= 0.45.0 =
+* Networks: take one site out of a network backup as an ordinary single-site backup ("Take one site out…" in a network backup's menu, `wp siteferry backups extract <backup> --site=<id>`, or `wp siteferry export --site=<id|address>` on a network). It holds the site's tables renamed for a single site, its users (super admins become administrators), its media and all plugins and themes; it imports into any single site.
+* Networks: add a single-site backup to a network as a new site ("Add as a new site of this network" when restoring on a network, or `wp siteferry import <file> --as-new-site=<name>`). Nothing of the network is replaced: users with an e-mail address the network has are matched to them, others are added with their passwords (a taken login gets -2), media go to the new site's folder, and only plugins and themes the network lacks are copied. A failure removes the new site again.
+
 = 0.44.0 =
 * WP-CLI for scripts, the same way in every command: lists and reports take `--format=table|csv|json|yaml|count` (sizes in bytes outside tables; backups list and storage list add kind, base, encrypted, place, complete); commands that do something take `--porcelain` (only the key result) and `--json` (one JSON object with ok, the result and warnings; a failure prints {"ok":false,"error":...}); exit code 0 or 1. `wp siteferry export --archive=wpress --json` makes a .wpress file with JSON output (WP-CLI turns --json into --format=json).
 * New `wp siteferry backups delete <name>... [--yes]` (a full backup that changes-only backups need is kept).
@@ -538,9 +559,5 @@ with that version.
 = 0.39.1 =
 * Fixed: checking a changes-only backup (by hand or in the weekly check) reported the files kept in its full backup as missing, so a healthy copy was called damaged. Those files are now counted as in the full backup, and the result says so.
 * The SiteFerry page footer credits xsofty with "Plugin by" and its logo; the logo ships with the plugin.
-
-= 0.39.0 =
-* Weekly check of stored copies: once a week SiteFerry downloads up to two copies from each storage that is set up (the ones never checked first, newest first, then the ones checked longest ago, so every copy gets its turn) and checks every file against the backup's own checksums, in the background, without blocking backups or restores. Scheduled backups that should be on a storage but are not are reported as missing. Damaged or missing copies are emailed (the schedule's email setting) and shown in red in the backups list; intact ones show "checked 3 days ago". On by default when a storage is set up; turn it off, or change the most it downloads in a week (default 2 GB; larger copies are skipped and named), in the Schedule panel.
-* WP-CLI: `wp siteferry backups recheck` runs a round now.
 
 Older versions: see changelog.txt in the plugin folder.

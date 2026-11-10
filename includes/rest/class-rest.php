@@ -100,6 +100,7 @@ final class Rest {
 			array( '/backups/' . self::NAME, WP_REST_Server::DELETABLE, 'delete_backup', $restore ),
 			array( '/backups/' . self::NAME . '/download', WP_REST_Server::READABLE, 'download', $backup ),
 			array( '/backups/' . self::NAME . '/contents', WP_REST_Server::READABLE, 'contents_of', $view ),
+			array( '/backups/' . self::NAME . '/extract', WP_REST_Server::CREATABLE, 'extract_site', $backup ),
 			array( '/checks', WP_REST_Server::READABLE, 'checks', $view ),
 			array( '/space', WP_REST_Server::READABLE, 'space', $view ),
 			array( '/backups/' . self::NAME . '/unlock', WP_REST_Server::CREATABLE, 'unlock_backup', $view ),
@@ -926,13 +927,47 @@ final class Rest {
 		self::assert_idle();
 		$params  = (array) $request->get_json_params();
 		$path    = Backups::path( Storage::backups_dir(), isset( $params['backup'] ) ? (string) $params['backup'] : '' );
-		$options = array_intersect_key( $params, array_flip( array( 'replace_url', 'include_mu_plugins', 'include_drop_ins', 'force', 'safety', 'restore_database', 'restore_tables', 'restore_files', 'restore_paths', 'password' ) ) );
+		$options = array_intersect_key( $params, array_flip( array( 'replace_url', 'include_mu_plugins', 'include_drop_ins', 'force', 'safety', 'restore_database', 'restore_tables', 'restore_files', 'restore_paths', 'password', 'new_site' ) ) );
 		$options['password'] = self::password( $params, basename( $path ) );
 		list( $job, $token ) = Import::start( $path, $options );
 		return array(
 			'job'   => $job->summary(),
 			'token' => $token,
 		);
+	}
+
+	/**
+	 * Takes one site out of a network backup on this server, as a new single-site backup. Runs in
+	 * this request.
+	 *
+	 * @param WP_REST_Request $request Request with "site" (its id in the backup's network).
+	 */
+	public static function extract_site( WP_REST_Request $request ): array {
+		self::assert_idle();
+		$path   = Backups::path( Storage::backups_dir(), (string) $request['name'] );
+		$params = (array) $request->get_json_params();
+		$site   = isset( $params['site'] ) ? (int) $params['site'] : 0;
+		if ( $site < 1 ) {
+			// No site chosen yet: the sites of the backup's network, to choose from.
+			$manifest = Backups::manifest( $path, null );
+			$network  = isset( $manifest['site']['network'] ) && is_array( $manifest['site']['network'] ) ? $manifest['site']['network'] : null;
+			if ( null === $network ) {
+				throw new Job_Exception( __( 'This backup is of a single site, not of a network; there is no site to take out of it.', 'siteferry' ), Job_Exception::STEP );
+			}
+			$scheme = (string) wp_parse_url( (string) $manifest['site']['home'], PHP_URL_SCHEME );
+			return array(
+				'sites' => array_map(
+					static function ( array $blog ) use ( $scheme ): array {
+						return array(
+							'id'  => (int) $blog['id'],
+							'url' => ( '' === $scheme ? 'http' : $scheme ) . '://' . $blog['domain'] . untrailingslashit( (string) $blog['path'] ),
+						);
+					},
+					array_values( (array) $network['blogs'] )
+				),
+			);
+		}
+		return array( 'extracted' => \SiteFerry\Network\Extract::run( $path, $site ) );
 	}
 
 	/**
