@@ -168,6 +168,11 @@ final class Manifest {
 			);
 			$manifest['deleted']        = array_values( (array) $base['deleted'] );
 		}
+		// Other plugins' own data, each under its own key (siteferry_manifest_extra).
+		$extra = \SiteFerry\Hooks::clean_extra( \SiteFerry\Hooks::filter( 'siteferry_manifest_extra', array(), $job ) );
+		if ( array() !== $extra ) {
+			$manifest['extra'] = $extra;
+		}
 		return $manifest;
 	}
 }

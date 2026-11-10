@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.43.1
+Stable tag: 0.44.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,20 +111,8 @@ and themes are left out, so it is quick. It stays on this server, named "Before 
 
 = WP-CLI =
 
-* `wp siteferry export [--format=tar|wpress] [--compress] [--exclude=media,plugins,themes,inactive-plugins,inactive-themes,spam-comments,revisions] [--include-cache] [--exclude-tables=...] [--exclude-paths=...] [--dir=...] [--porcelain]`
-* `wp siteferry import <file> [--replace-url=<url>] [--replace="old=>new;..."] [--include-mu-plugins] [--include-drop-ins] [--force] [--skip-safety-backup] [--only-database|--only-files] [--tables=...] [--paths=...] [--yes]`
-* `wp siteferry backups list [--dir=...] [--format=table|csv|json|yaml]`
-* `wp siteferry backups check <name> [--storage=<id>] [--password]`
-* `wp siteferry space [--fresh] [--format=table|json]`
-* `wp siteferry receive [--hours=<n>] [--status] [--cancel]`, `wp siteferry move <key> [--keep-local]`
-* `wp siteferry export --password`, `wp siteferry import <file>.tar.enc --password`
-* `wp siteferry export --send=<id> [--delete-after-send]`
-* `wp siteferry storage test|list <id>`, `wp siteferry storage send <id> <backup>`,
-  `wp siteferry storage fetch <id> <name>`, `wp siteferry storage delete <id> <name> [--yes]`
-  (storage id: s3, ftp, gdrive or dropbox; settings come from the Storage tab, where Google Drive
-  and Dropbox are also connected)
-* `wp siteferry schedule show`, `wp siteferry schedule run [--quiet]` (the scheduled backup now,
-  in this process, with its retention and email; the schedule itself is set on the Backups tab)
+Everything can also be done with `wp siteferry ...`, with machine-readable output for scripts
+(see "Which WP-CLI commands are there?" in the FAQ).
 
 = Storage =
 
@@ -182,6 +170,23 @@ start the move, SiteFerry sends this site's encrypted backup to the address in t
 
 
 == Frequently Asked Questions ==
+
+= Which WP-CLI commands are there? =
+
+* `wp siteferry export` (back up; `--format=tar|wpress`, `--compress`, `--exclude=...`, `--changes-only`, `--password`, `--send=<id>`, `--dir=...`), `wp siteferry import <file>` (restore; `--only-database`, `--only-files`, `--tables=...`, `--paths=...`, `--replace-url=...`, `--yes`)
+* `wp siteferry backups list|check|compare|delete|recheck`, `wp siteferry activity`, `wp siteferry space`
+* `wp siteferry storage test|list|send|fetch|delete <id> ...` (s3, ftp, gdrive, dropbox; settings come from the Storage tab)
+* `wp siteferry schedule show|run`, `wp siteferry staging create|status|delete`, `wp siteferry receive`, `wp siteferry move <key>`
+
+Output for scripts, the same everywhere: commands that list or report take `--format=table|csv|json|yaml|count` (sizes are bytes outside tables); commands that do something take `--porcelain` (only the key result, such as the backup's path) and `--json` (one JSON object with `"ok"`, the result and `"warnings"`; WP-CLI treats it as `--format=json`, so on export, choose a .wpress file with `--archive=wpress` then). In those modes nothing else is printed, and a failure with `--json` prints `{"ok":false,"error":"..."}`. Exit code: 0 on success, 1 on any error. Shared field names: name, path, size, created (UTC), place ("local" or a storage id), status. Commands that would ask for confirmation need `--yes` with `--json` or `--porcelain`. WP-CLI runs with the server's rights, so SiteFerry's role settings do not apply to it. `wp help siteferry <command>` lists every option.
+
+= Developer hooks =
+
+Actions: `siteferry_export_started( $job )`, `siteferry_export_done( $job, $result )` (file, name, size, files, bytes, base), `siteferry_import_started( $job )`, `siteferry_import_done( $job, $imported )`, `siteferry_backup_sent( $job, $sent )` (name, where, destination; once per storage), `siteferry_job_failed( $job, $error )` (any SiteFerry job, after its cleanup). A callback that throws is logged in the job's log and never stops a backup or restore.
+
+Filters: `siteferry_export_exclusions( $paths, $options )` (paths inside wp-content to leave out; SiteFerry's own and other backup plugins' folders are always left out), `siteferry_manifest_extra( $extra, $job )` (your data in the backup's manifest under "extra"; use your plugin's slug as the key; JSON values, at most 64 KB each), `siteferry_backup_name_label( $label, $home )` (the site part of backup file names: letters, digits, hyphens), `siteferry_move_export_options( $options )`, `siteferry_update_backup_seconds( $seconds, $item )`, `siteferry_relay_url( $url )`.
+
+Example: `add_filter( 'siteferry_export_exclusions', function ( $paths ) { $paths[] = 'uploads/big-videos'; return $paths; } );`
 
 = What are changes-only backups? =
 
@@ -505,6 +510,12 @@ with that version.
 
 == Changelog ==
 
+= 0.44.0 =
+* WP-CLI for scripts, the same way in every command: lists and reports take `--format=table|csv|json|yaml|count` (sizes in bytes outside tables; backups list and storage list add kind, base, encrypted, place, complete); commands that do something take `--porcelain` (only the key result) and `--json` (one JSON object with ok, the result and warnings; a failure prints {"ok":false,"error":...}); exit code 0 or 1. `wp siteferry export --archive=wpress --json` makes a .wpress file with JSON output (WP-CLI turns --json into --format=json).
+* New `wp siteferry backups delete <name>... [--yes]` (a full backup that changes-only backups need is kept).
+* Developer hooks: actions siteferry_export_started, siteferry_export_done, siteferry_import_started, siteferry_import_done, siteferry_backup_sent, siteferry_job_failed; filters siteferry_export_exclusions, siteferry_manifest_extra, siteferry_backup_name_label. A callback that throws is logged and never stops a backup or restore. FAQ: "Which WP-CLI commands are there?" and "Developer hooks".
+* The summary of `wp siteferry backups compare` says "1 plugin" rather than "1 plugins".
+
 = 0.43.1 =
 * readme: the changelog keeps the newest versions; the full history moved to changelog.txt (WordPress.org shortens long changelogs).
 
@@ -531,10 +542,5 @@ with that version.
 = 0.39.0 =
 * Weekly check of stored copies: once a week SiteFerry downloads up to two copies from each storage that is set up (the ones never checked first, newest first, then the ones checked longest ago, so every copy gets its turn) and checks every file against the backup's own checksums, in the background, without blocking backups or restores. Scheduled backups that should be on a storage but are not are reported as missing. Damaged or missing copies are emailed (the schedule's email setting) and shown in red in the backups list; intact ones show "checked 3 days ago". On by default when a storage is set up; turn it off, or change the most it downloads in a week (default 2 GB; larger copies are skipped and named), in the Schedule panel.
 * WP-CLI: `wp siteferry backups recheck` runs a round now.
-
-= 0.38.0 =
-* Scheduled backups can go to several places at once: tick this server and any storages that are set up under "Where it goes". Each run sends the backup to them one after the other; a storage that fails does not stop the others, and the email and the job log name it. The copy on this server is deleted after sending (when unticked) only if every storage got the backup. Retention deletes old scheduled backups everywhere they went. Settings saved before keep working (one storage).
-* A 3-2-1 meter in the Schedule panel (3 copies, on 2 kinds of storage: this server, cloud, FTP; 1 away from this server), with what to add to complete it, and a small "3-2-1" chip in the schedule line on the Backups tab.
-* WP-CLI's schedule summary names every storage. "Back up now" still sends to one storage.
 
 Older versions: see changelog.txt in the plugin folder.

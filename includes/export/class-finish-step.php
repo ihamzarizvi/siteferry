@@ -81,6 +81,7 @@ final class Finish_Step implements Step {
 		}
 		$job->set_progress( __( 'Backup complete', 'siteferry' ), 1, 1 );
 		$job->log( 'info', sprintf( 'Backup complete: %s (%s).', $job->option( 'archive' ), size_format( (int) filesize( $final ), 1 ) ) );
+		\SiteFerry\Hooks::action( 'siteferry_export_done', $job, $job->result() );
 		return true;
 	}
 

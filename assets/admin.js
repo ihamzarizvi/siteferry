@@ -6561,7 +6561,7 @@
 							'data-cap': cap,
 							'aria-label': sprintf(
 								/* translators: 1: a user role, such as Editor, 2: what they may do, such as Restore */
-								__( '%1$s: %2$s', 'siteferry' ),
+								_x( '%1$s: %2$s', 'a role and what it may do', 'siteferry' ),
 								role.name,
 								{ view: __( 'See backups and activity', 'siteferry' ), backup: __( 'Make backups', 'siteferry' ), restore: __( 'Restore', 'siteferry' ), settings: __( 'Settings', 'siteferry' ) }[ cap ]
 							),

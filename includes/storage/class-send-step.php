@@ -67,6 +67,7 @@ final class Send_Step implements Step {
 			$result         = $job->result();
 			$result['sent'] = $sent;
 			$this->finish_sending( $job, $file, $result, true );
+			\SiteFerry\Hooks::action( 'siteferry_backup_sent', $job, $sent + array( 'destination' => $targets[0] ) );
 			$job->set_progress( sprintf( /* translators: %s: where it went, such as Dropbox or another site's host name */ __( 'Sent to %s', 'siteferry' ), $sent['where'] ), 1, 1 );
 			return true;
 		}
@@ -118,6 +119,7 @@ final class Send_Step implements Step {
 			$state['results'][ $destination ] = $sent + array( 'ok' => true );
 			$job->set_state( self::STATE, $state );
 			$job->save();
+			\SiteFerry\Hooks::action( 'siteferry_backup_sent', $job, $sent + array( 'destination' => $destination ) );
 			if ( $budget->exhausted() && count( $state['results'] ) < count( $targets ) ) {
 				return false;
 			}

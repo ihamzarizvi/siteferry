@@ -30,7 +30,8 @@ final class Backups_Command {
 	 * : List this folder instead of SiteFerry's storage folder.
 	 *
 	 * [--format=<format>]
-	 * : Output format.
+	 * : Output format. In csv, json and yaml, size is in bytes (bytes is the same number, kept for
+	 * older scripts); kind is full or changes-only, base the full backup a changes-only one needs.
 	 * ---
 	 * default: table
 	 * options:
@@ -38,12 +39,14 @@ final class Backups_Command {
 	 *   - csv
 	 *   - json
 	 *   - yaml
+	 *   - count
 	 * ---
 	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry backups list
 	 *     wp siteferry backups list --format=json
+	 *     wp siteferry backups list --format=count
 	 *
 	 * @subcommand list
 	 *
@@ -51,7 +54,8 @@ final class Backups_Command {
 	 * @param array    $assoc_args Options.
 	 */
 	public function list_( $args, $assoc_args ): void {
-		$dir = \WP_CLI\Utils\get_flag_value( $assoc_args, 'dir', null );
+		$format = Output::list_format( $assoc_args );
+		$dir    = \WP_CLI\Utils\get_flag_value( $assoc_args, 'dir', null );
 		if ( null === $dir ) {
 			$dir = Storage::existing_backups_dir();
 		}
@@ -59,23 +63,102 @@ final class Backups_Command {
 		$rows = array();
 		foreach ( null === $dir ? array() : Backups::in( (string) $dir ) as $backup ) {
 			$manifest = $backup['manifest'];
+			$base     = \SiteFerry\Incremental::base_of( $manifest );
 			$rows[]   = array(
 				'name'      => $backup['name'],
-				'size'      => size_format( $backup['size'], 1 ),
-				'bytes'     => $backup['size'],
+				'size'      => Output::size( (int) $backup['size'], $format ),
+				'bytes'     => (int) $backup['size'],
 				'created'   => null !== $manifest ? $manifest['created'] : gmdate( 'Y-m-d\TH:i:s\Z', $backup['modified'] ),
 				'source'    => null !== $manifest ? $manifest['site']['home'] : '',
 				'wordpress' => null !== $manifest ? $manifest['versions']['wordpress'] : '',
+				'kind'      => null === $base ? 'full' : 'changes-only',
+				'base'      => null === $base ? '' : $base['name'],
+				'encrypted' => Backups::encrypted_name( (string) $backup['name'] ),
+				'place'     => Check::LOCAL,
 				'status'    => null !== $backup['error'] ? $backup['error'] : 'ok',
 				'path'      => $backup['file'],
 			);
 		}
 
-		$format = (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'table' );
 		$fields = 'table' === $format
-			? array( 'name', 'size', 'created', 'source', 'wordpress', 'status' )
-			: array( 'name', 'bytes', 'created', 'source', 'wordpress', 'status', 'path' );
+			? array( 'name', 'size', 'created', 'kind', 'source', 'wordpress', 'status' )
+			: array( 'name', 'size', 'bytes', 'created', 'kind', 'base', 'encrypted', 'source', 'wordpress', 'place', 'status', 'path' );
 		\WP_CLI\Utils\format_items( $format, $rows, $fields );
+	}
+
+	/**
+	 * Deletes backups on this server. A full backup that changes-only backups are built on is
+	 * kept until they are deleted (delete them first, or in the same command after it is listed
+	 * last).
+	 *
+	 * ## OPTIONS
+	 *
+	 * <name>...
+	 * : One or more backup file names (see "wp siteferry backups list").
+	 *
+	 * [--yes]
+	 * : Do not ask for confirmation.
+	 *
+	 * [--porcelain]
+	 * : Print only the names deleted, one per line.
+	 *
+	 * [--format=<format>]
+	 * : json: print only a JSON object (ok, deleted, warnings). Same as --json.
+	 *
+	 * [--json]
+	 * : The same as --format=json.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp siteferry backups delete mysite-2026-11-01-1a2b3c4d5e6f.tar --yes
+	 *
+	 * @param string[] $args       Positional arguments: backup names.
+	 * @param array    $assoc_args Options.
+	 */
+	public function delete( $args, $assoc_args ): void {
+		$mode = Output::mode( $assoc_args );
+		if ( Output::HUMAN !== $mode && empty( $assoc_args['yes'] ) ) {
+			Output::fail( $mode, '--json and --porcelain need --yes (they cannot ask for confirmation).' );
+		}
+		$dir   = Storage::existing_backups_dir();
+		$paths = array();
+		foreach ( array_values( array_unique( array_map( 'strval', $args ) ) ) as $name ) {
+			try {
+				if ( null === $dir ) {
+					throw new \RuntimeException( 'There are no backups on this server.' );
+				}
+				$path = Backups::path( $dir, $name );
+			} catch ( \Throwable $e ) {
+				Output::fail( $mode, sprintf( 'No backup named "%s" on this server.', $name ) );
+				return;
+			}
+			if ( ! is_file( $path ) ) {
+				Output::fail( $mode, sprintf( 'No backup named "%s" on this server.', $name ) );
+			}
+			$paths[ $name ] = $path;
+		}
+		WP_CLI::confirm( sprintf( 'Delete %s from this server? This cannot be undone.', implode( ', ', array_keys( $paths ) ) ), $assoc_args );
+		$deleted = array();
+		foreach ( $paths as $name => $path ) {
+			try {
+				\SiteFerry\Incremental::guard_delete( $name ); // Not while changes-only backups need it.
+				if ( ! \SiteFerry\Archive\Io::quiet(
+					static function () use ( $path ) {
+						return unlink( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+					}
+				) ) {
+					throw new \RuntimeException( sprintf( 'The backup %s could not be deleted.', $name ) );
+				}
+			} catch ( \Throwable $e ) {
+				Output::fail( $mode, $e->getMessage() . ( array() === $deleted ? '' : ' Deleted before this: ' . implode( ', ', $deleted ) . '.' ) );
+				return;
+			}
+			\SiteFerry\Contents::forget( $name );
+			Check::forget( $name, Check::LOCAL );
+			\SiteFerry\Move\Receiver::forget_backup( $name );
+			$deleted[] = $name;
+		}
+		Output::done( $mode, array( 'deleted' => $deleted ), implode( "\n", $deleted ), sprintf( 'Deleted %s.', implode( ', ', $deleted ) ) );
 	}
 
 	/**
@@ -95,29 +178,52 @@ final class Backups_Command {
 	 * : Password of a protected backup (.enc). Without a value it is taken from the
 	 * SITEFERRY_PASSWORD environment variable, or asked for.
 	 *
+	 * [--porcelain]
+	 * : Print only "ok" when the copy is intact (a damaged copy is an error, exit code 1).
+	 *
+	 * [--format=<format>]
+	 * : json: print only a JSON object (ok, name, place, where, status, summary, warnings). Same as
+	 * --json.
+	 *
+	 * [--json]
+	 * : The same as --format=json.
 	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry backups check mysite-2026-11-05-1a2b3c4d5e6f.tar
 	 *     wp siteferry backups check mysite-2026-11-05-1a2b3c4d5e6f.tar --storage=dropbox
+	 *     wp siteferry backups check mysite-2026-11-05-1a2b3c4d5e6f.tar --json
 	 *
 	 * @param string[] $args       Positional arguments: the backup name.
 	 * @param array    $assoc_args Options.
 	 */
 	public function check( $args, $assoc_args ): void {
+		$mode  = Output::mode( $assoc_args );
 		$place = (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'storage', Check::LOCAL );
 		try {
 			list( $job ) = Check::start( (string) $args[0], $place, Command::password( $assoc_args ) );
 		} catch ( \Throwable $e ) {
-			WP_CLI::error( $e->getMessage() );
+			Output::fail( $mode, $e->getMessage() );
 			return;
 		}
-		Command::drive( $job, false );
+		Command::drive( $job, Output::HUMAN !== $mode );
 		if ( Job::STATUS_FAILED === $job->status() ) {
-			WP_CLI::error( sprintf( '%s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
+			Output::fail( $mode, sprintf( '%s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
 		}
 		$checked = $job->result()['checked'];
-		WP_CLI::success( sprintf( 'The copy of %s on %s is intact. %s', $checked['name'], $checked['where'], $checked['summary'] ) );
+		Output::done(
+			$mode,
+			array(
+				'name'    => (string) $checked['name'],
+				'place'   => (string) $checked['place'],
+				'where'   => (string) $checked['where'],
+				'status'  => 'ok',
+				'summary' => (string) $checked['summary'],
+			),
+			'ok',
+			sprintf( 'The copy of %s on %s is intact. %s', $checked['name'], $checked['where'], $checked['summary'] ),
+			$job->warnings()
+		);
 	}
 
 	/**
@@ -216,7 +322,14 @@ final class Backups_Command {
 		$add( 'files', 'count', $diff['files']['older']['files'], $diff['files']['newer']['files'] );
 		$add( 'files', 'size', size_format( $diff['files']['older']['bytes'], 1 ), size_format( $diff['files']['newer']['bytes'], 1 ) );
 		\WP_CLI\Utils\format_items( 'table', $rows, array( 'area', 'item', 'older', 'newer', 'change' ) );
-		WP_CLI::log( sprintf( '%d plugins and %d themes the same; %d tables with the same row count.', $diff['plugins_same'], $diff['themes_same'], $diff['tables']['same'] ) );
+		WP_CLI::log(
+			sprintf(
+				'Unchanged: %s, %s, %s with the same row count.',
+				1 === (int) $diff['plugins_same'] ? '1 plugin' : (int) $diff['plugins_same'] . ' plugins',
+				1 === (int) $diff['themes_same'] ? '1 theme' : (int) $diff['themes_same'] . ' themes',
+				1 === (int) $diff['tables']['same'] ? '1 table' : (int) $diff['tables']['same'] . ' tables'
+			)
+		);
 	}
 
 	/**
@@ -225,35 +338,64 @@ final class Backups_Command {
 	 * scheduled backups missing on a storage. Damaged or missing copies are emailed as the
 	 * schedule's email setting says.
 	 *
+	 * [--porcelain]
+	 * : Print only the number of damaged or missing copies.
+	 *
+	 * [--format=<format>]
+	 * : json: print only a JSON object (ok, checked, intact, bad, errors, skipped, missing). Same as
+	 * --json. Damaged copies do not make the command fail; "bad" lists them.
+	 *
+	 * [--json]
+	 * : The same as --format=json.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry backups recheck
+	 *     wp siteferry backups recheck --json
 	 *
 	 * @param array $args       Positional arguments (none).
-	 * @param array $assoc_args Options (none).
+	 * @param array $assoc_args Options.
 	 */
 	public function recheck( $args, $assoc_args ): void {
-		unset( $args, $assoc_args );
+		unset( $args );
+		$mode = Output::mode( $assoc_args );
 		if ( array() === \SiteFerry\Check\Recheck::storages() ) {
-			WP_CLI::error( 'No storage is set up, so there is nothing to check.' );
+			Output::fail( $mode, 'No storage is set up, so there is nothing to check.' );
 		}
 		$state = \SiteFerry\Check\Recheck::state();
 		if ( array() !== $state['queue'] || ! empty( $state['current'] ) ) {
-			WP_CLI::error( 'A check of stored copies is already running in the background.' );
+			Output::fail( $mode, 'A check of stored copies is already running in the background.' );
 		}
 		$round = \SiteFerry\Check\Recheck::start_round();
-		WP_CLI::log( sprintf( 'Checking %d stored copies; %d skipped for their size; %d missing.', count( $round['queue'] ), count( $round['skipped'] ), count( $round['missing'] ) ) );
+		Output::note( $mode, sprintf( 'Checking %d stored copies; %d skipped for their size; %d missing.', count( $round['queue'] ), count( $round['skipped'] ), count( $round['missing'] ) ) );
 		do {
 			\SiteFerry\Check\Recheck::on_slice();
 			$state = \SiteFerry\Check\Recheck::state();
 		} while ( array() !== $state['queue'] || ! empty( $state['current'] ) );
 		wp_clear_scheduled_hook( \SiteFerry\Check\Recheck::HOOK_SLICE );
 		$last = $state['last'];
+		$bad  = array_values( array_map( 'strval', (array) $last['bad'] ) );
+		if ( Output::HUMAN !== $mode ) {
+			Output::done(
+				$mode,
+				array(
+					'checked' => (int) $last['checked'],
+					'intact'  => (int) $last['ok'],
+					'bad'     => $bad,
+					'errors'  => array_values( array_map( 'strval', (array) $last['errors'] ) ),
+					'skipped' => array_values( (array) $round['skipped'] ),
+					'missing' => array_values( (array) $round['missing'] ),
+				),
+				(string) count( $bad ),
+				''
+			);
+			return;
+		}
 		WP_CLI::log( sprintf( '%d checked, %d intact.', $last['checked'], $last['ok'] ) );
-		foreach ( array_merge( (array) $last['bad'], (array) $last['errors'] ) as $line ) {
+		foreach ( array_merge( $bad, (array) $last['errors'] ) as $line ) {
 			WP_CLI::warning( $line );
 		}
-		if ( array() === (array) $last['bad'] ) {
+		if ( array() === $bad ) {
 			WP_CLI::success( 'No damaged or missing copies found.' );
 		}
 	}

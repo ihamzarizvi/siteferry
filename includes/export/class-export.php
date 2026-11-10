@@ -135,6 +135,7 @@ final class Export {
 			\SiteFerry\Security\Archive_Keys::store( $created[0], $sealed[1], $sealed[0] );
 			$created[0]->save();
 		}
+		\SiteFerry\Hooks::action( 'siteferry_export_started', $created[0] );
 		return $created;
 	}
 
@@ -330,7 +331,10 @@ final class Export {
 			$paths[] = $uploads;
 		}
 
-		return new Exclusions( $paths );
+		// Other plugins may add (or drop) paths; what must never travel is added back afterwards.
+		$paths  = \SiteFerry\Hooks::clean_paths( \SiteFerry\Hooks::filter( 'siteferry_export_exclusions', $paths, $options ), $paths );
+		$forced = array_merge( Exclusions::ALWAYS, Exclusions::BACKUP_PLUGIN_FOLDERS, null === $plugins ? array() : array( $plugins . '/' . \SiteFerry\Plugin::folder() ) );
+		return new Exclusions( array_values( array_unique( array_merge( $paths, $forced ) ) ) );
 	}
 
 	/**
@@ -346,6 +350,7 @@ final class Export {
 			. ( isset( $parts['path'] ) ? '-' . $parts['path'] : '' );
 		$label = trim( (string) preg_replace( '/[^a-z0-9]+/', '-', strtolower( $label ) ), '-' );
 		$label = '' === $label ? 'site' : substr( $label, 0, 40 );
+		$label = \SiteFerry\Hooks::clean_label( \SiteFerry\Hooks::filter( 'siteferry_backup_name_label', rtrim( $label, '-' ), $home ), rtrim( $label, '-' ) );
 
 		return sprintf( '%s-%s-%s.%s', rtrim( $label, '-' ), wp_date( 'Y-m-d' ), Storage::random_hex( 6 ), $compress ? 'tar.gz' : 'tar' );
 	}

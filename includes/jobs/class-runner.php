@@ -113,6 +113,7 @@ final class Runner {
 		} catch ( \Throwable $e ) {
 			$job->fail( $e->getMessage() );
 			self::cleanup( $job );
+			\SiteFerry\Hooks::action( 'siteferry_job_failed', $job, (string) $job->error() );
 		} finally {
 			if ( $job->finished() ) {
 				\SiteFerry\Security\Archive_Keys::forget( $job ); // A finished job keeps no key.
@@ -139,6 +140,7 @@ final class Runner {
 		try {
 			$job->fail( $reason );
 			self::cleanup( $job );
+			\SiteFerry\Hooks::action( 'siteferry_job_failed', $job, (string) $job->error() );
 		} finally {
 			\SiteFerry\Security\Archive_Keys::forget( $job );
 			$job->save();

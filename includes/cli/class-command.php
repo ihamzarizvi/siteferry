@@ -61,9 +61,19 @@ final class Command {
 	 *
 	 * [--format=<format>]
 	 * : tar: a SiteFerry backup. wpress: a .wpress backup, the format of the All-in-One WP Migration
-	 * plugin, which that plugin can import.
+	 * plugin, which that plugin can import. json: a tar backup (or --archive's), and print only a
+	 * JSON object (the same as --json).
 	 * ---
 	 * default: tar
+	 * options:
+	 *   - tar
+	 *   - wpress
+	 *   - json
+	 * ---
+	 *
+	 * [--archive=<type>]
+	 * : tar or wpress: the kind of backup file, for use with --json (where --format means json).
+	 * ---
 	 * options:
 	 *   - tar
 	 *   - wpress
@@ -117,9 +127,16 @@ final class Command {
 	 * [--porcelain]
 	 * : Print only the path of the backup file.
 	 *
+	 * [--json]
+	 * : Print only a JSON object: ok, name, path, size, created, files, bytes, seconds, format,
+	 * encrypted, base, sent, deleted_local, warnings. (WP-CLI turns --json into --format=json; choose
+	 * a .wpress file with --archive=wpress then.)
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry export
+	 *     wp siteferry export --json
+	 *     wp siteferry export --archive=wpress --json
 	 *     wp siteferry export --changes-only
 	 *     wp siteferry export --exclude=media,inactive-themes --compress
 	 *     wp siteferry export --dir=/home/me/backups --porcelain
@@ -131,8 +148,18 @@ final class Command {
 	 * @param array    $assoc_args Options.
 	 */
 	public function export( $args, $assoc_args ): void {
+		// --format is tar, wpress or json (WP-CLI turns --json into --format=json); --archive gives
+		// the kind of file when --format is json.
+		$archive = (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'tar' );
+		if ( 'json' === $archive ) {
+			$archive = (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'archive', 'tar' );
+		} elseif ( isset( $assoc_args['archive'] ) && $assoc_args['archive'] !== $archive && 'tar' !== $archive ) {
+			WP_CLI::error( 'Use --format=wpress or --archive=wpress, not both with different values.' );
+		} elseif ( isset( $assoc_args['archive'] ) ) {
+			$archive = (string) $assoc_args['archive'];
+		}
 		$options = array(
-			'format'            => (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'tar' ),
+			'format'            => $archive,
 			'compress'          => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'compress', false ),
 			'level'             => (int) \WP_CLI\Utils\get_flag_value( $assoc_args, 'level', 6 ),
 			'exclude_cache'     => ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'include-cache', false ),
@@ -143,9 +170,10 @@ final class Command {
 			'delete_after_send' => (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'delete-after-send', false ),
 			'password'          => self::password( $assoc_args, true ),
 		);
+		$mode = Output::mode( $assoc_args );
 		foreach ( self::csv( $assoc_args, 'exclude' ) as $item ) {
 			if ( ! isset( self::EXCLUDE_ITEMS[ $item ] ) ) {
-				WP_CLI::error( sprintf( 'Unknown --exclude value "%s". Use: %s.', $item, implode( ', ', array_keys( self::EXCLUDE_ITEMS ) ) ) );
+				Output::fail( $mode, sprintf( 'Unknown --exclude value "%s". Use: %s.', $item, implode( ', ', array_keys( self::EXCLUDE_ITEMS ) ) ) );
 			}
 			$options[ self::EXCLUDE_ITEMS[ $item ] ] = true;
 		}
@@ -154,7 +182,7 @@ final class Command {
 		if ( null !== $changes && false !== $changes ) {
 			$base = true === $changes || '' === (string) $changes ? \SiteFerry\Incremental::latest_base() : (string) $changes;
 			if ( null === $base ) {
-				WP_CLI::error( 'There is no full backup of this site on this server to build a changes-only backup on. Make a full backup first.' );
+				Output::fail( $mode, 'There is no full backup of this site on this server to build a changes-only backup on. Make a full backup first.' );
 			}
 			$options['changes_since'] = $base;
 		}
@@ -163,49 +191,75 @@ final class Command {
 		if ( null !== $dir ) {
 			$dir = self::prepare_dir( (string) $dir );
 		}
-		$porcelain = (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'porcelain', false );
 
 		try {
 			list( $job ) = Export::start( $options, $dir );
 		} catch ( \Throwable $e ) {
-			WP_CLI::error( $e->getMessage() );
+			Output::fail( $mode, $e->getMessage() );
 			return;
 		}
 
-		if ( ! $porcelain ) {
-			WP_CLI::log( sprintf( 'Export started (job %s).', $job->id() ) );
-		}
-		self::drive( $job, $porcelain );
+		Output::note( $mode, sprintf( 'Export started (job %s).', $job->id() ) );
+		self::drive( $job, Output::HUMAN !== $mode );
 
 		if ( Job::STATUS_FAILED === $job->status() ) {
-			WP_CLI::error( sprintf( 'Export failed: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
+			Output::fail( $mode, sprintf( 'Export failed: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
 		}
 
 		$result = $job->result();
-		$this->print_warnings( $job, $porcelain );
-		if ( $porcelain ) {
-			WP_CLI::line( $result['file'] );
-			return;
-		}
+		$this->print_warnings( $job, Output::HUMAN !== $mode );
+		$fields = array(
+			'name'          => (string) $result['name'],
+			'path'          => (string) $result['file'],
+			'size'          => (int) $result['size'],
+			'created'       => gmdate( 'Y-m-d\TH:i:s\Z', $job->created() ),
+			'files'         => (int) $result['files'],
+			'bytes'         => (int) $result['bytes'],
+			'seconds'       => (int) $result['seconds'],
+			'format'        => (string) $job->option( 'format', 'tar' ),
+			'encrypted'     => (bool) $job->option( 'encrypted', false ),
+			'base'          => (string) $result['base'],
+			'sent'          => isset( $result['sent'] ) ? self::sent_fields( $result ) : null,
+			'deleted_local' => ! empty( $result['deleted_local'] ),
+		);
 		if ( isset( $result['sent'] ) ) {
-			WP_CLI::log( sprintf( 'Sent to %s as %s.', $result['sent']['where'], $result['sent']['name'] ) );
-			if ( ! empty( $result['deleted_local'] ) ) {
-				WP_CLI::success( sprintf( 'Backup made and sent (%s); the copy on this server was deleted.', size_format( $result['size'], 1 ) ) );
-				return;
-			}
+			Output::note( $mode, sprintf( 'Sent to %s as %s.', $result['sent']['where'], $result['sent']['name'] ) );
 		}
 		if ( ! empty( $result['base'] ) ) {
-			WP_CLI::log( sprintf( 'Changes only, built on %s (restoring it needs that backup too).', $result['base'] ) );
+			Output::note( $mode, sprintf( 'Changes only, built on %s (restoring it needs that backup too).', $result['base'] ) );
 		}
-		WP_CLI::success(
-			sprintf(
+		$message = ! empty( $result['deleted_local'] )
+			? sprintf( 'Backup made and sent (%s); the copy on this server was deleted.', size_format( $result['size'], 1 ) )
+			: sprintf(
 				'Backup written to %s (%s; %s files, %s of site data; %s).',
 				$result['file'],
 				size_format( $result['size'], 1 ),
 				number_format( $result['files'] ),
 				size_format( $result['bytes'], 1 ),
 				human_time_diff( 0, max( 1, $result['seconds'] ) )
-			)
+			);
+		Output::done( $mode, $fields, (string) $result['file'], $message, $job->warnings() );
+	}
+
+	/**
+	 * Where a backup was sent, for --json: one entry per storage.
+	 *
+	 * @param array $result Job result with "sent" (and "sent_all" for several storages).
+	 * @return array<int,array{place:string,where:string,name:string,ok:bool,error:string}>
+	 */
+	private static function sent_fields( array $result ): array {
+		$all = isset( $result['sent_all'] ) ? (array) $result['sent_all'] : array( $result['sent'] + array( 'ok' => true ) );
+		return array_map(
+			static function ( array $one ): array {
+				return array(
+					'place' => isset( $one['destination'] ) ? (string) $one['destination'] : '',
+					'where' => isset( $one['where'] ) ? (string) $one['where'] : '',
+					'name'  => isset( $one['name'] ) ? (string) $one['name'] : '',
+					'ok'    => ! empty( $one['ok'] ),
+					'error' => isset( $one['error'] ) ? (string) $one['error'] : '',
+				);
+			},
+			$all
 		);
 	}
 
@@ -265,9 +319,20 @@ final class Command {
 	 * [--yes]
 	 * : Do not ask for confirmation.
 	 *
+	 * [--porcelain]
+	 * : Print only the name of the safety backup made first (nothing when there is none). Needs --yes.
+	 *
+	 * [--format=<format>]
+	 * : json: print only a JSON object (ok, name, from, to, tables, files, rows_changed, partial,
+	 * seconds, safety, inspection, warnings). Needs --yes. Same as --json.
+	 *
+	 * [--json]
+	 * : The same as --format=json.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry import mysite-2026-11-03-1a2b3c4d5e6f.tar
+	 *     wp siteferry import mysite-2026-11-03-1a2b3c4d5e6f.tar --yes --json
 	 *     wp siteferry import backup.tar.gz --replace-url=https://staging.example.com --yes
 	 *     wp siteferry import mysite-2026-11-03-1a2b3c4d5e6f.tar --paths=plugins/akismet
 	 *     wp siteferry import mysite-2026-11-03-1a2b3c4d5e6f.tar --tables=wp_posts,wp_postmeta
@@ -276,11 +341,15 @@ final class Command {
 	 * @param array    $assoc_args Options.
 	 */
 	public function import( $args, $assoc_args ): void {
+		$mode = Output::mode( $assoc_args );
+		if ( Output::HUMAN !== $mode && empty( $assoc_args['yes'] ) ) {
+			Output::fail( $mode, '--json and --porcelain need --yes (they cannot ask for confirmation).' );
+		}
 		$pairs = array();
 		foreach ( array_filter( explode( ';', (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'replace', '' ) ), 'strlen' ) as $pair ) {
 			$parts = explode( '=>', $pair, 2 );
 			if ( 2 !== count( $parts ) || '' === $parts[0] ) {
-				WP_CLI::error( sprintf( 'Cannot read the replacement "%s"; use "old=>new".', $pair ) );
+				Output::fail( $mode, sprintf( 'Cannot read the replacement "%s"; use "old=>new".', $pair ) );
 			}
 			$pairs[] = $parts;
 		}
@@ -294,42 +363,55 @@ final class Command {
 			'password'           => self::password( $assoc_args ),
 		) + self::restore_parts( $assoc_args );
 
+		$quiet = Output::HUMAN !== $mode;
 		try {
 			list( $job ) = Import::start( (string) $args[0], $options );
 		} catch ( \Throwable $e ) {
-			WP_CLI::error( $e->getMessage() );
+			Output::fail( $mode, $e->getMessage() );
 			return;
 		}
-		WP_CLI::log( sprintf( 'Import started (job %s).', $job->id() ) );
-		self::drive( $job, false );
+		Output::note( $mode, sprintf( 'Import started (job %s).', $job->id() ) );
+		self::drive( $job, $quiet );
 		if ( Job::STATUS_FAILED === $job->status() ) {
-			WP_CLI::error( sprintf( 'Import stopped before any change to this site: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
+			Output::fail( $mode, sprintf( 'Import stopped before any change to this site: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
 		}
 
 		$inspection = $job->result()['inspection'];
-		$this->print_inspection( $inspection );
+		if ( ! $quiet ) {
+			$this->print_inspection( $inspection );
+		}
 		WP_CLI::confirm( '' !== (string) $inspection['restores'] ? 'Replace these parts of this site with the backup\'s?' : 'Replace this site\'s database and files with the backup?', $assoc_args );
 		Import::confirm( $job );
 
-		self::drive( $job, false );
+		self::drive( $job, $quiet );
 		if ( Job::STATUS_FAILED === $job->status() ) {
 			$result = $job->result();
 			$undone = empty( $result['rollback_errors'] ) ? 'The site was left as it was before the import.' : 'Restoring the previous site did not fully succeed; see the log.';
-			WP_CLI::error( sprintf( 'Import failed: %s %s (log: %s)', $job->error(), $undone, $job->path( 'job.log' ) ) );
+			Output::fail( $mode, sprintf( 'Import failed: %s %s (log: %s)', $job->error(), $undone, $job->path( 'job.log' ) ) );
 		}
 
-		$this->print_warnings( $job, false );
+		$this->print_warnings( $job, $quiet );
 		$result = $job->result();
-		if ( isset( $result['safety']['name'] ) ) {
-			WP_CLI::log( sprintf( 'Safety backup of the site as it was: %s. Restore it to undo this import.', $result['safety']['name'] ) );
+		$safety = isset( $result['safety']['name'] ) ? (string) $result['safety']['name'] : '';
+		if ( '' !== $safety ) {
+			Output::note( $mode, sprintf( 'Safety backup of the site as it was: %s. Restore it to undo this import.', $safety ) );
 		}
 		$imported = $result['imported'];
-		if ( '' !== (string) $imported['partial'] ) {
-			WP_CLI::success( sprintf( 'Restored %s from %s (%s); everything else on this site stayed as it was.', lcfirst( (string) $imported['partial'] ), $imported['from'], human_time_diff( 0, max( 1, $imported['seconds'] ) ) ) );
-			return;
-		}
-		WP_CLI::success(
-			sprintf(
+		$fields   = array(
+			'name'         => basename( (string) $job->option( 'archive' ) ),
+			'from'         => (string) $imported['from'],
+			'to'           => (string) $imported['to'],
+			'tables'       => (int) $imported['tables'],
+			'files'        => (int) $imported['files'],
+			'rows_changed' => (int) $imported['rows_changed'],
+			'partial'      => (string) $imported['partial'],
+			'seconds'      => (int) $imported['seconds'],
+			'safety'       => '' === $safety ? null : $safety,
+			'inspection'   => $inspection,
+		);
+		$message = '' !== (string) $imported['partial']
+			? sprintf( 'Restored %s from %s (%s); everything else on this site stayed as it was.', lcfirst( (string) $imported['partial'] ), $imported['from'], human_time_diff( 0, max( 1, $imported['seconds'] ) ) )
+			: sprintf(
 				'Imported %s into %s: %d tables, %s files, %s rows updated for the new address (%s). Log in with the imported site\'s users.',
 				$imported['from'],
 				$imported['to'],
@@ -337,8 +419,8 @@ final class Command {
 				number_format( $imported['files'] ),
 				number_format( $imported['rows_changed'] ),
 				human_time_diff( 0, max( 1, $imported['seconds'] ) )
-			)
-		);
+			);
+		Output::done( $mode, $fields, $safety, $message, $job->warnings() );
 	}
 
 	/**
@@ -377,27 +459,72 @@ final class Command {
 	 * [--cancel]
 	 * : Cancel the key (and anything half-received).
 	 *
+	 * [--porcelain]
+	 * : Print only the key (or, with --status, only the state).
+	 *
+	 * [--format=<format>]
+	 * : json: print only a JSON object (key and expires; with --status: state and received). Same
+	 * as --json.
+	 *
+	 * [--json]
+	 * : The same as --format=json.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry receive
 	 *     wp siteferry receive --status
+	 *     wp siteferry receive --json
 	 *
 	 * @param string[] $args       Positional arguments (none).
 	 * @param array    $assoc_args Options.
 	 */
 	public function receive( $args, $assoc_args ): void {
-		if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'cancel', false ) ) {
-			\SiteFerry\Move\Receiver::cancel();
-			WP_CLI::success( 'The key is cancelled.' );
+		$mode = Output::mode( $assoc_args );
+		try {
+			if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'cancel', false ) ) {
+				\SiteFerry\Move\Receiver::cancel();
+				Output::done( $mode, array( 'state' => 'cancelled' ), 'cancelled', 'The key is cancelled.' );
+				return;
+			}
+			if ( ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'status', false ) ) {
+				$made = \SiteFerry\Move\Receiver::create( (int) \WP_CLI\Utils\get_flag_value( $assoc_args, 'hours', \SiteFerry\Move\Receiver::HOURS ) );
+				if ( Output::HUMAN !== $mode ) {
+					Output::done(
+						$mode,
+						array(
+							'key'     => (string) $made['key'],
+							'expires' => gmdate( 'Y-m-d\TH:i:s\Z', (int) $made['expires'] ),
+						),
+						(string) $made['key'],
+						''
+					);
+					return;
+				}
+				WP_CLI::line( $made['key'] );
+				WP_CLI::log( sprintf( 'Run on the old site: wp siteferry move <key>   (valid until %s)', wp_date( 'Y-m-d H:i', $made['expires'] ) ) );
+				return;
+			}
+			$status = \SiteFerry\Move\Receiver::status();
+		} catch ( \Throwable $e ) {
+			Output::fail( $mode, $e->getMessage() );
 			return;
 		}
-		if ( ! \WP_CLI\Utils\get_flag_value( $assoc_args, 'status', false ) ) {
-			$made = \SiteFerry\Move\Receiver::create( (int) \WP_CLI\Utils\get_flag_value( $assoc_args, 'hours', \SiteFerry\Move\Receiver::HOURS ) );
-			WP_CLI::line( $made['key'] );
-			WP_CLI::log( sprintf( 'Run on the old site: wp siteferry move <key>   (valid until %s)', wp_date( 'Y-m-d H:i', $made['expires'] ) ) );
+		if ( Output::HUMAN !== $mode ) {
+			$received = 'received' === $status['state'] && isset( $status['received'] ) ? array(
+				'name' => (string) $status['received']['name'],
+				'from' => (string) $status['received']['from'],
+			) : null;
+			Output::done(
+				$mode,
+				array(
+					'state'    => (string) $status['state'],
+					'received' => $received,
+				),
+				(string) $status['state'],
+				''
+			);
 			return;
 		}
-		$status = \SiteFerry\Move\Receiver::status();
 		WP_CLI::log( 'Key: ' . $status['state'] );
 		if ( 'received' === $status['state'] ) {
 			WP_CLI::log( sprintf( 'Arrived from %s: %s. Restore it with: wp siteferry import %s', $status['received']['from'], $status['received']['name'], $status['received']['name'] ) );
@@ -416,6 +543,15 @@ final class Command {
 	 * [--keep-local]
 	 * : Keep the backup on this server too.
 	 *
+	 * [--porcelain]
+	 * : Print only the backup's name on the new site.
+	 *
+	 * [--format=<format>]
+	 * : json: print only a JSON object (ok, name, to, warnings). Same as --json.
+	 *
+	 * [--json]
+	 * : The same as --format=json.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry move SFMOVE1.eyJ1Ijoi...
@@ -424,20 +560,30 @@ final class Command {
 	 * @param array    $assoc_args Options.
 	 */
 	public function move( $args, $assoc_args ): void {
+		$mode = Output::mode( $assoc_args );
 		try {
 			$hello = \SiteFerry\Move\Sender::hello( \SiteFerry\Move\Sender::parse( (string) $args[0] ) );
-			WP_CLI::log( sprintf( 'Moving to %s (WordPress %s).', $hello['site'], $hello['wordpress'] ) );
+			Output::note( $mode, sprintf( 'Moving to %s (WordPress %s).', $hello['site'], $hello['wordpress'] ) );
 			list( $job ) = \SiteFerry\Move\Sender::start( (string) $args[0], (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'keep-local', false ) );
 		} catch ( \Throwable $e ) {
-			WP_CLI::error( $e->getMessage() );
+			Output::fail( $mode, $e->getMessage() );
 			return;
 		}
-		self::drive( $job, false );
+		self::drive( $job, Output::HUMAN !== $mode );
 		if ( Job::STATUS_FAILED === $job->status() ) {
-			WP_CLI::error( sprintf( 'The move stopped: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
+			Output::fail( $mode, sprintf( 'The move stopped: %s (log: %s)', $job->error(), $job->path( 'job.log' ) ) );
 		}
 		$moved = $job->result()['moved'];
-		WP_CLI::success( sprintf( 'Sent to %s as %s. Finish the move there: "Move it here" on its SiteFerry page, or wp siteferry import %s.', $moved['to'], $moved['name'], $moved['name'] ) );
+		Output::done(
+			$mode,
+			array(
+				'name' => (string) $moved['name'],
+				'to'   => (string) $moved['to'],
+			),
+			(string) $moved['name'],
+			sprintf( 'Sent to %s as %s. Finish the move there: "Move it here" on its SiteFerry page, or wp siteferry import %s.', $moved['to'], $moved['name'], $moved['name'] ),
+			$job->warnings()
+		);
 	}
 	/**
 	 * Shows what takes the room: the database, media, plugins, themes, cache and the rest of
@@ -489,6 +635,8 @@ final class Command {
 	 *   - table
 	 *   - csv
 	 *   - json
+	 *   - yaml
+	 *   - count
 	 * ---
 	 *
 	 * ## EXAMPLES
@@ -513,14 +661,15 @@ final class Command {
 			return;
 		}
 		if ( 'json' === $format ) {
-			WP_CLI::line( (string) wp_json_encode( $rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+			WP_CLI::line( Output::encode( $rows ) );
 			return;
 		}
-		if ( array() === $rows ) {
+		if ( 'table' === $format && array() === $rows ) {
 			WP_CLI::log( 'No activity.' );
 			return;
 		}
-		\WP_CLI\Utils\format_items( 'table', $rows, array( 'time', 'type', 'what', 'result', 'duration', 'started_by', 'message' ) );
+		$fields = 'table' === $format ? array( 'time', 'type', 'what', 'result', 'duration', 'started_by', 'message' ) : array_keys( (array) reset( $rows ) );
+		\WP_CLI\Utils\format_items( $format, $rows, array() === $fields ? array( 'time' ) : $fields );
 	}
 
 	/**

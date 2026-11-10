@@ -24,15 +24,41 @@ final class Schedule_Command {
 	/**
 	 * Shows the schedule, the next run and the last one.
 	 *
+	 * ## OPTIONS
+	 *
+	 * [--format=<format>]
+	 * : table: the summary in words (default). json or yaml: the whole overview (settings, next,
+	 * last, running, copies, recheck ...; the backup password itself is never shown).
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - json
+	 *   - yaml
+	 * ---
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry schedule show
+	 *     wp siteferry schedule show --format=json
 	 *
-	 * @param string[] $args Positional arguments (none).
+	 * @param string[] $args       Positional arguments (none).
+	 * @param array    $assoc_args Options.
 	 */
-	public function show( $args ): void {
+	public function show( $args, $assoc_args = array() ): void {
 		unset( $args );
+		$format   = Output::list_format( (array) $assoc_args, array( 'table', 'json', 'yaml' ) );
 		$overview = Schedule::overview();
+		if ( 'table' !== $format ) {
+			$overview['next']  = null === $overview['next'] ? null : gmdate( 'Y-m-d\TH:i:s\Z', (int) $overview['next'] );
+			$overview['retry'] = null === $overview['retry'] ? null : gmdate( 'Y-m-d\TH:i:s\Z', (int) $overview['retry'] );
+			if ( 'json' === $format ) {
+				WP_CLI::line( Output::encode( $overview ) );
+			} else {
+				\WP_CLI\Utils\format_items( 'yaml', array( $overview ), array_keys( $overview ) );
+			}
+			return;
+		}
 		$settings = $overview['settings'];
 		if ( ! $settings['enabled'] ) {
 			WP_CLI::log( 'No schedule: backups are made only when you start them.' );
@@ -69,27 +95,58 @@ final class Schedule_Command {
 	 * [--quiet]
 	 * : No progress lines.
 	 *
+	 * [--porcelain]
+	 * : Print only the backup's name.
+	 *
+	 * [--format=<format>]
+	 * : json: print only a JSON object (ok, name, path, size, sent, warnings). Same as --json.
+	 *
+	 * [--json]
+	 * : The same as --format=json.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp siteferry schedule run
+	 *     wp siteferry schedule run --json
 	 *
 	 * @param string[] $args       Positional arguments (none).
 	 * @param array    $assoc_args Options.
 	 */
 	public function run( $args, $assoc_args ): void {
 		unset( $args );
+		$mode = Output::mode( $assoc_args );
 		try {
 			$job = Schedule::start_job();
 		} catch ( \Throwable $e ) {
-			WP_CLI::error( $e->getMessage() );
+			Output::fail( $mode, $e->getMessage() );
 			return;
 		}
-		Command::drive( $job, (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'quiet', false ) );
+		Command::drive( $job, Output::HUMAN !== $mode || (bool) \WP_CLI\Utils\get_flag_value( $assoc_args, 'quiet', false ) );
 		Schedule::after_slice( $job ); // Clears it from the schedule's state.
 		if ( 'done' !== $job->status() ) {
-			WP_CLI::error( 'The scheduled backup failed: ' . (string) $job->error() );
+			Output::fail( $mode, 'The scheduled backup failed: ' . (string) $job->error() );
 		}
 		$result = $job->result();
-		WP_CLI::success( sprintf( 'Scheduled backup done: %s.', $result['name'] ) );
+		$sent   = array();
+		foreach ( isset( $result['sent_all'] ) ? (array) $result['sent_all'] : ( isset( $result['sent'] ) ? array( $result['sent'] + array( 'ok' => true ) ) : array() ) as $one ) {
+			$sent[] = array(
+				'place' => isset( $one['destination'] ) ? (string) $one['destination'] : '',
+				'where' => isset( $one['where'] ) ? (string) $one['where'] : '',
+				'ok'    => ! empty( $one['ok'] ),
+				'error' => isset( $one['error'] ) ? (string) $one['error'] : '',
+			);
+		}
+		Output::done(
+			$mode,
+			array(
+				'name' => (string) $result['name'],
+				'path' => isset( $result['file'] ) ? (string) $result['file'] : '',
+				'size' => isset( $result['size'] ) ? (int) $result['size'] : 0,
+				'sent' => $sent,
+			),
+			(string) $result['name'],
+			sprintf( 'Scheduled backup done: %s.', $result['name'] ),
+			$job->warnings()
+		);
 	}
 }

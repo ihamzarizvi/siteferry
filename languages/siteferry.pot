@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: SiteFerry 0.43.1\n"
+"Project-Id-Version: SiteFerry 0.44.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/siteferry\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T15:29:51+00:00\n"
+"POT-Creation-Date: 2026-11-10T15:50:22+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: siteferry\n"
@@ -1622,7 +1622,7 @@ msgid "The compressed archive is damaged (gzip data error)."
 msgstr ""
 
 #: includes/archive/class-gzip-output.php:104
-#: includes/export/class-export.php:273
+#: includes/export/class-export.php:274
 msgid "Compression needs the PHP zlib extension."
 msgstr ""
 
@@ -2327,62 +2327,62 @@ msgstr[1] ""
 msgid "Cannot create the folder \"%s\"."
 msgstr ""
 
-#: includes/export/class-export.php:153
+#: includes/export/class-export.php:154
 msgid "A changes-only backup cannot be protected with a password yet. Make a full backup instead, or leave the password out."
 msgstr ""
 
-#: includes/export/class-export.php:156
+#: includes/export/class-export.php:157
 msgid "A changes-only backup is always a SiteFerry backup; it cannot be a .wpress file."
 msgstr ""
 
-#: includes/export/class-export.php:159
+#: includes/export/class-export.php:160
 msgid "A changes-only backup is kept next to its full backup on this server."
 msgstr ""
 
 #. translators: %s: a backup name
-#: includes/export/class-export.php:165
+#: includes/export/class-export.php:166
 #, php-format
 msgid "The full backup %s is not on this server."
 msgstr ""
 
-#: includes/export/class-export.php:203
+#: includes/export/class-export.php:204
 msgid "A .wpress file cannot be protected with a password by SiteFerry; choose the SiteFerry format."
 msgstr ""
 
 #. translators: %d: a number
-#: includes/export/class-export.php:206
+#: includes/export/class-export.php:207
 #: includes/schedule/class-schedule.php:319
 #, php-format
 msgid "The password needs at least %d characters."
 msgstr ""
 
-#: includes/export/class-export.php:209
+#: includes/export/class-export.php:210
 #: includes/schedule/class-schedule.php:338
 msgid "Encrypted backups need the PHP OpenSSL extension with AES-256-GCM, which this server does not have."
 msgstr ""
 
 #. translators: %s: option names, separated by commas
-#: includes/export/class-export.php:223
+#: includes/export/class-export.php:224
 #, php-format
 msgid "Unknown export option: %s"
 msgstr ""
 
-#: includes/export/class-export.php:248
+#: includes/export/class-export.php:249
 #: includes/schedule/class-schedule.php:204
 msgid "Unknown backup format; use \"tar\" or \"wpress\"."
 msgstr ""
 
-#: includes/export/class-export.php:254
-#: includes/export/class-export.php:259
+#: includes/export/class-export.php:255
+#: includes/export/class-export.php:260
 msgid "Unknown storage to send the backup to."
 msgstr ""
 
-#: includes/export/class-export.php:270
+#: includes/export/class-export.php:271
 msgid "Unknown full backup for a changes-only backup."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/export/class-export.php:286
+#: includes/export/class-export.php:287
 #, php-format
 msgid "Invalid path to leave out: \"%s\". Use paths inside wp-content, such as uploads/2019."
 msgstr ""
@@ -2514,45 +2514,45 @@ msgstr ""
 msgid "Cannot read the backup \"%s\"."
 msgstr ""
 
-#: includes/import/class-import.php:115
+#: includes/import/class-import.php:116
 msgid "This import is not waiting for confirmation."
 msgstr ""
 
 #. translators: %s: option names, separated by commas
-#: includes/import/class-import.php:148
+#: includes/import/class-import.php:149
 #, php-format
 msgid "Unknown import option: %s"
 msgstr ""
 
 #. translators: %s: a web address
-#: includes/import/class-import.php:154
+#: includes/import/class-import.php:155
 #, php-format
 msgid "The new site address \"%s\" must start with http:// or https://."
 msgstr ""
 
-#: includes/import/class-import.php:160
+#: includes/import/class-import.php:161
 msgid "Each extra replacement needs a text to find and a replacement."
 msgstr ""
 
 #. translators: %s: a table name
-#: includes/import/class-import.php:169
+#: includes/import/class-import.php:170
 #, php-format
 msgid "Invalid table name to restore: \"%s\"."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/import/class-import.php:187
+#: includes/import/class-import.php:188
 #, php-format
 msgid "Invalid path to restore: \"%s\"."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/import/class-import.php:192
+#: includes/import/class-import.php:193
 #, php-format
 msgid "Only a whole folder in wp-content, or one plugin or theme, can be restored on its own; not \"%s\"."
 msgstr ""
 
-#: includes/import/class-import.php:199
+#: includes/import/class-import.php:200
 msgid "Too many items chosen to restore."
 msgstr ""
 
@@ -2894,12 +2894,12 @@ msgstr ""
 msgid "This job is already running in another request."
 msgstr ""
 
-#: includes/jobs/class-runner.php:137
+#: includes/jobs/class-runner.php:138
 msgid "This job is running right now; try again in a moment."
 msgstr ""
 
 #. translators: %s: a file or backup name
-#: includes/jobs/class-runner.php:173
+#: includes/jobs/class-runner.php:175
 #, php-format
 msgid "Unknown job step: %s"
 msgstr ""
@@ -2930,14 +2930,14 @@ msgstr ""
 
 #. translators: 1: where it goes, such as Dropbox or another site's host name, 2: a size, such as 12 MB, 3: a size, such as 12 MB
 #: includes/move/class-send-step.php:77
-#: includes/storage/class-send-step.php:385
+#: includes/storage/class-send-step.php:387
 #, php-format
 msgid "Sending to %1$s: %2$s of %3$s"
 msgstr ""
 
 #. translators: %s: where it went, such as Dropbox or another site's host name
 #: includes/move/class-send-step.php:110
-#: includes/storage/class-send-step.php:70
+#: includes/storage/class-send-step.php:71
 #: assets/admin.js:985
 #, php-format,js-format
 msgid "Sent to %s"
@@ -3091,7 +3091,7 @@ msgstr ""
 
 #. translators: 1: a storage, such as Dropbox, 2: what went wrong
 #: includes/schedule/class-finish-step.php:50
-#: includes/storage/class-send-step.php:111
+#: includes/storage/class-send-step.php:112
 #, php-format
 msgid "Not sent to %1$s: %2$s"
 msgstr ""
@@ -4103,56 +4103,56 @@ msgid "Use https for this provider."
 msgstr ""
 
 #. translators: %s: each storage with what went wrong
-#: includes/storage/class-send-step.php:142
+#: includes/storage/class-send-step.php:144
 #, php-format
 msgid "The backup could not be sent to any storage: %s"
 msgstr ""
 
 #. translators: 1: number of storages that got the backup, 2: number of storages chosen
-#: includes/storage/class-send-step.php:164
+#: includes/storage/class-send-step.php:166
 #, php-format
 msgid "Sent to %1$d of %2$d storages"
 msgstr ""
 
-#: includes/storage/class-send-step.php:292
+#: includes/storage/class-send-step.php:294
 msgid "The copy on this server was kept: not every storage got the backup."
 msgstr ""
 
-#: includes/storage/class-send-step.php:303
+#: includes/storage/class-send-step.php:305
 msgid "The copy on this server could not be deleted."
 msgstr ""
 
-#: includes/storage/class-send-step.php:330
+#: includes/storage/class-send-step.php:332
 msgid "The backup to send is missing or empty."
 msgstr ""
 
-#: includes/storage/class-send-step.php:353
+#: includes/storage/class-send-step.php:355
 msgid "The backup changed or disappeared while it was being sent."
 msgstr ""
 
 #. translators: %s: a backup name
-#: includes/storage/class-send-step.php:421
+#: includes/storage/class-send-step.php:423
 #, php-format
 msgid "This changes-only backup is built on the full backup %s, which is neither on this server nor on the storage; it could not be restored from there."
 msgstr ""
 
 #. translators: 1: a storage, such as Dropbox, 2: what went wrong
-#: includes/storage/class-send-step.php:471
+#: includes/storage/class-send-step.php:473
 #, php-format
 msgid "The unfinished upload to %1$s could not be removed: %2$s"
 msgstr ""
 
 #. translators: 1: a file name, 2: the reason
-#: includes/storage/class-send-step.php:490
+#: includes/storage/class-send-step.php:492
 #, php-format
 msgid "Part %1$s could not be removed from the storage: %2$s"
 msgstr ""
 
-#: includes/storage/class-send-step.php:519
+#: includes/storage/class-send-step.php:521
 msgid "Cannot read the backup."
 msgstr ""
 
-#: includes/storage/class-send-step.php:525
+#: includes/storage/class-send-step.php:527
 msgid "The backup ended early while it was being sent."
 msgstr ""
 
@@ -5240,9 +5240,7 @@ msgid "Looking on %s..."
 msgstr ""
 
 #. translators: 1: name of the storage, such as Dropbox, 2: error message
-#. translators: 1: a user role, such as Editor, 2: what they may do, such as Restore
 #: assets/admin.js:2323
-#: assets/admin.js:6564
 #, js-format
 msgid "%1$s: %2$s"
 msgstr ""
@@ -7442,6 +7440,13 @@ msgstr ""
 
 #: assets/admin.js:6432
 msgid "[earlier lines omitted]"
+msgstr ""
+
+#. translators: 1: a user role, such as Editor, 2: what they may do, such as Restore
+#: assets/admin.js:6564
+#, js-format
+msgctxt "a role and what it may do"
+msgid "%1$s: %2$s"
 msgstr ""
 
 #: assets/admin.js:6609

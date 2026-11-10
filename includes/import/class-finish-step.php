@@ -79,6 +79,7 @@ final class Finish_Step implements Step {
 
 		$job->set_progress( __( 'Import complete', 'siteferry' ), 1, 1 );
 		$job->log( 'info', 'Import complete; rollback copies removed.' );
+		\SiteFerry\Hooks::action( 'siteferry_import_done', $job, $job->result()['imported'] );
 		return true;
 	}
 

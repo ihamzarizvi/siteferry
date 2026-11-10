@@ -100,6 +100,7 @@ final class Import {
 			\SiteFerry\Security\Archive_Keys::store( $created[0], $key );
 			$created[0]->save();
 		}
+		\SiteFerry\Hooks::action( 'siteferry_import_started', $created[0] );
 		return $created;
 	}
 

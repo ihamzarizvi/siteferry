@@ -1,6 +1,12 @@
 SiteFerry changelog
 ===================
 
+= 0.44.0 =
+* WP-CLI for scripts, the same way in every command: lists and reports take `--format=table|csv|json|yaml|count` (sizes in bytes outside tables; backups list and storage list add kind, base, encrypted, place, complete); commands that do something take `--porcelain` (only the key result) and `--json` (one JSON object with ok, the result and warnings; a failure prints {"ok":false,"error":...}); exit code 0 or 1. `wp siteferry export --archive=wpress --json` makes a .wpress file with JSON output (WP-CLI turns --json into --format=json).
+* New `wp siteferry backups delete <name>... [--yes]` (a full backup that changes-only backups need is kept).
+* Developer hooks: actions siteferry_export_started, siteferry_export_done, siteferry_import_started, siteferry_import_done, siteferry_backup_sent, siteferry_job_failed; filters siteferry_export_exclusions, siteferry_manifest_extra, siteferry_backup_name_label. A callback that throws is logged and never stops a backup or restore. FAQ: "Which WP-CLI commands are there?" and "Developer hooks".
+* The summary of `wp siteferry backups compare` says "1 plugin" rather than "1 plugins".
+
 = 0.43.1 =
 * readme: the changelog keeps the newest versions; the full history moved to changelog.txt (WordPress.org shortens long changelogs).
 
