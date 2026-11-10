@@ -84,6 +84,7 @@ final class Admin {
 					'network'    => is_multisite(), // A network is restored whole: no partial restore, no new address.
 					'siteName'   => wp_strip_all_tags( (string) get_bloginfo( 'name' ) ), // Default name of a backup folder in Google Drive.
 					'choices'    => Choices::get( get_current_user_id() ),
+					'stagingOf'  => self::staging_of(), // In a staging copy: the live site it copies.
 				)
 			) . ';',
 			'before'
@@ -170,6 +171,7 @@ final class Admin {
 							<button type="button" class="button sf-btn" id="siteferry-schedule-toggle" aria-expanded="false" aria-controls="siteferry-schedule-form"><span class="dashicons dashicons-clock" aria-hidden="true"></span><?php esc_html_e( 'Schedule', 'siteferry' ); ?><span class="sf-btn-state" id="siteferry-schedule-state" hidden></span></button>
 							<button type="button" class="button sf-btn" id="siteferry-move-toggle" aria-expanded="false" aria-controls="siteferry-move"><span class="dashicons dashicons-migrate" aria-hidden="true"></span><?php esc_html_e( 'Move a site', 'siteferry' ); ?></button>
 							<button type="button" class="button sf-btn" id="siteferry-kit-toggle" aria-expanded="false" aria-controls="siteferry-kit"><span class="dashicons dashicons-sos" aria-hidden="true"></span><?php esc_html_e( 'Emergency kit', 'siteferry' ); ?></button>
+							<button type="button" class="button sf-btn" id="siteferry-staging-toggle" aria-expanded="false" aria-controls="siteferry-staging"><span class="dashicons dashicons-admin-multisite" aria-hidden="true"></span><?php esc_html_e( 'Staging', 'siteferry' ); ?></button>
 						</div>
 					</div>
 					<div class="sf-now">
@@ -377,7 +379,28 @@ final class Admin {
 						<ul class="sf-kit-list" id="siteferry-kit-list"></ul>
 						<p class="description"><?php esc_html_e( 'Revoke a kit you no longer trust (for example, a lost file): it then stops working as soon as it reads this site\'s database. A kit also stops working when it expires.', 'siteferry' ); ?></p>
 					</div>
-				</div>
+
+					<div id="siteferry-staging" class="sf-drawer sf-staging" hidden>
+						<p class="sf-drawer-note"><?php esc_html_e( 'A private copy of this site in a subfolder, to try updates, plugins or design changes without touching the live site. It has its own database tables, is hidden from search engines and holds back outgoing email.', 'siteferry' ); ?></p>
+						<div id="siteferry-staging-current" class="sf-staging-current" hidden></div>
+						<form id="siteferry-staging-form" class="sf-staging-form" novalidate hidden>
+							<ol class="sf-steps">
+								<li><?php esc_html_e( 'SiteFerry copies WordPress\'s files and this site\'s database tables into the subfolder below (the same things a backup leaves out stay out).', 'siteferry' ); ?></li>
+								<li><?php esc_html_e( 'The copy gets its own address, a STAGING badge, and its own copy of your users: sign in there with the same name and password.', 'siteferry' ); ?></li>
+								<li><?php esc_html_e( 'Delete it here when you are done. Copying changes back to the live site comes later.', 'siteferry' ); ?></li>
+							</ol>
+							<p class="sf-field">
+								<label for="siteferry-staging-folder"><?php esc_html_e( 'Subfolder', 'siteferry' ); ?></label>
+								<span class="sf-staging-address"><span id="siteferry-staging-base"></span><input type="text" id="siteferry-staging-folder" name="folder" value="staging" maxlength="30" pattern="[a-z0-9][a-z0-9\-]{0,29}" spellcheck="false" autocomplete="off"></span>
+							</p>
+							<p><label><input type="checkbox" id="siteferry-staging-no-media" name="no_media"> <?php esc_html_e( 'Leave the media library out (faster and smaller; images will be missing in the copy)', 'siteferry' ); ?></label></p>
+							<p class="description" id="siteferry-staging-estimate"></p>
+							<p class="sf-actions"><button type="submit" class="button button-primary" id="siteferry-staging-create"><?php esc_html_e( 'Create the staging copy', 'siteferry' ); ?></button></p>
+						</form>
+						<div id="siteferry-staging-blocked" class="sf-result is-failed" hidden></div>
+						<div id="siteferry-staging-progress" class="sf-progress" hidden></div>
+						<div class="sf-result" id="siteferry-staging-result" role="status" hidden></div>
+					</div>				</div>
 
 				<dialog class="sf-dialog" id="siteferry-parts-dialog" aria-labelledby="siteferry-parts-dialog-title">
 					<form method="dialog" class="sf-dialog-form">
@@ -726,6 +749,14 @@ final class Admin {
 			<div class="sf-result" id="siteferry-schedule-result" role="status" hidden></div>
 		</form>
 		<?php
+	}
+
+	/**
+	 * In a staging copy: the address of the live site it copies; '' elsewhere.
+	 */
+	private static function staging_of(): string {
+		$copy = get_option( \SiteFerry\Staging\Staging::COPY_OPTION );
+		return is_array( $copy ) && isset( $copy['of'] ) ? esc_url_raw( (string) $copy['of'] ) : '';
 	}
 
 	/**

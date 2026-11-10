@@ -49,6 +49,11 @@ final class Runner {
 		'check.download'  => \SiteFerry\Storage\Fetch_Step::class,
 		'check.verify'    => \SiteFerry\Check\Verify_Step::class,
 		'move.send'       => \SiteFerry\Move\Send_Step::class,
+		'staging.files'   => \SiteFerry\Staging\Files_Step::class,
+		'staging.tables'  => \SiteFerry\Staging\Tables_Step::class,
+		'staging.fix'     => \SiteFerry\Staging\Fix_Step::class,
+		'staging.finish'  => \SiteFerry\Staging\Finish_Step::class,
+		'staging.delete'  => \SiteFerry\Staging\Delete_Step::class,
 	);
 
 	/**

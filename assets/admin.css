@@ -3522,3 +3522,71 @@ details.sf-dest[open] > .sf-dest-head::after {
 		font-size: 18px;
 	}
 }
+
+/* ------------------------------------------------- Staging copy */
+
+.siteferry .sf-staging-form {
+	max-width: 620px;
+}
+
+.siteferry .sf-staging-address {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 2px;
+	font-family: var(--sf-mono);
+	font-size: 13px;
+	overflow-wrap: anywhere;
+}
+
+.siteferry .sf-staging-address input {
+	width: 14em;
+	max-width: 100%;
+	font-family: var(--sf-mono);
+}
+
+.siteferry .sf-staging-current {
+	margin: 0 0 12px;
+	padding: 12px 16px;
+	border: 1px solid var(--sf-rope);
+	border-radius: var(--sf-radius);
+	background: var(--sf-deck);
+}
+
+.siteferry .sf-staging-current .sf-facts-table td {
+	overflow-wrap: anywhere;
+}
+
+.siteferry .sf-staging-state {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 8px;
+}
+
+.siteferry .sf-pill.is-ready {
+	background: var(--sf-starboard-wash);
+	color: var(--sf-starboard);
+}
+
+.siteferry .sf-pill.is-failed {
+	background: var(--sf-port-wash);
+	color: var(--sf-port);
+}
+
+.siteferry .sf-pill.is-building,
+.siteferry .sf-pill.is-deleting {
+	background: var(--sf-amber-wash);
+	color: var(--sf-amber);
+}
+
+.siteferry .sf-code {
+	margin: 8px 0 0;
+	padding: 10px 12px;
+	overflow-x: auto;
+	border-radius: var(--sf-radius);
+	background: var(--sf-fog);
+	font-family: var(--sf-mono);
+	font-size: 12px;
+	white-space: pre;
+}

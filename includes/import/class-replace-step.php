@@ -55,7 +55,7 @@ final class Replace_Step implements Step {
 		}
 
 		if ( ! $state['prefixed'] ) {
-			$this->rename_prefixed_keys( $wpdb, $temp, $inspect['prefix'], $job->option( 'site' )['prefix'] );
+			self::rename_prefixed_keys( $wpdb, $temp, $inspect['prefix'], $job->option( 'site' )['prefix'] );
 			$state['prefixed'] = true;
 		}
 
@@ -124,7 +124,7 @@ final class Replace_Step implements Step {
 	 * @param string $from Prefix in the backup.
 	 * @param string $to   This site's prefix.
 	 */
-	private function rename_prefixed_keys( $db, string $temp, string $from, string $to ): void {
+	public static function rename_prefixed_keys( $db, string $temp, string $from, string $to ): void {
 		if ( $from === $to ) {
 			return;
 		}

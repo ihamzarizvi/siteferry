@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.33.0
+Stable tag: 0.34.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -203,6 +203,14 @@ against 16 minutes and 425 MB for the full backup.
 * Files are compared by size and modification time. A file changed without changing either would
   be missed; in practice editors, updates and uploads always change the time.
 * Not available yet for password-protected backups or .wpress files.
+= How do I make a staging copy? =
+
+On the Backups tab, click "Staging", choose a subfolder name (default: staging) and click "Create the staging copy". SiteFerry copies WordPress's files into that subfolder of WordPress's folder (leaving out what a backup leaves out: caches, backup folders, SiteFerry's storage; optionally the media library) and copies this site's database tables under a new prefix (stg + 4 letters/digits + _) in the same database. It then changes the addresses in the copy, writes its own wp-config.php (only the table prefix and the address differ; database login and keys stay), and adds a small must-use plugin that shows a STAGING badge, keeps search engines away and holds back outgoing email (the badge's menu can turn email on). SiteFerry's storage logins, schedule and backups before updates are not copied, so the copy never sends backups.
+
+Sign in to the copy with the same user name and password. One copy at a time; delete it from the same place: SiteFerry checks the record and the folder's marker file and drops only the copy's tables and folder. Uninstalling SiteFerry does not delete the copy: delete it first.
+
+Not supported yet: multisite networks, sites whose WordPress files are in a different folder from the site's address, wp-content or the media folder moved elsewhere, a wp-config.php that sets the table prefix or ABSPATH in an unusual way or loads other files by a relative path (SiteFerry says which), copying changes back to the live site. On nginx servers, pretty permalinks in the copy need one rule in the site's nginx configuration; SiteFerry shows it.
+
 = What if my site shows a white screen? =
 
 Make an emergency kit before you need it: on the Backups tab, click "Emergency kit", choose a password (at least 12 characters) and download the file. Keep it, with its password, somewhere safe and private, not on the server. If the site later breaks and you cannot log in, upload the file by FTP or your hosting file manager into WordPress's main folder (the one with wp-config.php or wp-load.php and wp-admin) and open it in your browser at your site's address followed by the file name. Sign in with the kit's password. It works without WordPress: it can turn off every plugin except SiteFerry, switch to a default "Twenty" theme (both can be undone) and download SiteFerry's backups. Once the dashboard opens again, restore a backup with SiteFerry if needed, and delete the kit with its "Delete this kit" button. A kit works for 7, 30 or 90 days, only on the site it was made for; revoke it in SiteFerry if you lose the file. It cannot repair damaged WordPress files or a broken database: then restore through your hosting control panel, or ask your host.
@@ -484,6 +492,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.34.0 =
+* Staging copy: "Staging" on the Backups tab (and `wp siteferry staging create|status|delete`) makes a private copy of the site in a subfolder, with its own database tables, its own wp-config.php, a STAGING badge, noindex, and outgoing email held back; SiteFerry's storage, schedule and before-update backups stay with the live site. Made and deleted as resumable jobs with the progress ferry; deleting checks the record, the folder's marker and the table prefix every time. Single sites only; copying changes back comes later.
 
 = 0.33.0 =
 * Compare two backups: "Compare with…" in a backup's menu (or Shift+click two markers on the timeline) shows what differs from the older backup to the newer one: the versions it was made with, the site address, plugins and themes (added, removed, updated or older, turned on or off), the theme in use, how many posts, pages, media items, users and comments, database tables (added, removed, row counts, size) and files. Only the backups' own records are read, so it is quick. Also `wp siteferry backups compare <a> <b> [--format=json]`. Not yet for .wpress files or backups only on a storage.

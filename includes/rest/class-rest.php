@@ -127,6 +127,9 @@ final class Rest {
 			array( '/emergency-kits', WP_REST_Server::READABLE, 'emergency_kits', $admin ),
 			array( '/emergency-kits', WP_REST_Server::CREATABLE, 'make_emergency_kit', $admin ),
 			array( '/emergency-kits/(?P<kit>[a-f0-9]{8})/revoke', WP_REST_Server::CREATABLE, 'revoke_emergency_kit', $admin ),
+			array( '/staging', WP_REST_Server::READABLE, 'staging', $admin ),
+			array( '/staging', WP_REST_Server::CREATABLE, 'start_staging', $admin ),
+			array( '/staging/delete', WP_REST_Server::CREATABLE, 'delete_staging', $admin ),
 			array( '/choices', WP_REST_Server::CREATABLE, 'save_choices', $admin ),
 			array( '/choices', WP_REST_Server::DELETABLE, 'reset_choices', $admin ),
 			array( '/receive', WP_REST_Server::READABLE, 'receive_status', $admin ),
@@ -582,6 +585,39 @@ final class Rest {
 		return \SiteFerry\Emergency_Kit::kits();
 	}
 
+	/**
+	 * The staging copy (or null), why one cannot be made here, and sizes.
+	 */
+	public static function staging(): array {
+		return \SiteFerry\Staging\Staging::overview();
+	}
+
+	/**
+	 * Starts making a staging copy.
+	 *
+	 * @param WP_REST_Request $request Request with "folder" and "no_media".
+	 */
+	public static function start_staging( WP_REST_Request $request ): array {
+		self::assert_idle();
+		$params = (array) $request->get_json_params();
+		list( $job, $token ) = \SiteFerry\Staging\Staging::start( isset( $params['folder'] ) ? (string) $params['folder'] : 'staging', ! empty( $params['no_media'] ) );
+		return array(
+			'job'   => $job->summary(),
+			'token' => $token,
+		);
+	}
+
+	/**
+	 * Starts deleting the staging copy.
+	 */
+	public static function delete_staging(): array {
+		self::assert_idle();
+		list( $job, $token ) = \SiteFerry\Staging\Staging::start_delete();
+		return array(
+			'job'   => $job->summary(),
+			'token' => $token,
+		);
+	}
 	/**
 	 * Opens a password-protected backup on this server for "Look inside": checks the password and
 	 * returns a token that stands for the key for 15 minutes (the key is kept encrypted with the

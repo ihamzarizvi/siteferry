@@ -47,6 +47,7 @@ final class Command {
 		WP_CLI::add_command( 'siteferry backups', Backups_Command::class );
 		WP_CLI::add_command( 'siteferry storage', Storage_Command::class );
 		WP_CLI::add_command( 'siteferry schedule', Schedule_Command::class );
+		WP_CLI::add_command( 'siteferry staging', Staging_Command::class );
 	}
 
 	/**

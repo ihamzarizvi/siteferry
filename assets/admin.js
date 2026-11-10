@@ -17,6 +17,8 @@
 		send: __( 'A transfer to storage', 'siteferry' ),
 		fetch: __( 'A download from storage', 'siteferry' ),
 		check: __( 'A check of a backup', 'siteferry' ),
+		staging: __( 'A staging copy', 'siteferry' ),
+		'staging-delete': __( 'Deleting the staging copy', 'siteferry' ),
 	};
 	const JOB_TYPES = {
 		export: __( 'Backup', 'siteferry' ),
@@ -24,6 +26,8 @@
 		send: __( 'Send to storage', 'siteferry' ),
 		fetch: __( 'Download from storage', 'siteferry' ),
 		check: __( 'Check of a backup', 'siteferry' ),
+		staging: __( 'Staging copy', 'siteferry' ),
+		'staging-delete': __( 'Delete staging copy', 'siteferry' ),
 	};
 	const JOB_STATES = {
 		pending: [ __( 'Not started', 'siteferry' ), 'is-busy' ],
@@ -55,6 +59,11 @@
 		'import.safety': __( 'Safety backup', 'siteferry' ),
 		'check.download': __( 'Download', 'siteferry' ),
 		'check.verify': __( 'Verify', 'siteferry' ),
+		'staging.files': __( 'Files', 'siteferry' ),
+		'staging.tables': __( 'Tables', 'siteferry' ),
+		'staging.fix': __( 'Addresses', 'siteferry' ),
+		'staging.finish': __( 'Finish', 'siteferry' ),
+		'staging.delete': __( 'Delete', 'siteferry' ),
 		upload: __( 'Upload', 'siteferry' ),
 	};
 	// Files at the top of a backup that describe it rather than being site content.
@@ -5978,6 +5987,7 @@
 			schedule: [ 'siteferry-schedule-form', 'siteferry-schedule-toggle' ],
 			move: [ 'siteferry-move', 'siteferry-move-toggle' ],
 			kit: [ 'siteferry-kit', 'siteferry-kit-toggle' ],
+			staging: [ 'siteferry-staging', 'siteferry-staging-toggle' ],
 		};
 		Object.keys( drawers ).forEach( ( key ) => {
 			const [ panel, toggle ] = drawers[ key ];
@@ -5992,11 +6002,160 @@
 		if ( which === 'kit' && ! $( 'siteferry-kit' ).hidden ) {
 			loadKits();
 		}
+		if ( which === 'staging' && ! $( 'siteferry-staging' ).hidden && ! stagingBusy ) {
+			loadStaging();
+		}
 		if ( which === 'options' && ! $( 'siteferry-export-form' ).hidden && ! space ) {
 			loadSpace( false ); // Measured once the options are opened, not on every page load.
 		}
 		if ( which && drawers[ which ] && ! $( drawers[ which ][ 0 ] ).hidden ) {
 			closePanels( 'drawers' );
+		}
+	}
+
+	// ------------------------------------------------------------ Staging copy
+
+	let stagingBusy = false;
+
+	/** The staging copy (or the form to make one, or why one cannot be made here). */
+	async function loadStaging() {
+		try {
+			renderStaging( await api( 'GET', 'staging' ) );
+		} catch ( error ) {
+			stagingResult( false, [ el( 'p', { text: error.message } ) ] );
+		}
+	}
+
+	function stagingResult( ok, nodes ) {
+		const box = $( 'siteferry-staging-result' );
+		box.className = 'sf-result' + ( ok === true ? ' is-done' : ok === false ? ' is-failed' : '' );
+		box.replaceChildren( ...nodes );
+		box.hidden = ! nodes.length;
+	}
+
+	function renderStaging( info ) {
+		const record = info.record;
+		const current = $( 'siteferry-staging-current' );
+		const form = $( 'siteferry-staging-form' );
+		const blocked = $( 'siteferry-staging-blocked' );
+		$( 'siteferry-staging-base' ).textContent = info.home + '/';
+		blocked.hidden = true;
+		if ( record ) {
+			form.hidden = true;
+			const states = {
+				ready: __( 'Ready', 'siteferry' ),
+				building: __( 'Being made', 'siteferry' ),
+				failed: __( 'Not finished', 'siteferry' ),
+				deleting: __( 'Being deleted', 'siteferry' ),
+			};
+			const rows = [
+				[ __( 'Address', 'siteferry' ), el( 'a', { href: record.url + '/', target: '_blank', rel: 'noopener', text: record.url } ) ],
+				[ __( 'Made', 'siteferry' ), date( record.created ) ],
+				[ __( 'Size', 'siteferry' ), record.bytes ? bytes( record.bytes ) : '—' ],
+				[ __( 'Where', 'siteferry' ), sprintf( /* translators: 1: a folder, 2: a database table prefix */ __( 'folder %1$s, tables %2$s…', 'siteferry' ), record.folder, record.prefix ) ],
+				[ __( 'Media', 'siteferry' ), record.media ? __( 'copied', 'siteferry' ) : __( 'left out', 'siteferry' ) ],
+			];
+			const parts = [
+				el( 'p', { class: 'sf-staging-state' }, [ el( 'strong', { text: __( 'Staging copy', 'siteferry' ) } ), ' ', el( 'span', { class: 'sf-pill is-' + record.status, text: states[ record.status ] || record.status } ) ] ),
+				el( 'table', { class: 'sf-facts-table' }, [ el( 'tbody', {}, rows.map( ( [ k, v ] ) => el( 'tr', {}, [ el( 'th', { scope: 'row', text: k } ), el( 'td', {}, [ v ] ) ] ) ) ) ] ),
+			];
+			if ( record.status === 'ready' ) {
+				parts.push(
+					el( 'p', { class: 'sf-actions' }, [
+						el( 'a', { class: 'button button-primary', href: record.url + '/', target: '_blank', rel: 'noopener', text: __( 'Open the copy', 'siteferry' ) } ),
+						el( 'a', { class: 'button', href: record.url + '/wp-admin/', target: '_blank', rel: 'noopener', text: __( 'Open its dashboard', 'siteferry' ) } ),
+					] )
+				);
+				parts.push( el( 'p', { class: 'description', text: __( 'Sign in there with the same user name and password as here. Outgoing email is held back; the STAGING badge in its admin bar can turn it on.', 'siteferry' ) } ) );
+			} else if ( record.status === 'failed' ) {
+				parts.push( el( 'p', { text: __( 'Making this copy did not finish. Delete it, then make a new one.', 'siteferry' ) } ) );
+			}
+			if ( record.nginx ) {
+				parts.push(
+					el( 'details', { class: 'sf-more' }, [
+						el( 'summary', { text: __( 'Links inside the copy show the live site, or "not found"?', 'siteferry' ) } ),
+						el( 'p', { text: __( 'This server runs nginx, which does not read .htaccess files. For pretty permalinks in the copy, add this rule to the site\'s nginx configuration (or ask your host), before the rule for "/":', 'siteferry' ) } ),
+						el( 'pre', { class: 'sf-code', text: record.nginx } ),
+					] )
+				);
+			}
+			parts.push( el( 'p', { class: 'sf-actions' }, [ el( 'button', { type: 'button', class: 'button-link button-link-delete', text: __( 'Delete the staging copy', 'siteferry' ), onclick: () => deleteStaging( record ) } ) ] ) );
+			parts.push( el( 'p', { class: 'description', text: __( 'Later: copying changes from the copy back to the live site.', 'siteferry' ) } ) );
+			current.replaceChildren( ...parts );
+			current.hidden = false;
+			return;
+		}
+		current.hidden = true;
+		if ( info.blockers.length ) {
+			form.hidden = true;
+			blocked.replaceChildren( el( 'p', {}, [ el( 'strong', { text: __( 'A staging copy cannot be made on this site:', 'siteferry' ) } ) ] ), el( 'ul', {}, info.blockers.map( ( reason ) => el( 'li', { text: reason } ) ) ) );
+			blocked.hidden = false;
+			return;
+		}
+		form.hidden = false;
+		$( 'siteferry-staging-estimate' ).textContent = sprintf(
+			/* translators: %s: a size, such as 12 MB */
+			__( 'The database tables come to about %s; the files are measured when the copy starts, and it stops before copying if the disk is too full.', 'siteferry' ),
+			bytes( info.db_bytes )
+		);
+	}
+
+	async function createStaging( event ) {
+		event.preventDefault();
+		const folder = $( 'siteferry-staging-folder' ).value.trim().toLowerCase();
+		if ( ! /^[a-z0-9][a-z0-9-]{0,29}$/.test( folder ) ) {
+			stagingResult( false, [ el( 'p', { text: __( 'Use 1 to 30 lower-case letters, digits or hyphens for the folder name.', 'siteferry' ) } ) ] );
+			return;
+		}
+		stagingResult( null, [] );
+		$( 'siteferry-staging-create' ).disabled = true;
+		try {
+			const started = await api( 'POST', 'staging', { json: { folder, no_media: $( 'siteferry-staging-no-media' ).checked } } );
+			store.set( JOB_KEY, { id: started.job.id, type: started.job.type, token: started.token } );
+			$( 'siteferry-staging-form' ).hidden = true;
+			await runStaging( started.job.id, started.token, false );
+		} catch ( error ) {
+			stagingResult( false, [ el( 'p', { text: error.message } ) ] );
+		} finally {
+			$( 'siteferry-staging-create' ).disabled = false;
+		}
+	}
+
+	async function deleteStaging( record ) {
+		// eslint-disable-next-line no-alert
+		if ( ! window.confirm( sprintf( /* translators: 1: address of the staging copy, 2: a folder, 3: a database table prefix */ __( 'Delete the staging copy at %1$s? Its folder %2$s and its database tables %3$s… are removed. The live site is not touched. This cannot be undone.', 'siteferry' ), record.url, record.folder, record.prefix ) ) ) {
+			return;
+		}
+		stagingResult( null, [] );
+		try {
+			const started = await api( 'POST', 'staging/delete' );
+			store.set( JOB_KEY, { id: started.job.id, type: started.job.type, token: started.token } );
+			$( 'siteferry-staging-current' ).hidden = true;
+			await runStaging( started.job.id, started.token, true );
+		} catch ( error ) {
+			stagingResult( false, [ el( 'p', { text: error.message } ) ] );
+		}
+	}
+
+	/** Drives a staging job (making or deleting the copy) with the ferry, then shows the outcome. */
+	async function runStaging( id, token, deleting ) {
+		stagingBusy = true;
+		const view = progressView( 'siteferry-staging-progress', deleting ? [ __( 'Staging copy', 'siteferry' ), __( 'Gone', 'siteferry' ) ] : [ __( 'This site', 'siteferry' ), __( 'Staging copy', 'siteferry' ) ] );
+		view.start( deleting ? __( 'Deleting the staging copy...', 'siteferry' ) : __( 'Making the staging copy...', 'siteferry' ) );
+		try {
+			const job = await driveJob( id, token, progressHandler( view ) );
+			store.remove( JOB_KEY );
+			if ( job.status === 'done' ) {
+				view.finish( true, deleting ? __( 'Staging copy deleted', 'siteferry' ) : __( 'Staging copy ready', 'siteferry' ), [] );
+				notice( deleting ? __( 'The staging copy was deleted.', 'siteferry' ) : __( 'The staging copy is ready.', 'siteferry' ), 'success' );
+			} else {
+				view.finish( false, __( 'Stopped', 'siteferry' ), [ el( 'p', { text: job.error || job.status } ) ] );
+			}
+		} catch ( error ) {
+			view.finish( false, __( 'Stopped', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
+		} finally {
+			stagingBusy = false;
+			await loadStaging();
 		}
 	}
 
@@ -6237,6 +6396,9 @@
 			showTab( 'backups' );
 			if ( active.type === 'send' || active.type === 'fetch' || active.type === 'check' ) {
 				await runTransfer( active.id, token, __( 'Resuming...', 'siteferry' ) );
+			} else if ( active.type === 'staging' || active.type === 'staging-delete' ) {
+				toggleDrawer( 'staging', true );
+				await runStaging( active.id, token, active.type === 'staging-delete' );
 			} else if ( active.type === 'export' ) {
 				const view = progressView( 'siteferry-job-progress' );
 				view.start( __( 'Resuming the backup...', 'siteferry' ) );
@@ -6290,6 +6452,17 @@
 		$( 'siteferry-move-toggle' ).addEventListener( 'click', () => toggleDrawer( 'move' ) );
 		$( 'siteferry-kit-toggle' ).addEventListener( 'click', () => toggleDrawer( 'kit' ) );
 		$( 'siteferry-kit-form' ).addEventListener( 'submit', makeKit );
+		$( 'siteferry-staging-toggle' ).addEventListener( 'click', () => toggleDrawer( 'staging' ) );
+		$( 'siteferry-staging-form' ).addEventListener( 'submit', createStaging );
+		if ( cfg.stagingOf ) {
+			notice(
+				sprintf(
+					/* translators: %s: address of the live site */
+					__( 'This is a staging copy of %s. SiteFerry\'s storage, schedule and backups before updates stay with the live site.', 'siteferry' ),
+					cfg.stagingOf
+				)
+			);
+		}
 		$( 'siteferry-kit-list' ).addEventListener( 'click', ( event ) => {
 			const button = event.target.closest( 'button[data-kit]' );
 			if ( button ) {
