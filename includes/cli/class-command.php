@@ -755,6 +755,91 @@ final class Command {
 	}
 
 	/**
+	 * The after-move checklist: what to look at once a site has been moved here, or one of its fixes.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--fix=<item>]
+	 * : Run this fix: old_address, mixed_content, permalinks, caches, search or email.
+	 *
+	 * [--yes]
+	 * : Do not ask for confirmation (needed with --json or --porcelain).
+	 *
+	 * [--porcelain]
+	 * : With --fix: print only the outcome (the number of rows changed, or "done").
+	 *
+	 * [--format=<format>]
+	 * : Without --fix: table (default), json or yaml. With --fix: json prints one JSON object.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp siteferry checklist
+	 *     wp siteferry checklist --format=json
+	 *     wp siteferry checklist --fix=old_address --yes
+	 *
+	 * @param string[] $args       Positional arguments (none).
+	 * @param array    $assoc_args Options.
+	 */
+	public function checklist( $args, $assoc_args ): void {
+		unset( $args );
+		$item = (string) \WP_CLI\Utils\get_flag_value( $assoc_args, 'fix', '' );
+		if ( '' === $item ) {
+			$format = Output::list_format( $assoc_args, array( 'table', 'json', 'yaml' ) );
+			$report = \SiteFerry\Checklist::report( null, false );
+			if ( 'json' === $format ) {
+				WP_CLI::line( Output::encode( $report ) );
+				return;
+			}
+			$rows = array_map(
+				static function ( array $one ): array {
+					return array(
+						'id'     => $one['id'],
+						'state'  => $one['state'],
+						'title'  => $one['title'],
+						'detail' => $one['detail'],
+						'fix'    => null === $one['fix'] ? '' : $one['fix']['id'],
+					);
+				},
+				$report['items']
+			);
+			\WP_CLI\Utils\format_items( $format, $rows, array( 'id', 'state', 'title', 'detail', 'fix' ) );
+			return;
+		}
+
+		$mode = Output::mode( $assoc_args );
+		if ( ! \SiteFerry\Checklist::fixable( $item ) ) {
+			Output::fail( $mode, sprintf( 'Unknown fix "%s". Use: %s.', $item, implode( ', ', array_keys( \SiteFerry\Checklist::FIX_CAPS ) ) ) );
+		}
+		if ( Output::HUMAN !== $mode && empty( $assoc_args['yes'] ) ) {
+			Output::fail( $mode, '--json and --porcelain need --yes (they cannot ask for confirmation).' );
+		}
+		$confirm = '';
+		foreach ( \SiteFerry\Checklist::report( null, false )['items'] as $one ) {
+			if ( $one['id'] === $item && null !== $one['fix'] ) {
+				$confirm = $one['fix']['confirm'];
+			}
+		}
+		WP_CLI::confirm( '' === $confirm ? sprintf( 'Run the checklist fix "%s"?', $item ) : $confirm, $assoc_args );
+		try {
+			$result = \SiteFerry\Checklist::fix( $item );
+		} catch ( \SiteFerry\Jobs\Job_Exception $e ) {
+			Output::fail( $mode, $e->getMessage() );
+			return;
+		}
+		if ( ! isset( $result['job'] ) ) {
+			Output::done( $mode, array( 'item' => $item, 'message' => (string) $result['done'] ), 'done', (string) $result['done'] );
+			return;
+		}
+		$job = $result['job'];
+		self::drive( $job, Output::HUMAN !== $mode );
+		if ( Job::STATUS_DONE !== $job->status() ) {
+			Output::fail( $mode, 'The fix did not finish: ' . (string) $job->error() );
+		}
+		$rows = (int) ( $job->result()['checklist']['rows'] ?? 0 );
+		Output::done( $mode, array( 'item' => $item, 'rows' => $rows ), (string) $rows, sprintf( '%d rows changed.', $rows ), $job->warnings() );
+	}
+
+	/**
 	 * Lists SiteFerry's activity: backups, restores, uploads, downloads, checks and staging copies,
 	 * newest first.
 	 *
@@ -764,7 +849,7 @@ final class Command {
 	 * : Only from this day on (YYYY-MM-DD, in the site's time zone).
 	 *
 	 * [--type=<type>]
-	 * : Only this kind: export, import, send, fetch, check, staging or staging-delete.
+	 * : Only this kind: export, import, send, fetch, check, staging, staging-delete or checklist.
 	 *
 	 * [--format=<format>]
 	 * : Output format. csv is the same file as "Download CSV" on the Activity tab.

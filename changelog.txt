@@ -1,6 +1,11 @@
 SiteFerry changelog
 ===================
 
+= 0.46.0 =
+* After-move checklist: "Check the site" on the Backups tab checks what often goes wrong after a move or restore: the site address against the address in the browser, content still pointing to the old address or old server paths (with counts per kind), http links to the site's own address on an https site, permalinks, scheduled tasks (a safe check that the site can reach its own wp-cron.php), email (send a test to the site's admin address), object and page caches, search engine visibility and the uploads folder. Fixes run only when clicked: replace the old addresses (serialized data stays whole; as a job with progress), switch own links to https, refresh permalinks, clear the object cache, allow search engines. For 14 days after a move to a new address, a "Check the moved site" card on the Backups tab offers it (dismissible).
+* WP-CLI: `wp siteferry checklist [--fix=<item>] [--yes] [--format=table|json|yaml]`.
+* Developer hook: filter siteferry_checklist_items adds your own checklist items (shown only).
+
 = 0.45.2 =
 * Google Drive: before signing in, the folder button is no longer greyed out. "Sign in to choose a folder" signs in with Google and then opens the folder picker straight away.
 

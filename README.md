@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.45.2-f97316" alt="Version 0.45.2">
+  <img src="https://img.shields.io/badge/version-0.46.0-f97316" alt="Version 0.46.0">
   <a href="https://xsofty.com/products/siteferry"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -138,6 +138,9 @@ large sites, low PHP time limits and dropped connections don't break a backup or
   backup travels encrypted.
 - **Staging site in one click**: a copy in a subfolder with its own database tables, a STAGING
   badge, no search engine indexing and outgoing email held back. Delete it with one click.
+- **After-move checklist**: checks the address, links still pointing to the old site, mixed
+  content, permalinks, WP-Cron, email, caches, search engine visibility and uploads, with one-click
+  fixes (`wp siteferry checklist` too).
 - **.wpress import and export** for moving sites from All-in-One WP Migration.
 
 </details>
@@ -332,6 +335,7 @@ wp siteferry staging create|status|delete
 wp siteferry move <key> · wp siteferry receive
 wp siteferry activity [--since=<date>] [--format=csv]
 wp siteferry space
+wp siteferry checklist [--fix=<item>]
 ```
 
 </details>
@@ -339,7 +343,7 @@ wp siteferry space
 Developer hooks include `siteferry_export_started`, `siteferry_export_done`,
 `siteferry_import_started`, `siteferry_import_done`, `siteferry_backup_sent`,
 `siteferry_job_failed`, and the filters `siteferry_export_exclusions`,
-`siteferry_manifest_extra` and `siteferry_backup_name_label`. See [`docs/hooks.md`](docs/hooks.md).
+`siteferry_manifest_extra`, `siteferry_backup_name_label` and `siteferry_checklist_items`. See [`docs/hooks.md`](docs/hooks.md).
 
 ## Security and privacy
 

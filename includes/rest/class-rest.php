@@ -88,6 +88,7 @@ final class Rest {
 		$stop     = array( self::class, 'can_stop_job' );
 		$confirm  = array( self::class, 'can_confirm' );
 		$key      = array( self::class, 'can_receive' );
+		$fix      = array( self::class, 'can_fix_checklist' );
 
 		$routes = array(
 			array( '/status', WP_REST_Server::READABLE, 'status', $view ),
@@ -153,6 +154,9 @@ final class Rest {
 			array( '/staging', WP_REST_Server::READABLE, 'staging', $view ),
 			array( '/staging', WP_REST_Server::CREATABLE, 'start_staging', $settings ),
 			array( '/staging/delete', WP_REST_Server::CREATABLE, 'delete_staging', $restore ),
+			array( '/checklist', WP_REST_Server::READABLE, 'checklist', $view ),
+			array( '/checklist/dismiss', WP_REST_Server::CREATABLE, 'dismiss_checklist', $view ),
+			array( '/checklist/fix/(?P<item>[a-z_]{1,20})', WP_REST_Server::CREATABLE, 'fix_checklist', $fix ),
 			array( '/choices', WP_REST_Server::CREATABLE, 'save_choices', $backup ),
 			array( '/choices', WP_REST_Server::DELETABLE, 'reset_choices', $backup ),
 			array( '/receive', WP_REST_Server::READABLE, 'receive_status', $settings ),
@@ -416,6 +420,7 @@ final class Rest {
 			'home'     => home_url(),
 			'active'   => null === $active ? null : $active->summary(),
 			'undo'     => Import::undo_point(),
+			'checklist' => \SiteFerry\Checklist::card(),
 			'uploads'  => array_map(
 				static function ( Upload $upload ): array {
 					return $upload->to_array();
@@ -707,6 +712,51 @@ final class Rest {
 			'job'   => $job->summary(),
 			'token' => $token,
 		);
+	}
+
+	/**
+	 * The after-move checklist, compared with the address this request came in on.
+	 */
+	public static function checklist(): array {
+		$host   = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : null;
+		$report = \SiteFerry\Checklist::report( $host, is_ssl() );
+		$report['card'] = \SiteFerry\Checklist::card();
+		return $report;
+	}
+
+	/**
+	 * Hides the "Check the moved site" card for this user until the next move.
+	 */
+	public static function dismiss_checklist(): array {
+		\SiteFerry\Checklist::dismiss();
+		return array( 'dismissed' => true );
+	}
+
+	/**
+	 * Runs one checklist fix: search and replace as a job, the others at once.
+	 *
+	 * @param WP_REST_Request $request Request with "item".
+	 */
+	public static function fix_checklist( WP_REST_Request $request ): array {
+		$result = \SiteFerry\Checklist::fix( (string) $request['item'] );
+		if ( isset( $result['job'] ) ) {
+			return array(
+				'job'   => $result['job']->summary(),
+				'token' => $result['token'],
+			);
+		}
+		return array( 'done' => (string) $result['done'] );
+	}
+
+	/**
+	 * Whether the user may run this checklist fix: content changes need restore, settings need
+	 * settings; unknown items are refused.
+	 *
+	 * @param WP_REST_Request $request Request with "item".
+	 */
+	public static function can_fix_checklist( WP_REST_Request $request ): bool {
+		$item = (string) $request['item'];
+		return \SiteFerry\Checklist::fixable( $item ) && Caps::can( \SiteFerry\Checklist::FIX_CAPS[ $item ] );
 	}
 
 	/**

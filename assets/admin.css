@@ -3897,3 +3897,52 @@ details.sf-dest[open] > .sf-dest-head::after {
 .siteferry .sf-reminder p {
 	margin: 4px 0;
 }
+/* ------------------------------------------------------------ after-move checklist */
+
+.siteferry .sf-pv-tag.is-info {
+	background: var(--sf-fog);
+	color: var(--sf-ink-soft);
+}
+
+.siteferry .sf-pv-tag.is-bad {
+	background: var(--sf-port-wash);
+	color: var(--sf-port);
+}
+
+.siteferry .sf-check-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 8px;
+}
+
+.siteferry .sf-check-head #siteferry-checklist-run {
+	margin-left: auto;
+}
+
+.siteferry .sf-checks li {
+	padding: 10px 0;
+}
+
+.siteferry .sf-check-title {
+	font-weight: 600;
+	color: var(--sf-ink);
+}
+
+.siteferry .sf-check-detail,
+.siteferry .sf-check-fix {
+	flex-basis: 100%;
+	margin: 0;
+	font-size: 13px;
+	color: var(--sf-ink-soft);
+	overflow-wrap: anywhere;
+}
+
+.siteferry .sf-checks[aria-busy="true"] {
+	opacity: 0.6;
+}
+
+.sf-checklist-card {
+	border-left-color: var(--sf-amber);
+}

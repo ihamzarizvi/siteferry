@@ -190,6 +190,7 @@ final class Admin {
 							<button type="button" class="button sf-btn" id="siteferry-move-toggle" aria-expanded="false" aria-controls="siteferry-move"><span class="dashicons dashicons-migrate" aria-hidden="true"></span><?php esc_html_e( 'Move a site', 'siteferry' ); ?></button>
 							<button type="button" class="button sf-btn" id="siteferry-kit-toggle" aria-expanded="false" aria-controls="siteferry-kit"><span class="dashicons dashicons-sos" aria-hidden="true"></span><?php esc_html_e( 'Emergency kit', 'siteferry' ); ?></button>
 							<button type="button" class="button sf-btn" id="siteferry-staging-toggle" aria-expanded="false" aria-controls="siteferry-staging"><span class="dashicons dashicons-admin-multisite" aria-hidden="true"></span><?php esc_html_e( 'Staging', 'siteferry' ); ?></button>
+							<button type="button" class="button sf-btn" id="siteferry-checklist-toggle" aria-expanded="false" aria-controls="siteferry-checklist"><span class="dashicons dashicons-yes-alt" aria-hidden="true"></span><?php esc_html_e( 'Check the site', 'siteferry' ); ?></button>
 							<?php if ( ! is_multisite() ) : ?>
 								<button type="button" class="button sf-btn" id="siteferry-access-toggle" aria-expanded="false" aria-controls="siteferry-access"><span class="dashicons dashicons-groups" aria-hidden="true"></span><?php esc_html_e( 'Who can use it', 'siteferry' ); ?></button>
 							<?php endif; ?>
@@ -451,7 +452,14 @@ final class Admin {
 						<div id="siteferry-staging-blocked" class="sf-result is-failed" hidden></div>
 						<div id="siteferry-staging-progress" class="sf-progress" hidden></div>
 						<div class="sf-result" id="siteferry-staging-result" role="status" hidden></div>
-					</div>				</div>
+					</div>
+					<div id="siteferry-checklist" class="sf-drawer sf-checklist" hidden>
+						<p class="sf-drawer-note"><?php esc_html_e( 'Checks what often goes wrong after a site is moved or restored: its address, links to the old address, permalinks, scheduled tasks, email, caches, search engines and the uploads folder. Fixes run only when you click them.', 'siteferry' ); ?></p>
+						<p class="sf-check-head"><span id="siteferry-checklist-summary" aria-live="polite"></span> <button type="button" class="button button-small" id="siteferry-checklist-run"><?php esc_html_e( 'Check again', 'siteferry' ); ?></button></p>
+						<ul class="sf-pv-list sf-checks" id="siteferry-checklist-list"></ul>
+						<div id="siteferry-checklist-progress" class="sf-progress" hidden></div>
+					</div>
+				</div>
 
 				<dialog class="sf-dialog" id="siteferry-parts-dialog" aria-labelledby="siteferry-parts-dialog-title">
 					<form method="dialog" class="sf-dialog-form">
@@ -488,6 +496,8 @@ final class Admin {
 				</dialog>
 
 				<div class="sf-undo" id="siteferry-undo" role="status" hidden></div>
+
+				<div class="sf-undo sf-checklist-card" id="siteferry-checklist-card" role="status" hidden></div>
 
 				<div class="sf-progress" id="siteferry-job-progress" hidden></div>
 

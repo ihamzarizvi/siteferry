@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.45.2
+Stable tag: 0.46.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -177,6 +177,7 @@ start the move, SiteFerry sends this site's encrypted backup to the address in t
 * `wp siteferry backups list|check|compare|delete|recheck`, `wp siteferry activity`, `wp siteferry space`
 * `wp siteferry storage test|list|send|fetch|delete <id> ...` (s3, ftp, gdrive, dropbox; settings come from the Storage tab)
 * `wp siteferry schedule show|run`, `wp siteferry staging create|status|delete`, `wp siteferry receive`, `wp siteferry move <key>`
+* `wp siteferry checklist [--fix=<item>]` (the after-move checklist)
 
 Output for scripts, the same everywhere: commands that list or report take `--format=table|csv|json|yaml|count` (sizes are bytes outside tables); commands that do something take `--porcelain` (only the key result, such as the backup's path) and `--json` (one JSON object with `"ok"`, the result and `"warnings"`; WP-CLI treats it as `--format=json`, so on export, choose a .wpress file with `--archive=wpress` then). In those modes nothing else is printed, and a failure with `--json` prints `{"ok":false,"error":"..."}`. Exit code: 0 on success, 1 on any error. Shared field names: name, path, size, created (UTC), place ("local" or a storage id), status. Commands that would ask for confirmation need `--yes` with `--json` or `--porcelain`. WP-CLI runs with the server's rights, so SiteFerry's role settings do not apply to it. `wp help siteferry <command>` lists every option.
 
@@ -184,7 +185,7 @@ Output for scripts, the same everywhere: commands that list or report take `--fo
 
 Actions: `siteferry_export_started( $job )`, `siteferry_export_done( $job, $result )` (file, name, size, files, bytes, base), `siteferry_import_started( $job )`, `siteferry_import_done( $job, $imported )`, `siteferry_backup_sent( $job, $sent )` (name, where, destination; once per storage), `siteferry_job_failed( $job, $error )` (any SiteFerry job, after its cleanup). A callback that throws is logged in the job's log and never stops a backup or restore.
 
-Filters: `siteferry_export_exclusions( $paths, $options )` (paths inside wp-content to leave out; SiteFerry's own and other backup plugins' folders are always left out), `siteferry_manifest_extra( $extra, $job )` (your data in the backup's manifest under "extra"; use your plugin's slug as the key; JSON values, at most 64 KB each), `siteferry_backup_name_label( $label, $home )` (the site part of backup file names: letters, digits, hyphens), `siteferry_move_export_options( $options )`, `siteferry_update_backup_seconds( $seconds, $item )`, `siteferry_relay_url( $url )`.
+Filters: `siteferry_export_exclusions( $paths, $options )` (paths inside wp-content to leave out; SiteFerry's own and other backup plugins' folders are always left out), `siteferry_manifest_extra( $extra, $job )` (your data in the backup's manifest under "extra"; use your plugin's slug as the key; JSON values, at most 64 KB each), `siteferry_backup_name_label( $label, $home )` (the site part of backup file names: letters, digits, hyphens), `siteferry_checklist_items( $items, $move )` (your own after-move checklist items: id, title, state ok|info|warn|fail, detail; shown only), `siteferry_move_export_options( $options )`, `siteferry_update_backup_seconds( $seconds, $item )`, `siteferry_relay_url( $url )`.
 
 Example: `add_filter( 'siteferry_export_exclusions', function ( $paths ) { $paths[] = 'uploads/big-videos'; return $paths; } );`
 
@@ -527,6 +528,11 @@ with that version.
 
 == Changelog ==
 
+= 0.46.0 =
+* After-move checklist: "Check the site" on the Backups tab checks what often goes wrong after a move or restore: the site address against the address in the browser, content still pointing to the old address or old server paths (with counts per kind), http links to the site's own address on an https site, permalinks, scheduled tasks (a safe check that the site can reach its own wp-cron.php), email (send a test to the site's admin address), object and page caches, search engine visibility and the uploads folder. Fixes run only when clicked: replace the old addresses (serialized data stays whole; as a job with progress), switch own links to https, refresh permalinks, clear the object cache, allow search engines. For 14 days after a move to a new address, a "Check the moved site" card on the Backups tab offers it (dismissible).
+* WP-CLI: `wp siteferry checklist [--fix=<item>] [--yes] [--format=table|json|yaml]`.
+* Developer hook: filter siteferry_checklist_items adds your own checklist items (shown only).
+
 = 0.45.2 =
 * Google Drive: before signing in, the folder button is no longer greyed out. "Sign in to choose a folder" signs in with Google and then opens the folder picker straight away.
 
@@ -556,10 +562,5 @@ with that version.
 
 = 0.42.0 =
 * Who can use SiteFerry: four capabilities (see backups and activity; make backups; restore; settings) that "Who can use it" on the Backups tab gives to other roles, with plain warnings about what each allows. Administrators always have all of them. Every REST route checks the matching one, and the page hides what a user may not do. On a network only network administrators use SiteFerry, as before; WP-CLI is not limited. Uninstalling removes the capabilities from every role.
-
-= 0.41.0 =
-* Activity: "Download CSV" saves the whole activity list as a spreadsheet file: time (site time zone and UTC), kind, backup, result, duration, size, where, who started it and the message. Opens correctly in Excel (UTF-8); cells that a spreadsheet would treat as formulas are made plain text.
-* WP-CLI: `wp siteferry activity [--since=<YYYY-MM-DD>] [--type=<kind>] [--format=table|csv|json]`.
-* Jobs now record who started them (a user, WP-CLI, the schedule or an automatic backup).
 
 Older versions: see changelog.txt in the plugin folder.

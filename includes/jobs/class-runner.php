@@ -55,6 +55,7 @@ final class Runner {
 		'staging.fix'     => \SiteFerry\Staging\Fix_Step::class,
 		'staging.finish'  => \SiteFerry\Staging\Finish_Step::class,
 		'staging.delete'  => \SiteFerry\Staging\Delete_Step::class,
+		'checklist.replace' => \SiteFerry\Checklist_Step::class,
 	);
 
 	/**

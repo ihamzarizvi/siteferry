@@ -78,7 +78,7 @@ Sf_Test::run(
 		$source = (string) file_get_contents( dirname( __DIR__ ) . '/includes/rest/class-rest.php' );
 		preg_match_all( "/array\\( '(\\/[^']*)'[^;]*?WP_REST_Server::[A-Z]+, '([a-z_]+)', \\$(\\w+) \\)/", $source, $routes, PREG_SET_ORDER );
 		Sf_Test::ok( count( $routes ) > 60, 'routes found: ' . count( $routes ) );
-		$allowed = array( 'view', 'backup', 'restore', 'settings', 'job', 'stop', 'confirm', 'key' );
+		$allowed = array( 'view', 'backup', 'restore', 'settings', 'job', 'stop', 'confirm', 'key', 'fix' );
 		$expect  = array(
 			'start_import'   => 'restore',
 			'delete_backup'  => 'restore',
@@ -100,6 +100,8 @@ Sf_Test::run(
 			'cancel'         => 'stop',
 			'confirm'        => 'confirm',
 			'move_chunk'     => 'key',
+			'fix_checklist'  => 'fix',
+			'checklist'      => 'view',
 		);
 		foreach ( $routes as list( , $path, $callback, $guard ) ) {
 			Sf_Test::ok( in_array( $guard, $allowed, true ), $path . ' (' . $callback . ') is guarded by $' . $guard );

@@ -7,7 +7,7 @@ action callback throws: a failing callback is written to the job's log (`job.log
 backup, restore or transfer.
 
 `$job` is a `SiteFerry\Jobs\Job`. Useful methods: `id()`, `type()` (`export`, `import`, `send`,
-`fetch`, `check`, `staging`, `staging-delete`), `status()`, `option( $key )`, `result()`,
+`fetch`, `check`, `staging`, `staging-delete`, `checklist`), `status()`, `option( $key )`, `result()`,
 `created()`, `warnings()`, `path( 'job.log' )`.
 
 ## Actions
@@ -105,6 +105,29 @@ add_filter( 'siteferry_manifest_extra', function ( $extra ) {
 The site part of a backup file name (`<label>-<YYYY-MM-DD>-<random>.tar`). The result is reduced to
 lower-case letters, digits and hyphens, at most 40 characters; an empty result keeps the default.
 
+### `siteferry_checklist_items`
+
+`apply_filters( 'siteferry_checklist_items', array $items, ?array $move )`
+
+Extra items for the after-move checklist (SiteFerry page, "Check the site", and
+`wp siteferry checklist`). Return a list of arrays with `id` (lower-case letters, digits, `_` or
+`-`, not one of SiteFerry's own), `title`, `state` (`ok`, `info`, `warn` or `fail`) and `detail`
+(one or two plain sentences). Items are shown only; SiteFerry never runs a fix for them. `$move` is
+the last move that changed the site's address (`from`, `to` with `home`, `siteurl` and paths,
+`time`), or null.
+
+```php
+add_filter( 'siteferry_checklist_items', function ( $items ) {
+	$items[] = array(
+		'id'     => 'my-cdn',
+		'title'  => 'CDN',
+		'state'  => get_option( 'my_cdn_url' ) ? 'ok' : 'warn',
+		'detail' => 'Point the CDN at the new address.',
+	);
+	return $items;
+} );
+```
+
 ### Other filters
 
 - `siteferry_move_export_options( array $options )`: the export options of a site-to-site move.
@@ -122,7 +145,7 @@ lower-case letters, digits and hyphens, at most 40 characters; an empty result k
   take table, json or yaml; `space` and `backups compare` take table or json). Outside a table,
   sizes are bytes.
 - Commands that do something (`export`, `import`, `move`, `receive`, `backups check|delete|recheck`,
-  `storage test|send|fetch|delete`, `schedule run`, `staging create|delete`) take `--porcelain`
+  `storage test|send|fetch|delete`, `schedule run`, `staging create|delete`, `checklist --fix`) take `--porcelain`
   (print only the key result) and `--json` (one JSON object). WP-CLI turns `--json` into
   `--format=json`; on `export`, whose `--format` also takes tar or wpress, `--archive=wpress` then
   chooses the kind of file.

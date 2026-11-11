@@ -80,6 +80,11 @@ final class Finish_Step implements Step {
 			delete_option( Import::UNDO_OPTION );
 		}
 
+		// A move that changed the address: the checklist looks for what still points to the old site.
+		if ( '' === (string) $job->option( 'new_site', '' ) && ! $partial ) {
+			\SiteFerry\Checklist::record_move( (array) $inspect['source'], (array) $inspect['target'] );
+		}
+
 		$job->set_progress( __( 'Import complete', 'siteferry' ), 1, 1 );
 		$job->log( 'info', 'Import complete; rollback copies removed.' );
 		\SiteFerry\Hooks::action( 'siteferry_import_done', $job, $job->result()['imported'] );

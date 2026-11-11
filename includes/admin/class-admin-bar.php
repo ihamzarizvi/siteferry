@@ -130,6 +130,8 @@ final class Admin_Bar {
 				return __( 'Staging copy', 'siteferry' );
 			case 'staging-delete':
 				return __( 'Deleting the staging copy', 'siteferry' );
+			case 'checklist':
+				return __( 'Updating addresses', 'siteferry' );
 			default:
 				return __( 'SiteFerry job', 'siteferry' );
 		}

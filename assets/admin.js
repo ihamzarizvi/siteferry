@@ -21,6 +21,7 @@
 		check: __( 'A check of a backup', 'siteferry' ),
 		staging: __( 'A staging copy', 'siteferry' ),
 		'staging-delete': __( 'Deleting the staging copy', 'siteferry' ),
+		checklist: __( 'Updating addresses from the checklist', 'siteferry' ),
 	};
 	const JOB_TYPES = {
 		export: __( 'Backup', 'siteferry' ),
@@ -30,6 +31,7 @@
 		check: __( 'Check of a backup', 'siteferry' ),
 		staging: __( 'Staging copy', 'siteferry' ),
 		'staging-delete': __( 'Delete staging copy', 'siteferry' ),
+		checklist: __( 'Update addresses (checklist)', 'siteferry' ),
 	};
 	const JOB_STATES = {
 		pending: [ __( 'Not started', 'siteferry' ), 'is-busy' ],
@@ -3736,6 +3738,7 @@
 					  ]
 					: [] ),
 				el( 'p', { text: moved ? __( 'Log in with one of that site’s users.', 'siteferry' ) : __( 'You may need to log in again.', 'siteferry' ) } ),
+				...( moved && ! r.partial ? [ el( 'p', { text: __( 'After you log in, the Backups tab offers a short checklist for the moved site: its address, old links, permalinks, email and caches.', 'siteferry' ) } ) ] : [] ),
 				el( 'p', { class: 'sf-actions' }, [ el( 'a', { class: 'button button-primary', href: cfg.loginUrl, text: __( 'Log in', 'siteferry' ) } ) ] ),
 				...warningList( job ),
 			] );
@@ -6625,6 +6628,7 @@
 			move: [ 'siteferry-move', 'siteferry-move-toggle' ],
 			kit: [ 'siteferry-kit', 'siteferry-kit-toggle' ],
 			staging: [ 'siteferry-staging', 'siteferry-staging-toggle' ],
+			checklist: [ 'siteferry-checklist', 'siteferry-checklist-toggle' ],
 			access: [ 'siteferry-access', 'siteferry-access-toggle' ],
 		};
 		Object.keys( drawers ).forEach( ( key ) => {
@@ -6645,6 +6649,9 @@
 		}
 		if ( which === 'staging' && ! $( 'siteferry-staging' ).hidden && ! stagingBusy ) {
 			loadStaging();
+		}
+		if ( which === 'checklist' && ! $( 'siteferry-checklist' ).hidden && ! checklistBusy ) {
+			loadChecklist();
 		}
 		if ( which === 'access' && $( 'siteferry-access' ) && ! $( 'siteferry-access' ).hidden ) {
 			loadAccess();
@@ -6888,6 +6895,170 @@
 		}
 	}
 
+	// ------------------------------------------------------------ After-move checklist
+
+	let checklistBusy = false;
+
+	const CHECK_TAGS = {
+		ok: [ __( 'OK', 'siteferry' ), 'is-good' ],
+		info: [ __( 'Info', 'siteferry' ), 'is-info' ],
+		warn: [ __( 'Check', 'siteferry' ), 'is-warn' ],
+		fail: [ __( 'Problem', 'siteferry' ), 'is-bad' ],
+	};
+
+	/** Runs the checks and shows them. */
+	async function loadChecklist() {
+		if ( checklistBusy ) {
+			return;
+		}
+		const list = $( 'siteferry-checklist-list' );
+		list.setAttribute( 'aria-busy', 'true' );
+		$( 'siteferry-checklist-run' ).disabled = true;
+		$( 'siteferry-checklist-summary' ).textContent = __( 'Checking...', 'siteferry' );
+		try {
+			const report = await api( 'GET', 'checklist' );
+			renderChecklist( report );
+			renderChecklistCard( report.card );
+		} catch ( error ) {
+			$( 'siteferry-checklist-summary' ).textContent = error.message;
+		} finally {
+			list.removeAttribute( 'aria-busy' );
+			$( 'siteferry-checklist-run' ).disabled = false;
+		}
+	}
+
+	function renderChecklist( report ) {
+		const items = report.items || [];
+		const open = items.filter( ( item ) => item.state === 'warn' || item.state === 'fail' ).length;
+		const context = report.context;
+		$( 'siteferry-checklist-summary' ).textContent =
+			( context
+				? sprintf(
+						/* translators: 1: address the site was moved from, 2: when, such as today, 7:21 PM */
+						__( 'Last move: from %1$s, %2$s.', 'siteferry' ),
+						hostOf( context.from ),
+						when( context.time, true )
+				  ) + ' '
+				: '' ) +
+			( open
+				? sprintf(
+						/* translators: %d: number of checks that need a look */
+						_n( '%d thing needs a look.', '%d things need a look.', open, 'siteferry' ),
+						open
+				  )
+				: __( 'Everything checked looks fine.', 'siteferry' ) );
+		$( 'siteferry-checklist-list' ).replaceChildren(
+			...items.map( ( item ) => {
+				const [ label, cls ] = CHECK_TAGS[ item.state ] || CHECK_TAGS.info;
+				return el( 'li', { class: 'sf-check is-' + item.state }, [
+					el( 'span', { class: 'sf-check-title', text: item.title } ),
+					el( 'span', { class: 'sf-pv-tag ' + cls, text: label } ),
+					el( 'p', { class: 'sf-check-detail', text: item.detail } ),
+					...( item.fix ? [ el( 'p', { class: 'sf-check-fix' }, [ button( item.fix.label, () => runChecklistFix( item ), 'button button-small' ) ] ) ] : [] ),
+				] );
+			} )
+		);
+	}
+
+	/** One fix: a quick change, or a search-and-replace job with progress. */
+	async function runChecklistFix( item ) {
+		if ( checklistBusy || ( item.fix.confirm && ! window.confirm( item.fix.confirm ) ) ) {
+			return;
+		}
+		checklistBusy = true;
+		$( 'siteferry-checklist-run' ).disabled = true;
+		let started;
+		try {
+			started = await api( 'POST', 'checklist/fix/' + encodeURIComponent( item.id ) );
+		} catch ( error ) {
+			checklistBusy = false;
+			$( 'siteferry-checklist-run' ).disabled = false;
+			notice( error.message, 'error' );
+			return;
+		}
+		if ( started.job ) {
+			store.set( JOB_KEY, { id: started.job.id, type: started.job.type, token: started.token } );
+			await runChecklistJob( started.job.id, started.token );
+			return;
+		}
+		checklistBusy = false;
+		notice( started.done, 'success' );
+		await loadChecklist();
+	}
+
+	async function runChecklistJob( id, token ) {
+		checklistBusy = true;
+		const view = progressView( 'siteferry-checklist-progress', [ __( 'Old addresses', 'siteferry' ), __( 'This site', 'siteferry' ) ] );
+		view.start( __( 'Updating addresses...', 'siteferry' ) );
+		try {
+			const job = await driveJob( id, token, progressHandler( view ) );
+			store.remove( JOB_KEY );
+			if ( job.status === 'done' ) {
+				const rows = job.result && job.result.checklist ? job.result.checklist.rows : 0;
+				view.finish( true, __( 'Addresses updated', 'siteferry' ), [
+					el( 'p', {
+						text: sprintf(
+							/* translators: %d: number of database rows changed */
+							_n( '%d row changed.', '%d rows changed.', rows, 'siteferry' ),
+							rows
+						),
+					} ),
+					...warningList( job ),
+				] );
+			} else {
+				view.finish( false, __( 'Stopped', 'siteferry' ), [ el( 'p', { text: job.error || job.status } ) ] );
+			}
+		} catch ( error ) {
+			view.finish( false, __( 'Stopped', 'siteferry' ), [ el( 'p', { text: error.message } ) ] );
+		} finally {
+			checklistBusy = false;
+			$( 'siteferry-checklist-run' ).disabled = false;
+			await loadChecklist();
+		}
+	}
+
+	/** "Check the moved site" on the Backups tab, for two weeks after a move to a new address. */
+	function renderChecklistCard( card ) {
+		const box = $( 'siteferry-checklist-card' );
+		if ( ! card || ! card.show || ! card.move ) {
+			box.hidden = true;
+			return;
+		}
+		box.replaceChildren(
+			el( 'p', {}, [
+				el( 'strong', { text: __( 'Check the moved site', 'siteferry' ) } ),
+				' ' +
+					sprintf(
+						/* translators: 1: address the site was moved from, 2: when, such as today, 7:21 PM */
+						__( 'This site came from %1$s %2$s. A short checklist finds old links, permalink, email and cache problems.', 'siteferry' ),
+						hostOf( card.move.from ),
+						when( card.move.time, true )
+					),
+			] ),
+			el( 'p', { class: 'sf-actions' }, [
+				button(
+					__( 'Run the checklist', 'siteferry' ),
+					() => {
+						toggleDrawer( 'checklist', true );
+						$( 'siteferry-checklist' ).scrollIntoView( { block: 'nearest' } );
+					},
+					'button button-primary'
+				),
+				button( __( 'Dismiss', 'siteferry' ), dismissChecklistCard, 'button sf-quiet' ),
+			] )
+		);
+		box.hidden = false;
+	}
+
+	async function dismissChecklistCard() {
+		$( 'siteferry-checklist-card' ).hidden = true;
+		try {
+			await api( 'POST', 'checklist/dismiss' );
+		} catch ( error ) {
+			notice( error.message, 'error' );
+		}
+	}
+
 	// ------------------------------------------------------------ Emergency kit
 
 	/** The kits made, with their state and a Revoke button for those still working. */
@@ -7081,6 +7252,7 @@
 			return;
 		}
 		renderUndo( status.undo );
+		renderChecklistCard( status.checklist );
 		const unfinished = status.uploads || [];
 		if ( unfinished.length ) {
 			const box = $( 'siteferry-unfinished-uploads' );
@@ -7131,6 +7303,9 @@
 			} else if ( active.type === 'staging' || active.type === 'staging-delete' ) {
 				toggleDrawer( 'staging', true );
 				await runStaging( active.id, token, active.type === 'staging-delete' );
+			} else if ( active.type === 'checklist' ) {
+				toggleDrawer( 'checklist', true );
+				await runChecklistJob( active.id, token );
 			} else if ( active.type === 'export' ) {
 				const view = progressView( 'siteferry-job-progress' );
 				view.start( __( 'Resuming the backup...', 'siteferry' ) );
@@ -7185,6 +7360,8 @@
 		$( 'siteferry-kit-toggle' ).addEventListener( 'click', () => toggleDrawer( 'kit' ) );
 		$( 'siteferry-kit-form' ).addEventListener( 'submit', makeKit );
 		$( 'siteferry-staging-toggle' ).addEventListener( 'click', () => toggleDrawer( 'staging' ) );
+		$( 'siteferry-checklist-toggle' ).addEventListener( 'click', () => toggleDrawer( 'checklist' ) );
+		$( 'siteferry-checklist-run' ).addEventListener( 'click', () => loadChecklist() );
 		if ( $( 'siteferry-access-toggle' ) ) {
 			$( 'siteferry-access-toggle' ).addEventListener( 'click', () => toggleDrawer( 'access' ) );
 			$( 'siteferry-access-form' ).addEventListener( 'submit', saveAccess );

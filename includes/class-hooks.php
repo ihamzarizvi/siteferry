@@ -33,6 +33,7 @@ final class Hooks {
 		'siteferry_export_exclusions' => 'filter( string[] $paths, array $options ): paths inside wp-content a backup leaves out ("*" matches within one folder name).',
 		'siteferry_manifest_extra'    => 'filter( array $extra, Job $job ): extra data stored in the backup\'s manifest under "extra", one entry per plugin key.',
 		'siteferry_backup_name_label' => 'filter( string $label, string $home ): the site part of a backup file name (letters, digits, hyphens; at most 40).',
+		'siteferry_checklist_items'   => 'filter( array $items, ?array $move ): extra after-move checklist items (id, title, state ok|info|warn|fail, detail); shown only, never fixed by SiteFerry.',
 		'siteferry_move_to_self'      => 'filter( bool $allow ): allow moving a site to itself (tests).',
 		'siteferry_move_export_options' => 'filter( array $options ): the export options of a site-to-site move.',
 		'siteferry_update_backup_seconds' => 'filter( float $seconds, array $item ): time limit of the quick backup before an update or risky change.',
