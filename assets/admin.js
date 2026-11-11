@@ -1555,10 +1555,36 @@
 		const d = destination( form.dataset.destination );
 		const connected = !! ( d && d.oauth && d.oauth.connected );
 		const pick = form.querySelector( '[data-role=pick]' );
-		pick.disabled = ! connected;
-		pick.lastChild.textContent = ' ' + ( id ? __( 'Change folder', 'siteferry' ) : __( 'Choose a folder in Drive', 'siteferry' ) );
+		// Before signing in the button stays usable: it signs in first, then opens the picker.
+		pick.disabled = false;
+		let label = __( 'Sign in to choose a folder', 'siteferry' );
+		if ( connected ) {
+			label = id ? __( 'Change folder', 'siteferry' ) : __( 'Choose a folder in Drive', 'siteferry' );
+		}
+		pick.lastChild.textContent = ' ' + label;
 		form.querySelector( '[data-role=unpick]' ).hidden = ! id;
 		form.querySelector( '[data-role=pick-note]' ).hidden = connected;
+	}
+
+	/** The picker is opened again after Google sends the browser back (kept for this tab only). */
+	const PICK_AFTER_SIGN_IN = 'siteferry-pick-after-sign-in';
+
+	function rememberPickAfterSignIn( on ) {
+		try {
+			if ( on ) {
+				window.sessionStorage.setItem( PICK_AFTER_SIGN_IN, '1' );
+			} else {
+				window.sessionStorage.removeItem( PICK_AFTER_SIGN_IN );
+			}
+		} catch ( e ) {} // Storage blocked: the folder can still be chosen with the button afterwards.
+	}
+
+	function pickAfterSignIn() {
+		try {
+			return '1' === window.sessionStorage.getItem( PICK_AFTER_SIGN_IN );
+		} catch ( e ) {
+			return false;
+		}
 	}
 
 	/** The backup folder's suggested name: the site's title (no slashes), then backups. */
@@ -1594,6 +1620,13 @@
 	 * (drive.file); the backup folder is created inside it when the settings are saved.
 	 */
 	async function pickDriveFolder( form ) {
+		const d = destination( form.dataset.destination );
+		if ( ! ( d && d.oauth && d.oauth.connected ) ) {
+			// The picker shows your own Drive, so Google needs you to sign in first.
+			rememberPickAfterSignIn( true );
+			await connectStorage( form );
+			return;
+		}
 		const pick = form.querySelector( '[data-role=pick]' );
 		pick.disabled = true;
 		try {
@@ -1796,6 +1829,7 @@
 			} else {
 				reason = __( 'Not connected: the answer had no authorization code.', 'siteferry' );
 			}
+			rememberPickAfterSignIn( false );
 			storageResult( form, false, [ el( 'p', { text: reason } ) ] );
 			return true;
 		}
@@ -1805,7 +1839,13 @@
 			await loadDestinations();
 			// Connected: checked at once, so the card says "Working" (or what fails) straight away.
 			await testStorage( form, false, __( 'Connected. Testing the connection...', 'siteferry' ) );
+			if ( 'gdrive' === id && pickAfterSignIn() ) {
+				// Signed in from "Sign in to choose a folder": go straight on to choosing it.
+				rememberPickAfterSignIn( false );
+				pickDriveFolder( form );
+			}
 		} catch ( error ) {
+			rememberPickAfterSignIn( false );
 			storageResult( form, false, [
 				el( 'p', {
 					text: sprintf(

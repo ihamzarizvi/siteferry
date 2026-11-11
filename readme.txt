@@ -4,7 +4,7 @@ Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.45.1
+Stable tag: 0.45.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -527,6 +527,9 @@ with that version.
 
 == Changelog ==
 
+= 0.45.2 =
+* Google Drive: before signing in, the folder button is no longer greyed out. "Sign in to choose a folder" signs in with Google and then opens the folder picker straight away.
+
 = 0.45.1 =
 * Emergency kit, security: a revoked kit now stops before anything else, a download included (before, a session started earlier could still download backups after the kit was revoked). A kit the site has no record of any more also stops.
 * Emergency kit, security: the kit's sign-in session is now also keyed with the WordPress keys and salts in the server's wp-config.php, so a copy of the kit file alone can no longer sign in without the password. (When wp-config.php gives no salts as plain text, for example from getenv(), the key comes from the file alone, as before.)
@@ -558,8 +561,5 @@ with that version.
 * Activity: "Download CSV" saves the whole activity list as a spreadsheet file: time (site time zone and UTC), kind, backup, result, duration, size, where, who started it and the message. Opens correctly in Excel (UTF-8); cells that a spreadsheet would treat as formulas are made plain text.
 * WP-CLI: `wp siteferry activity [--since=<YYYY-MM-DD>] [--type=<kind>] [--format=table|csv|json]`.
 * Jobs now record who started them (a user, WP-CLI, the schedule or an automatic backup).
-
-= 0.40.0 =
-* While SiteFerry works (a backup, restore, upload, download, check or staging copy), every admin page shows "SiteFerry 42%" in the admin bar, linking to the SiteFerry page; when it ends, "Backup done ✓" (or a red "… failed"). It updates every three seconds while the tab is visible and stops when the job has ended; nothing is loaded when no job runs. It stays visible on phones. Background checks of the weekly re-check are not shown.
 
 Older versions: see changelog.txt in the plugin folder.

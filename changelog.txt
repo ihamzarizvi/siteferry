@@ -1,6 +1,9 @@
 SiteFerry changelog
 ===================
 
+= 0.45.2 =
+* Google Drive: before signing in, the folder button is no longer greyed out. "Sign in to choose a folder" signs in with Google and then opens the folder picker straight away.
+
 = 0.45.1 =
 * Emergency kit, security: a revoked kit now stops before anything else, a download included (before, a session started earlier could still download backups after the kit was revoked). A kit the site has no record of any more also stops.
 * Emergency kit, security: the kit's sign-in session is now also keyed with the WordPress keys and salts in the server's wp-config.php, so a copy of the kit file alone can no longer sign in without the password. (When wp-config.php gives no salts as plain text, for example from getenv(), the key comes from the file alone, as before.)

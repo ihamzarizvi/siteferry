@@ -1022,7 +1022,7 @@ final class Admin {
 						<button type="button" class="button-link" data-role="unpick" hidden><?php esc_html_e( 'Use the top of My Drive', 'siteferry' ); ?></button>
 					</p>
 				</div>
-				<p class="description" data-role="pick-note"><?php esc_html_e( 'After signing in you can choose any folder of yours; SiteFerry gets access to that folder only.', 'siteferry' ); ?></p>
+				<p class="description" data-role="pick-note"><?php esc_html_e( 'You sign in with Google first, then Google’s folder picker opens. Choose any folder of yours; SiteFerry gets access to that folder only.', 'siteferry' ); ?></p>
 				<p class="sf-gd-name">
 					<label for="siteferry-gdrive-folder"><?php esc_html_e( 'Backup folder', 'siteferry' ); ?></label>
 					<input type="text" id="siteferry-gdrive-folder" name="folder" placeholder="SiteFerry" spellcheck="false" autocomplete="off">
