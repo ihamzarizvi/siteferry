@@ -29,6 +29,20 @@ define( 'WP_CONTENT_DIR', $content );
 $GLOBALS['sf_options'] = array( 'siteferry_storage' => 'siteferry-0123456789ab' );
 
 /**
+ * Stand-in for is_multisite().
+ */
+function is_multisite() {
+	return false;
+}
+
+/**
+ * Stand-in for wp_upload_dir(): the media folder of the temporary wp-content.
+ */
+function wp_upload_dir() {
+	return array( 'basedir' => WP_CONTENT_DIR . '/uploads' );
+}
+
+/**
  * Stand-in for get_option().
  *
  * @param string $name    Option.

@@ -17,6 +17,7 @@ use SiteFerry\Jobs\Job;
 use SiteFerry\Jobs\Job_Exception;
 use SiteFerry\Jobs\Slice_Budget;
 use SiteFerry\Jobs\Step;
+use SiteFerry\Security\Storage;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -222,8 +223,10 @@ final class Swap_Step implements Step {
 	 * Moves the staged wp-content items into place.
 	 *
 	 * Plugins, themes and (if chosen) must-use plugins are moved one by one, so SiteFerry itself
-	 * and items the backup does not contain stay; uploads and other top-level items are replaced
-	 * whole. Server-specific drop-ins are only copied when asked for.
+	 * and items the backup does not contain stay. The media folder is replaced item by item: what
+	 * the backup does not contain goes aside, except SiteFerry's storage folder (with this job's
+	 * own files), which stays. Other top-level items are replaced whole. Server-specific drop-ins
+	 * are only copied when asked for.
 	 *
 	 * @param Job   $job     The job.
 	 * @param array $site    This site's facts.
@@ -248,10 +251,11 @@ final class Swap_Step implements Step {
 			self::relative( (string) $inspect['source']['uploads_dir'], $source_content, 'uploads' ) => array( $site['uploads_dir'], false ),
 		);
 		if ( $job->option( 'include_mu_plugins' ) ) {
-			$groups['mu-plugins'] = array( str_replace( '\\', '/', WPMU_PLUGIN_DIR ), true );
+			$groups['mu-plugins'] = array( \SiteFerry\Paths::mu_plugins(), true );
 		}
 		$skip_plugins = array( (string) $job->option( 'own_folder' ), 'siteferry' );
 		$plugins_name = self::relative( (string) $inspect['plugins'], $source_content, 'plugins' );
+		$uploads_name = self::relative( (string) $inspect['source']['uploads_dir'], $source_content, 'uploads' );
 		$moved        = 0;
 
 		foreach ( self::entries( $staged ) as $name ) {
@@ -269,6 +273,10 @@ final class Swap_Step implements Step {
 			}
 			if ( isset( $groups[ $name ] ) ) {
 				list( $into, $each ) = $groups[ $name ];
+				if ( $name === $uploads_name ) {
+					$moved += $this->move_uploads( $from, $into, $journal, $rollback );
+					continue;
+				}
 				if ( ! $each ) {
 					$this->move( $from, $into, $journal, $rollback );
 					++$moved;
@@ -284,6 +292,39 @@ final class Swap_Step implements Step {
 				continue;
 			}
 			$this->move( $from, $site['wp_content_dir'] . '/' . $name, $journal, $rollback );
+			++$moved;
+		}
+		return $moved;
+	}
+
+	/**
+	 * Replaces the media folder item by item. SiteFerry's storage folders stay (this job's files
+	 * are in one of them); every other item the backup does not have goes aside.
+	 *
+	 * @param string  $from     Staged media folder.
+	 * @param string  $into     Live media folder.
+	 * @param Journal $journal  Journal.
+	 * @param string  $rollback Rollback folder.
+	 * @return int Items moved.
+	 */
+	private function move_uploads( string $from, string $into, Journal $journal, string $rollback ): int {
+		$moved  = 0;
+		$staged = array();
+		foreach ( self::entries( $from ) as $entry ) {
+			if ( 0 === strpos( $entry, 'siteferry-' ) ) {
+				continue;
+			}
+			$staged[ $entry ] = true;
+			$this->move( $from . '/' . $entry, $into . '/' . $entry, $journal, $rollback );
+			++$moved;
+		}
+		foreach ( self::entries( $into ) as $entry ) {
+			if ( isset( $staged[ $entry ] ) || preg_match( Storage::NAME_PATTERN, $entry ) ) {
+				continue;
+			}
+			$aside = $rollback . '/' . sprintf( '%05d', $journal->count() ) . '-' . $entry;
+			self::rename( $into . '/' . $entry, $aside );
+			$journal->add( 'backup', $into . '/' . $entry, $aside );
 			++$moved;
 		}
 		return $moved;

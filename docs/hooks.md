@@ -163,7 +163,7 @@ JSON object of an action:
 {
   "ok": true,
   "name": "example-com-2026-11-10-1a2b3c4d5e6f.tar",
-  "path": "/var/www/wp-content/siteferry-.../backups/example-com-2026-11-10-1a2b3c4d5e6f.tar",
+  "path": "/var/www/wp-content/uploads/siteferry-.../backups/example-com-2026-11-10-1a2b3c4d5e6f.tar",
   "size": 4194304,
   "warnings": []
 }

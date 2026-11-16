@@ -330,10 +330,12 @@ final class Export {
 		if ( null !== $uploads && $options['exclude_media'] ) {
 			$paths[] = $uploads;
 		}
+		// SiteFerry's storage folder is in the media folder, wherever that is inside wp-content.
+		$storage = null !== $uploads && 'uploads' !== $uploads ? array( $uploads . '/siteferry-*' ) : array();
 
 		// Other plugins may add (or drop) paths; what must never travel is added back afterwards.
 		$paths  = \SiteFerry\Hooks::clean_paths( \SiteFerry\Hooks::filter( 'siteferry_export_exclusions', $paths, $options ), $paths );
-		$forced = array_merge( Exclusions::ALWAYS, Exclusions::BACKUP_PLUGIN_FOLDERS, null === $plugins ? array() : array( $plugins . '/' . \SiteFerry\Plugin::folder() ) );
+		$forced = array_merge( Exclusions::ALWAYS, Exclusions::BACKUP_PLUGIN_FOLDERS, $storage, null === $plugins ? array() : array( $plugins . '/' . \SiteFerry\Plugin::folder() ) );
 		return new Exclusions( array_values( array_unique( array_merge( $paths, $forced ) ) ) );
 	}
 

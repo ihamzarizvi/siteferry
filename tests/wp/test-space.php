@@ -66,7 +66,11 @@ Sf_Test::run(
 		Sf_Test::ok( $steps > 5, 'in ' . $steps . ' steps' );
 		$report = $result['report'];
 		$uploads = wp_upload_dir()['basedir'];
-		Sf_Test::same( sf_walk( $uploads ), $report['files']['parts']['uploads']['bytes'], 'media:' );
+		$own     = 0; // SiteFerry's storage folders in the media folder are never backed up.
+		foreach ( (array) glob( $uploads . '/siteferry-*', GLOB_ONLYDIR ) as $dir ) {
+			$own += sf_walk( (string) $dir );
+		}
+		Sf_Test::same( sf_walk( $uploads ) - $own, $report['files']['parts']['uploads']['bytes'], 'media:' );
 		$plugins = 0;
 		foreach ( array_diff( (array) scandir( WP_PLUGIN_DIR ), array( '.', '..', \SiteFerry\Plugin::folder() ) ) as $name ) {
 			$path     = WP_PLUGIN_DIR . '/' . $name;

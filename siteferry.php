@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       SiteFerry
  * Description:       Back up a whole WordPress site into one TAR file and restore or migrate it to another site.
- * Version:           0.46.0
+ * Version:           0.47.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Plugin URI:        https://xsofty.com/products/siteferry
@@ -32,17 +32,7 @@
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-	// "wp --require=.../siteferry.php" loads this file before WordPress. Load the plugin once
-	// WordPress is up, so the export command works on a site where SiteFerry is not installed.
-	if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( 'WP_CLI' ) ) {
-		WP_CLI::add_hook(
-			'after_wp_load',
-			static function () {
-				require_once __DIR__ . '/includes/bootstrap.php';
-			}
-		);
-	}
-	return;
+	exit;
 }
 
 require_once __DIR__ . '/includes/bootstrap.php';

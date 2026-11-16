@@ -12,6 +12,7 @@ namespace SiteFerry\Staging;
 
 use SiteFerry\Database\Raw_Query;
 use SiteFerry\Export\Exclusions;
+use SiteFerry\Paths;
 use SiteFerry\Export\Site_Info;
 use SiteFerry\Jobs\Job;
 use SiteFerry\Jobs\Job_Exception;
@@ -108,8 +109,8 @@ final class Staging {
 		if ( 0 !== strcasecmp( $home, $siteurl ) ) {
 			$out[] = __( 'WordPress\'s files are in a different folder from the site\'s address (WordPress Address and Site Address differ). Staging copies of such sites are not supported yet.', 'siteferry' );
 		}
-		$root = Site_Info::path( ABSPATH );
-		if ( 0 !== strcasecmp( Site_Info::path( WP_CONTENT_DIR ), $root . '/wp-content' ) ) {
+		$root = Paths::wordpress();
+		if ( 0 !== strcasecmp( Paths::content(), $root . '/wp-content' ) ) {
 			$out[] = __( 'wp-content is not in WordPress\'s folder. Staging copies of such sites are not supported yet.', 'siteferry' );
 		}
 		$uploads = wp_upload_dir( null, false );
@@ -126,7 +127,7 @@ final class Staging {
 				$out[] = $e->getMessage();
 			}
 		}
-		if ( ! wp_is_writable( ABSPATH ) ) {
+		if ( ! wp_is_writable( Paths::wordpress() ) ) {
 			$out[] = __( 'WordPress\'s folder is not writable by the web server, so the staging folder cannot be made.', 'siteferry' );
 		}
 		return $out;
@@ -151,7 +152,7 @@ final class Staging {
 		if ( array() !== $blockers ) {
 			throw new Job_Exception( $blockers[0], Job_Exception::STEP );
 		}
-		$root = Site_Info::path( ABSPATH );
+		$root = Paths::wordpress();
 		$dest = $root . '/' . $folder;
 		if ( file_exists( $dest ) || is_link( $dest ) ) {
 			throw new Job_Exception( sprintf( /* translators: %s: a folder name */ __( 'A file or folder named "%s" already exists in WordPress\'s folder. Choose another name.', 'siteferry' ), $folder ), Job_Exception::STEP );
@@ -227,13 +228,13 @@ final class Staging {
 	 * tables, never at the live site.
 	 *
 	 * @param array       $record  The record.
-	 * @param string|null $root    WordPress's folder (default ABSPATH).
+	 * @param string|null $root    WordPress's folder (default Paths::wordpress()).
 	 * @param string|null $live    The live table prefix (default $wpdb->prefix).
 	 * @throws Job_Exception If anything does not match.
 	 */
 	public static function check_target( array $record, ?string $root = null, ?string $live = null ): void {
 		global $wpdb;
-		$root   = Site_Info::path( null === $root ? ABSPATH : $root );
+		$root   = Site_Info::path( null === $root ? Paths::wordpress() : $root );
 		$live   = null === $live ? (string) $wpdb->prefix : $live;
 		$folder = isset( $record['folder'] ) ? (string) $record['folder'] : '';
 		$prefix = isset( $record['prefix'] ) ? (string) $record['prefix'] : '';
@@ -295,12 +296,12 @@ final class Staging {
 	 * another WordPress's (as WordPress itself looks).
 	 */
 	public static function live_config(): ?string {
-		$here  = ABSPATH . 'wp-config.php';
-		$above = dirname( ABSPATH ) . '/wp-config.php';
+		$here  = Paths::wordpress() . '/wp-config.php';
+		$above = dirname( Paths::wordpress() ) . '/wp-config.php';
 		if ( is_readable( $here ) ) {
 			return $here;
 		}
-		if ( is_readable( $above ) && ! file_exists( dirname( ABSPATH ) . '/wp-settings.php' ) ) {
+		if ( is_readable( $above ) && ! file_exists( dirname( Paths::wordpress() ) . '/wp-settings.php' ) ) {
 			return $above;
 		}
 		return null;

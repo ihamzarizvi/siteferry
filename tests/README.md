@@ -213,12 +213,12 @@ Done by hand (or by an assistant driving a browser) while logged in as an admini
 
 ## Exporting a site without installing SiteFerry
 
-`--require` loads SiteFerry for one WP-CLI command; with `--dir` nothing is written to the site.
+`--require` with tests\tools\cli-load.php loads SiteFerry from this checkout for one WP-CLI command; with `--dir` nothing is written to the site.
 `--skip-plugins --skip-themes` keeps the site's own code from running and `DISABLE_WP_CRON`
 stops WordPress from triggering scheduled tasks:
 
 ```powershell
-wp --skip-plugins --skip-themes --exec="define('DISABLE_WP_CRON', true);" --require=D:\path\to\siteferry\siteferry.php siteferry export --dir=D:\backups
+wp --skip-plugins --skip-themes --exec="define('DISABLE_WP_CRON', true);" --require=D:\path\to\siteferry\tests\tools\cli-load.php siteferry export --dir=D:\backups
 ```
 
 `run-tests.ps1`, `interop-tar.ps1` and the WordPress test scripts call external programs (tar,

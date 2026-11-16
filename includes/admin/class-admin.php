@@ -188,7 +188,6 @@ final class Admin {
 							<button type="button" class="button sf-btn" id="siteferry-upload-toggle" aria-expanded="false" aria-controls="siteferry-upload"><span class="dashicons dashicons-upload" aria-hidden="true"></span><?php esc_html_e( 'Upload a backup', 'siteferry' ); ?></button>
 							<button type="button" class="button sf-btn" id="siteferry-schedule-toggle" aria-expanded="false" aria-controls="siteferry-schedule-form"><span class="dashicons dashicons-clock" aria-hidden="true"></span><?php esc_html_e( 'Schedule', 'siteferry' ); ?><span class="sf-btn-state" id="siteferry-schedule-state" hidden></span></button>
 							<button type="button" class="button sf-btn" id="siteferry-move-toggle" aria-expanded="false" aria-controls="siteferry-move"><span class="dashicons dashicons-migrate" aria-hidden="true"></span><?php esc_html_e( 'Move a site', 'siteferry' ); ?></button>
-							<button type="button" class="button sf-btn" id="siteferry-kit-toggle" aria-expanded="false" aria-controls="siteferry-kit"><span class="dashicons dashicons-sos" aria-hidden="true"></span><?php esc_html_e( 'Emergency kit', 'siteferry' ); ?></button>
 							<button type="button" class="button sf-btn" id="siteferry-staging-toggle" aria-expanded="false" aria-controls="siteferry-staging"><span class="dashicons dashicons-admin-multisite" aria-hidden="true"></span><?php esc_html_e( 'Staging', 'siteferry' ); ?></button>
 							<button type="button" class="button sf-btn" id="siteferry-checklist-toggle" aria-expanded="false" aria-controls="siteferry-checklist"><span class="dashicons dashicons-yes-alt" aria-hidden="true"></span><?php esc_html_e( 'Check the site', 'siteferry' ); ?></button>
 							<?php if ( ! is_multisite() ) : ?>
@@ -369,48 +368,13 @@ final class Admin {
 						</div>
 					</div>
 
-					<div id="siteferry-kit" class="sf-drawer sf-kit" hidden>
-						<p class="sf-drawer-note"><?php esc_html_e( 'For the day this site shows a white screen and you cannot log in: a small page that works without WordPress. Make it now, while the site works, and keep the file somewhere safe.', 'siteferry' ); ?></p>
-						<ol class="sf-steps">
-							<li><?php esc_html_e( 'Choose a password and download the kit. Keep the file private: with its password it can change this site.', 'siteferry' ); ?></li>
-							<li><?php esc_html_e( 'If the site breaks: upload the file by FTP or your hosting file manager into WordPress\'s main folder, the one with wp-config.php (or wp-load.php) and wp-admin.', 'siteferry' ); ?></li>
-							<li><?php esc_html_e( 'Open it in your browser at your site\'s address followed by the file name, and sign in with the password.', 'siteferry' ); ?></li>
-							<li><?php esc_html_e( 'Turn off all plugins except SiteFerry, or switch to a default theme. Both can be undone. It can also download SiteFerry\'s backups.', 'siteferry' ); ?></li>
-							<li><?php esc_html_e( 'When the site works again, delete the kit (it has a button for that), and restore a backup with SiteFerry if needed.', 'siteferry' ); ?></li>
-						</ol>
-						<form id="siteferry-kit-form" class="sf-kit-form" novalidate>
-							<p class="sf-field">
-								<label for="siteferry-kit-password"><?php esc_html_e( 'Password for the kit', 'siteferry' ); ?></label>
-								<input type="password" id="siteferry-kit-password" name="password" minlength="12" autocomplete="new-password" required>
-								<span class="description"><?php esc_html_e( 'At least 12 characters. It is not stored anywhere; the kit holds only a hash of it. Write it down with the file.', 'siteferry' ); ?></span>
-							</p>
-							<p class="sf-field">
-								<label for="siteferry-kit-again"><?php esc_html_e( 'The password again', 'siteferry' ); ?></label>
-								<input type="password" id="siteferry-kit-again" name="again" minlength="12" autocomplete="new-password" required>
-							</p>
-							<p class="sf-field">
-								<label for="siteferry-kit-days"><?php esc_html_e( 'Works for', 'siteferry' ); ?></label>
-								<select id="siteferry-kit-days" name="days">
-									<option value="7"><?php esc_html_e( '7 days', 'siteferry' ); ?></option>
-									<option value="30" selected><?php esc_html_e( '30 days', 'siteferry' ); ?></option>
-									<option value="90"><?php esc_html_e( '90 days', 'siteferry' ); ?></option>
-								</select>
-							</p>
-							<p class="sf-actions"><button type="submit" class="button button-primary" id="siteferry-kit-make"><?php esc_html_e( 'Download the emergency kit', 'siteferry' ); ?></button></p>
-						</form>
-						<div class="sf-result" id="siteferry-kit-result" role="status" hidden></div>
-						<h3 class="sf-sub"><?php esc_html_e( 'Kits made', 'siteferry' ); ?></h3>
-						<ul class="sf-kit-list" id="siteferry-kit-list"></ul>
-						<p class="description"><?php esc_html_e( 'Revoke a kit you no longer trust (for example, a lost file): it then stops working as soon as it reads this site\'s database. A kit also stops working when it expires.', 'siteferry' ); ?></p>
-					</div>
-
 					<?php if ( ! is_multisite() ) : ?>
 					<div id="siteferry-access" class="sf-drawer sf-access" hidden>
 						<p class="sf-drawer-note"><?php esc_html_e( 'Administrators can always do everything. Here you can let other roles use parts of SiteFerry. Give these only to people you trust with the whole site.', 'siteferry' ); ?></p>
 						<ul class="sf-access-warnings">
 							<li><strong><?php esc_html_e( 'Make backups', 'siteferry' ); ?>:</strong> <?php esc_html_e( 'a backup holds the whole database, including every user\'s email address and password hash, and everything in wp-content. Whoever can download backups can take all of it.', 'siteferry' ); ?></li>
 							<li><strong><?php esc_html_e( 'Restore', 'siteferry' ); ?>:</strong> <?php esc_html_e( 'a restore can replace the whole site, including its users, and can delete backups.', 'siteferry' ); ?></li>
-							<li><strong><?php esc_html_e( 'Settings', 'siteferry' ); ?>:</strong> <?php esc_html_e( 'storages and their logins, the schedule, emergency kits, staging copies and moving the site, and this list.', 'siteferry' ); ?></li>
+							<li><strong><?php esc_html_e( 'Settings', 'siteferry' ); ?>:</strong> <?php esc_html_e( 'storages and their logins, the schedule, staging copies and moving the site, and this list.', 'siteferry' ); ?></li>
 						</ul>
 						<form id="siteferry-access-form" novalidate>
 							<table class="sf-access-table">

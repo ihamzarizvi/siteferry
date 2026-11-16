@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/gpl-2.0.html"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-1e5fa8" alt="License: GPL-2.0-or-later"></a>
   <img src="https://img.shields.io/badge/WordPress-5.8%2B-12355b" alt="Requires WordPress 5.8 or later">
   <img src="https://img.shields.io/badge/PHP-7.4%20to%208.5-12355b" alt="Runs on PHP 7.4 to 8.5">
-  <img src="https://img.shields.io/badge/version-0.46.0-f97316" alt="Version 0.46.0">
+  <img src="https://img.shields.io/badge/version-0.47.0-f97316" alt="Version 0.47.0">
   <a href="https://xsofty.com/products/siteferry"><img src="https://img.shields.io/badge/made%20by-xsofty-1e5fa8" alt="Made by xsofty"></a>
 </p>
 
@@ -66,7 +66,6 @@ large sites, low PHP time limits and dropped connections don't break a backup or
 | Restore one thing | One file, one post or page, one plugin, theme or table, without touching the rest |
 | Migration | Move a site to a new domain or host, rewriting addresses even inside serialized data, or send it straight to the new server |
 | Staging | One click copies the site into a subfolder with its own tables, hidden from search engines |
-| Emergency kit | A password-protected rescue page that fixes a white screen when wp-admin is down |
 | Multisite | Back up whole networks, take one site out, or add a site to a network |
 | Open format | Standard TAR files with SHA-256 checksums; also reads and writes .wpress |
 | Privacy | No telemetry; it only talks to the storage you set up |
@@ -161,11 +160,8 @@ large sites, low PHP time limits and dropped connections don't break a backup or
 </details>
 
 <details>
-<summary><b>Rescue, admin and access</b></summary>
+<summary><b>Admin and access</b></summary>
 
-- **Emergency kit**: a single PHP file you download in advance. If the site shows a white screen,
-  upload it, sign in with your password, turn off all plugins or switch to a default theme, download
-  backups, then restore normally. It never loads WordPress, expires, and can be revoked.
 - **Live progress in the admin bar** ("SiteFerry 42%") on every admin page while a job runs.
 - **Activity log** with CSV download.
 - **Role-based access**: let other roles see backups, make backups, restore, or change settings.
@@ -353,7 +349,7 @@ Developer hooks include `siteferry_export_started`, `siteferry_export_done`,
 - **Stored secrets:** keys, passwords and OAuth tokens are encrypted at rest with a key from the
   WordPress salts, never shown again, never logged, left out of every backup, and removed when
   SiteFerry is deleted.
-- **Backup storage:** backups live in `wp-content/siteferry-<random>/` with random names and deny
+- **Backup storage:** backups live in `wp-content/uploads/siteferry-<random>/` with random names and deny
   rules, and downloads go through an authenticated stream.
 - **Safe imports:** imports refuse links, devices and unsafe paths, accept only the SQL statements
   a backup contains, and load into temporary tables first.
@@ -364,7 +360,7 @@ Developer hooks include `siteferry_export_started`, `siteferry_export_done`,
   picker only when you choose a Drive folder.
 
 > [!IMPORTANT]
-> On nginx (which ignores `.htaccess`), add `location ~ /wp-content/siteferry-[a-f0-9]+/ { deny all; }`
+> On nginx (which ignores `.htaccess`), add `location ~ /uploads/siteferry-[a-f0-9]+/ { deny all; }`
 > to block direct access to the backup folder.
 
 ## Backup format
@@ -435,15 +431,6 @@ restore one post or page with its custom fields and categories. Both come with U
 Click **Staging** on the Backups tab. SiteFerry copies the site into a subfolder with its own
 tables, hidden from search engines and with email held back. Delete it with one click when you're
 done.
-
-</details>
-
-<details>
-<summary><b>What if my WordPress site shows a white screen?</b></summary>
-
-Make an **Emergency kit** in advance. When wp-admin is down, upload the kit file by FTP, sign in
-with your password, turn off all plugins or switch to a default theme, and then restore a backup
-normally.
 
 </details>
 

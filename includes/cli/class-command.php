@@ -104,8 +104,7 @@ final class Command {
 	 *
 	 * [--dir=<folder>]
 	 * : Write the backup and its work files to this folder instead of SiteFerry's storage folder.
-	 * Nothing is then written to the site, so this also works on a site where SiteFerry is not
-	 * installed: wp --require=/path/to/siteferry/siteferry.php siteferry export --dir=...
+	 * Nothing is then written to the site.
 	 *
 	 * [--send=<id>]
 	 * : Send the backup to remote storage set up on the Storage tab (s3) when it is ready.

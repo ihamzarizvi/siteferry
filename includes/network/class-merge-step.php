@@ -272,9 +272,6 @@ final class Merge_Step implements Step {
 			);
 		}
 		if ( ! empty( $state['site'] ) ) {
-			if ( ! function_exists( 'wpmu_delete_user' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/ms.php';
-			}
 			wp_delete_site( (int) $state['site'] );
 		}
 		foreach ( (array) $state['users'] as $user ) {
@@ -436,12 +433,9 @@ final class Merge_Step implements Step {
 		$uploads = rtrim( (string) $plan['target']['uploads_dir'], '/' );
 		$places  = array(
 			'uploads' => $uploads,
-			'plugins' => WP_PLUGIN_DIR,
+			'plugins' => \SiteFerry\Paths::plugins(),
 			'themes'  => get_theme_root(),
 		);
-		if ( ! function_exists( 'get_plugins' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
 		$skipped = array();
 		foreach ( (array) scandir( $staged ) as $top ) {
 			if ( '.' === $top || '..' === $top ) {

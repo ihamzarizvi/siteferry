@@ -16,10 +16,13 @@ use SiteFerry\Archive\Io;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Locates and protects SiteFerry's storage folder: wp-content/siteferry-<random>/.
+ * Locates and protects SiteFerry's storage folder: siteferry-<random>/ in the media (uploads) folder.
  *
  * The random folder name and random backup names are the protection on servers that ignore
  * .htaccess and web.config (nginx). Downloads always go through an authenticated PHP request.
+ *
+ * Versions before 0.47.0 kept the folder in wp-content. Such a folder is moved into the media
+ * folder when no job is running (move_legacy()); until then, it is used where it is.
  */
 final class Storage {
 
@@ -35,11 +38,11 @@ final class Storage {
 	 * @throws Archive_Exception If the folder cannot be created.
 	 */
 	public static function root(): string {
-		return self::ensure( WP_CONTENT_DIR . '/' . self::name() );
+		return self::ensure( self::place( self::name() ) );
 	}
 
 	/**
-	 * Folder name inside wp-content (creates the option on first use).
+	 * Folder name (creates the option on first use).
 	 */
 	public static function name(): string {
 		$name = get_option( self::OPTION );
@@ -48,6 +51,64 @@ final class Storage {
 			update_option( self::OPTION, $name, false );
 		}
 		return $name;
+	}
+
+	/**
+	 * Where a storage folder of this name is: in the media folder, or in wp-content while a folder
+	 * made by an older version is still there.
+	 *
+	 * @param string $name Folder name.
+	 */
+	private static function place( string $name ): string {
+		$dir = \SiteFerry\Paths::uploads() . '/' . $name;
+		if ( ! is_dir( $dir ) ) {
+			$legacy = self::legacy( $name );
+			if ( null !== $legacy ) {
+				return $legacy;
+			}
+		}
+		return $dir;
+	}
+
+	/**
+	 * The folder an older version made in wp-content, if it is there.
+	 *
+	 * @param string $name Folder name.
+	 */
+	private static function legacy( string $name ): ?string {
+		$dir = \SiteFerry\Paths::content() . '/' . $name;
+		return is_dir( $dir ) && ! Io::is_link_or_junction( $dir ) ? $dir : null;
+	}
+
+	/**
+	 * Moves a storage folder an older version made in wp-content into the media folder, unless a
+	 * job is running. Returns false while a job runs (to try again later). When the folder cannot
+	 * be moved (for example, the media folder is on another disk), it stays where it is and is used
+	 * there.
+	 */
+	public static function move_legacy(): bool {
+		$name = get_option( self::OPTION );
+		if ( ! is_string( $name ) || ! preg_match( self::NAME_PATTERN, $name ) ) {
+			return true;
+		}
+		$legacy = self::legacy( $name );
+		if ( null === $legacy ) {
+			return true;
+		}
+		if ( null !== \SiteFerry\Jobs\Job::active( $legacy . '/jobs' ) ) {
+			return false;
+		}
+		$uploads = \SiteFerry\Paths::uploads();
+		$dir     = $uploads . '/' . $name;
+		if ( file_exists( $dir ) || ( ! is_dir( $uploads ) && ! wp_mkdir_p( $uploads ) ) ) {
+			return true;
+		}
+		Io::quiet(
+			static function () use ( $legacy, $dir ) {
+				return rename( $legacy, $dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- SiteFerry's own folder; runs in cron and WP-CLI, where WP_Filesystem may need credentials.
+			}
+		);
+		return true;
 	}
 
 	/**
@@ -61,23 +122,27 @@ final class Storage {
 	 * Backups folder if SiteFerry has created one, without creating anything.
 	 */
 	public static function existing_backups_dir(): ?string {
-		$name = get_option( self::OPTION );
-		if ( ! is_string( $name ) || ! preg_match( self::NAME_PATTERN, $name ) ) {
-			return null;
-		}
-		$dir = WP_CONTENT_DIR . '/' . $name . '/backups';
-		return is_dir( $dir ) ? $dir : null;
+		return self::existing( 'backups' );
 	}
 
 	/**
 	 * Jobs folder if SiteFerry has created one, without creating anything.
 	 */
 	public static function existing_jobs_dir(): ?string {
+		return self::existing( 'jobs' );
+	}
+
+	/**
+	 * A folder in the storage folder if SiteFerry has created it, without creating anything.
+	 *
+	 * @param string $sub Folder name.
+	 */
+	private static function existing( string $sub ): ?string {
 		$name = get_option( self::OPTION );
 		if ( ! is_string( $name ) || ! preg_match( self::NAME_PATTERN, $name ) ) {
 			return null;
 		}
-		$dir = WP_CONTENT_DIR . '/' . $name . '/jobs';
+		$dir = self::place( $name ) . '/' . $sub;
 		return is_dir( $dir ) ? $dir : null;
 	}
 
@@ -103,7 +168,7 @@ final class Storage {
 				}
 			);
 			if ( ! $made && ! is_dir( $dir ) ) {
-				throw new Archive_Exception( sprintf( /* translators: %s: dir */ __( 'Cannot create the folder "%s". Check that wp-content is writable.', 'siteferry' ), $dir ), Archive_Exception::IO );
+				throw new Archive_Exception( sprintf( /* translators: %s: dir */ __( 'Cannot create the folder "%s". Check that the uploads folder is writable.', 'siteferry' ), $dir ), Archive_Exception::IO );
 			}
 		}
 		self::protect( $dir );

@@ -65,7 +65,7 @@ Sf_Test::run(
 	'exclusion rules: paths, names at any depth and patterns',
 	static function () {
 		$rules = sf_default_exclusions( array( 'uploads/2019', 'plugins/akismet' ) );
-		$yes   = array( 'cache', 'upgrade', 'upgrade-temp-backup', 'ai1wm-backups', 'updraft', 'siteferry-0123456789ab', 'backupwordpress-1a2b3c-backups', 'uploads/backwpup-1a2b3c-backups', 'uploads/wp-staging/backups', 'uploads/2019', 'plugins/akismet', 'themes/x/.git', 'plugins/y/node_modules', 'et-cache' );
+		$yes   = array( 'cache', 'upgrade', 'upgrade-temp-backup', 'ai1wm-backups', 'updraft', 'siteferry-0123456789ab', 'uploads/siteferry-0123456789ab', 'backupwordpress-1a2b3c-backups', 'uploads/backwpup-1a2b3c-backups', 'uploads/wp-staging/backups', 'uploads/2019', 'plugins/akismet', 'themes/x/.git', 'plugins/y/node_modules', 'et-cache' );
 		$no    = array( 'cache-not', 'uploads', 'uploads/2020', 'uploads/2019x', 'plugins/akismet-extra', 'themes/x/.github', 'uploads/cache', 'plugins/y/node_modules_old', 'uploads/wp-staging', 'mysiteferry-0123456789ab' );
 		foreach ( $yes as $path ) {
 			Sf_Test::ok( $rules->excludes( $path ), "should exclude $path" );
@@ -88,6 +88,7 @@ $tree = array(
 	'upgrade/x.zip'                             => 'x',
 	'ai1wm-backups/site.wpress'                 => 'other plugin',
 	'siteferry-0123456789ab/backups/old.tar'    => 'own backup',
+	'uploads/siteferry-0123456789ab/jobs/x.json' => 'own storage folder in uploads',
 	'plugins/akismet/akismet.php'               => '<?php',
 	'plugins/builder/node_modules/lib/index.js' => 'js',
 	'plugins/builder/builder.php'               => '<?php',

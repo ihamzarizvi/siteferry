@@ -165,7 +165,7 @@ try {
             Assert ($after.storage -eq $before.storage) "storage option changed: $($before.storage) -> $($after.storage)"
             Assert (@($after.import_tables).Count -eq 0) ('import tables left: ' + ($after.import_tables -join ', '))
             Assert (-not (Test-Path (Join-Path $dst.Public '.maintenance'))) 'maintenance file left behind'
-            $jobs = Join-Path $dst.Public ('wp-content\' + $after.storage + '\jobs')
+            $jobs = Join-Path $dst.Public ('wp-content\uploads\' + $after.storage + '\jobs')
             $left = @(Get-ChildItem $jobs -Recurse -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'staging', 'rollback' })
             Assert ($left.Count -eq 0) ('job folders left: ' + ($left.FullName -join ', '))
         }
@@ -182,22 +182,22 @@ try {
         $file = Export-Self
         Write-Host "Exported $file"
         $before = DbState $dst
-        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,uploads/siteferry-*,plugins/siteferry'
         $out = Wp $dst @($noCron, "--exec=define('SITEFERRY_TEST_FAIL_AFTER_SWAP', true);", 'siteferry', 'import', $file, '--yes') -AllowFail
         $importCode = $script:lastCode
         $message = ($out -join "`n") + "`n" + $script:lastErr
         $after = DbState $dst
-        $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+        $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,uploads/siteferry-*,plugins/siteferry'
 
         Check 'the import failed with the simulated error' {
             Assert ($importCode -ne 0 -and $message.Contains('Simulated failure after the swap')) "exit ${importCode}: $message"
             Assert ($message.Contains('left as it was before')) 'rollback not reported as complete'
         }
         Check 'the safety backup made first was removed (the site is as it was)' {
-            $job = Get-ChildItem (Join-Path $dst.Public ('wp-content\' + $after.storage + '\jobs')) -Directory | Sort-Object LastWriteTime | Where-Object { (Get-Content (Join-Path $_.FullName 'job.json') -Raw | ConvertFrom-Json).type -eq 'import' } | Select-Object -Last 1
+            $job = Get-ChildItem (Join-Path $dst.Public ('wp-content\uploads\' + $after.storage + '\jobs')) -Directory | Sort-Object LastWriteTime | Where-Object { (Get-Content (Join-Path $_.FullName 'job.json') -Raw | ConvertFrom-Json).type -eq 'import' } | Select-Object -Last 1
             $log = Get-Content (Join-Path $job.FullName 'job.log') -Raw
             Assert ($log.Contains('Safety backup made:') -and $log.Contains('Removed the safety backup')) 'safety backup not made and removed'
-            $left = @(Get-ChildItem (Join-Path $dst.Public ('wp-content\' + $after.storage + '\backups')) -File | Where-Object { $log.Contains($_.Name) })
+            $left = @(Get-ChildItem (Join-Path $dst.Public ('wp-content\uploads\' + $after.storage + '\backups')) -File | Where-Object { $log.Contains($_.Name) })
             Assert ($left.Count -eq 0) ('safety backup still there: ' + ($left.Name -join ', '))
         }
         Check 'every table is exactly as before (CHECKSUM TABLE)' {
@@ -210,7 +210,7 @@ try {
         Check 'no import tables, staging, rollback folder or maintenance file left' {
             Assert (@($after.import_tables).Count -eq 0) ('import tables left: ' + ($after.import_tables -join ', '))
             Assert (-not (Test-Path (Join-Path $dst.Public '.maintenance'))) 'maintenance file left behind'
-            $jobs = Join-Path $dst.Public ('wp-content\' + $after.storage + '\jobs')
+            $jobs = Join-Path $dst.Public ('wp-content\uploads\' + $after.storage + '\jobs')
             $left = @(Get-ChildItem $jobs -Recurse -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'staging', 'rollback' })
             Assert ($left.Count -eq 0) ('job folders left: ' + ($left.FullName -join ', '))
         }
@@ -220,13 +220,13 @@ try {
         $file = Export-Self
         Write-Host "Exported $file"
         $before = DbState $dst
-        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,uploads/siteferry-*,plugins/siteferry'
 
         $out = Wp $dst @($noCron, 'siteferry', 'import', $file, '--yes')
         Write-Host (($out | Select-Object -Last 3) -join "`n")
         $safety = (($out -join "`n") | Select-String -Pattern 'Safety backup of the site as it was: (\S+)\.').Matches | ForEach-Object { $_.Groups[1].Value } | Select-Object -First 1
         $mid = DbState $dst
-        $backups = Join-Path $dst.Public ('wp-content\' + $mid.storage + '\backups')
+        $backups = Join-Path $dst.Public ('wp-content\uploads\' + $mid.storage + '\backups')
 
         Check 'the import made a safety backup first and recorded the undo point' {
             Assert ([bool] $safety) ('no safety backup reported: ' + ($out -join ' | '))
@@ -244,7 +244,7 @@ try {
         $out = Wp $dst @($noCron, 'siteferry', 'import', (Join-Path $backups $safety), '--yes', '--skip-safety-backup')
         Write-Host (($out | Select-Object -Last 2) -join "`n")
         $after = DbState $dst
-        $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+        $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,uploads/siteferry-*,plugins/siteferry'
         $prefix = (Wp $dst @('config', 'get', 'table_prefix') | Select-Object -Last 1).Trim()
 
         Check 'after the undo every table but the options is exactly as before (CHECKSUM TABLE)' {
@@ -294,12 +294,12 @@ try {
             Set-Content -LiteralPath $uploadsMarker -Value 'stays'
             Wp $dst @('option', 'update', 'sftest_partial', 'after') | Out-Null
             $before = DbState $dst
-            $treeBefore = Tree (Join-Path $dst.Public 'wp-content') ('siteferry-*,plugins/siteferry,plugins/' + $plugin.Name)
+            $treeBefore = Tree (Join-Path $dst.Public 'wp-content') ('siteferry-*,uploads/siteferry-*,plugins/siteferry,plugins/' + $plugin.Name)
 
             $out = Wp $dst @($noCron, 'siteferry', 'import', $file, "--tables=${prefix}posts,${prefix}postmeta", ('--paths=plugins/' + $plugin.Name), '--skip-safety-backup', '--yes')
             Write-Host (($out | Select-Object -Last 3) -join "`n")
             $after = DbState $dst
-            $treeAfter = Tree (Join-Path $dst.Public 'wp-content') ('siteferry-*,plugins/siteferry,plugins/' + $plugin.Name)
+            $treeAfter = Tree (Join-Path $dst.Public 'wp-content') ('siteferry-*,uploads/siteferry-*,plugins/siteferry,plugins/' + $plugin.Name)
 
             Check 'the check said what is restored, and the import reported a partial restore' {
                 $text = $out -join "`n"
@@ -352,7 +352,7 @@ try {
         $file = Export-Self $password
         Write-Host "Exported $file (protected with a password)"
         $before = DbState $dst
-        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,uploads/siteferry-*,plugins/siteferry'
         try {
             Check 'the backup is protected: named .enc, nothing readable in it' {
                 Assert ($file -match '\.tar\.enc$') "name: $file"
@@ -378,7 +378,7 @@ try {
             $out = Wp $dst @($noCron, 'siteferry', 'import', $file, "--password=$password", '--skip-safety-backup', '--yes')
             Write-Host (($out | Select-Object -Last 2) -join "`n")
             $after = DbState $dst
-            $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+            $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,uploads/siteferry-*,plugins/siteferry'
             Check 'with the password it is restored: the marker post and option are back' {
                 $ids = (Wp $dst @('post', 'list', '--post_type=post', '--title=SFTEST-UNDO', '--field=ID', '--post_status=any')) -join ''
                 Assert ($ids.Trim() -ne '') 'marker post missing after the import'
@@ -407,7 +407,7 @@ try {
 
         $file = (Wp $dst @($noCron, 'siteferry', 'export', "--dir=$work", '--porcelain') | Select-Object -Last 1).Trim()
         Write-Host "Exported the network: $file"
-        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+        $treeBefore = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,uploads/siteferry-*,plugins/siteferry'
         $prefix = (Wp $dst @('config', 'get', 'table_prefix') | Select-Object -Last 1).Trim()
         try {
             # Changes after the backup: a post on /alpha/, a media file of /beta/, a new subsite /gamma/.
@@ -419,7 +419,7 @@ try {
             $out = Wp $dst @($noCron, 'siteferry', 'import', $file, '--skip-safety-backup', '--yes')
             Write-Host (($out | Select-Object -Last 2) -join "`n")
             $after = DbState $dst
-            $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,plugins/siteferry'
+            $treeAfter = Tree (Join-Path $dst.Public 'wp-content') 'siteferry-*,uploads/siteferry-*,plugins/siteferry'
 
             Check 'the network is as in the backup: the /alpha/ post and the /beta/ media are back' {
                 $title = ((Wp $dst @("--url=$alphaUrl", 'post', 'get', $alphaId, '--field=post_title')) -join '').Trim()
@@ -466,7 +466,7 @@ try {
         $manifest = (& $dst.Php -n $tool manifest $Archive | Out-String) | ConvertFrom-Json
         $after = DbState $dst ($manifest.site.home -replace '^https?://', '')
         $dstPrefix = (Wp $dst @('config', 'get', 'table_prefix') | Select-Object -Last 1).Trim()
-        $job = Get-ChildItem (Join-Path $dst.Public ('wp-content\' + $after.storage + '\jobs')) -Directory | Sort-Object LastWriteTime | Select-Object -Last 1
+        $job = Get-ChildItem (Join-Path $dst.Public ('wp-content\uploads\' + $after.storage + '\jobs')) -Directory | Sort-Object LastWriteTime | Select-Object -Last 1
         $jobState = Get-Content (Join-Path $job.FullName 'job.json') -Raw | ConvertFrom-Json
 
         Check 'site address is the destination address' {

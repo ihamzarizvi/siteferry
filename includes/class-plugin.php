@@ -15,6 +15,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Plugin {
 
+	/** Option holding the version whose upgrade steps have run. */
+	const VERSION_OPTION = 'siteferry_version';
+
 	/**
 	 * Wires up the plugin on every request.
 	 *
@@ -22,6 +25,7 @@ final class Plugin {
 	 * each area is added.
 	 */
 	public static function boot(): void {
+		add_action( 'init', array( __CLASS__, 'upgrade' ) );
 		Rest\Rest::register();
 		Schedule\Schedule::register();
 		Schedule\Before_Updates::register();
@@ -34,6 +38,23 @@ final class Plugin {
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			Cli\Command::register();
 		}
+	}
+
+	/**
+	 * Runs once after an update: removes the records of the emergency kit (no longer part of
+	 * SiteFerry since 0.47.0) and moves a storage folder an older version made in wp-content into
+	 * the media folder (retried on later requests while a job runs).
+	 */
+	public static function upgrade(): void {
+		if ( SITEFERRY_VERSION === get_option( self::VERSION_OPTION ) ) {
+			return;
+		}
+		delete_option( 'siteferry_emergency_kits' );
+		delete_option( 'siteferry_emergency_before' );
+		if ( ! Security\Storage::move_legacy() ) {
+			return;
+		}
+		update_option( self::VERSION_OPTION, SITEFERRY_VERSION, false );
 	}
 
 	/**

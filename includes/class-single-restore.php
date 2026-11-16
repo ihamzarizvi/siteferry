@@ -189,7 +189,8 @@ final class Single_Restore {
 		$parts = explode( '/', $relative );
 		$own   = 'plugins' === $parts[0] && isset( $parts[1] ) && Plugin::folder() === $parts[1];
 		foreach ( Exclusions::ALWAYS as $pattern ) {
-			$own = $own || fnmatch( $pattern, $parts[0] );
+			$depth = substr_count( $pattern, '/' ) + 1;
+			$own   = $own || ( count( $parts ) >= $depth && fnmatch( $pattern, implode( '/', array_slice( $parts, 0, $depth ) ) ) );
 		}
 		if ( $own || count( $parts ) < 2 && in_array( $relative, Import\Import::DROP_INS, true ) ) {
 			throw new Job_Exception( __( 'SiteFerry\'s own files, its storage folder and WordPress\'s update folders are not restored.', 'siteferry' ), Job_Exception::STEP );
@@ -204,7 +205,7 @@ final class Single_Restore {
 	 * @throws Job_Exception If a folder on the way is a link, or the place is a folder.
 	 */
 	private static function target( string $relative ): string {
-		$root  = rtrim( str_replace( '\\', '/', WP_CONTENT_DIR ), '/' );
+		$root  = Paths::content();
 		$parts = explode( '/', $relative );
 		$file  = array_pop( $parts );
 		$dir   = $root;

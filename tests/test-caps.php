@@ -91,7 +91,6 @@ Sf_Test::run(
 			'start_export'   => 'backup',
 			'save_storage'   => 'settings',
 			'save_schedule'  => 'settings',
-			'make_emergency_kit' => 'settings',
 			'save_access'    => 'settings',
 			'move_send'      => 'settings',
 			'start_staging'  => 'settings',

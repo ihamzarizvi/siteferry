@@ -12,6 +12,7 @@ namespace SiteFerry\Staging;
 
 use SiteFerry\Archive\Io;
 use SiteFerry\Export\Exclusions;
+use SiteFerry\Paths;
 use SiteFerry\Export\Scanner;
 use SiteFerry\Jobs\Job;
 use SiteFerry\Jobs\Job_Exception;
@@ -44,7 +45,7 @@ final class Files_Step implements Step {
 	 */
 	public function run( Job $job, Slice_Budget $budget ): bool {
 		$record = (array) $job->option( 'staging' );
-		$root   = rtrim( str_replace( '\\', '/', ABSPATH ), '/' );
+		$root   = Paths::wordpress();
 		$dest   = (string) $record['path'];
 		$state  = $job->state( 'staging_files' ) + array(
 			'phase'  => 'scan',

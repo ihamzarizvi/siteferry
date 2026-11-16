@@ -1,10 +1,10 @@
 === SiteFerry ===
-Contributors: hamzarizvi
+Contributors: xsofty, hamzarizvi
 Tags: backup, migration, restore, multisite, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.46.0
+Stable tag: 0.47.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -126,47 +126,75 @@ each.
 
 == External services ==
 
-SiteFerry works on your server and contacts other services only when you set one up or ask it to.
-Nothing is sent in the background, there is no telemetry, and no service is contacted on a site
-where none is set up.
+SiteFerry works on your server. It contacts another service only when you set that service up or
+ask for it. Nothing is sent in the background, there is no telemetry, and on a site where no
+storage is set up SiteFerry contacts nothing. Each service it can contact:
 
-**Storage you set up (S3-compatible, FTP/FTPS).** When you save the settings of an S3-compatible
-storage (Amazon S3, Backblaze B2, Wasabi, Cloudflare R2, DigitalOcean Spaces or another endpoint you
-enter) or of an FTP/FTPS server, SiteFerry connects to that endpoint or server: to test the
-connection, to list, send, download and delete backups when you ask (or when a schedule you set
-runs), and to check a stored copy. It sends the backup files and the requests the service needs,
-signed with your keys. Which service that is, and its terms, depend on your choice; for Amazon S3:
-[terms](https://aws.amazon.com/service-terms/), [privacy](https://aws.amazon.com/privacy/).
+= Amazon S3 and S3-compatible storage =
 
-**Google Drive.** When you connect Google Drive, SiteFerry uses Google's sign-in
-(accounts.google.com, oauth2.googleapis.com) and the Drive API (www.googleapis.com) with the
-drive.file scope: it uploads, lists, downloads and deletes the backup files it made, in the folder
-you choose, when you ask or a schedule you set runs. To choose that folder in your Drive, the
-Storage tab loads Google's folder picker (apis.google.com) only when you click "Choose a folder in
-Drive"; picking a folder gives SiteFerry access to that folder only. Google's
-[terms of service](https://policies.google.com/terms) and
+What and why: cloud storage for backup copies, used only if you add an S3-compatible storage on the
+Storage tab (Amazon S3, or another S3-compatible provider such as Backblaze B2, Wasabi, Cloudflare R2
+or DigitalOcean Spaces, at the endpoint you enter).
+What is sent and when: when you save or test the settings, and when you (or a schedule you set)
+send, list, download, check or delete backups, SiteFerry sends requests signed with your access keys
+to that endpoint, and the backup files themselves when sending.
+Amazon S3: [AWS service terms](https://aws.amazon.com/service-terms/),
+[AWS privacy notice](https://aws.amazon.com/privacy/). For another provider, its own terms and
+privacy policy apply.
+
+= FTP and FTPS servers =
+
+What and why: a file server of your choice that holds backup copies, used only if you add an FTP or
+FTPS storage on the Storage tab.
+What is sent and when: when you save or test the settings, and when you (or a schedule you set)
+send, list, download or delete backups, SiteFerry logs in to that server with the user name and
+password you entered and transfers the backup files. The server is yours or your host's; its
+owner's terms and privacy policy apply.
+
+= Google Drive =
+
+What and why: Google's cloud storage for backup copies, used only if you connect Google Drive on the
+Storage tab.
+What is sent and when: when you connect, your browser signs in at Google (accounts.google.com) and
+this site exchanges the sign-in code for access tokens (oauth2.googleapis.com). When you (or a
+schedule you set) send, list, download or delete backups, SiteFerry uses the Drive API
+(www.googleapis.com) with the drive.file scope, so it only sees files it made and the folder you
+picked. When you click "Choose a folder in Drive", the Storage tab loads Google's folder picker from
+apis.google.com. When you disconnect, the token is revoked at oauth2.googleapis.com.
+Google's [terms of service](https://policies.google.com/terms) and
 [privacy policy](https://policies.google.com/privacy).
 
-**Dropbox.** When you connect Dropbox, SiteFerry uses Dropbox's sign-in (www.dropbox.com,
-api.dropboxapi.com) and its API (api.dropboxapi.com, content.dropboxapi.com) with access to its app
-folder only: it uploads, lists, downloads and deletes backup files there when you ask or a schedule
-you set runs. Dropbox's [terms of service](https://www.dropbox.com/terms) and
+= Dropbox =
+
+What and why: Dropbox's cloud storage for backup copies, used only if you connect Dropbox on the
+Storage tab.
+What is sent and when: when you connect, your browser signs in at Dropbox (www.dropbox.com) and this
+site exchanges the sign-in code for access tokens (api.dropboxapi.com). When you (or a schedule you
+set) send, list, download or delete backups, SiteFerry uses the Dropbox API (api.dropboxapi.com,
+content.dropboxapi.com) with access to its own app folder only.
+Dropbox's [terms of service](https://www.dropbox.com/terms) and
 [privacy policy](https://www.dropbox.com/privacy).
 
-**Sign-in service (auth.xsofty.com).** Only if you choose one-click "Sign in with Google" or "Sign in
-with Dropbox" (instead of your own OAuth client or Dropbox app), your browser passes through
-`https://auth.xsofty.com/siteferry`, run by the publisher of SiteFerry, while signing in, with this
-site's SiteFerry page address, a random state and a PKCE challenge. For Google Drive this site
-also sends it the one-time code with the PKCE verifier, and later the refresh token when access
-needs renewing; the service adds SiteFerry's app credentials and passes the request to Google. For
-Dropbox, this site only asks it for the public app key. It stores nothing; backups never go through
-it. See "What is the sign-in service (auth.xsofty.com)?" in the FAQ for every step. Publisher:
-[xsofty](https://xsofty.com/products/siteferry); its
-[privacy policy](https://xsofty.com/products/siteferry/privacy-policy) and
+= SiteFerry sign-in service (auth.xsofty.com) =
+
+What and why: a small service run by the publisher of SiteFerry at
+`https://auth.xsofty.com/siteferry`. It lets you connect Google Drive or Dropbox with one click,
+without making your own Google OAuth client or Dropbox app. It is used only if you choose "Sign in
+with Google" or "Sign in with Dropbox"; with your own client or app it is never contacted.
+What is sent and when: while you sign in, your browser passes through it with this site's SiteFerry
+page address, a random state value and a PKCE challenge. For Google Drive, this site then sends it
+the one-time sign-in code with the PKCE verifier, and later the refresh token whenever access needs
+renewing; the service adds SiteFerry's app credentials and passes the request on to Google. For
+Dropbox, this site only asks it for the public app key. The service stores nothing, and backups
+never go through it. See "What is the sign-in service (auth.xsofty.com)?" in the FAQ for every step.
+xsofty's [privacy policy](https://xsofty.com/products/siteferry/privacy-policy) and
 [terms and conditions](https://xsofty.com/products/siteferry/terms-and-conditions).
 
-**Another WordPress site (moving a site).** Only when you paste a move key made on another site and
-start the move, SiteFerry sends this site's encrypted backup to the address in that key.
+= Another WordPress site (moving a site) =
+
+Only when you paste a move key made on another site that runs SiteFerry and start the move,
+SiteFerry sends this site's backup, encrypted, to the address in that key. That site is chosen by
+you and run by you or its owner.
 
 
 == Frequently Asked Questions ==
@@ -219,7 +247,7 @@ Not supported yet: multisite networks, sites whose WordPress files are in a diff
 
 = Can other users use SiteFerry? =
 
-Administrators can always do everything. To let other roles use parts of SiteFerry, click "Who can use it" on the Backups tab and tick, per role: see backups and activity; make backups (make, download, check, send); restore (restore whole sites, single files or posts, delete backups and the staging copy); settings (storages, schedule, emergency kits, staging, moving the site, and this list). Anything but "see" includes seeing. Give these only to people you trust with the whole site: a backup holds the whole database, including every user's email address and password hash, and a restore can replace the site and its users. On a multisite network only network administrators use SiteFerry. WP-CLI is not limited by these settings, as it already needs access to the server. The capabilities are siteferry_view, siteferry_backup, siteferry_restore and siteferry_settings, so role editor plugins can set them too.
+Administrators can always do everything. To let other roles use parts of SiteFerry, click "Who can use it" on the Backups tab and tick, per role: see backups and activity; make backups (make, download, check, send); restore (restore whole sites, single files or posts, delete backups and the staging copy); settings (storages, schedule, staging, moving the site, and this list). Anything but "see" includes seeing. Give these only to people you trust with the whole site: a backup holds the whole database, including every user's email address and password hash, and a restore can replace the site and its users. On a multisite network only network administrators use SiteFerry. WP-CLI is not limited by these settings, as it already needs access to the server. The capabilities are siteferry_view, siteferry_backup, siteferry_restore and siteferry_settings, so role editor plugins can set them too.
 
 = Can I take one site out of a network, or add a site to one? =
 
@@ -237,10 +265,6 @@ own passwords, and a login that is taken gets "-2". Post, comment and link autho
 new user numbers; plugin tables that store user numbers are not changed. Plugins and themes the
 network already has are never replaced. Password-protected and .wpress backups cannot be
 used for either yet.
-
-= What if my site shows a white screen? =
-
-Make an emergency kit before you need it: on the Backups tab, click "Emergency kit", choose a password (at least 12 characters) and download the file. Keep it, with its password, somewhere safe and private, not on the server. If the site later breaks and you cannot log in, upload the file by FTP or your hosting file manager into WordPress's main folder (the one with wp-config.php or wp-load.php and wp-admin) and open it in your browser at your site's address followed by the file name. Sign in with the kit's password. It works without WordPress: it can turn off every plugin except SiteFerry, switch to a default "Twenty" theme (both can be undone) and download SiteFerry's backups. Once the dashboard opens again, restore a backup with SiteFerry if needed, and delete the kit with its "Delete this kit" button. A kit works for 7, 30 or 90 days, only on the site it was made for, and only while SiteFerry has a record of it: revoke it in SiteFerry if you lose the file, and it stops at once, downloads included. At most 20 working kits are kept; making more retires the oldest. Its sign-in also depends on the WordPress keys and salts in the server's wp-config.php, so the file alone is not enough to sign in (unless wp-config.php takes its salts from elsewhere, for example getenv()). It cannot repair damaged WordPress files or a broken database: then restore through your hosting control panel, or ask your host.
 
 = How does S3-compatible storage work? =
 
@@ -472,10 +496,13 @@ settings (including storage credentials).
 
 = Where are backups stored? =
 
-In `wp-content/siteferry-<random>/backups/`, with `.htaccess`, `web.config` and `index.php` deny
-files. Web servers that ignore those files (nginx, including LocalWP) will serve a backup to anyone
-who knows its exact URL; the random folder and file names make that URL unguessable. To block it on
-nginx as well, add a rule such as `location ~ /wp-content/siteferry-[a-f0-9]+/ { deny all; }`.
+In the media folder, in `wp-content/uploads/siteferry-<random>/backups/` (wherever the site keeps its
+uploads), with `.htaccess`, `web.config` and `index.php` deny files. Web servers that ignore those
+files (nginx) will serve a backup to anyone who knows its exact URL; the random folder and file names
+make that URL unguessable. To block it on nginx as well, add a rule such as
+`location ~ /uploads/siteferry-[a-f0-9]+/ { deny all; }`. Versions before 0.47.0 kept this folder
+in `wp-content/siteferry-<random>/`; SiteFerry moves it into the media folder after the update
+(when no backup or restore is running).
 
 = What is in a SiteFerry backup file? =
 
@@ -527,6 +554,14 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.47.0 =
+* Backups and SiteFerry's work files are now kept in the media folder (uploads/siteferry-<random>). The folder older versions made in wp-content is moved there after the update, when no backup or restore is running.
+* The emergency kit is no longer part of SiteFerry. Kits made with earlier versions stop working, as their records are removed.
+* Database work during imports, restores and staging copies goes through WordPress's database layer ($wpdb).
+* The staging copy's badge styles are loaded with wp_add_inline_style().
+* The after-move checklist checks that the site can reach itself through its REST API.
+* readme: the External services section lists each service in detail.
 
 = 0.46.0 =
 * After-move checklist: "Check the site" on the Backups tab checks what often goes wrong after a move or restore: the site address against the address in the browser, content still pointing to the old address or old server paths (with counts per kind), http links to the site's own address on an https site, permalinks, scheduled tasks (a safe check that the site can reach its own wp-cron.php), email (send a test to the site's admin address), object and page caches, search engine visibility and the uploads folder. Fixes run only when clicked: replace the old addresses (serialized data stays whole; as a job with progress), switch own links to https, refresh permalinks, clear the object cache, allow search engines. For 14 days after a move to a new address, a "Check the moved site" card on the Backups tab offers it (dismissible).

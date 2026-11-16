@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
  *   changed the address), fixed with the same serialized-safe search and replace as an import;
  * - mixed_content: on an https site, content still linking to its own address over http;
  * - permalinks: the rewrite rules and, on Apache, the WordPress block in .htaccess;
- * - cron: whether WP-Cron is turned off, and whether the site can reach its own wp-cron.php;
+ * - cron: whether WP-Cron is turned off, and whether the site can reach itself;
  * - email: a test email to the site's admin address, on request only;
  * - caches: an object cache, a page cache drop-in or a known caching plugin to clear;
  * - search: whether search engines are asked to stay away;
@@ -530,13 +530,13 @@ final class Checklist {
 		if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) {
 			return self::item( 'cron', $title, 'info', __( 'WP-Cron is turned off in wp-config.php. Make sure the new server runs it on a schedule (a cron job for wp-cron.php or "wp cron event run --due-now"), or scheduled backups and posts will not run.', 'siteferry' ) );
 		}
-		// A POST with a body makes wp-cron.php stop at once, so this only proves the site can reach itself.
-		$response = wp_remote_post(
-			site_url( 'wp-cron.php' ),
+		// WordPress starts scheduled tasks, and SiteFerry runs scheduled backups, by calling the site
+		// from itself. Asking for SiteFerry's REST index proves the site can reach itself.
+		$response = wp_remote_get(
+			rest_url( 'siteferry/v1' ),
 			array(
 				'timeout'   => 5,
-				'body'      => array( 'siteferry_probe' => '1' ),
-				'sslverify' => apply_filters( 'https_local_ssl_verify', false ), // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own filter, as core uses it for this request.
+				'sslverify' => apply_filters( 'https_local_ssl_verify', false ), // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own filter, as core uses it for its own loopback requests.
 			)
 		);
 		if ( is_wp_error( $response ) ) {
@@ -546,9 +546,9 @@ final class Checklist {
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( $code >= 400 ) {
 			/* translators: %d: an HTTP status code */
-			return self::item( 'cron', $title, 'warn', sprintf( __( 'The site reached itself, but wp-cron.php answered with HTTP %d. Scheduled tasks may not run.', 'siteferry' ), $code ) );
+			return self::item( 'cron', $title, 'warn', sprintf( __( 'The site reached itself, but got HTTP %d back. Scheduled tasks may not run.', 'siteferry' ), $code ) );
 		}
-		return self::item( 'cron', $title, 'ok', __( 'The site can reach its own wp-cron.php, so scheduled tasks can run.', 'siteferry' ) );
+		return self::item( 'cron', $title, 'ok', __( 'The site can reach itself, so scheduled tasks can run.', 'siteferry' ) );
 	}
 
 	/**
@@ -576,11 +576,11 @@ final class Checklist {
 	private static function caches(): array {
 		$title  = __( 'Caches', 'siteferry' );
 		$found  = array();
-		$object = wp_using_ext_object_cache() || is_file( WP_CONTENT_DIR . '/object-cache.php' );
+		$object = wp_using_ext_object_cache() || is_file( Paths::content() . '/object-cache.php' );
 		if ( $object ) {
 			$found[] = __( 'an object cache', 'siteferry' );
 		}
-		if ( is_file( WP_CONTENT_DIR . '/advanced-cache.php' ) ) {
+		if ( is_file( Paths::content() . '/advanced-cache.php' ) ) {
 			$found[] = __( 'a page cache (advanced-cache.php)', 'siteferry' );
 		}
 		foreach ( (array) get_option( 'active_plugins', array() ) as $plugin ) {

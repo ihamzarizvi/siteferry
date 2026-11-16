@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  * - siteferry_backup: make, download, check and send backups;
  * - siteferry_restore: restore (whole, one file or one post), delete backups, delete the staging
  *   copy — this can replace the whole site;
- * - siteferry_settings: storages, schedule, emergency kits, staging copies, moving the site, and
+ * - siteferry_settings: storages, schedule, staging copies, moving the site, and
  *   who may use SiteFerry.
  *
  * Administrators (manage_options) always have all four, whatever is set on roles. On a network,

@@ -1,6 +1,6 @@
 <?php
 /**
- * Loads the plugin. Included by siteferry.php, directly or (with wp --require) after WordPress loads.
+ * Loads the plugin. Included by siteferry.php (and, in development, by tests/tools/cli-load.php).
  *
  * @package SiteFerry
  * SPDX-License-Identifier: GPL-2.0-or-later
@@ -9,10 +9,10 @@
 defined( 'ABSPATH' ) || exit;
 
 if ( defined( 'SITEFERRY_VERSION' ) ) {
-	return; // Already loaded (an installed copy plus --require).
+	return; // Already loaded (an installed copy plus tests/tools/cli-load.php).
 }
 
-define( 'SITEFERRY_VERSION', '0.46.0' );
+define( 'SITEFERRY_VERSION', '0.47.0' );
 define( 'SITEFERRY_DIR', dirname( __DIR__ ) );
 define( 'SITEFERRY_FILE', SITEFERRY_DIR . '/siteferry.php' );
 

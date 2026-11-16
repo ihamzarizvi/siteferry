@@ -39,8 +39,11 @@ final class Exclusions {
 	/** Cache folders, relative to wp-content. */
 	const CACHE_FOLDERS = array( 'cache', 'et-cache', 'litespeed' );
 
-	/** Always left out: WordPress's own temporary folders and every SiteFerry storage folder. */
-	const ALWAYS = array( 'upgrade', 'upgrade-temp-backup', 'siteferry-*' );
+	/**
+	 * Always left out: WordPress's own temporary folders and every SiteFerry storage folder (in the
+	 * media folder; in wp-content before 0.47.0).
+	 */
+	const ALWAYS = array( 'upgrade', 'upgrade-temp-backup', 'siteferry-*', 'uploads/siteferry-*' );
 
 	/** Names left out at any depth. */
 	const NAMES = array( '.git', 'node_modules' );

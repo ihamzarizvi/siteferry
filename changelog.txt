@@ -1,6 +1,14 @@
 SiteFerry changelog
 ===================
 
+= 0.47.0 =
+* Backups and SiteFerry's work files are now kept in the media folder (uploads/siteferry-<random>). The folder older versions made in wp-content is moved there after the update, when no backup or restore is running.
+* The emergency kit is no longer part of SiteFerry. Kits made with earlier versions stop working, as their records are removed.
+* Database work during imports, restores and staging copies goes through WordPress's database layer ($wpdb).
+* The staging copy's badge styles are loaded with wp_add_inline_style().
+* The after-move checklist checks that the site can reach itself through its REST API.
+* readme: the External services section lists each service in detail.
+
 = 0.46.0 =
 * After-move checklist: "Check the site" on the Backups tab checks what often goes wrong after a move or restore: the site address against the address in the browser, content still pointing to the old address or old server paths (with counts per kind), http links to the site's own address on an https site, permalinks, scheduled tasks (a safe check that the site can reach its own wp-cron.php), email (send a test to the site's admin address), object and page caches, search engine visibility and the uploads folder. Fixes run only when clicked: replace the old addresses (serialized data stays whole; as a job with progress), switch own links to https, refresh permalinks, clear the object cache, allow search engines. For 14 days after a move to a new address, a "Check the moved site" card on the Backups tab offers it (dismissible).
 * WP-CLI: `wp siteferry checklist [--fix=<item>] [--yes] [--format=table|json|yaml]`.

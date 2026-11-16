@@ -75,7 +75,7 @@ final class Wpress {
 		if ( in_array( $relative, array( 'package.json', 'database.sql', 'multisite.json', 'blogs.json' ), true ) ) {
 			return true;
 		}
-		if ( preg_match( '#^(siteferry-[a-f0-9]{12}|ai1wm-backups)(/|$)#', $relative ) ) {
+		if ( preg_match( '#^((uploads/)?siteferry-[a-f0-9]{12}|ai1wm-backups)(/|$)#', $relative ) ) {
 			return true;
 		}
 		$own = 'plugins/' . \SiteFerry\Plugin::folder() . '/';

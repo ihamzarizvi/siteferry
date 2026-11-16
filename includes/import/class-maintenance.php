@@ -16,7 +16,7 @@ use SiteFerry\Jobs\Job_Exception;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Writes and removes ABSPATH/.maintenance.
+ * Writes and removes .maintenance in WordPress's folder, where WordPress looks for it.
  *
  * Visitors see WordPress's maintenance message while tables and files are swapped. Requests that
  * carry the X-SiteFerry-Job header (the import page's own requests) are let through, so the job
@@ -32,7 +32,7 @@ final class Maintenance {
 	 * Path of the maintenance file.
 	 */
 	public static function file(): string {
-		return ABSPATH . '.maintenance';
+		return \SiteFerry\Paths::wordpress() . '/.maintenance';
 	}
 
 	/**

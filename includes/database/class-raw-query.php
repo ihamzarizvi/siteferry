@@ -9,19 +9,18 @@
 namespace SiteFerry\Database;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are plain text: they are returned as JSON (the admin page shows them with textContent), printed by WP-CLI or sent in plain-text emails, never echoed into HTML.
-// phpcs:disable WordPress.DB.RestrictedFunctions -- On $wpdb's own mysqli connection: dump and restore statements run as written (no placeholder parsing of % in data) and keep binary values intact; with no mysqli link, $wpdb is used.
+// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Callers build statements from identifiers quoted with Sql::identifier() and values escaped with quote() (esc_sql()); restores and copies work on tables of any name, which prepare() cannot express. Nothing is cached: these read and change whole tables during an import.
 
 use SiteFerry\Jobs\Job_Exception;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Runs queries on $wpdb's mysqli connection without wpdb's query filters.
+ * Runs the statements of an import, a restore or a staging copy through $wpdb.
  *
- * wpdb::query() may strip or reject text it considers invalid for a column's character set and
- * logs every query when SAVEQUERIES is on; an import must store values byte for byte and handles
- * large statements, so it talks to the connection directly. Values are always escaped with the
- * connection's own escaping, and identifiers with Sql::identifier().
+ * Every value in them is escaped with esc_sql() (quote() below) and every table or column name
+ * with Sql::identifier(); binary values travel as hex literals. Errors become exceptions, so a
+ * failed statement stops the job (and its rollback runs) instead of being printed.
  */
 final class Raw_Query {
 
@@ -34,26 +33,11 @@ final class Raw_Query {
 	 * @throws Job_Exception On database errors.
 	 */
 	public static function run( $db, string $sql ): int {
-		$link = self::link( $db );
-		if ( null === $link ) {
-			$db->query( $sql );
-			if ( '' !== $db->last_error ) {
-				throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), $db->last_error ), Job_Exception::STEP );
-			}
-			return (int) $db->rows_affected;
-		}
-		try {
-			$ok = mysqli_query( $link, $sql );
-		} catch ( \mysqli_sql_exception $e ) {
-			throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), $e->getMessage() ), Job_Exception::STEP );
-		}
-		if ( false === $ok ) {
-			throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), mysqli_error( $link ) ), Job_Exception::STEP );
-		}
-		if ( $ok instanceof \mysqli_result ) {
-			mysqli_free_result( $ok );
-		}
-		return (int) mysqli_affected_rows( $link );
+		$quiet = $db->suppress_errors( true );
+		$db->query( $sql );
+		$db->suppress_errors( $quiet );
+		self::check( $db );
+		return (int) $db->rows_affected;
 	}
 
 	/**
@@ -65,28 +49,11 @@ final class Raw_Query {
 	 * @throws Job_Exception On database errors.
 	 */
 	public static function rows( $db, string $sql ): array {
-		$link = self::link( $db );
-		if ( null === $link ) {
-			$rows = $db->get_results( $sql, ARRAY_N );
-			if ( '' !== $db->last_error ) {
-				throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), $db->last_error ), Job_Exception::STEP );
-			}
-			return is_array( $rows ) ? $rows : array();
-		}
-		try {
-			$result = mysqli_query( $link, $sql );
-		} catch ( \mysqli_sql_exception $e ) {
-			throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), $e->getMessage() ), Job_Exception::STEP );
-		}
-		if ( ! $result instanceof \mysqli_result ) {
-			throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), mysqli_error( $link ) ), Job_Exception::STEP );
-		}
-		$rows = array();
-		while ( null !== ( $row = mysqli_fetch_row( $result ) ) ) { // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition
-			$rows[] = $row;
-		}
-		mysqli_free_result( $result );
-		return $rows;
+		$quiet = $db->suppress_errors( true );
+		$rows  = $db->get_results( $sql, ARRAY_N );
+		$db->suppress_errors( $quiet );
+		self::check( $db );
+		return is_array( $rows ) ? $rows : array();
 	}
 
 	/**
@@ -106,25 +73,28 @@ final class Raw_Query {
 	}
 
 	/**
-	 * Single-quoted, escaped string literal for this connection.
+	 * Single-quoted, escaped string literal (esc_sql()).
 	 *
 	 * @param \wpdb  $db    Connection.
 	 * @param string $value Value.
 	 */
 	public static function quote( $db, string $value ): string {
-		$link = self::link( $db );
-		return null === $link
-			? "'" . esc_sql( $value ) . "'"
-			: "'" . mysqli_real_escape_string( $link, $value ) . "'";
+		return "'" . esc_sql( $value ) . "'";
 	}
 
 	/**
-	 * The mysqli connection, or null if wpdb uses something else (a drop-in).
+	 * Throws the last database error, if there was one. With SAVEQUERIES on, the log of queries is
+	 * emptied: an import sends many large statements, which would otherwise fill the memory.
 	 *
 	 * @param \wpdb $db Connection.
-	 * @return \mysqli|null
+	 * @throws Job_Exception On a database error.
 	 */
-	private static function link( $db ) {
-		return isset( $db->dbh ) && $db->dbh instanceof \mysqli ? $db->dbh : null;
+	private static function check( $db ): void {
+		if ( defined( 'SAVEQUERIES' ) && SAVEQUERIES ) {
+			$db->queries = array();
+		}
+		if ( '' !== (string) $db->last_error ) {
+			throw new Job_Exception( sprintf( /* translators: %s: the error message of the database server */ __( 'Database error: %s', 'siteferry' ), $db->last_error ), Job_Exception::STEP );
+		}
 	}
 }

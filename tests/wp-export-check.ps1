@@ -114,6 +114,7 @@ try {
         Assert (Test-Path -LiteralPath (Join-Path $r.Dir $emoji)) 'emoji file'
         Assert (-not (Test-Path (Join-Path $r.Dir 'wp-content\plugins\siteferry'))) 'SiteFerry itself must not be exported'
         Assert (-not (Get-ChildItem (Join-Path $r.Dir 'wp-content') -Directory -Filter 'siteferry-*')) 'storage folder must not be exported'
+        Assert (-not (Get-ChildItem (Join-Path $r.Dir 'wp-content\uploads') -Directory -Filter 'siteferry-*' -ErrorAction SilentlyContinue)) 'storage folder in uploads must not be exported'
     }
 
     $slim = (Wp siteferry export --porcelain --compress '--exclude=media,spam-comments,revisions,inactive-plugins,inactive-themes' | Select-Object -Last 1).Trim()
@@ -146,7 +147,7 @@ try {
     }
 
     # Informational: nginx ignores .htaccess, so there only the random names protect a backup's URL.
-    $url = $s.Url + '/wp-content/' + (Split-Path (Split-Path (Split-Path $default)) -Leaf) + '/backups/' + (Split-Path $default -Leaf)
+    $url = $s.Url + '/wp-content/uploads/' + (Split-Path (Split-Path (Split-Path $default)) -Leaf) + '/backups/' + (Split-Path $default -Leaf)
     $status = try { (Invoke-WebRequest -Uri $url -Method Head -UseBasicParsing -TimeoutSec 10).StatusCode } catch { [int]$_.Exception.Response.StatusCode }
     $results.Add([pscustomobject]@{
         Check  = 'direct request for a backup by its exact URL'
