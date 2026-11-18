@@ -557,6 +557,17 @@ from file", within the host's upload limit.
 Tested with backups made by All-in-One WP Migration 7.113, and by importing SiteFerry's .wpress files
 with that version.
 
+== Screenshots ==
+
+1. Back up the whole site in one click and see every backup, with where each copy is stored.
+2. Before a restore, SiteFerry checks the backup and shows what will change. A safety backup lets you undo it.
+3. Choose what goes into a backup, and see its size and how long it takes before you start.
+4. Storage: Amazon S3 and S3-compatible services, FTP/FTPS servers, Google Drive and Dropbox.
+5. Scheduled backups: daily, weekly or monthly, to one or more storages, with a 3-2-1 check.
+6. Move a site straight to another server with a one-time key.
+7. Staging: a private copy of the site in a subfolder, to try changes safely.
+8. After a move or restore, check the site for common problems, with fixes you run with one click.
+
 == Changelog ==
 
 = 0.47.1 =
