@@ -1,6 +1,10 @@
 SiteFerry changelog
 ===================
 
+= 0.47.2 =
+* A "Rate SiteFerry" link on the Plugins screen and in SiteFerry's footer.
+* After a few backups or a first restore, SiteFerry's page asks once for a review. "Maybe later" asks again in 30 days; "Don't ask again" ends it.
+
 = 0.47.1 =
 * New plugin name on WordPress.org: SiteFerry – Backup, Restore & Migration. Clearer description.
 

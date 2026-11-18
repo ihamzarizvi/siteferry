@@ -31,6 +31,34 @@ final class Admin {
 	 */
 	public static function init(): void {
 		add_action( 'admin_menu', array( self::class, 'menu' ) );
+		add_filter( 'plugin_row_meta', array( self::class, 'row_meta' ), 10, 2 );
+	}
+
+	/**
+	 * A "Rate SiteFerry" link in SiteFerry's row on the Plugins screen.
+	 *
+	 * @param string[] $links Links under the plugin's description.
+	 * @param string   $file  Plugin file.
+	 * @return string[]
+	 */
+	public static function row_meta( $links, $file ): array {
+		$links = (array) $links;
+		if ( \SiteFerry\Plugin::basename() === $file ) {
+			$links[] = self::rate_link( 'sf-rate-row' );
+		}
+		return $links;
+	}
+
+	/**
+	 * A link to SiteFerry's review form, with five stars.
+	 *
+	 * @param string $class CSS class.
+	 */
+	public static function rate_link( string $class ): string {
+		return '<a class="' . esc_attr( $class ) . '" href="' . esc_url( \SiteFerry\Review::URL ) . '" target="_blank" rel="noopener noreferrer">'
+			. esc_html__( 'Rate SiteFerry', 'siteferry' )
+			. ' <span aria-hidden="true" style="color:#f0b849">&#9733;&#9733;&#9733;&#9733;&#9733;</span>'
+			. '<span class="screen-reader-text"> ' . esc_html__( '(opens in a new tab)', 'siteferry' ) . '</span></a>';
 	}
 
 	/**
@@ -101,7 +129,8 @@ final class Admin {
 			. '<span class="sf-credit-by">' . esc_html__( 'Plugin by', 'siteferry' ) . '</span>'
 			. '<img src="' . esc_url( plugins_url( 'assets/images/xsofty-logo.svg', SITEFERRY_FILE ) ) . '" alt="Xsofty" width="80" height="26" decoding="async">'
 			. '<span class="screen-reader-text"> ' . esc_html__( '(opens in a new tab)', 'siteferry' ) . '</span>'
-			. '</a>';
+			. '</a>'
+			. '<span class="sf-rate-footer">' . esc_html__( 'Enjoying SiteFerry?', 'siteferry' ) . ' ' . self::rate_link( 'sf-rate-link' ) . '</span>';
 	}
 
 	/**
@@ -182,6 +211,14 @@ final class Admin {
 							<p class="sf-actions">
 								<button type="button" class="button" id="siteferry-password-reminder-test"><?php esc_html_e( 'Test it', 'siteferry' ); ?></button>
 								<button type="button" class="button-link" id="siteferry-password-reminder-later"><?php esc_html_e( 'Remind me next month', 'siteferry' ); ?></button>
+							</p>
+						</div>
+						<div class="sf-reminder sf-review" id="siteferry-review" role="status" hidden>
+							<p><strong><?php esc_html_e( 'Is SiteFerry working well for you?', 'siteferry' ); ?></strong> <?php esc_html_e( 'A short review on WordPress.org helps other people find it. It takes a minute.', 'siteferry' ); ?></p>
+							<p class="sf-actions">
+								<a class="button button-primary" id="siteferry-review-rate" href="<?php echo esc_url( \SiteFerry\Review::URL ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Rate SiteFerry', 'siteferry' ); ?> <span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span><span class="screen-reader-text"> <?php esc_html_e( '(opens in a new tab)', 'siteferry' ); ?></span></a>
+								<button type="button" class="button" id="siteferry-review-later"><?php esc_html_e( 'Maybe later', 'siteferry' ); ?></button>
+								<button type="button" class="button-link" id="siteferry-review-never"><?php esc_html_e( "Don't ask again", 'siteferry' ); ?></button>
 							</p>
 						</div>
 						<div class="sf-tools">

@@ -4,7 +4,7 @@ Tags: backup, migration, restore, google drive, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.47.1
+Stable tag: 0.47.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -165,6 +165,10 @@ SiteFerry runs on your server. It contacts another service only when you set tha
 8. After a move or restore, check the site for common problems, with fixes you run with one click.
 
 == Changelog ==
+
+= 0.47.2 =
+* A "Rate SiteFerry" link on the Plugins screen and in SiteFerry's footer.
+* After a few backups or a first restore, SiteFerry's page asks once for a review. "Maybe later" asks again in 30 days; "Don't ask again" ends it.
 
 = 0.47.1 =
 * New plugin name on WordPress.org and a clearer description.

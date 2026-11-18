@@ -7126,6 +7126,7 @@
 		}
 		renderUndo( status.undo );
 		renderChecklistCard( status.checklist );
+		$( 'siteferry-review' ).hidden = ! status.review;
 		const unfinished = status.uploads || [];
 		if ( unfinished.length ) {
 			const box = $( 'siteferry-unfinished-uploads' );
@@ -7287,6 +7288,14 @@
 				}
 			} );
 		}
+		// "Rate SiteFerry": the link opens the review form; any answer hides the question.
+		const answerReview = ( answer ) => {
+			$( 'siteferry-review' ).hidden = true;
+			api( 'POST', 'review', { json: { answer } } ).catch( () => {} );
+		};
+		$( 'siteferry-review-rate' ).addEventListener( 'click', () => answerReview( 'rated' ) );
+		$( 'siteferry-review-later' ).addEventListener( 'click', () => answerReview( 'later' ) );
+		$( 'siteferry-review-never' ).addEventListener( 'click', () => answerReview( 'never' ) );
 		if ( $( 'siteferry-password-reminder' ) ) {
 			$( 'siteferry-password-reminder-test' ).addEventListener( 'click', () => {
 				toggleDrawer( 'schedule', true );

@@ -148,6 +148,7 @@ final class Rest {
 			array( '/schedule/password-reminder', WP_REST_Server::DELETABLE, 'snooze_password_reminder', $settings ),
 			array( '/forecast', WP_REST_Server::READABLE, 'forecast', $backup ),
 			array( '/undo/dismiss', WP_REST_Server::CREATABLE, 'dismiss_undo', $restore ),
+			array( '/review', WP_REST_Server::CREATABLE, 'answer_review', $view ),
 			array( '/staging', WP_REST_Server::READABLE, 'staging', $view ),
 			array( '/staging', WP_REST_Server::CREATABLE, 'start_staging', $settings ),
 			array( '/staging/delete', WP_REST_Server::CREATABLE, 'delete_staging', $restore ),
@@ -367,6 +368,19 @@ final class Rest {
 	}
 
 	/**
+	 * The answer to "Rate SiteFerry": rated, never, or later.
+	 *
+	 * @param WP_REST_Request $request Request with answer.
+	 */
+	public static function answer_review( WP_REST_Request $request ) {
+		$answer = (string) $request->get_param( 'answer' );
+		if ( ! \SiteFerry\Review::answer( $answer ) ) {
+			return new \WP_Error( 'siteferry_review', __( 'Unknown answer.', 'siteferry' ), array( 'status' => 400 ) );
+		}
+		return array( 'answer' => $answer );
+	}
+
+	/**
 	 * "Remind me next month" for the password reminder.
 	 */
 	public static function snooze_password_reminder(): array {
@@ -418,6 +432,7 @@ final class Rest {
 			'active'   => null === $active ? null : $active->summary(),
 			'undo'     => Import::undo_point(),
 			'checklist' => \SiteFerry\Checklist::card(),
+			'review'    => \SiteFerry\Review::due(),
 			'uploads'  => array_map(
 				static function ( Upload $upload ): array {
 					return $upload->to_array();

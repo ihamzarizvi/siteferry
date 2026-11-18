@@ -3749,6 +3749,55 @@ details.sf-dest[open] > .sf-dest-head::after {
 	width: 80px;
 	height: auto;
 }
+
+#wpfooter .sf-rate-footer {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-left: 20px;
+	padding-left: 20px;
+	border-left: 1px solid var(--sf-rope, #c9d5e3);
+	color: #50575e;
+	font-style: normal;
+	vertical-align: middle;
+}
+
+#wpfooter .sf-rate-link {
+	font-weight: 600;
+	text-decoration: none;
+}
+
+#wpfooter .sf-rate-link:hover,
+#wpfooter .sf-rate-link:focus-visible {
+	text-decoration: underline;
+}
+
+/* The question after a few backups or a first restore (Review). */
+.siteferry .sf-reminder.sf-review {
+	border-left-color: var(--sf-signal);
+	background: var(--sf-signal-wash);
+}
+
+.siteferry .sf-reminder.sf-review .sf-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+}
+
+.siteferry .sf-review .button-primary span[aria-hidden] {
+	color: #ffd166;
+	letter-spacing: 1px;
+}
+
+@media screen and (max-width: 782px) {
+	#wpfooter .sf-rate-footer {
+		margin: 8px 0 0;
+		padding-left: 0;
+		border-left: 0;
+	}
+}
 /* ------------------------------------------------- Activity tools */
 
 .siteferry .sf-list-tools {
