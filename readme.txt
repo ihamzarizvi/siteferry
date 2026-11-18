@@ -65,6 +65,10 @@ Back up, restore and migrate WordPress sites. Scheduled backups to Google Drive,
 
 Yes. Every feature is included, with no paid add-ons, upsells or limits on site size.
 
+= Is there a file size or upload limit? =
+
+No. SiteFerry has no limit of its own on site or backup size. Uploading a backup sends it in small pieces that fit your server's upload limit, so even a backup of several gigabytes uploads without changing any server settings. Backups and transfers also run in short steps that fit within normal PHP time limits. The only real limit is free disk space: a restore needs room for the backup and its unpacked files.
+
 = How do I restore a backup? =
 
 On the Backups tab, click **Restore** next to the backup. SiteFerry checks it, shows what will change and asks you to confirm. A safety backup of the site is made first, so the Backups tab can offer **Undo this restore** afterwards.
@@ -75,9 +79,25 @@ Install SiteFerry on the new site, open **Move a site**, choose **Receive a site
 
 You can also download a backup from the old site and use **Upload a backup** on the new one.
 
+= Can I move a site from localhost to a live server? =
+
+Yes. Make the key on the live site and paste it into SiteFerry on your local site: your computer sends the site to the live server. The other way round, from a live server to your computer, the live server cannot reach your local site, so download a backup on the live site and use **Upload a backup** locally.
+
+= How do I schedule automatic backups? =
+
+Click **Schedule** on the Backups tab, tick **Back up automatically** and choose daily, weekly or monthly, the time, and where the backups go (this server, Google Drive, Dropbox, S3 or FTP). Set how many to keep, and SiteFerry deletes older scheduled backups for you. Nobody needs to be logged in for it to run.
+
 = How do I back up to Google Drive or Dropbox? =
 
 Open the **Storage** tab, open Google Drive or Dropbox and click **Sign in**. SiteFerry can only see the files and folder it makes itself, nothing else in your account. Then choose that storage under **Customize** or in the **Schedule**.
+
+= What happens if a backup or restore stops halfway? =
+
+Nothing breaks. If you close the page during a backup, it pauses, and SiteFerry offers to resume or cancel it next time you open it. Scheduled backups carry on by themselves. An interrupted upload continues where it stopped when you choose the same file again. If a restore fails after it has started changing the site, SiteFerry puts the previous database and files back automatically.
+
+= Will a backup slow down my site? =
+
+Visitors keep using the site normally while a backup runs: SiteFerry works in short steps, one job at a time. During a restore, the site stays live until the final switch, when visitors see WordPress's short "briefly unavailable for maintenance" message for a moment.
 
 = Where are backups stored on my server? =
 
@@ -90,10 +110,6 @@ Storage keys, passwords and tokens are encrypted before they are saved, never sh
 = What is not included in a backup? =
 
 Caches, WordPress's update folders, other backup plugins' folders, `.git`, `node_modules`, SiteFerry itself and its own settings.
-
-= Does it work with large sites? =
-
-Yes. Backups, uploads and transfers run in small resumable steps, so they work within normal PHP time limits. An interrupted backup or upload continues where it stopped.
 
 = Does it work on multisite networks? =
 
