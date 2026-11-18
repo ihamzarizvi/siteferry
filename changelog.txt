@@ -1,6 +1,9 @@
 SiteFerry changelog
 ===================
 
+= 0.47.1 =
+* New plugin name on WordPress.org: SiteFerry – Backup, Restore & Migration. Clearer description.
+
 = 0.47.0 =
 * Backups and SiteFerry's work files are now kept in the media folder (uploads/siteferry-<random>). The folder older versions made in wp-content is moved there after the update, when no backup or restore is running.
 * The emergency kit is no longer part of SiteFerry. Kits made with earlier versions stop working, as their records are removed.

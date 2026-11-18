@@ -1,25 +1,29 @@
-=== SiteFerry ===
+=== SiteFerry – Backup, Restore & Migration ===
 Contributors: xsofty, hamzarizvi
-Tags: backup, migration, restore, multisite, cloud backup
+Tags: backup, migration, restore, google drive, cloud backup
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 0.47.0
+Stable tag: 0.47.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Back up a whole WordPress site into one TAR file and restore or migrate it to another site.
+Back up, restore and migrate WordPress sites. Scheduled backups to Google Drive, Dropbox, Amazon S3 or FTP, staging and one-click site moves.
 
 == Description ==
+
+SiteFerry is a free WordPress backup, restore and migration plugin. Back up your whole site
+(database, plugins, themes and media) in one click or on a schedule, keep copies in Google Drive,
+Dropbox, Amazon S3 or on an FTP server, and restore it, or move it to a new host or domain, in a
+few steps. It also makes staging copies, and backs up before plugin, theme and WordPress updates.
 
 SiteFerry exports the database and wp-content into a single standard TAR archive (optionally
 gzip-compressed) and imports it on another site, replacing the site address where needed. It also
 imports and writes .wpress files, the backup format of the All-in-One WP Migration plugin (see
 "Can it import and make .wpress backups?" in the FAQ).
 
-Work in progress. This version exports and imports sites from the admin screen and from WP-CLI,
-makes backups on a schedule, and sends backups to S3-compatible storage, FTP/FTPS servers, Google
-Drive and Dropbox.
+Everything works from the admin screen and from WP-CLI: backups on a schedule, and copies sent to
+S3-compatible storage, FTP/FTPS servers, Google Drive and Dropbox.
 
 = Admin screen =
 
@@ -554,6 +558,9 @@ Tested with backups made by All-in-One WP Migration 7.113, and by importing Site
 with that version.
 
 == Changelog ==
+
+= 0.47.1 =
+* New plugin name on WordPress.org: SiteFerry – Backup, Restore & Migration. Clearer description.
 
 = 0.47.0 =
 * Backups and SiteFerry's work files are now kept in the media folder (uploads/siteferry-<random>). The folder older versions made in wp-content is moved there after the update, when no backup or restore is running.
